@@ -264,9 +264,9 @@ class BookingHistory extends Component
         $this->form = [
             'booking_type'    => (string) ($row->booking_type ?? 'meeting'),
             'meeting_title'   => (string) ($row->meeting_title ?? ''),
-            'date'            => (string) ($row->date ?? ''),
-            'start_time'      => (string) ($row->start_time ?? ''),
-            'end_time'        => (string) ($row->end_time ?? ''),
+            'date'            => $row->date ? \Carbon\Carbon::parse($row->date)->toDateString() : '',
+            'start_time'      => $this->parseTimeOnly($row->start_time),
+            'end_time'        => $this->parseTimeOnly($row->end_time),
             'room_id'         => $row->room_id,
             'online_provider' => (string) ($row->online_provider ?? ''),
             'notes'           => (string) ($row->notes ?? ''),
@@ -491,6 +491,34 @@ class BookingHistory extends Component
 
         // Fallback: return as-is
         return $time;
+    }
+
+    /**
+     * Extract a time-only string (HH:MM) from a stored value that may be
+     * a full datetime ("YYYY-MM-DD HH:MM:SS"), a time-only string ("HH:MM:SS"),
+     * or a Carbon instance. Returns '' when the value is empty/null.
+     */
+    private function parseTimeOnly(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        $str = trim((string) $value);
+
+        // Full datetime: "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SS"
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $str, $m)) {
+            // Grab everything from position 11 onwards: "HH:MM:SS" → "HH:MM"
+            $timePart = substr($str, 11, 5);
+            return $timePart ?: '';
+        }
+
+        // Already time-only "HH:MM:SS" or "HH:MM"
+        if (preg_match('/^\d{2}:\d{2}/', $str)) {
+            return substr($str, 0, 5);
+        }
+
+        return '';
     }
 
     // ───────── Query accessors used by Blade ─────────

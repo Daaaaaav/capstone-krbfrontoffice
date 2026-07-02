@@ -452,48 +452,118 @@
 
             {{-- RIGHT: SIDEBAR (DESKTOP / TABLET) --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
-                {{-- Filter by Department & User --}}
+                {{-- Filter by Sender/Receiver & User --}}
                 <section class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-visible">
                     <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
-                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_dept_user') }}</p>
+                        <p class="text-[11px] text-gray-500 mt-0.5">Filter by sender, receiver, or officer</p>
                     </div>
 
                     <div class="p-4 space-y-4 bg-white">
-                        {{-- Department Filter (Card Click) --}}
-                        <div class="px-1 py-1 max-h-80 overflow-y-auto">
-                            {{-- All Departments --}}
-                            <button type="button"
-                                    wire:click="$set('departmentId', null)"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
-                                        {{ is_null($departmentId) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                                <span class="flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
-                                    <span>{{ __('app.all_departments') }}</span>
-                                </span>
-                            </button>
-
-                            {{-- Each Department --}}
-                            <div class="mt-2 space-y-1.5">
-                                @forelse($departments as $d)
-                                    @php $active = !is_null($departmentId) && (int)$departmentId === (int)$d->department_id; @endphp
-                                    <button type="button"
-                                            wire:click="$set('departmentId', {{ $d->department_id }})"
-                                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
-                                                {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                                        <span class="flex items-center gap-2">
-                                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
-                                                {{ substr($d->department_name, 0, 2) }}
-                                            </span>
-                                            <span class="truncate font-medium">{{ $d->department_name }}</span>
-                                        </span>
-                                    </button>
-                                @empty
-                                    <p class="text-xs text-gray-500">{{ __('app.no_data') }}</p>
-                                @endforelse
+                        {{-- Sender Filter --}}
+                        <div class="space-y-1">
+                            <label class="{{ $label }}">{{ __('app.sender') }}</label>
+                            <div class="relative">
+                                <input type="text" 
+                                    class="{{ $input }} pl-9"
+                                    placeholder="Search by sender name..." 
+                                    wire:model.live="filterSender">
+                                <x-heroicon-o-user class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
                             </div>
                         </div>
 
+                        {{-- Receiver Filter --}}
+                        <div class="space-y-1">
+                            <label class="{{ $label }}">{{ __('app.receiver') }}</label>
+                            <div class="relative">
+                                <input type="text" 
+                                    class="{{ $input }} pl-9"
+                                    placeholder="Search by receiver name..." 
+                                    wire:model.live="filterReceiver">
+                                <x-heroicon-o-user class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+                            </div>
+                        </div>
+
+                        {{-- User / Officer Combobox --}}
+                        <div class="space-y-1">
+                            <label class="{{ $label }}">{{ __('app.officer') }}</label>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: null,
+                                    get items() {
+                                        const q = this.search.toLowerCase().trim();
+                                        return @js($users->map(fn($u) => ['id' => $u->user_id, 'label' => $u->full_name])->values()->toArray()).filter(i =>
+                                            !q || i.label.toLowerCase().includes(q)
+                                        );
+                                    },
+                                    select(id, label) {
+                                        this.search = label;
+                                        this.selectedId = id;
+                                        $wire.set('userId', id);
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        this.selectedId = null;
+                                        $wire.set('userId', null);
+                                    }
+                                }"
+                                x-init="
+                                    $watch('$wire.userId', val => {
+                                        this.selectedId = val || null;
+                                        if (!val) { search = ''; }
+                                        else {
+                                            const found = @js($users->map(fn($u) => ['id' => $u->user_id, 'label' => $u->full_name])->values()->toArray()).find(i => i.id == val);
+                                            if (found) search = found.label;
+                                        }
+                                    });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        x-model="search"
+                                        @focus="open = true"
+                                        @input="open = true"
+                                        @keydown.escape="open = false"
+                                        @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                        autocomplete="off"
+                                        placeholder="{{ __('app.all_users') }}"
+                                        class="{{ $input }} pr-8"
+                                    >
+                                    <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                                        <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-700">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                        <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
+                                </div>
+                                <ul
+                                    x-show="open && items.length > 0"
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                    style="display:none"
+                                >
+                                    <template x-for="item in items" :key="item.id">
+                                        <li
+                                            @click="select(item.id, item.label)"
+                                            :class="selectedId == item.id ? 'bg-[#4E653D] text-white' : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                            class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                            x-text="item.label"
+                                        ></li>
+                                    </template>
+                                </ul>
+                                <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-400" style="display:none">
+                                    {{ __('app.no_data') }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </aside>
@@ -514,42 +584,104 @@
             <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                 <div>
                     <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.advanced_filters') }}</h3>
-                    <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_dept_user') }}</p>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Filter by sender, receiver, or officer</p>
                 </div>
                 <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition" @click="showFilterModal = false">✕</button>
             </div>
 
-            <div class="p-5 space-y-6 overflow-y-auto flex-1 bg-white">
-                {{-- Department Filter (Card Click) --}}
-                <div>
-                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.department') }}</h4>
-                    <button type="button"
-                        wire:click="$set('departmentId', null)"
-                        @click="showFilterModal = false"
-                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
-                            {{ is_null($departmentId) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                        <span class="flex items-center gap-2">
-                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
-                            <span>{{ __('app.all_departments') }}</span>
-                        </span>
-                    </button>
-                    <div class="space-y-1.5">
-                        @foreach($departments as $d)
-                            @php $active = !is_null($departmentId) && (int)$departmentId === (int)$d->department_id; @endphp
-                            <button type="button"
-                                wire:click="$set('departmentId', {{ $d->department_id }})"
-                                @click="showFilterModal = false"
-                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
-                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                                <span class="flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
-                                        {{ substr($d->department_name, 0, 2) }}
-                                    </span>
-                                    <span class="truncate font-medium">{{ $d->department_name }}</span>
-                                </span>
-                            </button>
-                        @endforeach
+            <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-white">
+                {{-- Sender Filter (Mobile) --}}
+                <div class="space-y-1.5">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.sender') }}</h4>
+                    <div class="relative">
+                        <input type="text"
+                            class="{{ $input }} pl-9"
+                            placeholder="Search by sender name..."
+                            wire:model.live="filterSender"
+                            @input="showFilterModal = false">
+                        <x-heroicon-o-user class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
                     </div>
+                </div>
+
+                {{-- Receiver Filter (Mobile) --}}
+                <div class="space-y-1.5">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.receiver') }}</h4>
+                    <div class="relative">
+                        <input type="text"
+                            class="{{ $input }} pl-9"
+                            placeholder="Search by receiver name..."
+                            wire:model.live="filterReceiver">
+                        <x-heroicon-o-user class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+                    </div>
+                </div>
+
+                {{-- Officer Combobox (Mobile) --}}
+                <div class="space-y-1.5">
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.officer') }}</h4>
+                    <div
+                        x-data="{
+                            open: false,
+                            search: '',
+                            selectedId: null,
+                            get items() {
+                                const q = this.search.toLowerCase().trim();
+                                return @js($users->map(fn($u) => ['id' => $u->user_id, 'label' => $u->full_name])->values()->toArray()).filter(i =>
+                                    !q || i.label.toLowerCase().includes(q)
+                                );
+                            },
+                            select(id, label) {
+                                this.search = label;
+                                this.selectedId = id;
+                                $wire.set('userId', id);
+                                this.open = false;
+                            },
+                            clear() {
+                                this.search = '';
+                                this.selectedId = null;
+                                $wire.set('userId', null);
+                            }
+                        }"
+                        x-init="
+                            $watch('$wire.userId', val => {
+                                this.selectedId = val || null;
+                                if (!val) { search = ''; }
+                                else {
+                                    const found = @js($users->map(fn($u) => ['id' => $u->user_id, 'label' => $u->full_name])->values()->toArray()).find(i => i.id == val);
+                                    if (found) search = found.label;
+                                }
+                            });
+                        "
+                        class="relative"
+                        @click.outside="open = false"
+                    >
+                        <div class="relative">
+                            <input type="text" x-model="search" @focus="open = true" @input="open = true"
+                                @keydown.escape="open = false"
+                                @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                autocomplete="off" placeholder="{{ __('app.all_users') }}"
+                                class="{{ $input }} pr-8">
+                            <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                                <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-700">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                                <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            </div>
+                        </div>
+                        <ul x-show="open && items.length > 0"
+                            class="absolute z-30 mt-1 w-full max-h-44 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                            style="display:none">
+                            <template x-for="item in items" :key="item.id">
+                                <li @click="select(item.id, item.label)"
+                                    :class="selectedId == item.id ? 'bg-[#4E653D] text-white' : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                    class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                    x-text="item.label"></li>
+                            </template>
+                        </ul>
+                        <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-400" style="display:none">
+                            {{ __('app.no_data') }}
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

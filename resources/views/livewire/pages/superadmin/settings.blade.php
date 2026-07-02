@@ -1,5 +1,5 @@
-<div class="min-h-screen bg-[#f5f7f2]">
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+<div>
+    <main class="max-w-3xl mx-auto py-8 space-y-6">
 
         {{-- ===== HEADER ===== --}}
         <div>

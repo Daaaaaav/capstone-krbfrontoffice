@@ -231,9 +231,13 @@ class Vehicleshistory extends Component
 
         $query = VehicleBooking::where('company_id', $companyId);
 
-        // Include / exclude soft-deleted
+        // Include / exclude soft-deleted — explicit both branches so the
+        // global SoftDeletes scope is always deterministic regardless of
+        // query-builder call order.
         if ($this->withTrashed) {
             $query->withTrashed();
+        } else {
+            $query->whereNull('deleted_at');
         }
 
         // Status filter

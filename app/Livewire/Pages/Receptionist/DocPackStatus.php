@@ -3,7 +3,6 @@
 namespace App\Livewire\Pages\Receptionist;
 
 use App\Models\Delivery;
-use App\Models\Department;
 use App\Models\User as UserModel;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -30,9 +29,9 @@ class DocPackStatus extends Component
     public ?string $selectedDate = null;
     public string $dateMode = 'semua';
     public string $type = 'all';
-    public ?int $departmentId = null;
+    public string $filterSender = '';
+    public string $filterReceiver = '';
     public ?int $userId = null;
-    public string $departmentQ = '';
     public string $userQ = '';
 
     // Tabs
@@ -65,11 +64,7 @@ class DocPackStatus extends Component
 
     public function updated($name): void
     {
-        if ($name === 'departmentId') {
-            $this->userId = null;
-        }
-
-        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'departmentId', 'userId', 'departmentQ', 'userQ'], true)) {
+        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'filterSender', 'filterReceiver', 'userId', 'userQ'], true)) {
             $this->resetPage('pendingPage');
             $this->resetPage('storedPage');
         }
@@ -112,18 +107,12 @@ class DocPackStatus extends Component
             $q->whereDate('created_at', $this->selectedDate);
         }
 
-        if ($this->departmentId) {
-            $q->where('department_id', $this->departmentId);
+        if (trim($this->filterSender) !== '') {
+            $q->where('nama_pengirim', 'like', '%' . trim($this->filterSender) . '%');
         }
 
-        if (trim($this->departmentQ) !== '') {
-            $deptIds = Department::query()
-                ->where('company_id', Auth::user()->company_id ?? null)
-                ->whereNull('deleted_at')
-                ->where('department_name', 'like', '%' . trim($this->departmentQ) . '%')
-                ->pluck('department_id');
-
-            $deptIds->isNotEmpty() ? $q->whereIn('department_id', $deptIds) : $q->whereRaw('0=1');
+        if (trim($this->filterReceiver) !== '') {
+            $q->where('nama_penerima', 'like', '%' . trim($this->filterReceiver) . '%');
         }
 
         if ($this->userId) {
@@ -143,7 +132,6 @@ class DocPackStatus extends Component
             $userIds = UserModel::query()
                 ->where('company_id', Auth::user()->company_id ?? null)
                 ->whereNull('deleted_at')
-                ->when($this->departmentId, fn($qq) => $qq->where('department_id', $this->departmentId))
                 ->where('full_name', 'like', '%' . trim($this->userQ) . '%')
                 ->pluck('user_id');
 
@@ -311,15 +299,8 @@ class DocPackStatus extends Component
     {
         $companyId = Auth::user()->company_id ?? null;
 
-        $departments = Department::query()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->orderBy('department_name')
-            ->get(['department_id', 'department_name']);
-
         $users = UserModel::query()
             ->where('company_id', $companyId)
-            ->when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))
             ->whereNull('deleted_at')
             ->orderBy('full_name')
             ->get(['user_id', 'full_name']);
@@ -335,7 +316,6 @@ class DocPackStatus extends Component
             'pending' => $this->pending,
             'stored' => $this->stored,
             'storedDirections' => $storedDirections,
-            'departments' => $departments,
             'users' => $users,
         ]);
     }
