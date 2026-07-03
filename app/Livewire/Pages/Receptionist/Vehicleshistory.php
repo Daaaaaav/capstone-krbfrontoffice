@@ -59,7 +59,11 @@ class Vehicleshistory extends Component
         'purpose'       => '',
         'destination'   => '',
         'notes'         => '',
+        'start_at'      => '',
+        'end_at'        => '',
     ];
+
+    public array $statusLogs = [];
 
     protected $queryString = [
         'q'              => ['except' => ''],
@@ -188,7 +192,38 @@ class Vehicleshistory extends Component
             'purpose'       => (string) $booking->purpose,
             'destination'   => (string) $booking->destination,
             'notes'         => (string) $booking->notes,
+            'start_at'      => $booking->start_at ? Carbon::parse($booking->start_at)->format('Y-m-d\TH:i') : '',
+            'end_at'        => $booking->end_at ? Carbon::parse($booking->end_at)->format('Y-m-d\TH:i') : '',
         ];
+
+        // Generate pseudo-logs based on timestamps
+        $logs = [];
+        if ($booking->created_at) {
+            $logs[] = ['status' => 'Created', 'time' => $booking->created_at, 'type' => 'info'];
+        }
+        if ($booking->start_at) {
+            $logs[] = ['status' => 'Started', 'time' => $booking->start_at, 'type' => 'primary'];
+        }
+        if ($booking->end_at) {
+            $logs[] = ['status' => 'Ended', 'time' => $booking->end_at, 'type' => 'primary'];
+        }
+        if ($booking->status === 'completed' && $booking->updated_at && $booking->updated_at->gt($booking->end_at ?? $booking->start_at)) {
+            $logs[] = ['status' => 'Completed', 'time' => $booking->updated_at, 'type' => 'success'];
+        }
+        if ($booking->status === 'rejected' && $booking->updated_at) {
+            $logs[] = ['status' => 'Rejected', 'time' => $booking->updated_at, 'type' => 'danger'];
+        }
+        if ($booking->trashed() && $booking->deleted_at) {
+            $logs[] = ['status' => 'Deleted', 'time' => $booking->deleted_at, 'type' => 'warning'];
+        }
+        
+        // Sort logs by time
+        usort($logs, function($a, $b) {
+            return Carbon::parse($a['time'])->timestamp <=> Carbon::parse($b['time'])->timestamp;
+        });
+        
+        $this->statusLogs = $logs;
+
         $this->showEdit = true;
     }
 
@@ -199,6 +234,8 @@ class Vehicleshistory extends Component
             'edit.purpose'       => 'nullable|string|max:255',
             'edit.destination'   => 'nullable|string|max:255',
             'edit.notes'         => 'nullable|string',
+            'edit.start_at'      => 'required|date',
+            'edit.end_at'        => 'required|date|after_or_equal:edit.start_at',
         ]);
 
         $user = Auth::user();
@@ -216,6 +253,8 @@ class Vehicleshistory extends Component
                 'purpose'       => $this->edit['purpose'],
                 'destination'   => $this->edit['destination'],
                 'notes'         => $this->edit['notes'],
+                'start_at'      => Carbon::parse($this->edit['start_at'])->format('Y-m-d H:i:s'),
+                'end_at'        => Carbon::parse($this->edit['end_at'])->format('Y-m-d H:i:s'),
             ]);
             $this->dispatch('toast', type: 'success', title: 'Disimpan', message: "Data #{$this->editId} berhasil diperbarui.", duration: 3000);
         }

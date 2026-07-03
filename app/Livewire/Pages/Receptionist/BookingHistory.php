@@ -72,6 +72,7 @@ class BookingHistory extends Component
         'status'          => 'completed',
         'book_reject'     => '',     // ⬅️ reason (required if rejected)
     ];
+    public array $statusLogs = [];
 
     // Tabs: done | rejected
     public string $activeTab = 'done';
@@ -264,15 +265,49 @@ class BookingHistory extends Component
         $this->form = [
             'booking_type'    => (string) ($row->booking_type ?? 'meeting'),
             'meeting_title'   => (string) ($row->meeting_title ?? ''),
-            'date'            => (string) ($row->date ?? ''),
-            'start_time'      => (string) ($row->start_time ?? ''),
-            'end_time'        => (string) ($row->end_time ?? ''),
+            'date'            => $row->date ? Carbon::parse($row->date)->format('Y-m-d') : '',
+            'start_time'      => $row->start_time ? Carbon::parse($row->start_time)->format('H:i') : '',
+            'end_time'        => $row->end_time ? Carbon::parse($row->end_time)->format('H:i') : '',
             'room_id'         => $row->room_id,
             'online_provider' => (string) ($row->online_provider ?? ''),
             'notes'           => (string) ($row->notes ?? ''),
             'status'          => $this->normalizeDbStatus($row->status),
             'book_reject'     => (string) ($row->book_reject ?? ''), // ⬅️ NEW
         ];
+
+        // Generate pseudo-logs based on timestamps
+        $logs = [];
+        if ($row->created_at) {
+            $logs[] = ['status' => 'Created', 'time' => $row->created_at, 'type' => 'info'];
+        }
+        
+        $dbStart = $this->formatDateTimeForDb($row->date, $row->start_time);
+        if ($dbStart) {
+            $logs[] = ['status' => 'Scheduled Start', 'time' => $dbStart, 'type' => 'primary'];
+        }
+        
+        $dbEnd = $this->formatDateTimeForDb($row->date, $row->end_time);
+        if ($dbEnd) {
+            $logs[] = ['status' => 'Scheduled End', 'time' => $dbEnd, 'type' => 'primary'];
+        }
+        
+        $normStatus = $this->normalizeDbStatus($row->status);
+        if ($normStatus === 'completed' && $row->updated_at) {
+            $logs[] = ['status' => 'Completed', 'time' => $row->updated_at, 'type' => 'success'];
+        } elseif ($normStatus === 'rejected' && $row->updated_at) {
+            $logs[] = ['status' => 'Rejected', 'time' => $row->updated_at, 'type' => 'danger'];
+        }
+
+        if ($row->trashed() && $row->deleted_at) {
+            $logs[] = ['status' => 'Deleted', 'time' => $row->deleted_at, 'type' => 'danger'];
+        }
+
+        // Sort logs by time
+        usort($logs, function($a, $b) {
+            return Carbon::parse($a['time'])->timestamp <=> Carbon::parse($b['time'])->timestamp;
+        });
+
+        $this->statusLogs = $logs;
 
         $this->showModal = true;
     }

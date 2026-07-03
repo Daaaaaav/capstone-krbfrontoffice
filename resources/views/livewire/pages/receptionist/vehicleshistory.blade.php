@@ -566,24 +566,41 @@
 
     {{-- ===== EDIT MODAL ===== --}}
     @if($showEdit)
-        <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="$set('showEdit', false)"></div>
-            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                <div class="bg-[#4A2F24] px-6 py-4 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-[#CDDEA7]">{{ __('app.edit') }}</h3>
-                    <button wire:click="$set('showEdit', false)" class="text-[#CDDEA7]/60 hover:text-[#CDDEA7]">
-                        <x-heroicon-o-x-mark class="w-5 h-5"/>
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showEdit', false)"></div>
+            <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col transform transition-all duration-300 scale-100">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-pencil class="w-4 h-4 text-[#CDDEA7]" />
+                        </div>
+                        <h3 class="text-base font-bold tracking-tight">{{ __('app.edit') }}</h3>
+                    </div>
+                    <button wire:click="$set('showEdit', false)" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">
+                        <x-heroicon-o-x-mark class="w-4 h-4"/>
                     </button>
                 </div>
-                <div class="p-6 space-y-4">
+                <div class="p-6 overflow-y-auto flex-1 space-y-4">
                     @php
                         $mi = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
-                        $ml = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1';
+                        $ml = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
                     @endphp
                     <div>
                         <label class="{{ $ml }}">{{ __('app.borrower_label') ?? 'Borrower Name' }} <span class="text-rose-500">*</span></label>
                         <input type="text" wire:model="edit.borrower_name" class="{{ $mi }}">
-                        @error('edit.borrower_name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        @error('edit.borrower_name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="{{ $ml }}">{{ __('app.start') ?? 'Start' }} <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" wire:model="edit.start_at" class="{{ $mi }}">
+                            @error('edit.start_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="{{ $ml }}">{{ __('app.end') ?? 'End' }} <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" wire:model="edit.end_at" class="{{ $mi }}">
+                            @error('edit.end_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                        </div>
                     </div>
                     <div>
                         <label class="{{ $ml }}">{{ __('app.purpose') }}</label>
@@ -597,17 +614,83 @@
                         <label class="{{ $ml }}">{{ __('app.reason') ?? 'Notes' }}</label>
                         <textarea wire:model="edit.notes" class="{{ $mi }} py-2.5 h-20 resize-none"></textarea>
                     </div>
-                </div>
-                <div class="px-6 pb-6 flex justify-end gap-2">
-                    <button wire:click="$set('showEdit', false)"
-                            class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
-                        {{ __('app.cancel') }}
-                    </button>
-                    <button wire:click="saveEdit"
-                            wire:loading.attr="disabled"
-                            class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm">
-                        {{ __('app.save') }}
-                    </button>
+
+                    {{-- Vehicle Logs (Status Timeline) Section --}}
+                    @if(count($statusLogs) > 0)
+                        <div class="mt-6 border-t border-gray-100 pt-5">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-gray-500"/>
+                                Status Logs
+                            </h4>
+                            <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-gray-100 border-b border-gray-200 text-gray-600 uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-3 py-2">Step</th>
+                                            <th class="px-3 py-2">Status</th>
+                                            <th class="px-3 py-2">Logged At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 text-gray-700">
+                                        @foreach($statusLogs as $index => $log)
+                                            @php
+                                                $bgClass = match($log['type']) {
+                                                    'success' => 'bg-emerald-100 text-emerald-800',
+                                                    'danger'  => 'bg-rose-100 text-rose-800',
+                                                    'warning' => 'bg-amber-100 text-amber-800',
+                                                    'primary' => 'bg-blue-100 text-blue-800',
+                                                    default   => 'bg-gray-200 text-gray-800',
+                                                };
+                                            @endphp
+                                            <tr class="hover:bg-white transition-colors">
+                                                <td class="px-3 py-2 font-medium">Log {{ $index + 1 }}</td>
+                                                <td class="px-3 py-2">
+                                                    <span class="inline-flex items-center gap-1 text-[10px] {{ $bgClass }} px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                        {{ $log['status'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-2 whitespace-nowrap">
+                                                    {{ \Carbon\Carbon::parse($log['time'])->format('d M Y, H:i') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="mt-6 border-t border-gray-100 pt-5">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-gray-500"/>
+                                Status Logs
+                            </h4>
+                            <p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">No timeline data available.</p>
+                        </div>
+                    @endif
+
+                    {{-- Footer actions --}}
+                    <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4 mt-6">
+                        <button type="button"
+                                class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition text-xs font-semibold"
+                                wire:click="$set('showEdit', false)">
+                            {{ __('app.cancel') }}
+                        </button>
+                        <button type="button"
+                                class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm flex items-center gap-1.5"
+                                wire:loading.attr="disabled" wire:target="saveEdit" wire:click="saveEdit">
+                            <span wire:loading.remove wire:target="saveEdit" class="flex items-center gap-1.5">
+                                <x-heroicon-o-check class="w-3.5 h-3.5" />
+                                {{ __('app.save') }}
+                            </span>
+                            <span wire:loading wire:target="saveEdit" class="flex items-center gap-1.5">
+                                <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>{{ __('app.saving') ?? 'Saving...' }}</span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -623,7 +706,7 @@
                         <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
                             <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
                         </div>
-                        <h3 class="font-bold tracking-tight text-base">{{ __('app.delete_verification') ?? 'Delete Verification' }}</h3>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
                     </div>
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
                 </div>

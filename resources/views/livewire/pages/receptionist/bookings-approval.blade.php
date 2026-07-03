@@ -812,7 +812,7 @@
             wire:key="reject-modal"
             wire:keydown.escape.window="closeReject">
             {{-- Backdrop --}}
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReject"></div>
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReject"></div>
 
             <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden focus:outline-none transform transition-all duration-300 scale-100" tabindex="-1">
                 <form wire:submit.prevent="confirmReject">
@@ -864,7 +864,7 @@
         {{-- RESCHEDULE MODAL --}}
         @if($showRescheduleModal)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReschedule"></div>
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReschedule"></div>
 
             <div class="relative bg-card border border-border shadow-2xl rounded-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300 scale-100">
                 <form wire:submit.prevent="submitReschedule">
@@ -1051,7 +1051,7 @@
             role="dialog" aria-modal="true"
             wire:key="detail-modal-{{ $selectedBookingDetail->bookingroom_id }}"
             wire:keydown.escape.window="closeDetailModal">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
 
             <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden focus:outline-none transform transition-all duration-300 scale-100 flex flex-col max-h-[85vh]" tabindex="-1">
 

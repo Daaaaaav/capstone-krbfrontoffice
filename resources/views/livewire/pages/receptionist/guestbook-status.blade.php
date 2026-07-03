@@ -210,11 +210,24 @@
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center justify-between gap-2">
                                                 <p class="font-semibold text-gray-900 truncate">{{ $e->name }}</p>
-                                                @if($e->storage_place)
-                                                    <div class="w-8 h-8 rounded-full bg-[#4E653D] text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-sm" title="Tempat Penyimpanan">
-                                                        {{ $e->storage_place }}
-                                                    </div>
-                                                @endif
+                                                <div class="flex items-center gap-1.5 shrink-0">
+                                                    {{-- Live elapsed timer --}}
+                                                    @php
+                                                        $tsMs = null;
+                                                        try { $tsMs = Carbon::parse($e->date->format('Y-m-d') . ' ' . $e->jam_in)->getTimestampMs(); } catch (\Throwable $th) {}
+                                                    @endphp
+                                                    @if($tsMs)
+                                                        <span class="elapsed-timer inline-flex items-center gap-1 h-8 px-2.5 rounded-full bg-[#4A2F24] text-white text-[10px] font-bold font-mono" title="Durasi kunjungan" data-start="{{ $tsMs }}">
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                            <span class="timer-text">00:00:00</span>
+                                                        </span>
+                                                    @endif
+                                                    @if($e->storage_place)
+                                                        <div class="w-8 h-8 rounded-full bg-[#4E653D] text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-sm" title="Tempat Penyimpanan">
+                                                            {{ $e->storage_place }}
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             </div>
                                             @if($e->instansi)
                                                 <p class="text-xs text-gray-500 mt-0.5 truncate">{{ $e->instansi }}</p>
@@ -320,6 +333,7 @@
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.institution_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_label') }}</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Durasi</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.status') }}</th>
                                         <th class="h-10 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.actions') }}</th>
                                     </tr>
@@ -373,6 +387,22 @@
                                                     </div>
                                                     <div class="text-[10px] text-gray-400 mt-0.5 truncate">{{ __('app.officer_label') }}: {{ $e->petugas_penjaga }}</div>
                                                 </div>
+                                            </td>
+
+                                            {{-- Elapsed time column --}}
+                                            <td class="h-12 px-4 py-0">
+                                                @php
+                                                    $tsMs2 = null;
+                                                    try { $tsMs2 = Carbon::parse($e->date->format('Y-m-d') . ' ' . $e->jam_in)->getTimestampMs(); } catch (\Throwable $th) {}
+                                                @endphp
+                                                @if($tsMs2)
+                                                    <span class="elapsed-timer inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4A2F24] text-white text-[10px] font-bold font-mono" data-start="{{ $tsMs2 }}">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                        <span class="timer-text">00:00:00</span>
+                                                    </span>
+                                                @else
+                                                    <span class="text-xs text-gray-400">—</span>
+                                                @endif
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 ">
@@ -484,6 +514,11 @@
                         <input type="text" wire:model.defer="edit.petugas_penjaga" class="{{ $mi }}">
                         @error('edit.petugas_penjaga') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label class="{{ $ml }}">Jumlah Pengunjung <span class="text-rose-500">*</span></label>
+                        <input type="number" min="1" max="999" wire:model.defer="edit.visitor_count" class="{{ $mi }}">
+                        @error('edit.visitor_count') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
                 <div class="px-6 pb-6 flex justify-end gap-2">
                     <button wire:click="$set('showEdit', false)"
@@ -499,5 +534,29 @@
             </div>
         </div>
     @endif
+
+    <script>
+        function updateElapsedTimers() {
+            document.querySelectorAll('.elapsed-timer').forEach(function(el) {
+                var start = parseInt(el.getAttribute('data-start'));
+                if (!start) return;
+                var diff = Math.max(0, Date.now() - start);
+                var totalSec = Math.floor(diff / 1000);
+                var h = Math.floor(totalSec / 3600);
+                var m = Math.floor((totalSec % 3600) / 60);
+                var s = totalSec % 60;
+                var text = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+                var span = el.querySelector('.timer-text');
+                if (span) span.textContent = text;
+            });
+        }
+        updateElapsedTimers();
+        setInterval(updateElapsedTimers, 1000);
+        // Re-init after Livewire updates the DOM
+        if (window.Livewire) {
+            document.addEventListener('livewire:navigated', updateElapsedTimers);
+            document.addEventListener('livewire:morph:updated', updateElapsedTimers);
+        }
+    </script>
 
 </div>

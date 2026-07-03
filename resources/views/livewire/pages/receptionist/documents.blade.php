@@ -696,7 +696,7 @@
                         <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
                             <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
                         </div>
-                        <h3 class="font-bold tracking-tight text-base">{{ __('app.delete_verification') ?? 'Delete Verification' }}</h3>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
                     </div>
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
                 </div>

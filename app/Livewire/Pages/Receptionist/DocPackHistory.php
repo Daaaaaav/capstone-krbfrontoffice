@@ -57,6 +57,7 @@ class DocPackHistory extends Component
     ];
     public $editPhoto = null;
     public ?string $editCurrentImage = null;
+    public array $statusLogs = [];
 
     protected $rules = [
         'edit.item_name' => 'nullable|string|max:255',
@@ -202,6 +203,29 @@ class DocPackHistory extends Component
         ];
         $this->editCurrentImage = $row->image;
         $this->editPhoto = null;
+        
+        // Generate pseudo-logs based on timestamps
+        $logs = [];
+        if ($row->created_at) {
+            $logs[] = ['status' => 'Arrived at Receptionist', 'time' => $row->created_at, 'type' => 'info'];
+        }
+        if ($row->pengiriman) {
+            $logs[] = ['status' => 'Delivered to Department', 'time' => $row->pengiriman, 'type' => 'primary'];
+        }
+        if ($row->pengambilan) {
+            $logs[] = ['status' => 'Taken by Employee', 'time' => $row->pengambilan, 'type' => 'success'];
+        }
+        if ($row->trashed() && $row->deleted_at) {
+            $logs[] = ['status' => 'Deleted', 'time' => $row->deleted_at, 'type' => 'danger'];
+        }
+        
+        // Sort logs by time
+        usort($logs, function($a, $b) {
+            return \Carbon\Carbon::parse($a['time'])->timestamp <=> \Carbon\Carbon::parse($b['time'])->timestamp;
+        });
+        
+        $this->statusLogs = $logs;
+        
         $this->showEdit = true;
     }
 

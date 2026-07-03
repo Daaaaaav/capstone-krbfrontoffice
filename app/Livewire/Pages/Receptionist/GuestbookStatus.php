@@ -9,6 +9,7 @@ use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\Guestbook as GuestbookModel;
+use App\Models\GuestbookQrCode;
 #[Layout('layouts.receptionist')]
 #[Title('Guestbook Status')]
 class GuestbookStatus extends Component
@@ -41,6 +42,7 @@ class GuestbookStatus extends Component
         'instansi'        => null,
         'keperluan'       => null,
         'petugas_penjaga' => null,
+        'visitor_count'   => 1,
     ];
 
     protected function rulesEdit(): array
@@ -52,6 +54,7 @@ class GuestbookStatus extends Component
             'edit.instansi'        => ['nullable', 'string', 'max:255'],
             'edit.keperluan'       => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
+            'edit.visitor_count'   => ['required', 'integer', 'min:1', 'max:999'],
         ];
     }
 
@@ -171,6 +174,7 @@ class GuestbookStatus extends Component
             'instansi'        => $row->instansi,
             'keperluan'       => $row->keperluan,
             'petugas_penjaga' => $row->petugas_penjaga,
+            'visitor_count'   => $row->visitor_count,
         ];
         $this->resetValidation();
         $this->showEdit = true;
@@ -181,6 +185,10 @@ class GuestbookStatus extends Component
         $this->validate($this->rulesEdit());
 
         $row = $this->findOwnedOrFail($this->editId);
+
+        $oldVisitorCount = $row->visitor_count;
+        $newVisitorCount = (int) $this->edit['visitor_count'];
+
         $row->update([
             'name'            => $this->edit['name'],
             'email'           => $this->edit['email'] ?: null,
@@ -188,10 +196,31 @@ class GuestbookStatus extends Component
             'instansi'        => $this->edit['instansi'],
             'keperluan'       => $this->edit['keperluan'],
             'petugas_penjaga' => $this->edit['petugas_penjaga'],
+            'visitor_count'   => $newVisitorCount,
         ]);
 
         $this->showEdit = false;
-        $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
+
+        // If visitor count changed, we need new QR codes
+        if ($oldVisitorCount !== $newVisitorCount) {
+            // Delete old QRs
+            GuestbookQrCode::where('guestbook_id', $row->guestbook_id)->delete();
+
+            // Generate new QRs
+            $qrTokens = GuestbookQrCode::generateTokenBatch($newVisitorCount);
+            foreach ($qrTokens as $index => $token) {
+                GuestbookQrCode::create([
+                    'guestbook_id'   => $row->guestbook_id,
+                    'qr_token'       => $token,
+                    'visitor_number' => $index + 1,
+                ]);
+            }
+
+            // Show warning toast that user must resend QR
+            $this->dispatch('toast', type: 'warning', title: 'Perhatian!', message: 'Jumlah pengunjung berubah. QR Code baru telah dibuat. Harap klik Resend QR.', duration: 7000);
+        } else {
+            $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
+        }
         $this->dispatch('$refresh');
     }
 

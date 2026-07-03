@@ -1168,6 +1168,59 @@
                         </div>
                     </div>
 
+                    {{-- Status Logs Section --}}
+                    @if(count($statusLogs) > 0)
+                        <div class="mt-6 border-t border-border pt-5 px-6 pb-6">
+                            <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-muted-foreground"/>
+                                Status Logs
+                            </h4>
+                            <div class="bg-muted/10 rounded-xl border border-border overflow-hidden">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-muted/20 border-b border-border text-muted-foreground uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-3 py-2">Step</th>
+                                            <th class="px-3 py-2">Status</th>
+                                            <th class="px-3 py-2">Logged At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-border/50 text-foreground">
+                                        @foreach($statusLogs as $index => $log)
+                                            @php
+                                                $bgClass = match($log['type']) {
+                                                    'success' => 'bg-emerald-100 text-emerald-800',
+                                                    'danger'  => 'bg-rose-100 text-rose-800',
+                                                    'warning' => 'bg-amber-100 text-amber-800',
+                                                    'primary' => 'bg-blue-100 text-blue-800',
+                                                    default   => 'bg-gray-200 text-gray-800',
+                                                };
+                                            @endphp
+                                            <tr class="hover:bg-background transition-colors">
+                                                <td class="px-3 py-2 font-medium">Log {{ $index + 1 }}</td>
+                                                <td class="px-3 py-2">
+                                                    <span class="inline-flex items-center gap-1 text-[10px] {{ $bgClass }} px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                        {{ $log['status'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-2 whitespace-nowrap">
+                                                    {{ \Carbon\Carbon::parse($log['time'])->format('d M Y, H:i') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="mt-6 border-t border-border pt-5 px-6 pb-6">
+                            <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-muted-foreground"/>
+                                Status Logs
+                            </h4>
+                            <p class="text-xs text-muted-foreground bg-muted/10 p-3 rounded-lg border border-border text-center">No timeline data available.</p>
+                        </div>
+                    @endif
+
                     {{-- Footer --}}
                     <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
                         <button type="button"
@@ -1267,7 +1320,7 @@
                         <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
                             <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
                         </div>
-                        <h3 class="font-bold tracking-tight text-base">{{ __('app.delete_verification') ?? 'Delete Verification' }}</h3>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
                     </div>
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
                 </div>

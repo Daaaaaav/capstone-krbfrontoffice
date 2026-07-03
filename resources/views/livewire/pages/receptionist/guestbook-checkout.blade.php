@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50" style="overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y;">
     @php
         $card = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
     @endphp
@@ -108,6 +108,17 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            {{-- Camera switch button - always visible when cameras exist --}}
+                            <button x-show="cameras.length > 0"
+                                    @click="showCameraSelect = !showCameraSelect"
+                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition border"
+                                    :class="showCameraSelect ? 'bg-[#4E653D] text-white border-[#4E653D]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                Ganti
+                            </button>
                             <span class="relative flex h-3 w-3" x-show="scanning">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#CDDEA7] opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-3 w-3 bg-[#4E653D]"></span>
@@ -116,27 +127,33 @@
                         </div>
                     </div>
 
-                    {{-- Camera Selector --}}
-                    <div class="mt-3" x-show="cameras.length > 1" x-cloak>
+                    {{-- Camera Selector Dropdown --}}
+                    <div class="mt-3" x-show="showCameraSelect && cameras.length > 0" x-cloak
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0">
                         <div class="flex items-center gap-2">
                             <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
                             <select x-model="selectedCameraId"
-                                    @change="switchCamera()"
                                     class="flex-1 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#4E653D]/30 focus:border-[#4E653D] cursor-pointer appearance-none"
                                     style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 20 20%27%3E%3Cpath stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%271.5%27 d=%27M6 8l4 4 4-4%27/%3E%3C/svg%3E'); background-position: right 8px center; background-repeat: no-repeat; background-size: 16px; padding-right: 28px;">
                                 <template x-for="cam in cameras" :key="cam.deviceId">
                                     <option :value="cam.deviceId" x-text="cam.label || ('Camera ' + (cameras.indexOf(cam) + 1))" :selected="cam.deviceId === selectedCameraId"></option>
                                 </template>
                             </select>
+                            <button @click="showCameraSelect = false; switchCamera()"
+                                    class="shrink-0 px-3 py-2 bg-[#4E653D] text-white rounded-lg text-xs font-semibold hover:bg-[#3d5130] transition">
+                                Terapkan
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 {{-- Camera Viewport --}}
-                <div class="relative bg-black">
+                <div class="relative bg-black" style="touch-action: none;">
                     {{-- Video element - single clean camera feed --}}
                     <video x-ref="cameraVideo"
                            playsinline muted
@@ -151,8 +168,8 @@
                         {{-- Dim border around the scan area --}}
                         <div class="absolute inset-0 bg-black/30"></div>
 
-                        {{-- Clear window in center --}}
-                        <div class="relative" style="width: 220px; height: 220px;">
+                        {{-- Clear window in center - responsive size --}}
+                        <div x-ref="viewfinder" class="relative qr-viewfinder">
                             {{-- Transparent center cutout --}}
                             <div class="absolute inset-0 rounded-2xl" style="box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);"></div>
 
@@ -164,6 +181,11 @@
 
                             {{-- Animated scan line --}}
                             <div class="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-[#CDDEA7] to-transparent animate-scan-line"></div>
+
+                            {{-- Hint text --}}
+                            <div class="absolute -bottom-8 left-0 right-0 text-center">
+                                <span class="text-[11px] text-white/70 font-medium">Posisikan QR di dalam kotak</span>
+                            </div>
                         </div>
                     </div>
 
@@ -210,14 +232,32 @@
                     </div>
                 </div>
 
-                {{-- Camera Error --}}
-                <div x-show="cameraError" class="px-6 py-4 bg-rose-50 border-t border-rose-200" style="display: none;">
-                    <div class="flex items-start gap-3">
+                {{-- Camera Error with Retry --}}
+                <div x-show="cameraError" class="px-6 py-5 bg-rose-50 border-t border-rose-200" style="display: none;">
+                    <div class="flex items-start gap-3 mb-3">
                         <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-rose-500 shrink-0 mt-0.5"/>
                         <div>
                             <p class="text-sm font-semibold text-rose-800">Kamera tidak tersedia</p>
                             <p class="text-xs text-rose-600 mt-0.5" x-text="cameraError"></p>
                         </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button @click="cameraError = null; requestCameraAccess()" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#4E653D] text-white rounded-lg text-xs font-semibold hover:bg-[#3d5130] transition shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            Izinkan Kamera
+                        </button>
+                        <button x-show="cameras.length > 0" @click="showCameraSelect = !showCameraSelect" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            Ganti Kamera
+                        </button>
+                    </div>
+                    <div x-show="showCameraSelect && cameras.length > 0" class="mt-3" x-cloak>
+                        <select x-model="selectedCameraId" class="w-full text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#4E653D]/30 focus:border-[#4E653D]">
+                            <template x-for="cam in cameras" :key="cam.deviceId">
+                                <option :value="cam.deviceId" x-text="cam.label || ('Camera ' + (cameras.indexOf(cam) + 1))"></option>
+                            </template>
+                        </select>
+                        <button @click="cameraError = null; switchCamera()" class="mt-2 w-full px-4 py-2.5 bg-[#4A2F24] text-white rounded-lg text-xs font-semibold hover:bg-[#3a2419] transition">Gunakan Kamera Ini</button>
                     </div>
                 </div>
             </div>
@@ -301,6 +341,7 @@
                 feedbackMessage: '',
 
                 cameraError: null,
+                showCameraSelect: false,
                 scanLog: [],
                 processing: false,
                 lastScannedToken: null,
@@ -320,8 +361,17 @@
 
                 async init() {
                     if (this.allDone) return;
-                    await this.enumerateCameras();
-                    this.startCamera();
+                    await this.requestCameraAccess();
+                },
+
+                async requestCameraAccess() {
+                    try {
+                        await this.enumerateCameras();
+                        await this.startCamera();
+                    } catch (err) {
+                        console.error('Camera access error:', err);
+                        this.cameraError = 'Izin kamera ditolak. Klik tombol di bawah untuk mencoba lagi.';
+                    }
                 },
 
                 async enumerateCameras() {
@@ -410,6 +460,8 @@
                     }
                 },
 
+                _scanInterval: null,
+
                 scanFrame() {
                     if (this.allDone) {
                         this.stopCamera();
@@ -420,15 +472,55 @@
                     const canvas = this.$refs.scanCanvas;
 
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
 
-                        // Decode QR from frame
+                        // Calculate ROI: map the viewfinder square to video coordinates
+                        const videoEl = this.$refs.cameraVideo;
+                        const viewfinder = this.$refs.viewfinder;
+                        const displayW = videoEl.clientWidth;
+                        const displayH = videoEl.clientHeight;
+
+                        // Scale factors from display to actual video resolution
+                        const scaleX = vw / displayW;
+                        const scaleY = vh / displayH;
+
+                        let roiX = 0, roiY = 0, roiW = vw, roiH = vh;
+
+                        if (viewfinder && displayW > 0 && displayH > 0) {
+                            const vfRect = viewfinder.getBoundingClientRect();
+                            const vidRect = videoEl.getBoundingClientRect();
+
+                            // Viewfinder position relative to the video element
+                            const relX = vfRect.left - vidRect.left;
+                            const relY = vfRect.top - vidRect.top;
+
+                            // Add some padding (15%) for tolerance
+                            const pad = vfRect.width * 0.15;
+                            roiX = Math.max(0, Math.floor((relX - pad) * scaleX));
+                            roiY = Math.max(0, Math.floor((relY - pad) * scaleY));
+                            roiW = Math.min(vw - roiX, Math.ceil((vfRect.width + pad * 2) * scaleX));
+                            roiH = Math.min(vh - roiY, Math.ceil((vfRect.height + pad * 2) * scaleY));
+                        }
+
+                        // Guard against zero-size ROI
+                        if (roiW < 10 || roiH < 10) {
+                            this._scanInterval = setTimeout(() => {
+                                this._animFrameId = requestAnimationFrame(() => this.scanFrame());
+                            }, 150);
+                            return;
+                        }
+
+                        // Draw only the ROI region to canvas for faster decoding
+                        canvas.width = roiW;
+                        canvas.height = roiH;
+                        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                        ctx.drawImage(video, roiX, roiY, roiW, roiH, 0, 0, roiW, roiH);
+                        const imageData = ctx.getImageData(0, 0, roiW, roiH);
+
+                        // Decode QR from ROI with better detection settings
                         const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                            inversionAttempts: 'dontInvert',
+                            inversionAttempts: 'attemptBoth',
                         });
 
                         if (code && code.data) {
@@ -436,10 +528,17 @@
                         }
                     }
 
-                    this._animFrameId = requestAnimationFrame(() => this.scanFrame());
+                    // Use throttled interval instead of rAF to reduce CPU usage
+                    this._scanInterval = setTimeout(() => {
+                        this._animFrameId = requestAnimationFrame(() => this.scanFrame());
+                    }, 150);
                 },
 
                 stopCamera() {
+                    if (this._scanInterval) {
+                        clearTimeout(this._scanInterval);
+                        this._scanInterval = null;
+                    }
                     if (this._animFrameId) {
                         cancelAnimationFrame(this._animFrameId);
                         this._animFrameId = null;
@@ -535,6 +634,30 @@
         .animate-scan-line {
             animation: scanLineMove 2.5s ease-in-out infinite;
             position: absolute;
+        }
+
+        /* Responsive viewfinder square */
+        .qr-viewfinder {
+            width: 200px;
+            height: 200px;
+        }
+        @media (min-width: 400px) {
+            .qr-viewfinder {
+                width: 240px;
+                height: 240px;
+            }
+        }
+        @media (min-width: 768px) {
+            .qr-viewfinder {
+                width: 280px;
+                height: 280px;
+            }
+        }
+        @media (min-width: 1024px) {
+            .qr-viewfinder {
+                width: 320px;
+                height: 320px;
+            }
         }
     </style>
 </div>

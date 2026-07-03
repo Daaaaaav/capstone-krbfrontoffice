@@ -260,6 +260,18 @@
                                             $rowNo = ($entries->firstItem() ?? 1) + $loop->index;
                                             $stateKey = $e->deleted_at ? 'trash' : 'ok';
                                             $avatarChar = strtoupper(substr($e->name ?? 'G', 0, 1));
+                                            
+                                            $durationLabel = null;
+                                            try {
+                                                if ($e->jam_in && $e->jam_out) {
+                                                    $tIn = Carbon::parse($e->jam_in);
+                                                    $tOut = Carbon::parse($e->jam_out);
+                                                    $dMins = (int) $tIn->diffInMinutes($tOut);
+                                                    $dH = intdiv($dMins, 60);
+                                                    $dM = $dMins % 60;
+                                                    $durationLabel = str_pad($dH, 2, '0', STR_PAD_LEFT) . ':' . str_pad($dM, 2, '0', STR_PAD_LEFT);
+                                                }
+                                            } catch (\Throwable $th) {}
                                         @endphp
                                         <div wire:key="entry-card-{{ $e->guestbook_id }}-{{ $stateKey }}"
                                              class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition {{ $e->deleted_at ? 'opacity-60 bg-gray-50/50' : '' }}">
@@ -274,24 +286,15 @@
                                                                 {{ $e->name }}
                                                             </h4>
                                                             <div class="flex-shrink-0 flex items-center gap-2">
+                                                                @if($durationLabel)
+                                                                    <span class="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[#4A2F24] text-white text-[10px] font-bold font-mono" title="Durasi kunjungan">
+                                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                                        {{ $durationLabel }}
+                                                                    </span>
+                                                                @endif
                                                                 @if($e->deleted_at)
                                                                     <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex-shrink-0">
                                                                         {{ strtoupper(__('app.deleted')) }}
-                                                                    </span>
-                                                                @endif
-                                                                {{-- QR status badge --}}
-                                                                @if($e->qr_token)
-                                                                    @php
-                                                                        $qrBadge = match($e->qr_status ?? 'pending') {
-                                                                            'ongoing'   => ['bg-blue-50 text-blue-700 border-blue-100',   '&#128203; Sedang Berkunjung'],
-                                                                            'completed' => ['bg-gray-100 text-gray-600 border-gray-200', '&#10003; Selesai'],
-                                                                            default     => ['bg-amber-50 text-amber-700 border-amber-100','&#9201; Menunggu Scan'],
-                                                                        };
-                                                                    @endphp
-                                                                    <span class="inline-flex items-center text-[10px] border px-2 py-0.5 rounded-full font-semibold {{ $qrBadge[0] }}">{!! $qrBadge[1] !!}</span>
-                                                                    <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 font-medium">
-                                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                                                        {{ $e->visitor_count ?? 0 }} org
                                                                     </span>
                                                                 @endif
                                                             </div>
@@ -312,6 +315,12 @@
                                                         <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-information-circle class="w-4 h-4 text-gray-500 shrink-0"/>
                                                             <span class="truncate">{{ __('app.visit_purpose') }}: <span class="font-semibold text-gray-900">{{ $e->keperluan }}</span></span>
+                                                        </div>
+                                                    @endif
+                                                    @if($e->visitor_count)
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <x-heroicon-o-users class="w-4 h-4 text-gray-500 shrink-0"/>
+                                                            <span class="truncate">Jumlah Pengunjung: <span class="font-semibold text-gray-900">{{ $e->visitor_count }} org</span></span>
                                                         </div>
                                                     @endif
                                                 </div>
@@ -386,6 +395,7 @@
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.date_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_out_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Durasi</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.officer_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.status') }}</th>
                                                 <th class="h-10 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.actions') }}</th>
@@ -435,6 +445,31 @@
                                                         <span class="mx-1 text-gray-300">–</span>
                                                         <span class="text-rose-600 font-semibold">{{ fmtTime($e->jam_out) }}</span>
                                                     </td>
+
+                                                    {{-- Duration column --}}
+                                                    <td class="h-12 px-4 py-0">
+                                                        @php
+                                                            $durationLabel2 = null;
+                                                            try {
+                                                                if ($e->jam_in && $e->jam_out) {
+                                                                    $tIn2 = Carbon::parse($e->jam_in);
+                                                                    $tOut2 = Carbon::parse($e->jam_out);
+                                                                    $dMins2 = (int) $tIn2->diffInMinutes($tOut2);
+                                                                    $dH2 = intdiv($dMins2, 60);
+                                                                    $dM2 = $dMins2 % 60;
+                                                                    $durationLabel2 = str_pad($dH2, 2, '0', STR_PAD_LEFT) . ':' . str_pad($dM2, 2, '0', STR_PAD_LEFT);
+                                                                }
+                                                            } catch (\Throwable $th) {}
+                                                        @endphp
+                                                        @if($durationLabel2)
+                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4A2F24] text-white text-[10px] font-bold font-mono">
+                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                                {{ $durationLabel2 }}
+                                                            </span>
+                                                        @else
+                                                            <span class="text-xs text-gray-400">—</span>
+                                                        @endif
+                                                    </td>
                                                     
                                                     <td class="h-12 px-4 py-0 text-gray-900 font-semibold">
                                                         {{ $e->petugas_penjaga }}
@@ -445,22 +480,11 @@
                                                             @if($e->deleted_at)
                                                                 <span class="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.deleted')) }}</span>
                                                             @endif
-                                                            {{-- QR status --}}
-                                                            @if($e->qr_token)
-                                                                @php
-                                                                    $qrBadgeT = match($e->qr_status ?? 'pending') {
-                                                                        'ongoing'   => 'bg-blue-50 text-blue-700 border-blue-100',
-                                                                        'completed' => 'bg-gray-100 text-gray-600 border-gray-200',
-                                                                        default     => 'bg-amber-50 text-amber-700 border-amber-100',
-                                                                    };
-                                                                    $qrLabelT = match($e->qr_status ?? 'pending') {
-                                                                        'ongoing'   => 'Berkunjung',
-                                                                        'completed' => 'Selesai',
-                                                                        default     => 'QR: Pending',
-                                                                    };
-                                                                @endphp
-                                                                <span class="mt-1 inline-flex items-center text-[10px] border px-2 py-0.5 rounded-full font-semibold {{ $qrBadgeT }}">{{ $qrLabelT }}</span>
-                                                                <span class="block text-[10px] text-gray-400 mt-0.5">{{ $e->visitor_count ?? 0 }} org</span>
+                                                            @if($e->visitor_count)
+                                                                <span class="inline-flex items-center gap-1 text-xs text-gray-600 font-medium mt-1">
+                                                                    <x-heroicon-o-users class="w-3.5 h-3.5 text-gray-400" />
+                                                                    {{ $e->visitor_count }} org
+                                                                </span>
                                                             @endif
                                                         </div>
                                                     </td>
@@ -626,6 +650,13 @@
                                 @error('edit.petugas_penjaga') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
+                            {{-- Jumlah Pengunjung --}}
+                            <div>
+                                <label for="edit_visitor_count" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Jumlah Pengunjung <span class="text-rose-500">*</span></label>
+                                <input type="number" min="1" max="999" id="edit_visitor_count" class="{{ $input }}" wire:model="edit.visitor_count">
+                                @error('edit.visitor_count') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
                             {{-- Date / Jam In / Jam Out --}}
                             <div class="grid grid-cols-3 gap-3">
                                 <div>
@@ -645,8 +676,78 @@
                                 </div>
                             </div>
 
+                            {{-- QR Logs Section --}}
+                            <div class="mt-6 border-t border-gray-100 pt-5">
+                                <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                    <x-heroicon-o-qr-code class="w-4 h-4 text-gray-500"/>
+                                    QR Code Logs
+                                </h4>
+                                
+                                @if(count($qrLogs) > 0)
+                                    <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                                        <table class="w-full text-left text-xs">
+                                            <thead class="bg-gray-100 border-b border-gray-200 text-gray-600 uppercase font-semibold">
+                                                <tr>
+                                                    <th class="px-3 py-2">Visitor #</th>
+                                                    <th class="px-3 py-2">Status</th>
+                                                    <th class="px-3 py-2">Scanned At</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100 text-gray-700">
+                                                @foreach($qrLogs as $log)
+                                                    <tr class="hover:bg-white transition-colors">
+                                                        <td class="px-3 py-2 font-medium">Visitor {{ $log['visitor_number'] }}</td>
+                                                        <td class="px-3 py-2">
+                                                            @if($log['is_scanned'])
+                                                                <span class="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                                    Scanned
+                                                                </span>
+                                                            @else
+                                                                <span class="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                                    Pending
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="px-3 py-2 whitespace-nowrap">
+                                                            @if($log['scanned_at'])
+                                                                {{ \Carbon\Carbon::parse($log['scanned_at'])->format('d M Y, H:i:s') }}
+                                                            @else
+                                                                <span class="text-gray-400">—</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">No QR codes generated for this booking.</p>
+                                @endif
+                            </div>
+                            
+                            {{-- Scanner Logs Section (optional) --}}
+                            @if(count($scanLogs) > 0)
+                                <div class="mt-4 border-t border-gray-100 pt-5">
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <x-heroicon-o-device-phone-mobile class="w-4 h-4 text-gray-500"/>
+                                        Scanner Logs
+                                    </h4>
+                                    <div class="space-y-2">
+                                        @foreach($scanLogs as $sLog)
+                                            <div class="text-xs flex flex-col gap-1 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="font-medium text-gray-800">{{ $sLog['visitor_name'] ?? 'Unknown Visitor' }}</span>
+                                                    <span class="text-gray-500 font-mono">{{ \Carbon\Carbon::parse($sLog['scanned_at'])->format('H:i:s') }}</span>
+                                                </div>
+                                                <span class="text-[11px] text-gray-500">IP: {{ $sLog['scanned_by_ip'] ?? 'N/A' }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
                             {{-- Footer actions --}}
-                            <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4">
+                            <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4 mt-6">
                                 <button type="button"
                                         class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition text-xs font-semibold"
                                         wire:click="closeEdit">{{ __('app.cancel') }}</button>
@@ -750,7 +851,7 @@
                         <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
                             <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
                         </div>
-                        <h3 class="font-bold tracking-tight text-base">{{ __('app.delete_verification') ?? 'Delete Verification' }}</h3>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
                     </div>
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
                 </div>

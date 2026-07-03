@@ -9,6 +9,7 @@ use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use App\Models\Guestbook as GuestbookModel;
+use App\Models\GuestbookQrCode;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -63,7 +64,11 @@ class GuestbookHistory extends Component
         'instansi' => null,
         'keperluan' => null,
         'petugas_penjaga' => null,
+        'visitor_count' => 1,
     ];
+
+    public array $qrLogs = [];
+    public array $scanLogs = [];
 
     protected function rulesEdit(): array
     {
@@ -76,6 +81,7 @@ class GuestbookHistory extends Component
             'edit.instansi' => ['nullable', 'string', 'max:255'],
             'edit.keperluan' => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
+            'edit.visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
         ];
     }
 
@@ -246,7 +252,19 @@ class GuestbookHistory extends Component
             'instansi' => $row->instansi,
             'keperluan' => $row->keperluan,
             'petugas_penjaga' => $row->petugas_penjaga,
+            'visitor_count' => $row->visitor_count,
         ];
+
+        // Fetch QR and Scan logs
+        $this->qrLogs = GuestbookQrCode::where('guestbook_id', $row->guestbook_id)
+            ->orderBy('visitor_number')
+            ->get(['qr_token', 'visitor_number', 'is_scanned', 'scanned_at'])
+            ->toArray();
+
+        $this->scanLogs = \App\Models\GuestbookScan::where('guestbook_id', $row->guestbook_id)
+            ->orderByDesc('scanned_at')
+            ->get(['visitor_name', 'scanned_by_ip', 'scanned_at'])
+            ->toArray();
 
         $this->resetValidation();
         $this->showEdit = true;
@@ -258,6 +276,9 @@ class GuestbookHistory extends Component
 
         $row = $this->findOwnedOrFail($this->editId);
 
+        $oldVisitorCount = $row->visitor_count;
+        $newVisitorCount = (int) $this->edit['visitor_count'];
+
         $row->update([
             'date' => $this->edit['date'],
             'jam_in' => $this->edit['jam_in'],
@@ -267,17 +288,25 @@ class GuestbookHistory extends Component
             'instansi' => $this->edit['instansi'],
             'keperluan' => $this->edit['keperluan'],
             'petugas_penjaga' => $this->edit['petugas_penjaga'],
+            'visitor_count' => $newVisitorCount,
         ]);
 
         $this->showEdit = false;
 
-        $this->dispatch(
-            'toast',
-            type: 'success',
-            title: __('app.toast_updated_title'),
-            message: __('app.toast_updated_message'),
-            duration: 3000
-        );
+        if ($oldVisitorCount !== $newVisitorCount) {
+            GuestbookQrCode::where('guestbook_id', $row->guestbook_id)->delete();
+            $qrTokens = GuestbookQrCode::generateTokenBatch($newVisitorCount);
+            foreach ($qrTokens as $index => $token) {
+                GuestbookQrCode::create([
+                    'guestbook_id'   => $row->guestbook_id,
+                    'qr_token'       => $token,
+                    'visitor_number' => $index + 1,
+                ]);
+            }
+            $this->dispatch('toast', type: 'warning', title: 'Perhatian!', message: 'Jumlah pengunjung berubah. QR Code baru telah dibuat.', duration: 5000);
+        } else {
+            $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
+        }
 
         $this->dispatch('$refresh');
     }
