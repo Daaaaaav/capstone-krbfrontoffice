@@ -21,7 +21,7 @@
 @endphp
 
 <style>
-.cs-wrap { position: relative; display: inline-block; min-width: 120px; }
+.cs-wrap { position: relative; display: inline-block; min-width: 120px; overflow: visible; }
 .cs-trigger {
     display: flex;
     align-items: center;
@@ -29,7 +29,7 @@
     gap: 8px;
     width: 100%;
     height: 40px;
-    padding: 0 10px;
+    padding: 0 12px;
     border-radius: 8px;
     border: 1px solid #d1d5db;
     background: #ffffff;
@@ -41,6 +41,7 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     outline: none;
     -webkit-text-fill-color: #111827;
+    min-width: 120px;
 }
 .cs-trigger:hover { background: #f9fafb; }
 .cs-trigger svg { flex-shrink: 0; color: #6b7280; }
@@ -48,18 +49,18 @@
     position: absolute;
     right: 0;
     left: 0;
-    z-index: 50;
+    z-index: 9999;
     margin-top: 4px;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
     background: #ffffff;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    overflow: hidden;
-    list-style: none;
-    padding: 0;
-    margin-left: 0;
-    max-height: 208px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     overflow-y: auto;
+    overflow-x: hidden;
+    list-style: none;
+    padding: 2px 0;
+    max-height: 260px;
+    min-width: 120px;
 }
 .cs-option {
     padding: 10px 14px;
