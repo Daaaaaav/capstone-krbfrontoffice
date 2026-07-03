@@ -6,12 +6,14 @@
             title="{{ __('app.vehicle_booking_stats_title') }}"
             subtitle="{{ __('app.vehicle_booking_stats_sub') }}">
             <x-slot:actions>
-                <select wire:model.live="timeRange"
-                    class="px-3 py-2 text-sm rounded-md border border-border bg-card text-card-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring transition-colors cursor-pointer">
-                    <option value="7days">{{ __('app.7_days') }}</option>
-                    <option value="30days">{{ __('app.30_days') }}</option>
-                    <option value="90days">{{ __('app.90_days') }}</option>
-                </select>
+                <x-custom-select
+                    wire:model.live="timeRange"
+                    :options="[
+                        ['value' => '7days',  'label' => __('app.7_days')],
+                        ['value' => '30days', 'label' => __('app.30_days')],
+                        ['value' => '90days', 'label' => __('app.90_days')],
+                    ]"
+                />
             </x-slot:actions>
         </x-page-header>
 

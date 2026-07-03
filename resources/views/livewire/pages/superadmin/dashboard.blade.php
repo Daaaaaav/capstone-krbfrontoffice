@@ -21,12 +21,16 @@
                 @if(empty($availableYears))
                     <span class="text-sm text-muted-foreground">{{ __('app.no_data_available') }}</span>
                 @else
-                    <select wire:model.live="selectedYear"
-                        class="px-3 py-2 text-sm rounded-md border border-border bg-card text-card-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring transition-colors cursor-pointer">
-                        @foreach(array_reverse($availableYears) as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
-                        @endforeach
-                    </select>
+                    @php
+                        $yearOptions = array_map(
+                            fn($y) => ['value' => (string) $y, 'label' => (string) $y],
+                            array_reverse($availableYears)
+                        );
+                    @endphp
+                    <x-custom-select
+                        wire:model.live="selectedYear"
+                        :options="$yearOptions"
+                    />
                 @endif
             </div>
         </div>
