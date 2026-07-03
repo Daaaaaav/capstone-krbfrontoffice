@@ -5,16 +5,6 @@
       - options: array of ['value' => ..., 'label' => ...] (required)
       - label: optional label above the dropdown
       - placeholder: optional default display text when nothing matched
-
-    Usage:
-      <x-custom-select
-          wire:model.live="timeRange"
-          :options="[
-              ['value' => '7days',  'label' => __('app.7_days')],
-              ['value' => '30days', 'label' => __('app.30_days')],
-              ['value' => '90days', 'label' => __('app.90_days')],
-          ]"
-      />
 --}}
 
 @props([
@@ -40,10 +30,10 @@
         }
      }"
      @keydown.escape.window="open = false"
-     class="relative w-fit min-w-[140px]"
+     style="position:relative; width:fit-content; min-width:140px;"
 >
     @if($label)
-        <p class="text-sm font-medium text-gray-700 mb-2">{{ $label }}</p>
+        <p style="font-size:0.875rem; font-weight:500; color:#374151; margin-bottom:0.5rem;">{{ $label }}</p>
     @endif
 
     {{-- Trigger button --}}
@@ -51,11 +41,13 @@
         type="button"
         @click="open = !open"
         @click.outside="open = false"
-        class="flex items-center justify-between gap-3 w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
+        style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; width:100%; height:2.5rem; padding:0 0.75rem; border-radius:0.5rem; border:1px solid #d1d5db; background:#ffffff; font-size:0.875rem; font-weight:500; color:#1f2937; box-shadow:0 1px 2px rgba(0,0,0,0.05); cursor:pointer; outline:none; white-space:nowrap;"
+        onmouseover="this.style.background='#f9fafb'"
+        onmouseout="this.style.background='#ffffff'"
     >
-        <span x-text="selectedLabel" class="truncate"></span>
-        <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200"
-             :class="open ? 'rotate-180' : ''"
+        <span x-text="selectedLabel" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+        <svg style="width:1rem; height:1rem; color:#9ca3af; flex-shrink:0; transition:transform 0.2s;"
+             :style="open ? 'transform:rotate(180deg)' : ''"
              viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
         </svg>
@@ -65,22 +57,20 @@
     <ul
         x-show="open"
         x-transition:enter="transition ease-out duration-100"
-        x-transition:enter-start="opacity-0 -translate-y-1"
-        x-transition:enter-end="opacity-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-75"
-        x-transition:leave-start="opacity-100 translate-y-0"
-        x-transition:leave-end="opacity-0 -translate-y-1"
+        x-transition:enter-start="opacity-0; transform:translateY(-4px)"
+        x-transition:enter-end="opacity-100; transform:translateY(0)"
         @click.outside="open = false"
-        class="absolute right-0 z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
-        style="display:none;"
+        style="display:none; position:absolute; right:0; z-index:50; margin-top:0.25rem; width:100%; max-height:13rem; overflow-y:auto; border-radius:0.5rem; border:1px solid #e5e7eb; background:#ffffff; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); list-style:none; padding:0; margin-left:0;"
     >
         @foreach($options as $option)
             <li
                 @click="$wire.set('{{ $livewireKey }}', '{{ $option['value'] }}'); open = false;"
-                class="px-3.5 py-2.5 cursor-pointer transition-colors"
-                :class="String($wire.{{ $livewireKey }}) === '{{ $option['value'] }}'
-                    ? 'bg-[#4E653D] text-white font-semibold'
-                    : 'text-gray-700 hover:bg-gray-100'"
+                style="padding:0.625rem 0.875rem; cursor:pointer; font-size:0.875rem; transition:background 0.15s;"
+                :style="String($wire.{{ $livewireKey }}) === '{{ $option['value'] }}'
+                    ? 'background:#4E653D; color:#ffffff; font-weight:600;'
+                    : 'color:#374151;'"
+                onmouseover="if(String($wire?.{{ $livewireKey }}) !== '{{ $option['value'] }}') this.style.background='#f3f4f6'"
+                onmouseout="if(String($wire?.{{ $livewireKey }}) !== '{{ $option['value'] }}') this.style.background=''"
             >
                 {{ $option['label'] }}
             </li>
