@@ -113,6 +113,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             }
         });
     </script>
+    @stack('styles')
 </head>
 
 <body class="h-screen bg-background text-foreground font-sans overflow-hidden"
@@ -357,6 +358,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             checkScrollLock();
         })();
     </script>
+    @stack('scripts')
 </body>
 
 </html>

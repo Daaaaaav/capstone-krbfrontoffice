@@ -8,6 +8,7 @@
         $btnBlk = 'inline-flex items-center justify-center gap-2 px-5 h-10 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60';
     @endphp
 
+    @push('styles')
     <style>
       :root { color-scheme: light; }
       select, option {
@@ -16,6 +17,7 @@
       }
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
+    @endpush
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
         {{-- HEADER --}}
@@ -619,7 +621,7 @@
         </div>
     </main>
 
-    {{-- JS kamera + DEBUG LOGS --}}
+    @push('scripts')
     <script>
         (function () {
             console.log('[DocPackForm] <script> tag evaluated');
@@ -756,4 +758,5 @@
             });
         })();
     </script>
+    @endpush
 </div>
