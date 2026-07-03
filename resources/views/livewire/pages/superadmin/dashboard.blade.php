@@ -18,21 +18,16 @@
                     <p class="text-sm font-medium text-muted-foreground">{{ __('app.select_year') }}</p>
                     <p class="text-xs text-muted-foreground/70">{{ __('app.viewing_data_for') }} {{ $selectedYear }}</p>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                    @if(empty($availableYears))
-                        <span class="text-sm text-muted-foreground">{{ __('app.no_data_available') }}</span>
-                    @else
-                        @foreach($availableYears as $year)
-                            <button wire:click="setYear({{ $year }})"
-                                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-150
-                                    {{ $selectedYear === $year
-                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'bg-secondary text-secondary-foreground hover:bg-accent' }}">
-                                {{ $year }}
-                            </button>
+                @if(empty($availableYears))
+                    <span class="text-sm text-muted-foreground">{{ __('app.no_data_available') }}</span>
+                @else
+                    <select wire:model.live="selectedYear"
+                        class="px-3 py-2 text-sm rounded-md border border-border bg-card text-card-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring transition-colors cursor-pointer">
+                        @foreach(array_reverse($availableYears) as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
                         @endforeach
-                    @endif
-                </div>
+                    </select>
+                @endif
             </div>
         </div>
 
