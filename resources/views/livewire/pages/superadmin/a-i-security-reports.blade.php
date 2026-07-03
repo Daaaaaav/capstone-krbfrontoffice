@@ -1,16 +1,16 @@
 <div class="min-h-screen bg-[#f5f7f2]" @if($autoRefresh) wire:poll.5s @endif>
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {{-- HEADER --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-[#2d3a24]">{{ __('app.security_reports_title') }}</h1>
-                <p class="text-sm text-[#7a8f6a]">{{ __('app.security_reports_sub') }}</p>
-            </div>
-            <button wire:click="toggleAutoRefresh" 
-                class="px-5 py-2.5 rounded-xl shadow-sm text-sm font-medium transition {{ $autoRefresh ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-white border border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}">
-                {{ $autoRefresh ? __('app.live') : __('app.paused_btn') }}
-            </button>
-        </div>
+        <x-page-header
+            title="{{ __('app.security_reports_title') }}"
+            subtitle="{{ __('app.security_reports_sub') }}">
+            <x-slot:actions>
+                <button wire:click="toggleAutoRefresh"
+                    class="px-4 py-2 rounded-xl text-sm font-medium transition {{ $autoRefresh ? 'bg-green-500/20 text-green-300 border border-green-400/30 hover:bg-green-500/30' : 'bg-[#CDDEA7]/20 text-[#CDDEA7] border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/30' }}">
+                    {{ $autoRefresh ? __('app.live') : __('app.paused_btn') }}
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- STATS --}}
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

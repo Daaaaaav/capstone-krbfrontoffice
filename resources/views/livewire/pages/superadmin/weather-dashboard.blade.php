@@ -2,30 +2,24 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
         {{-- HEADER --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-[#2d3a24]">{{ __('app.weather_title') }}</h1>
-                <p class="text-sm text-[#7a8f6a] mt-1">
-                    3-{{ __('app.day') }} forecast for {{ $weather['location']['kotkab'] ?? 'Kota Bogor' }},
-                    {{ $weather['location']['kecamatan'] ?? '' }}
-                    &mdash; Source:
-                    <a href="https://data.bmkg.go.id" target="_blank" class="underline hover:text-[#4E653D]">
-                        BMKG
-                    </a>
-                </p>
-            </div>
-            <button wire:click="refreshWeather"
-                class="px-5 py-2.5 bg-[#4A2F24] text-white rounded-xl shadow-sm hover:bg-[#3d2720] transition text-sm font-medium flex items-center gap-2">
-                <svg wire:loading.remove wire:target="refreshWeather" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <svg wire:loading wire:target="refreshWeather" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                {{ __('app.refresh') }}
-            </button>
+        <x-page-header
+            title="{{ __('app.weather_title') }}"
+            subtitle="3-{{ __('app.day') }} forecast for {{ $weather['location']['kotkab'] ?? 'Kota Bogor' }}, {{ $weather['location']['kecamatan'] ?? '' }} — Source: BMKG">
+            <x-slot:actions>
+                <button wire:click="refreshWeather"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#CDDEA7]/20 text-[#CDDEA7] border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/30 transition">
+                    <svg wire:loading.remove wire:target="refreshWeather" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg wire:loading wire:target="refreshWeather" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    {{ __('app.refresh') }}
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         @if(!$weather)
             {{-- UNAVAILABLE --}}

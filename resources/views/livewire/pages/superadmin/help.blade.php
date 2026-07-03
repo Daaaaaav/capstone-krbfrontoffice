@@ -1,11 +1,10 @@
 <div>
     <main class="max-w-3xl mx-auto py-8 space-y-8">
 
-        {{-- ===== HEADER ===== --}}
-        <div>
-            <h1 class="text-2xl font-semibold text-[#2d3a24]">{{ __('app.help_title') }}</h1>
-            <p class="text-sm text-[#7a8f6a] mt-1">{{ __('app.help_find_answers') }}</p>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.help_title') }}"
+            subtitle="{{ __('app.help_find_answers') }}" />
 
         {{-- ===== SEARCH ===== --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-4 shadow-sm">

@@ -3,17 +3,17 @@
     @keydown.escape.window="confirmDeleteId = null">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-        {{-- ================= HEADER ================= --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-[#2d3a24]">Manage Rooms</h1>
-                <p class="text-sm text-[#7a8f6a]">Create, edit, and remove rooms for your company.</p>
-            </div>
-            <button wire:click="openCreateModal"
-                class="px-5 py-2.5 bg-[#4A2F24] text-white rounded-xl shadow-sm hover:bg-[#3d2720] transition">
-                + Add Room
-            </button>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="Manage Rooms"
+            subtitle="Create, edit, and remove rooms for your company.">
+            <x-slot:actions>
+                <button wire:click="openCreateModal"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#CDDEA7]/20 text-[#CDDEA7] border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/30 transition">
+                    + Add Room
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- ================= SEARCH ================= --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-4 shadow-sm">

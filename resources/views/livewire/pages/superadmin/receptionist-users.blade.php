@@ -3,22 +3,17 @@
     @keydown.escape.window="confirmDeleteId = null">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-        {{-- ================= HEADER ================= --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-[#2d3a24]">
-                    {{ __('app.receptionist_users_title') }}
-                </h1>
-                <p class="text-sm text-[#7a8f6a]">
-                    {{ __('app.manage_receptionists') }}
-                </p>
-            </div>
-
-            <button wire:click="openCreateModal"
-                class="px-5 py-2.5 bg-[#4A2F24] text-white rounded-xl shadow-sm hover:bg-[#3d2720] transition">
-                {{ __('app.add_receptionist') }}
-            </button>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.receptionist_users_title') }}"
+            subtitle="{{ __('app.manage_receptionists') }}">
+            <x-slot:actions>
+                <button wire:click="openCreateModal"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#CDDEA7]/20 text-[#CDDEA7] border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/30 transition">
+                    {{ __('app.add_receptionist') }}
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
 
         {{-- ================= SEARCH ================= --}}

@@ -1,20 +1,20 @@
 <div class="min-h-screen bg-[#f5f7f2]">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-        {{-- ── HEADER ──────────────────────────────────────────────────────── --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-[#2d3a24]">{{ __('app.lstm_title') }}</h1>
-                <p class="text-sm text-[#7a8f6a] mt-1">{{ __('app.lstm_subtitle') }}</p>
-            </div>
-            <span class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
-                {{ $isLSTMAvailable ? 'bg-green-100 text-green-700' : 'bg-[#eef1e8] text-[#5a6e4a]' }}">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-                {{ $isLSTMAvailable ? __('app.lstm_model') : __('app.statistical_model') }}
-            </span>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.lstm_title') }}"
+            subtitle="{{ __('app.lstm_subtitle') }}">
+            <x-slot:actions>
+                <span class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
+                    {{ $isLSTMAvailable ? 'bg-green-500/20 text-green-300 border border-green-400/30' : 'bg-[#CDDEA7]/15 text-[#CDDEA7] border border-[#CDDEA7]/25' }}">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    {{ $isLSTMAvailable ? __('app.lstm_model') : __('app.statistical_model') }}
+                </span>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- ── CONTROLS PANEL ───────────────────────────────────────────────── --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm space-y-6">

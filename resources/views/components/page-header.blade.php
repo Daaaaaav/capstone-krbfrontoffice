@@ -4,16 +4,24 @@
     'subtitle' => null,
 ])
 
-<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2">
-    <div>
-        <h1 class="text-xl font-semibold tracking-tight text-foreground">{{ $title }}</h1>
-        @if ($subtitle)
-            <p class="text-sm text-muted-foreground mt-1">{{ $subtitle }}</p>
-        @endif
+<div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
+    <div class="pointer-events-none absolute inset-0 opacity-10">
+        <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
+        <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
     </div>
-    @if (isset($actions))
-        <div class="flex items-center gap-2">
-            {{ $actions }}
+    <div class="relative z-10 px-6 sm:px-8 py-5 sm:py-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-lg sm:text-xl font-semibold tracking-tight text-[#CDDEA7]">{{ $title }}</h1>
+                @if ($subtitle)
+                    <p class="text-sm text-[#CDDEA7]/75 mt-0.5">{{ $subtitle }}</p>
+                @endif
+            </div>
+            @if (isset($actions))
+                <div class="flex items-center gap-2 shrink-0">
+                    {{ $actions }}
+                </div>
+            @endif
         </div>
-    @endif
+    </div>
 </div>

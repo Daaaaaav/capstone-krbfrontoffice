@@ -1,11 +1,10 @@
 <div>
     <main class="max-w-3xl mx-auto py-8 space-y-6">
 
-        {{-- ===== HEADER ===== --}}
-        <div>
-            <h1 class="text-2xl font-semibold text-[#2d3a24]">{{ __('app.settings_title') }}</h1>
-            <p class="text-sm text-[#7a8f6a] mt-1">{{ __('app.settings_manage_sub') }}</p>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.settings_title') }}"
+            subtitle="{{ __('app.settings_manage_sub') }}" />
 
         {{-- ===== TAB SWITCHER ===== --}}
         <div class="flex gap-1 bg-[#e8ede0] rounded-xl p-1 w-fit">
