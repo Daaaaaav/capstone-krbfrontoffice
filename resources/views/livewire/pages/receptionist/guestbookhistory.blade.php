@@ -626,6 +626,13 @@
                                 @error('edit.petugas_penjaga') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
+                            {{-- Visitor Count --}}
+                            <div>
+                                <label for="edit_visitor_count" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.visitors_count') ?? 'Visitor Count' }}</label>
+                                <input type="number" id="edit_visitor_count" min="0" class="{{ $input }}" wire:model.defer="edit.visitor_count">
+                                @error('edit.visitor_count') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
                             {{-- Date / Jam In / Jam Out --}}
                             <div class="grid grid-cols-3 gap-3">
                                 <div>

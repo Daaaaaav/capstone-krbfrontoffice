@@ -59,6 +59,7 @@ class GuestbookHistory extends Component
         'instansi' => null,
         'keperluan' => null,
         'petugas_penjaga' => null,
+        'visitor_count' => null,
     ];
 
     protected function rulesEdit(): array
@@ -72,6 +73,7 @@ class GuestbookHistory extends Component
             'edit.instansi' => ['nullable', 'string', 'max:255'],
             'edit.keperluan' => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
+            'edit.visitor_count' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -276,6 +278,7 @@ class GuestbookHistory extends Component
             'instansi' => $row->instansi,
             'keperluan' => $row->keperluan,
             'petugas_penjaga' => $row->petugas_penjaga,
+            'visitor_count' => $row->visitor_count ?? 0,
         ];
 
         $this->resetValidation();
@@ -297,6 +300,7 @@ class GuestbookHistory extends Component
             'instansi' => $this->edit['instansi'],
             'keperluan' => $this->edit['keperluan'],
             'petugas_penjaga' => $this->edit['petugas_penjaga'],
+            'visitor_count' => $this->edit['visitor_count'] ?? 0,
         ]);
 
         $this->showEdit = false;
