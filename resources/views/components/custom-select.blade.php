@@ -24,12 +24,8 @@
 ])
 
 @php
-    // Resolve the bound value from wire:model / model attributes
-    $modelAttr = $attributes->whereStartsWith('wire:model')->first();
-    // We pass the current value via a dedicated :value prop if needed,
-    // but Alpine reads it directly from Livewire's $wire entangle.
-    $wireModel  = $attributes->whereStartsWith('wire:model')->first()
-                  ?? $attributes->get('model', '');
+    $wireModel   = $attributes->whereStartsWith('wire:model')->first()
+                   ?? $attributes->get('model', '');
     $livewireKey = preg_replace('/^wire:model(?:\.[a-z]+)*=?/', '', $wireModel);
     $livewireKey = trim($livewireKey, '"\'');
 @endphp
@@ -44,10 +40,10 @@
         }
      }"
      @keydown.escape.window="open = false"
-     class="relative w-fit min-w-[180px]"
+     class="relative w-fit min-w-[140px]"
 >
     @if($label)
-        <p class="text-xs font-medium text-muted-foreground mb-1.5">{{ $label }}</p>
+        <p class="text-sm font-medium text-gray-700 mb-2">{{ $label }}</p>
     @endif
 
     {{-- Trigger button --}}
@@ -55,40 +51,39 @@
         type="button"
         @click="open = !open"
         @click.outside="open = false"
-        class="flex items-center justify-between gap-3 w-full px-4 py-2.5 rounded-full border border-border bg-card text-sm font-medium text-card-foreground shadow-sm hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        class="flex items-center justify-between gap-3 w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 transition-colors focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10"
     >
         <span x-text="selectedLabel" class="truncate"></span>
-        <svg class="w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200"
+        <svg class="w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200"
              :class="open ? 'rotate-180' : ''"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="6 9 12 15 18 9"/>
+             viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
         </svg>
     </button>
 
     {{-- Dropdown panel --}}
-    <div
+    <ul
         x-show="open"
         x-transition:enter="transition ease-out duration-100"
-        x-transition:enter-start="opacity-0 scale-95"
-        x-transition:enter-end="opacity-100 scale-100"
+        x-transition:enter-start="opacity-0 -translate-y-1"
+        x-transition:enter-end="opacity-100 translate-y-0"
         x-transition:leave="transition ease-in duration-75"
-        x-transition:leave-start="opacity-100 scale-100"
-        x-transition:leave-end="opacity-0 scale-95"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-1"
         @click.outside="open = false"
-        class="absolute right-0 z-50 mt-1.5 w-full min-w-[180px] rounded-xl border border-border bg-card shadow-lg overflow-hidden"
+        class="absolute right-0 z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
         style="display:none;"
     >
         @foreach($options as $option)
-            <button
-                type="button"
+            <li
                 @click="$wire.set('{{ $livewireKey }}', '{{ $option['value'] }}'); open = false;"
-                class="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                class="px-3.5 py-2.5 cursor-pointer transition-colors"
                 :class="String($wire.{{ $livewireKey }}) === '{{ $option['value'] }}'
-                    ? 'bg-primary text-primary-foreground font-semibold'
-                    : 'text-card-foreground hover:bg-accent'"
+                    ? 'bg-[#4E653D] text-white font-semibold'
+                    : 'text-gray-700 hover:bg-gray-100'"
             >
                 {{ $option['label'] }}
-            </button>
+            </li>
         @endforeach
-    </div>
+    </ul>
 </div>
