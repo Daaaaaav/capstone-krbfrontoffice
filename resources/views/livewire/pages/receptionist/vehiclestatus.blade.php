@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -35,41 +35,19 @@
     </style>
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.vehicle_status_title') }}</h2>
-                            <p class="text-sm text-[#CDDEA7]/80">{{ __('app.vehicle_status_sub') }}</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-
-
-                        {{-- MOBILE FILTER BUTTON --}}
-                        <button type="button"
-                                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#CDDEA7]/10 text-xs font-medium border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/20 md:hidden"
-                                @click="showFilterModal = true">
-                            <x-heroicon-o-funnel class="w-4 h-4"/>
-                            <span>{{ __('app.filter') }}</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.vehicle_status_title') }}"
+            subtitle="{{ __('app.vehicle_status_sub') }}">
+            <x-slot:actions>
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                        @click="showFilterModal = true">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
             {{-- LIST --}}

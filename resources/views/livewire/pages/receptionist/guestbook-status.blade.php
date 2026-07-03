@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50" wire:poll.30s>
+<div class="min-h-screen bg-background" wire:poll.30s>
     @php
         use Carbon\Carbon;
         $card      = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
@@ -18,27 +18,10 @@
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
 
-        {{-- Hero Banner --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <x-heroicon-o-qr-code class="w-6 h-6 text-[#CDDEA7]"/>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.guestbook_status_title') }}</h2>
-                            <p class="text-xs text-[#CDDEA7]/75 mt-0.5">{{ __('app.guestbook_status_subtitle') }}</p>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.guestbook_status_title') }}"
+            subtitle="{{ __('app.guestbook_status_subtitle') }}" />
 
 
 

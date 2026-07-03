@@ -37,37 +37,23 @@
     $icoAvatar = 'w-10 h-10 bg-[#4E653D] rounded-xl flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden relative';
 @endphp
 
-<div class="min-h-screen bg-gray-50" wire:poll.1000ms.keep-alive>
+<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive>
     <main class="px-4 sm:px-6 py-6 space-y-6">
         
         {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <x-heroicon-o-archive-box class="w-6 h-6 text-[#CDDEA7]"/>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.docpac_status_title') }}</h2>
-                        <p class="text-sm text-[#CDDEA7]/80">{{ __('app.docpac_status_sub') }}</p>
-                        </div>
-                    </div>
-
-                    {{-- MOBILE FILTER BUTTON --}}
-                    <button type="button"
-                            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#CDDEA7]/10 text-xs font-medium border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/20 md:hidden"
-                            wire:click="openFilterModal">
-                        <x-heroicon-o-funnel class="w-4 h-4"/>
-                        <span>{{ __('app.filter') }}</span>
-                    </button>
-                </div>
-            </div>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.docpac_status_title') }}"
+            subtitle="{{ __('app.docpac_status_sub') }}">
+            <x-slot:actions>
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                        wire:click="openFilterModal">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- MAIN LAYOUT: LEFT (ITEMS LIST) + RIGHT (SIDEBAR) --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">

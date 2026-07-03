@@ -32,51 +32,26 @@
 
         {{-- Flash Messages (Replaced by Toast) --}}
 
-        {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.vehicle_history_title') }}</h2>
-                            <p class="text-sm text-[#CDDEA7]/80">
-                                {{ $statusTab === 'rejected'
-                                    ? __('app.vehicle_history_sub_rej')
-                                    : __('app.vehicle_history_sub_done') }}
-                            </p>
-                        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.vehicle_history_title') }}"
+            subtitle="{{ $statusTab === 'rejected' ? __('app.vehicle_history_sub_rej') : __('app.vehicle_history_sub_done') }}">
+            <x-slot:actions>
+                <button type="button" wire:click="$toggle('withTrashed')" class="flex items-center gap-2 group focus:outline-none">
+                    <div class="relative flex items-center">
+                        <div class="w-9 h-5 rounded-full transition-colors {{ $withTrashed ? 'bg-primary' : 'bg-border' }}"></div>
+                        <div class="absolute left-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-transform {{ $withTrashed ? 'translate-x-4' : '' }}"></div>
                     </div>
-
-                    <div class="flex items-center gap-3">
-                        <button type="button" wire:click="$toggle('withTrashed')" class="flex items-center gap-2 group focus:outline-none">
-                            <div class="relative flex items-center">
-                                <div class="w-9 h-5 rounded-full transition-colors {{ $withTrashed ? 'bg-[#CDDEA7] border-[#CDDEA7]' : 'bg-[#4A2F24]/50 border border-[#CDDEA7]/30' }}"></div>
-                                <div class="absolute left-[3px] w-3.5 h-3.5 rounded-full transition-transform {{ $withTrashed ? 'translate-x-4 bg-[#4A2F24]' : 'bg-[#CDDEA7]' }}"></div>
-                            </div>
-                            <span class="text-sm font-medium text-[#CDDEA7]/90 group-hover:text-[#CDDEA7] transition-colors">{{ __('app.show_deleted') }}</span>
-                        </button>
-
-                        {{-- MOBILE FILTER BUTTON --}}
-                        <button type="button"
-                                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#CDDEA7]/10 text-xs font-medium border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/20 md:hidden"
-                                @click="showFilterModal = true">
-                            <x-heroicon-o-funnel class="w-4 h-4"/>
-                            <span>{{ __('app.filter') }}</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <span class="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{{ __('app.show_deleted') }}</span>
+                </button>
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                        @click="showFilterModal = true">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- MAIN GRID --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
