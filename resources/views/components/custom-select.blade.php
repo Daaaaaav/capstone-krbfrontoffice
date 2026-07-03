@@ -1,10 +1,10 @@
 {{--
     Custom Select Component
     Props:
-      - wire:model / model: Livewire property name to bind (passed as attribute)
-      - options: array of ['value' => ..., 'label' => ...] (required)
+      - wire:model / model: Livewire property name to bind
+      - options: array of ['value' => ..., 'label' => ...]
       - label: optional label above the dropdown
-      - placeholder: optional default display text when nothing matched
+      - placeholder: optional default display text
 --}}
 
 @props([
@@ -20,6 +20,70 @@
     $livewireKey = trim($livewireKey, '"\'');
 @endphp
 
+<style>
+.cs-wrap { position: relative; display: inline-block; min-width: 120px; }
+.cs-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    outline: none;
+    -webkit-text-fill-color: #111827;
+}
+.cs-trigger:hover { background: #f9fafb; }
+.cs-trigger svg { flex-shrink: 0; color: #6b7280; }
+.cs-dropdown {
+    position: absolute;
+    right: 0;
+    left: 0;
+    z-index: 50;
+    margin-top: 4px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    overflow: hidden;
+    list-style: none;
+    padding: 0;
+    margin-left: 0;
+    max-height: 208px;
+    overflow-y: auto;
+}
+.cs-option {
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    color: #111827;
+    cursor: pointer;
+    -webkit-text-fill-color: #111827;
+}
+.cs-option:hover { background: #f3f4f6; }
+.cs-option.selected {
+    background: #4E653D;
+    color: #ffffff;
+    font-weight: 600;
+    -webkit-text-fill-color: #ffffff;
+}
+.cs-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+}
+</style>
+
 <div {{ $attributes->only('class') }}
      x-data="{
         open: false,
@@ -30,48 +94,25 @@
         }
      }"
      @keydown.escape.window="open = false"
-     style="position:relative; width:fit-content; min-width:140px;"
+     class="cs-wrap"
 >
     @if($label)
-        <p style="font-size:0.875rem; font-weight:500; color:#374151; margin-bottom:0.5rem;">{{ $label }}</p>
+        <span class="cs-label">{{ $label }}</span>
     @endif
 
-    {{-- Trigger button --}}
-    <button
-        type="button"
-        @click="open = !open"
-        @click.outside="open = false"
-        style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; width:100%; height:2.5rem; padding:0 0.75rem; border-radius:0.5rem; border:1px solid #d1d5db; background:#ffffff; font-size:0.875rem; font-weight:500; color:#1f2937; box-shadow:0 1px 2px rgba(0,0,0,0.05); cursor:pointer; outline:none; white-space:nowrap;"
-        onmouseover="this.style.background='#f9fafb'"
-        onmouseout="this.style.background='#ffffff'"
-    >
-        <span x-text="selectedLabel" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-        <svg style="width:1rem; height:1rem; color:#9ca3af; flex-shrink:0; transition:transform 0.2s;"
-             :style="open ? 'transform:rotate(180deg)' : ''"
-             viewBox="0 0 20 20" fill="currentColor">
+    <button type="button" class="cs-trigger" @click="open = !open" @click.outside="open = false">
+        <span x-text="selectedLabel"></span>
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"
+             :style="open ? 'transform:rotate(180deg)' : ''" style="transition:transform 0.2s">
             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
         </svg>
     </button>
 
-    {{-- Dropdown panel --}}
-    <ul
-        x-show="open"
-        x-transition:enter="transition ease-out duration-100"
-        x-transition:enter-start="opacity-0; transform:translateY(-4px)"
-        x-transition:enter-end="opacity-100; transform:translateY(0)"
-        @click.outside="open = false"
-        style="display:none; position:absolute; right:0; z-index:50; margin-top:0.25rem; width:100%; max-height:13rem; overflow-y:auto; border-radius:0.5rem; border:1px solid #e5e7eb; background:#ffffff; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); list-style:none; padding:0; margin-left:0;"
-    >
+    <ul class="cs-dropdown" x-show="open" @click.outside="open = false" style="display:none">
         @foreach($options as $option)
-            <li
-                @click="$wire.set('{{ $livewireKey }}', '{{ $option['value'] }}'); open = false;"
-                style="padding:0.625rem 0.875rem; cursor:pointer; font-size:0.875rem; transition:background 0.15s;"
-                :style="String($wire.{{ $livewireKey }}) === '{{ $option['value'] }}'
-                    ? 'background:#4E653D; color:#ffffff; font-weight:600;'
-                    : 'color:#374151;'"
-                onmouseover="if(String($wire?.{{ $livewireKey }}) !== '{{ $option['value'] }}') this.style.background='#f3f4f6'"
-                onmouseout="if(String($wire?.{{ $livewireKey }}) !== '{{ $option['value'] }}') this.style.background=''"
-            >
+            <li class="cs-option"
+                :class="String($wire.{{ $livewireKey }}) === '{{ $option['value'] }}' ? 'selected' : ''"
+                @click="$wire.set('{{ $livewireKey }}', '{{ $option['value'] }}'); open = false;">
                 {{ $option['label'] }}
             </li>
         @endforeach
