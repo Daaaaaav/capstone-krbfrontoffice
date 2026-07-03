@@ -235,6 +235,7 @@ class BookingHistory extends Component
         $this->editingId = null;
 
         $now = Carbon::now($this->tz);
+        $bookingType = $this->normalizeBookingType($bookingType);
 
         $this->form = [
             'booking_type'    => $bookingType,
@@ -243,7 +244,7 @@ class BookingHistory extends Component
             'start_time'      => $now->format('H:00'),
             'end_time'        => $now->copy()->addHour()->format('H:00'),
             'room_id'         => null,
-            'online_provider' => in_array($bookingType, ['online_meeting', 'onlinemeeting'], true)
+            'online_provider' => in_array($bookingType, ['online_meeting'], true)
                 ? 'zoom'
                 : null,
             'notes'           => '',
@@ -262,7 +263,7 @@ class BookingHistory extends Component
         $this->editingId = $row->getKey();
 
         $this->form = [
-            'booking_type'    => (string) ($row->booking_type ?? 'meeting'),
+            'booking_type'    => $this->normalizeBookingType($row->booking_type ?? 'meeting'),
             'meeting_title'   => (string) ($row->meeting_title ?? ''),
             'date'            => $row->date ? \Carbon\Carbon::parse($row->date)->toDateString() : '',
             'start_time'      => $this->parseTimeOnly($row->start_time),
@@ -289,6 +290,7 @@ class BookingHistory extends Component
     {
         $data        = $this->validateForm();
         $statusForDb = $data['status'];
+        $bookingType = $this->normalizeBookingType($data['booking_type'] ?? null);
 
         // Normalize start_time/end_time into full datetimes if DB expects datetimes
         $dbStart = $this->formatDateTimeForDb($data['date'] ?? null, $data['start_time'] ?? null);
@@ -296,15 +298,15 @@ class BookingHistory extends Component
 
         if ($this->modalMode === 'create') {
             BookingRoom::create([
-                'booking_type'    => $data['booking_type'],
+                'booking_type'    => $bookingType,
                 'meeting_title'   => $data['meeting_title'],
                 'date'            => $data['date'],
                 'start_time'      => $dbStart,
                 'end_time'        => $dbEnd,
-                'room_id'         => in_array($data['booking_type'], ['meeting', 'bookingroom'], true)
+                'room_id'         => in_array($bookingType, ['meeting'], true)
                     ? $data['room_id']
                     : null,
-                'online_provider' => in_array($data['booking_type'], ['online_meeting', 'onlinemeeting'], true)
+                'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
                 'notes'           => $data['notes'],
@@ -316,15 +318,15 @@ class BookingHistory extends Component
             $row = $this->baseQuery()->withTrashed()->findOrFail($this->editingId);
 
             $row->update([
-                'booking_type'    => $data['booking_type'],
+                'booking_type'    => $bookingType,
                 'meeting_title'   => $data['meeting_title'],
                 'date'            => $data['date'],
                 'start_time'      => $dbStart,
                 'end_time'        => $dbEnd,
-                'room_id'         => in_array($data['booking_type'], ['meeting', 'bookingroom'], true)
+                'room_id'         => in_array($bookingType, ['meeting'], true)
                     ? $data['room_id']
                     : null,
-                'online_provider' => in_array($data['booking_type'], ['online_meeting', 'onlinemeeting'], true)
+                'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
                 'notes'           => $data['notes'],
@@ -426,6 +428,22 @@ class BookingHistory extends Component
         }
 
         return $s ?: 'completed';
+    }
+
+    /**
+     * Normalize booking_type to one of the two valid ENUM values:
+     * 'meeting' or 'online_meeting'.
+     * 'onlinemeeting' (legacy, no underscore) is treated as 'online_meeting'.
+     */
+    private function normalizeBookingType(?string $type): string
+    {
+        $t = strtolower(trim((string) $type));
+
+        if (in_array($t, ['online_meeting', 'onlinemeeting'], true)) {
+            return 'online_meeting';
+        }
+
+        return 'meeting';
     }
 
     private function validateForm(): array
