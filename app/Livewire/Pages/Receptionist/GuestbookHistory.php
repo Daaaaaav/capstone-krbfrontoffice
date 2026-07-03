@@ -47,6 +47,12 @@ class GuestbookHistory extends Component
     public bool $showEdit = false;
     public ?int $editId = null;
 
+    // Delete modal state
+    public bool $showDeleteModal = false;
+    public ?int $deleteId = null;
+    public bool $isForceDelete = false;
+    public string $deletingSummary = '';
+
     // Active tab: entries | latest
     public string $activeTab = 'entries';
 
@@ -403,6 +409,31 @@ class GuestbookHistory extends Component
 
             $this->dispatch('$refresh');
         }
+    }
+
+    public function confirmDelete(int $id, string $name, bool $forceDelete = false): void
+    {
+        $this->deleteId = $id;
+        $this->isForceDelete = $forceDelete;
+        $this->deletingSummary = $name;
+        $this->showDeleteModal = true;
+    }
+
+    public function executeDelete(): void
+    {
+        if (!$this->deleteId) {
+            return;
+        }
+
+        if ($this->isForceDelete) {
+            $this->destroyForever($this->deleteId);
+        } else {
+            $this->delete($this->deleteId);
+        }
+
+        $this->showDeleteModal = false;
+        $this->deleteId = null;
+        $this->deletingSummary = '';
     }
 
     public function closeEdit(): void
