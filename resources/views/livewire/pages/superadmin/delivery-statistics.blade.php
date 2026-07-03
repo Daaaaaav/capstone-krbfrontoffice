@@ -121,7 +121,9 @@
                 datasets: [{
                     label: '{{ __('app.deliveries') }}',
                     data: data,
-                    backgroundColor: 'hsl(var(--primary) / 0.8)',
+                    backgroundColor: '#4E653DCC',
+                    borderColor: '#4E653D',
+                    borderWidth: 1,
                     borderRadius: 6,
                 }]
             },

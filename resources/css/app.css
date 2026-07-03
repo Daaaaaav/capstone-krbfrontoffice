@@ -30,6 +30,8 @@
     --accent-foreground: oklch(0.22 0.04 180);
     --destructive: oklch(0.55 0.18 28);
     /* Elegant dark red */
+    --success: #4E653D;
+    /* Forest green — matches Approved badge */
     --border: oklch(0.92 0.02 145);
     /* Soft sage border */
     --input: oklch(0.92 0.02 145);
@@ -74,6 +76,7 @@
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
+    --color-success: var(--success);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
