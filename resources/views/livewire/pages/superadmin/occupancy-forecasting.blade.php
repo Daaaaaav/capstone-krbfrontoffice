@@ -58,6 +58,163 @@
                     </div>
                 </div>
             </div>
+
+            <div class="border-t border-[#e8ede2] mt-6"></div>
+
+            {{-- ── TRAINING DATA SOURCE ──────────────────────────────────────── --}}
+            <div class="mt-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <div>
+                        <p class="text-sm font-medium text-[#4E653D]">{{ __('app.training_data_source') }}</p>
+                        <p class="text-xs text-[#7a8f6a] mt-0.5">{{ __('app.training_data_source_sub') }}</p>
+                    </div>
+                </div>
+
+                {{-- Source selector buttons --}}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                    {{-- CSV Server (default) --}}
+                    <button wire:click="setTrainingSource('csv_server')"
+                        class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
+                            {{ $trainingSource === 'csv_server'
+                                ? 'border-[#4E653D] bg-[#eef1e8]'
+                                : 'border-[#d4dfc8] bg-white hover:border-[#9ab08a] hover:bg-[#f5f7f2]' }}">
+                        <div class="mt-0.5 flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center
+                            {{ $trainingSource === 'csv_server' ? 'bg-[#4E653D] text-white' : 'bg-[#eef1e8] text-[#4E653D]' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-[#2d3a24] flex items-center gap-1.5">
+                                {{ __('app.source_csv_server') }}
+                                <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#4E653D] text-white leading-none">
+                                    {{ __('app.default') }}
+                                </span>
+                            </p>
+                            <p class="text-xs text-[#7a8f6a] mt-0.5 leading-snug">
+                                @if(($csvInfo['rows'] ?? 0) > 0)
+                                    {{ $csvInfo['rows'] }} {{ __('app.rows') }}
+                                    &middot; {{ $csvInfo['start'] }} → {{ $csvInfo['end'] }}
+                                @else
+                                    {{ __('app.csv_server_desc') }}
+                                @endif
+                            </p>
+                        </div>
+                    </button>
+
+                    {{-- Custom CSV Upload --}}
+                    <button wire:click="setTrainingSource('csv_upload')"
+                        class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
+                            {{ $trainingSource === 'csv_upload'
+                                ? 'border-[#4E653D] bg-[#eef1e8]'
+                                : 'border-[#d4dfc8] bg-white hover:border-[#9ab08a] hover:bg-[#f5f7f2]' }}">
+                        <div class="mt-0.5 flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center
+                            {{ $trainingSource === 'csv_upload' ? 'bg-[#4E653D] text-white' : 'bg-[#eef1e8] text-[#4E653D]' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-[#2d3a24]">{{ __('app.source_csv_upload') }}</p>
+                            <p class="text-xs text-[#7a8f6a] mt-0.5 leading-snug truncate">
+                                {{ $uploadedCsvName ?? __('app.csv_upload_desc') }}
+                            </p>
+                        </div>
+                    </button>
+
+                    {{-- Live DB --}}
+                    <button wire:click="setTrainingSource('live_db')"
+                        class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
+                            {{ $trainingSource === 'live_db'
+                                ? 'border-[#4E653D] bg-[#eef1e8]'
+                                : 'border-[#d4dfc8] bg-white hover:border-[#9ab08a] hover:bg-[#f5f7f2]' }}">
+                        <div class="mt-0.5 flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center
+                            {{ $trainingSource === 'live_db' ? 'bg-[#4E653D] text-white' : 'bg-[#eef1e8] text-[#4E653D]' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 7v10c0 2 1.5 3 4 3h8c2.5 0 4-1 4-3V7M4 7c0-2 1.5-3 4-3h8c2.5 0 4 1 4 3M4 7h16M9 11h6m-6 4h6"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-[#2d3a24]">{{ __('app.source_live_db') }}</p>
+                            <p class="text-xs text-[#7a8f6a] mt-0.5 leading-snug">{{ __('app.source_live_db_desc') }}</p>
+                        </div>
+                    </button>
+
+                </div>
+
+                {{-- ── CSV UPLOAD FORM (shown only when csv_upload is active) ── --}}
+                @if($trainingSource === 'csv_upload')
+                    <div class="mt-4 p-4 bg-[#f5f7f2] border border-[#d4dfc8] rounded-xl space-y-3">
+                        <p class="text-xs font-medium text-[#4E653D]">{{ __('app.csv_required_columns') }}:
+                            <span class="font-normal text-[#7a8f6a]">
+                                date, visitors, docs_packages_received, docs_packages_sent,
+                                offline_room_bookings, online_room_bookings, vehicle_bookings
+                            </span>
+                        </p>
+
+                        {{-- Error --}}
+                        @if($uploadError)
+                            <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-9v4a1 1 0 102 0V9a1 1 0 10-2 0zm0-4a1 1 0 112 0 1 1 0 01-2 0z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $uploadError }}
+                            </div>
+                        @endif
+
+                        {{-- Success --}}
+                        @if($uploadSuccess)
+                            <div class="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ $uploadSuccess }}
+                            </div>
+                        @endif
+
+                        {{-- File input + upload button --}}
+                        <form wire:submit.prevent="uploadCsv" class="flex flex-col sm:flex-row gap-2">
+                            <div class="flex-1">
+                                <input type="file" wire:model="uploadedCsv" accept=".csv,.txt"
+                                    class="block w-full text-sm text-[#4E653D]
+                                        file:mr-3 file:py-2 file:px-4
+                                        file:rounded-lg file:border-0
+                                        file:text-sm file:font-medium
+                                        file:bg-[#eef1e8] file:text-[#4E653D]
+                                        hover:file:bg-[#dde4d4] cursor-pointer"/>
+                                @error('uploadedCsv')
+                                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                @enderror
+                                <div wire:loading wire:target="uploadedCsv"
+                                    class="text-xs text-[#7a8f6a] mt-1">{{ __('app.loading') }}</div>
+                            </div>
+                            <button type="submit"
+                                wire:loading.attr="disabled" wire:target="uploadCsv"
+                                class="px-5 py-2 rounded-lg text-sm font-medium bg-[#4A2F24] text-white hover:bg-[#3a231b] transition disabled:opacity-60 whitespace-nowrap">
+                                <span wire:loading.remove wire:target="uploadCsv">{{ __('app.upload_and_use') }}</span>
+                                <span wire:loading wire:target="uploadCsv">{{ __('app.uploading') }}</span>
+                            </button>
+                        </form>
+                    </div>
+                @endif
+
+                {{-- Active source badge --}}
+                <div class="mt-3 flex items-center gap-2 text-xs text-[#7a8f6a]">
+                    <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
+                    {{ __('app.currently_using') }}:
+                    <span class="font-medium text-[#2d3a24]">
+                        @if($trainingSource === 'csv_server')   {{ __('app.source_csv_server') }}
+                        @elseif($trainingSource === 'csv_upload') {{ __('app.source_csv_upload') }}{{ $uploadedCsvName ? ' — ' . $uploadedCsvName : '' }}
+                        @else {{ __('app.source_live_db') }}
+                        @endif
+                    </span>
+                </div>
+
+            </div>
         </div>
 
         {{-- STATS CARDS --}}

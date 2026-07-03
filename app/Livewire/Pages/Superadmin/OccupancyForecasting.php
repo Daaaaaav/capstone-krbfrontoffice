@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Superadmin;
 
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
@@ -18,8 +19,15 @@ use Carbon\Carbon;
 #[Title('Occupancy Forecasting')]
 class OccupancyForecasting extends Component
 {
-    public string $forecastType  = 'room';   // choice of room | vehicle | combined
-    public int    $forecastDays  = 14;
+    use WithFileUploads;
+    public string $forecastType     = 'room';   // choice of room | vehicle | combined
+    public int    $forecastDays     = 21;      // default to 21 days
+    public string $trainingSource   = 'csv_server'; // csv_server | csv_upload | live_db
+    public        $uploadedCsv      = null;
+    public ?string $uploadedCsvName = null;
+    public ?string $uploadError     = null;
+    public ?string $uploadSuccess   = null;
+    public ?array  $csvInfo         = null;
     // public bool   $withWeather   = true;
 
     public function setForecastType(string $type): void
@@ -32,13 +40,65 @@ class OccupancyForecasting extends Component
         $this->forecastDays = $days;
     }
 
+    public function setTrainingSource(string $source): void
+    {
+        $this->trainingSource = $source;
+        $this->uploadError   = null;
+        $this->uploadSuccess = null;
+    }
+
+    public function uploadCsv(): void
+    {
+        $this->validate(['uploadedCsv' => 'required|file|mimes:csv,txt|max:5120']);
+
+        try {
+            $path = $this->uploadedCsv->store('csv-uploads', 'local');
+            $this->uploadedCsvName = $this->uploadedCsv->getClientOriginalName();
+            $this->uploadSuccess   = __('app.csv_upload_success', ['name' => $this->uploadedCsvName]);
+            $this->uploadError     = null;
+
+            // Store path in session so the forecasting can reference it
+            session(['occupancy_csv_upload_path' => storage_path('app/' . $path)]);
+        } catch (\Throwable $e) {
+            $this->uploadError   = __('app.csv_upload_failed') . ': ' . $e->getMessage();
+            $this->uploadSuccess = null;
+        }
+    }
+
     public function render()
     {
         $companyId = Auth::user()->company_id;
 
-        // Historical occupancy (last 90 days)
-        $roomHistory    = $this->getRoomHistory($companyId);
-        $vehicleHistory = $this->getVehicleHistory($companyId);
+        // ── CSV INFO for server csv ───────────────────────────────────────────
+        $csvPath = storage_path('app/lstm_data/capstone_historical_data.csv');
+        if (file_exists($csvPath)) {
+            $csv = array_map('str_getcsv', file($csvPath));
+            $header = array_shift($csv);
+            $this->csvInfo = [
+                'rows' => count($csv),
+                'start' => $csv[0][0] ?? '—',
+                'end'   => $csv[count($csv) - 1][0] ?? '—',
+            ];
+        }
+
+        // ── Determine data source for training ────────────────────────────────
+        $roomHistory    = [];
+        $vehicleHistory = [];
+
+        if ($this->trainingSource === 'csv_server') {
+            // Read from server CSV
+            $roomHistory    = $this->getRoomHistoryFromCsv($csvPath);
+            $vehicleHistory = $this->getVehicleHistoryFromCsv($csvPath);
+        } elseif ($this->trainingSource === 'csv_upload' && session('occupancy_csv_upload_path')) {
+            // Read from uploaded CSV
+            $uploadPath     = session('occupancy_csv_upload_path');
+            $roomHistory    = $this->getRoomHistoryFromCsv($uploadPath);
+            $vehicleHistory = $this->getVehicleHistoryFromCsv($uploadPath);
+        } else {
+            // Default: read from live DB
+            $roomHistory    = $this->getRoomHistory($companyId);
+            $vehicleHistory = $this->getVehicleHistory($companyId);
+        }
 
         // LSTM forecast
         $lstm        = new LSTMClient();
@@ -89,6 +149,10 @@ class OccupancyForecasting extends Component
             'stats'           => $stats,
             'weather'         => null,
             'weatherInsight'  => null,
+            'csvInfo'         => $this->csvInfo,
+            'uploadedCsvName' => $this->uploadedCsvName,
+            'uploadError'     => $this->uploadError,
+            'uploadSuccess'   => $this->uploadSuccess,
         ]);
     }
 
@@ -276,5 +340,59 @@ class OccupancyForecasting extends Component
     private function avg(array $values): float
     {
         return count($values) > 0 ? array_sum($values) / count($values) : 0;
+    }
+
+    // ── CSV Reading helpers ───────────────────────────────────────────────────
+    private function getRoomHistoryFromCsv(string $path): array
+    {
+        if (!file_exists($path)) return [];
+
+        $csv = array_map('str_getcsv', file($path));
+        $header = array_shift($csv);
+
+        // Find indices for date, offline_room_bookings, online_room_bookings
+        $dateIdx    = array_search('date', $header);
+        $offlineIdx = array_search('offline_room_bookings', $header);
+        $onlineIdx  = array_search('online_room_bookings', $header);
+
+        if ($dateIdx === false) return [];
+
+        $history = [];
+        foreach ($csv as $row) {
+            $date    = $row[$dateIdx] ?? null;
+            $offline = isset($row[$offlineIdx]) ? (int) $row[$offlineIdx] : 0;
+            $online  = isset($row[$onlineIdx])  ? (int) $row[$onlineIdx]  : 0;
+
+            if ($date) {
+                $history[] = ['date' => $date, 'count' => $offline + $online];
+            }
+        }
+
+        return $history;
+    }
+
+    private function getVehicleHistoryFromCsv(string $path): array
+    {
+        if (!file_exists($path)) return [];
+
+        $csv = array_map('str_getcsv', file($path));
+        $header = array_shift($csv);
+
+        $dateIdx    = array_search('date', $header);
+        $vehicleIdx = array_search('vehicle_bookings', $header);
+
+        if ($dateIdx === false || $vehicleIdx === false) return [];
+
+        $history = [];
+        foreach ($csv as $row) {
+            $date    = $row[$dateIdx] ?? null;
+            $vehicles = isset($row[$vehicleIdx]) ? (int) $row[$vehicleIdx] : 0;
+
+            if ($date) {
+                $history[] = ['date' => $date, 'count' => $vehicles];
+            }
+        }
+
+        return $history;
     }
 }
