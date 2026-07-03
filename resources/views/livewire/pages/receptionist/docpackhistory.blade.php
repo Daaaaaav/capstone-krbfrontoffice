@@ -686,7 +686,6 @@
         </div>
     </div>
 
-    </div>
 {{-- EDIT MODAL --}}
     @if($showEdit)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
