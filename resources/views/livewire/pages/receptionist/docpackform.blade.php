@@ -19,7 +19,7 @@
     </style>
     @endpush
 
-    <main class="px-4 sm:px-6 py-6 space-y-6">
+    <div class="px-4 sm:px-6 py-6 space-y-6">
         {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.docpac_form_title') }}"
@@ -619,7 +619,7 @@
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
     @push('scripts')
     <script>
