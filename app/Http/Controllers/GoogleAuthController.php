@@ -3,108 +3,102 @@
 namespace App\Http\Controllers;
 
 use Google\Client;
+use Google\Service\Calendar;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
 
 class GoogleAuthController extends Controller
 {
     /**
-     * Build a Google Client from env vars (no JSON file required).
-     * Falls back to a client_secret.json file if the env vars are not set,
-     * so both deployment styles are supported.
-     */
-    private function getClient(): Client
-    {
-        $client = new Client();
-        $client->setAccessType('offline');
-        $client->setPrompt('consent');
-        $client->setRedirectUri(url('/google/callback'));
-        $client->setScopes([
-            \Google\Service\Calendar::CALENDAR,
-            \Google\Service\Calendar::CALENDAR_EVENTS,
-        ]);
-
-        $clientId     = config('services.google.client_id')     ?: env('GOOGLE_CLIENT_ID');
-        $clientSecret = config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET');
-
-        if (!empty($clientId) && !empty($clientSecret)) {
-            // Preferred: configure directly from env vars
-            $client->setClientId($clientId);
-            $client->setClientSecret($clientSecret);
-            return $client;
-        }
-
-        // Fallback: load from a downloaded client_secret.json file
-        $secretPath = config('services.google.client_secret_path', 'storage/app/google/client_secret.json');
-        if (!str_starts_with($secretPath, '/')) {
-            $secretPath = base_path($secretPath);
-        }
-
-        if (!file_exists($secretPath)) {
-            abort(500,
-                'Google OAuth is not configured. '
-                . 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file, '
-                . 'or place a client_secret.json file at: ' . $secretPath
-            );
-        }
-
-        $client->setAuthConfig($secretPath);
-        return $client;    }
-
-    /**
-     * Redirect the user to Google's OAuth consent screen.
+     * Redirect to Google's OAuth consent screen.
+     * Only accessible when logged in as Superadmin.
      */
     public function auth()
     {
-        try {
-            $client = $this->getClient();
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('superadmin.settings')
-                ->withErrors(['google' => $e->getMessage()]);
-        }
-
-        return redirect()->away($client->createAuthUrl());
+        $client = $this->makeClient();
+        $authUrl = $client->createAuthUrl();
+        return redirect()->away($authUrl);
     }
 
     /**
-     * Handle the OAuth callback from Google, save the token, and redirect back.
+     * Handle the OAuth callback from Google, save the token.
      */
     public function callback(Request $request)
     {
         if ($request->has('error')) {
-            return redirect()
-                ->route('superadmin.settings')
-                ->withErrors(['google' => 'Google auth error: ' . $request->get('error')]);
+            return redirect('/superadmin-settings')
+                ->with('error', 'Google authorization was denied: ' . $request->get('error'));
         }
 
-        if (!$request->has('code')) {
-            return redirect()
-                ->route('superadmin.settings')
-                ->withErrors(['google' => 'No authorization code returned from Google.']);
+        $code = $request->get('code');
+        if (!$code) {
+            return redirect('/superadmin-settings')
+                ->with('error', 'No authorization code received from Google.');
         }
 
-        $client = $this->getClient();
-        $token  = $client->fetchAccessTokenWithAuthCode($request->get('code'));
+        try {
+            $client = $this->makeClient();
+            $token  = $client->fetchAccessTokenWithAuthCode($code);
 
-        if (array_key_exists('error', $token)) {
-            return redirect()
-                ->route('superadmin.settings')
-                ->withErrors(['google' => 'Failed to fetch token: ' . ($token['error_description'] ?? $token['error'])]);
+            if (isset($token['error'])) {
+                return redirect('/superadmin-settings')
+                    ->with('error', 'Google error: ' . ($token['error_description'] ?? $token['error']));
+            }
+
+            $tokenPath = config('services.google.token_path', 'storage/app/google/token.json');
+            if (!str_starts_with($tokenPath, '/')) {
+                $tokenPath = base_path($tokenPath);
+            }
+
+            $dir = dirname($tokenPath);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            file_put_contents($tokenPath, json_encode($token));
+
+            return redirect('/superadmin-settings')
+                ->with('success', 'Google Calendar connected successfully. Google Meet links will now be generated automatically.');
+
+        } catch (\Throwable $e) {
+            return redirect('/superadmin-settings')
+                ->with('error', 'Failed to save Google token: ' . $e->getMessage());
         }
+    }
 
-        // Persist the token so GoogleMeetService can pick it up
+    /**
+     * Disconnect — delete the saved token.
+     */
+    public function disconnect()
+    {
         $tokenPath = config('services.google.token_path', 'storage/app/google/token.json');
         if (!str_starts_with($tokenPath, '/')) {
             $tokenPath = base_path($tokenPath);
         }
 
-        File::ensureDirectoryExists(dirname($tokenPath));
-        File::put($tokenPath, json_encode($token, JSON_PRETTY_PRINT));
+        if (file_exists($tokenPath)) {
+            unlink($tokenPath);
+        }
 
-        return redirect()
-            ->route('superadmin.settings')
-            ->with('success', 'Google account connected successfully!');
+        return redirect('/superadmin-settings')
+            ->with('success', 'Google Calendar disconnected.');
+    }
+
+    private function makeClient(): Client
+    {
+        $clientSecretPath = config('services.google.client_secret_path', 'storage/app/google/client_secret.json');
+        if (!str_starts_with($clientSecretPath, '/')) {
+            $clientSecretPath = base_path($clientSecretPath);
+        }
+
+        $client = new Client();
+        $client->setAuthConfig($clientSecretPath);
+        $client->setAccessType('offline');
+        $client->setPrompt('consent'); // always return refresh_token
+        $client->setScopes([
+            Calendar::CALENDAR,
+            Calendar::CALENDAR_EVENTS,
+        ]);
+
+        return $client;
     }
 }

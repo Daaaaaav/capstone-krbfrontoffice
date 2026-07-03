@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\GuestbookScanController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\VehicleAttachmentController;
+use App\Http\Controllers\GoogleAuthController;
 
 // ========== Livewire Pages (Superadmin) ==========
 use App\Livewire\Pages\Superadmin\Dashboard as SuperadminDashboard;
