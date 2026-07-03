@@ -236,6 +236,7 @@ class BookingHistory extends Component
         $this->editingId = null;
 
         $now = Carbon::now($this->tz);
+        $bookingType = $this->normalizeBookingType($bookingType);
 
         $this->form = [
             'booking_type'    => $bookingType,
@@ -244,7 +245,7 @@ class BookingHistory extends Component
             'start_time'      => $now->format('H:00'),
             'end_time'        => $now->copy()->addHour()->format('H:00'),
             'room_id'         => null,
-            'online_provider' => in_array($bookingType, ['online_meeting', 'onlinemeeting'], true)
+            'online_provider' => in_array($bookingType, ['online_meeting'], true)
                 ? 'zoom'
                 : null,
             'notes'           => '',
@@ -263,11 +264,11 @@ class BookingHistory extends Component
         $this->editingId = $row->getKey();
 
         $this->form = [
-            'booking_type'    => (string) ($row->booking_type ?? 'meeting'),
+            'booking_type'    => $this->normalizeBookingType($row->booking_type ?? 'meeting'),
             'meeting_title'   => (string) ($row->meeting_title ?? ''),
-            'date'            => $row->date ? Carbon::parse($row->date)->format('Y-m-d') : '',
-            'start_time'      => $row->start_time ? Carbon::parse($row->start_time)->format('H:i') : '',
-            'end_time'        => $row->end_time ? Carbon::parse($row->end_time)->format('H:i') : '',
+            'date'            => $row->date ? \Carbon\Carbon::parse($row->date)->toDateString() : '',
+            'start_time'      => $this->parseTimeOnly($row->start_time),
+            'end_time'        => $this->parseTimeOnly($row->end_time),
             'room_id'         => $row->room_id,
             'online_provider' => (string) ($row->online_provider ?? ''),
             'notes'           => (string) ($row->notes ?? ''),
@@ -324,6 +325,7 @@ class BookingHistory extends Component
     {
         $data        = $this->validateForm();
         $statusForDb = $data['status'];
+        $bookingType = $this->normalizeBookingType($data['booking_type'] ?? null);
 
         // Normalize start_time/end_time into full datetimes if DB expects datetimes
         $dbStart = $this->formatDateTimeForDb($data['date'] ?? null, $data['start_time'] ?? null);
@@ -331,15 +333,15 @@ class BookingHistory extends Component
 
         if ($this->modalMode === 'create') {
             BookingRoom::create([
-                'booking_type'    => $data['booking_type'],
+                'booking_type'    => $bookingType,
                 'meeting_title'   => $data['meeting_title'],
                 'date'            => $data['date'],
                 'start_time'      => $dbStart,
                 'end_time'        => $dbEnd,
-                'room_id'         => in_array($data['booking_type'], ['meeting', 'bookingroom'], true)
+                'room_id'         => in_array($bookingType, ['meeting'], true)
                     ? $data['room_id']
                     : null,
-                'online_provider' => in_array($data['booking_type'], ['online_meeting', 'onlinemeeting'], true)
+                'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
                 'notes'           => $data['notes'],
@@ -351,15 +353,15 @@ class BookingHistory extends Component
             $row = $this->baseQuery()->withTrashed()->findOrFail($this->editingId);
 
             $row->update([
-                'booking_type'    => $data['booking_type'],
+                'booking_type'    => $bookingType,
                 'meeting_title'   => $data['meeting_title'],
                 'date'            => $data['date'],
                 'start_time'      => $dbStart,
                 'end_time'        => $dbEnd,
-                'room_id'         => in_array($data['booking_type'], ['meeting', 'bookingroom'], true)
+                'room_id'         => in_array($bookingType, ['meeting'], true)
                     ? $data['room_id']
                     : null,
-                'online_provider' => in_array($data['booking_type'], ['online_meeting', 'onlinemeeting'], true)
+                'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
                 'notes'           => $data['notes'],
@@ -463,6 +465,22 @@ class BookingHistory extends Component
         return $s ?: 'completed';
     }
 
+    /**
+     * Normalize booking_type to one of the two valid ENUM values:
+     * 'meeting' or 'online_meeting'.
+     * 'onlinemeeting' (legacy, no underscore) is treated as 'online_meeting'.
+     */
+    private function normalizeBookingType(?string $type): string
+    {
+        $t = strtolower(trim((string) $type));
+
+        if (in_array($t, ['online_meeting', 'onlinemeeting'], true)) {
+            return 'online_meeting';
+        }
+
+        return 'meeting';
+    }
+
     private function validateForm(): array
     {
         $isRoomType = in_array($this->form['booking_type'] ?? null, ['meeting', 'bookingroom'], true);
@@ -526,6 +544,34 @@ class BookingHistory extends Component
 
         // Fallback: return as-is
         return $time;
+    }
+
+    /**
+     * Extract a time-only string (HH:MM) from a stored value that may be
+     * a full datetime ("YYYY-MM-DD HH:MM:SS"), a time-only string ("HH:MM:SS"),
+     * or a Carbon instance. Returns '' when the value is empty/null.
+     */
+    private function parseTimeOnly(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        $str = trim((string) $value);
+
+        // Full datetime: "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SS"
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $str, $m)) {
+            // Grab everything from position 11 onwards: "HH:MM:SS" → "HH:MM"
+            $timePart = substr($str, 11, 5);
+            return $timePart ?: '';
+        }
+
+        // Already time-only "HH:MM:SS" or "HH:MM"
+        if (preg_match('/^\d{2}:\d{2}/', $str)) {
+            return substr($str, 0, 5);
+        }
+
+        return '';
     }
 
     // ───────── Query accessors used by Blade ─────────

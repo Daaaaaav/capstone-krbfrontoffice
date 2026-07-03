@@ -3,7 +3,6 @@
 namespace App\Livewire\Pages\Receptionist;
 
 use App\Models\Delivery;
-use App\Models\Department;
 use App\Models\User as UserModel;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -31,9 +30,9 @@ class DocPackHistory extends Component
     public ?string $selectedDate = null;
     public string $dateMode = 'semua';
     public string $type = 'all';
-    public ?int $departmentId = null;
+    public string $filterSender = '';
+    public string $filterReceiver = '';
     public ?int $userId = null;
-    public string $departmentQ = '';
     public string $userQ = '';
 
     // Pagination
@@ -68,11 +67,7 @@ class DocPackHistory extends Component
 
     public function updated($name): void
     {
-        if ($name === 'departmentId') {
-            $this->userId = null;
-        }
-
-        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'departmentId', 'userId', 'departmentQ', 'userQ', 'withTrashed'], true)) {
+        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'filterSender', 'filterReceiver', 'userId', 'userQ', 'withTrashed'], true)) {
             $this->resetPage('donePage');
         }
     }
@@ -92,7 +87,8 @@ class DocPackHistory extends Component
     {
         return Delivery::query()
             ->byCompany(Auth::user()->company_id ?? null)
-            ->when($this->withTrashed, fn($q) => $q->withTrashed());
+            ->when($this->withTrashed,  fn($q) => $q->withTrashed())
+            ->when(!$this->withTrashed, fn($q) => $q->whereNull('deleted_at'));
     }
 
     private function applySharedFilters($q)
@@ -105,21 +101,12 @@ class DocPackHistory extends Component
             $q->whereDate('created_at', $this->selectedDate);
         }
 
-        if ($this->departmentId && Schema::hasColumn('deliveries', 'department_id')) {
-            $q->where('department_id', $this->departmentId);
+        if (trim($this->filterSender) !== '') {
+            $q->where('nama_pengirim', 'like', '%' . trim($this->filterSender) . '%');
         }
 
-        if (trim($this->departmentQ) !== '' && Schema::hasColumn('deliveries', 'department_id')) {
-            $deptIds = Department::query()
-                ->where('company_id', Auth::user()->company_id ?? null)
-                ->whereNull('deleted_at')
-                ->where('department_name', 'like', '%' . trim($this->departmentQ) . '%')
-                ->pluck('department_id');
-            if ($deptIds->isNotEmpty()) {
-                $q->whereIn('department_id', $deptIds);
-            } else {
-                $q->whereRaw('0=1');
-            }
+        if (trim($this->filterReceiver) !== '') {
+            $q->where('nama_penerima', 'like', '%' . trim($this->filterReceiver) . '%');
         }
 
         if ($this->userId && Schema::hasColumn('deliveries', 'receptionist_id')) {
@@ -139,7 +126,6 @@ class DocPackHistory extends Component
             $userIds = UserModel::query()
                 ->where('company_id', Auth::user()->company_id ?? null)
                 ->whereNull('deleted_at')
-                ->when($this->departmentId, fn($qq) => $qq->where('department_id', $this->departmentId))
                 ->where('full_name', 'like', '%' . trim($this->userQ) . '%')
                 ->pluck('user_id');
             if ($userIds->isNotEmpty()) {
@@ -297,22 +283,15 @@ class DocPackHistory extends Component
     {
         $companyId = Auth::user()->company_id ?? null;
 
-        $departments = Department::query()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->orderBy('department_name')
-            ->get(['department_id', 'department_name']);
-
         $users = UserModel::query()
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
             ->orderBy('full_name')
-            ->get(['user_id', 'full_name', 'department_id'])
+            ->get(['user_id', 'full_name'])
             ->unique('user_id');
 
         return view('livewire.pages.receptionist.docpackhistory', [
             'done' => $this->done,
-            'departments' => $departments,
             'users' => $users,
         ]);
     }

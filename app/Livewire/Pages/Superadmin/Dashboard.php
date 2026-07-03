@@ -20,17 +20,19 @@ class Dashboard extends Component
 
     public function mount(): void
     {
-        $this->selectedYear = (int) date('Y');
+        // Default to the latest year that actually has data; fall back to current year.
+        $companyId = Auth::user()->company_id;
+
+        $roomYears    = BookingRoom::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
+        $vehicleYears = VehicleBooking::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
+        $latestYear   = $roomYears->merge($vehicleYears)->unique()->sort()->last();
+
+        $this->selectedYear = $latestYear ? (int) $latestYear : (int) date('Y');
     }
 
     public function setFilter($type): void
     {
         $this->activeFilter = $type;
-    }
-
-    public function setYear(int $year): void
-    {
-        $this->selectedYear = $year;
     }
 
     public function render()

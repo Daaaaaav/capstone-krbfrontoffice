@@ -8,6 +8,7 @@
         $btnBlk = 'inline-flex items-center justify-center gap-2 px-5 h-10 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60';
     @endphp
 
+    @push('styles')
     <style>
       :root { color-scheme: light; }
       select, option {
@@ -16,26 +17,13 @@
       }
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
+    @endpush
 
     <div class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl {{ $head }} text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                        <x-heroicon-o-archive-box class="w-6 h-6 text-[#CDDEA7]" />
-                    </div>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.docpac_form_title') }}</h2>
-                        <p class="text-sm text-[#CDDEA7]/80">{{ __('app.docpac_form_sub') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.docpac_form_title') }}"
+            subtitle="{{ __('app.docpac_form_sub') }}" />
 
         {{-- FORM --}}
         <div class="{{ $card }}">
@@ -633,7 +621,7 @@
         </div>
     </div>
 
-    {{-- JS kamera + DEBUG LOGS --}}
+    @push('scripts')
     <script>
         (function () {
             console.log('[DocPackForm] <script> tag evaluated');
@@ -770,4 +758,5 @@
             });
         })();
     </script>
+    @endpush
 </div>

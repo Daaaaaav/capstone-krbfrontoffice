@@ -7,43 +7,33 @@
     $btn   = 'px-4 py-2 text-xs font-medium rounded-lg text-white focus:outline-none focus:ring-2 transition shadow-sm';
 @endphp
 
-<div class="min-h-screen bg-gray-50" wire:poll.2s="tick">
+<div class="min-h-screen bg-background" wire:poll.2s="tick">
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HERO --}}
-        <header class="rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center border border-[#CDDEA7]/20 shrink-0">
-                    <svg class="w-5 h-5 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 11c0 1.104.896 2 2 2h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.room_approval_title') }}"
+            subtitle="{{ __('app.room_approval_sub') }}">
+            <x-slot:actions>
+                <div class="flex items-center gap-1 bg-secondary p-1 rounded-lg border border-border">
+                    <button type="button"
+                            wire:click="setViewMode('card')"
+                            class="p-1.5 rounded-md transition-all {{ $viewMode === 'card' ? 'bg-background text-foreground shadow-sm border border-border/40' : 'text-muted-foreground hover:text-foreground' }}"
+                            title="Card View">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                    </button>
+                    <button type="button"
+                            wire:click="setViewMode('table')"
+                            class="p-1.5 rounded-md transition-all {{ $viewMode === 'table' ? 'bg-background text-foreground shadow-sm border border-border/40' : 'text-muted-foreground hover:text-foreground' }}"
+                            title="Table View">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </button>
                 </div>
-                <div>
-                    <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.room_approval_title') }}</h2>
-                    <p class="text-sm text-[#CDDEA7]/80">{{ __('app.room_approval_sub') }}</p>
-                </div>
-            </div>
-
-            {{-- VIEW TOGGLER --}}
-            <div class="flex items-center gap-1 bg-white/10 p-1 rounded-lg shrink-0 border border-white/20 self-start sm:self-auto">
-                <button type="button" 
-                        wire:click="setViewMode('card')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'card' ? 'bg-[#CDDEA7] text-[#4A2F24] shadow-sm' : 'text-[#CDDEA7]/70 hover:text-[#CDDEA7]' }}"
-                        title="Card View">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                </button>
-                <button type="button" 
-                        wire:click="setViewMode('table')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'table' ? 'bg-[#CDDEA7] text-[#4A2F24] shadow-sm' : 'text-[#CDDEA7]/70 hover:text-[#CDDEA7]' }}"
-                        title="Table View">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                </button>
-            </div>
-        </header>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- PENDING --}}
         <section class="{{ $card }}">

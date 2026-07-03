@@ -25,35 +25,11 @@
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
 
-    <div class="px-4 sm:px-6 py-6 space-y-6">
-        @if (session('saved'))
-            <div class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold shadow-sm w-full">
-                <svg class="w-4 h-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{{ __('app.doc_saved') }}</span>
-            </div>
-        @endif
-
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                        <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8M4 6h16v12H4z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.docpac_form_title') }}</h2>
-                        <p class="text-xs text-[#CDDEA7]/80">{{ __('app.complete_doc_data') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <main class="px-4 sm:px-6 py-6 space-y-6">
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.docpac_form_title') }}"
+            subtitle="{{ __('app.complete_doc_data') }}" />
 
         <div class="{{ $card }}">
             <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
