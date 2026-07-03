@@ -7,11 +7,15 @@ use Livewire\WithFileUploads;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Models\BookingRoom;
 use App\Models\VehicleBooking;
 use App\Models\Guestbook;
 use App\Models\AISettings;
 use App\Services\AI\LSTMClient;
+use App\Services\AI\CsvDataReader;
+use App\Services\AI\DataPreprocessor;
 use App\Services\WeatherService;
 use Carbon\Carbon;
 
@@ -24,6 +28,7 @@ class OccupancyForecasting extends Component
     public int    $forecastDays     = 21;      // default to 21 days
     public string $trainingSource   = 'csv_server'; // csv_server | csv_upload | live_db
     public        $uploadedCsv      = null;
+    public ?string $uploadedCsvPath = null;   // storage-relative path for uploaded CSV
     public ?string $uploadedCsvName = null;
     public ?string $uploadError     = null;
     public ?string $uploadSuccess   = null;
@@ -49,56 +54,52 @@ class OccupancyForecasting extends Component
 
     public function uploadCsv(): void
     {
-        $this->validate(['uploadedCsv' => 'required|file|mimes:csv,txt|max:5120']);
+        $this->uploadError   = null;
+        $this->uploadSuccess = null;
+
+        $this->validate(['uploadedCsv' => 'required|file|mimes:csv,txt|max:10240']);
 
         try {
-            $path = $this->uploadedCsv->store('csv-uploads', 'local');
-            $this->uploadedCsvName = $this->uploadedCsv->getClientOriginalName();
-            $this->uploadSuccess   = __('app.csv_upload_success', ['name' => $this->uploadedCsvName]);
-            $this->uploadError     = null;
+            $reader  = new CsvDataReader();
+            $tmpPath = $this->uploadedCsv->store(CsvDataReader::UPLOAD_PATH, CsvDataReader::DISK);
+            $missing = $reader->validateColumns($tmpPath);
 
-            // Store path in session so the forecasting can reference it
-            session(['occupancy_csv_upload_path' => storage_path('app/' . $path)]);
+            if (!empty($missing)) {
+                Storage::disk(CsvDataReader::DISK)->delete($tmpPath);
+                $this->uploadError = __('app.csv_missing_columns', ['columns' => implode(', ', $missing)]);
+                $this->uploadedCsv = null;
+                return;
+            }
+
+            // Remove old upload if one exists
+            if ($this->uploadedCsvPath) {
+                Storage::disk(CsvDataReader::DISK)->delete($this->uploadedCsvPath);
+            }
+
+            $this->uploadedCsvPath = $tmpPath;
+            $this->uploadedCsvName = $this->uploadedCsv->getClientOriginalName();
+            $this->uploadedCsv     = null;
+            $this->trainingSource  = 'csv_upload';
+            $this->uploadSuccess   = __('app.csv_upload_success', ['name' => $this->uploadedCsvName]);
+
         } catch (\Throwable $e) {
-            $this->uploadError   = __('app.csv_upload_failed') . ': ' . $e->getMessage();
-            $this->uploadSuccess = null;
+            Log::error('OccupancyForecasting: CSV upload failed', ['error' => $e->getMessage()]);
+            $this->uploadError = __('app.csv_upload_failed');
+            $this->uploadedCsv = null;
         }
     }
 
     public function render()
     {
         $companyId = Auth::user()->company_id;
+        $reader    = new CsvDataReader();
 
         // ── CSV INFO for server csv ───────────────────────────────────────────
-        $csvPath = storage_path('app/lstm_data/capstone_historical_data.csv');
-        if (file_exists($csvPath)) {
-            $csv = array_map('str_getcsv', file($csvPath));
-            $header = array_shift($csv);
-            $this->csvInfo = [
-                'rows' => count($csv),
-                'start' => $csv[0][0] ?? '—',
-                'end'   => $csv[count($csv) - 1][0] ?? '—',
-            ];
-        }
+        $this->csvInfo = $reader->serverCsvInfo();
 
         // ── Determine data source for training ────────────────────────────────
-        $roomHistory    = [];
-        $vehicleHistory = [];
-
-        if ($this->trainingSource === 'csv_server') {
-            // Read from server CSV
-            $roomHistory    = $this->getRoomHistoryFromCsv($csvPath);
-            $vehicleHistory = $this->getVehicleHistoryFromCsv($csvPath);
-        } elseif ($this->trainingSource === 'csv_upload' && session('occupancy_csv_upload_path')) {
-            // Read from uploaded CSV
-            $uploadPath     = session('occupancy_csv_upload_path');
-            $roomHistory    = $this->getRoomHistoryFromCsv($uploadPath);
-            $vehicleHistory = $this->getVehicleHistoryFromCsv($uploadPath);
-        } else {
-            // Default: read from live DB
-            $roomHistory    = $this->getRoomHistory($companyId);
-            $vehicleHistory = $this->getVehicleHistory($companyId);
-        }
+        $roomHistory    = $this->buildTimeSeries('room');
+        $vehicleHistory = $this->buildTimeSeries('vehicle');
 
         // LSTM forecast
         $lstm        = new LSTMClient();
@@ -126,13 +127,6 @@ class OccupancyForecasting extends Component
             }
         }
 
-        // ── Weather (next 3 days from BMKG) 
-        // $weather = null;
-        // if ($this->withWeather) {
-        //     $weatherService = new WeatherService();
-        //     $weather = $weatherService->getForecast();
-        // }
-
         // ── Chart data ────────────────────────────────────────────────────────
         $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
 
@@ -154,6 +148,126 @@ class OccupancyForecasting extends Component
             'uploadError'     => $this->uploadError,
             'uploadSuccess'   => $this->uploadSuccess,
         ]);
+    }
+
+    /**
+     * Build time series from the selected data source for a given booking type.
+     * type: 'room' | 'vehicle'
+     */
+    private function buildTimeSeries(string $type): array
+    {
+        $reader = new CsvDataReader();
+
+        // Column names in the CSV that correspond to each booking type
+        $csvMetric = match($type) {
+            'room'    => 'combined_rooms',  // we'll need a special handler
+            'vehicle' => 'vehicle_bookings',
+            default   => 'visitors',
+        };
+
+        switch ($this->trainingSource) {
+
+            case 'csv_upload':
+                if ($this->uploadedCsvPath) {
+                    try {
+                        if ($type === 'room') {
+                            return $this->readRoomHistoryFromCsv($this->uploadedCsvPath);
+                        }
+                        return $reader->readUploadedCsv($this->uploadedCsvPath, $csvMetric);
+                    } catch (\Throwable $e) {
+                        Log::warning('OccupancyForecasting: uploaded CSV unreadable, falling back', [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                // Fall through to server CSV if upload is missing
+                $this->trainingSource = 'csv_server';
+                // fallthrough
+
+            case 'csv_server':
+                if ($type === 'room') {
+                    return $this->readRoomHistoryFromServerCsv();
+                }
+                return $reader->readServerCsv($csvMetric);
+
+            case 'live_db':
+                $companyId = Auth::user()->company_id;
+                return $type === 'room'
+                    ? $this->getRoomHistory($companyId)
+                    : $this->getVehicleHistory($companyId);
+
+            default:
+                return [];
+        }
+    }
+
+    /**
+     * Read room history from server CSV (combines offline + online columns)
+     */
+    private function readRoomHistoryFromServerCsv(): array
+    {
+        $reader = new CsvDataReader();
+        try {
+            $offline = $reader->readServerCsv('offline_room_bookings');
+            $online  = $reader->readServerCsv('online_room_bookings');
+
+            // Merge by date
+            $merged = [];
+            $byDate = [];
+            foreach ($offline as $row) {
+                $byDate[$row['date']] = $row['count'];
+            }
+            foreach ($online as $row) {
+                $byDate[$row['date']] = ($byDate[$row['date']] ?? 0) + $row['count'];
+            }
+
+            foreach ($byDate as $date => $count) {
+                $merged[] = ['date' => $date, 'count' => $count];
+            }
+
+            usort($merged, fn($a, $b) => strcmp($a['date'], $b['date']));
+            return $merged;
+
+        } catch (\Throwable $e) {
+            Log::warning('OccupancyForecasting: failed to read room history from server CSV', [
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Read room history from uploaded CSV (combines offline + online columns)
+     */
+    private function readRoomHistoryFromCsv(string $storagePath): array
+    {
+        $reader = new CsvDataReader();
+        try {
+            $offline = $reader->readUploadedCsv($storagePath, 'offline_room_bookings');
+            $online  = $reader->readUploadedCsv($storagePath, 'online_room_bookings');
+
+            $merged = [];
+            $byDate = [];
+            foreach ($offline as $row) {
+                $byDate[$row['date']] = $row['count'];
+            }
+            foreach ($online as $row) {
+                $byDate[$row['date']] = ($byDate[$row['date']] ?? 0) + $row['count'];
+            }
+
+            foreach ($byDate as $date => $count) {
+                $merged[] = ['date' => $date, 'count' => $count];
+            }
+
+            usort($merged, fn($a, $b) => strcmp($a['date'], $b['date']));
+            return $merged;
+
+        } catch (\Throwable $e) {
+            Log::warning('OccupancyForecasting: failed to read room history from uploaded CSV', [
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -340,59 +454,5 @@ class OccupancyForecasting extends Component
     private function avg(array $values): float
     {
         return count($values) > 0 ? array_sum($values) / count($values) : 0;
-    }
-
-    // ── CSV Reading helpers ───────────────────────────────────────────────────
-    private function getRoomHistoryFromCsv(string $path): array
-    {
-        if (!file_exists($path)) return [];
-
-        $csv = array_map('str_getcsv', file($path));
-        $header = array_shift($csv);
-
-        // Find indices for date, offline_room_bookings, online_room_bookings
-        $dateIdx    = array_search('date', $header);
-        $offlineIdx = array_search('offline_room_bookings', $header);
-        $onlineIdx  = array_search('online_room_bookings', $header);
-
-        if ($dateIdx === false) return [];
-
-        $history = [];
-        foreach ($csv as $row) {
-            $date    = $row[$dateIdx] ?? null;
-            $offline = isset($row[$offlineIdx]) ? (int) $row[$offlineIdx] : 0;
-            $online  = isset($row[$onlineIdx])  ? (int) $row[$onlineIdx]  : 0;
-
-            if ($date) {
-                $history[] = ['date' => $date, 'count' => $offline + $online];
-            }
-        }
-
-        return $history;
-    }
-
-    private function getVehicleHistoryFromCsv(string $path): array
-    {
-        if (!file_exists($path)) return [];
-
-        $csv = array_map('str_getcsv', file($path));
-        $header = array_shift($csv);
-
-        $dateIdx    = array_search('date', $header);
-        $vehicleIdx = array_search('vehicle_bookings', $header);
-
-        if ($dateIdx === false || $vehicleIdx === false) return [];
-
-        $history = [];
-        foreach ($csv as $row) {
-            $date    = $row[$dateIdx] ?? null;
-            $vehicles = isset($row[$vehicleIdx]) ? (int) $row[$vehicleIdx] : 0;
-
-            if ($date) {
-                $history[] = ['date' => $date, 'count' => $vehicles];
-            }
-        }
-
-        return $history;
     }
 }
