@@ -1,4 +1,4 @@
-﻿<!-- unsure of usability 
+<!-- unsure of usability 
 
 // namespace App\Livewire\Pages\Manager;
 
