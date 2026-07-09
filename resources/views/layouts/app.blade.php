@@ -26,11 +26,12 @@
     
     @livewire('components.ui.chat-modal')
 
-    <div class="fixed bottom-6 right-6 z-[70]"> 
+    <div class="fixed bottom-6 right-6 z-[70]">
         <button
             x-data
-            x-on:click="$dispatch('openChatModal'); console.log('BUTTON CLICK (Final Dispatch): Event dispatched via Alpine x-on:click.')"
-            class="bg-primary hover:bg-primary/90 text-primary-foreground p-3.5 rounded-2xl shadow-xl shadow-primary/10 hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:-translate-y-1 active:scale-95 group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            x-on:click="$dispatch('openChatModal')"
+            class="bg-primary hover:bg-primary/90 text-primary-foreground p-3.5 rounded-2xl shadow-xl shadow-primary/10 hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:-translate-y-1 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            aria-label="Open AI assistant"
         >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
@@ -44,15 +45,6 @@
     @livewire('components.ui.toast')
 
 
-    <script>
-        window.addEventListener('load', () => {
-            console.log('[LAYOUT DEBUG] Livewire loaded:', !!window.Livewire);
-        });
-        
-        document.addEventListener('openChatModal', function (e) {
-            console.log('BROWSER EVENT (Window): Event \'openChatModal\' detected by a global listener.');
-        });
-    </script>
     @livewireScripts
 </body>
 
