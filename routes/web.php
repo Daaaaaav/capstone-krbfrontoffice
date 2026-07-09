@@ -125,8 +125,9 @@ Route::get('/home', function () {
     $roleName = $user->role->name ?? $user->role ?? null;
 
     return match ($roleName) {
-        'Manager'    => redirect()->route('manager.dashboard'),
+        'Manager'       => redirect()->route('manager.dashboard'),
         'Receptionist'  => redirect()->route('receptionist.dashboard'),
+        default         => redirect()->route('login')->withErrors(['email' => 'Your account role is not authorized to access this system.']),
     };
 })->name('home');
 
