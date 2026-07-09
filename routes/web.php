@@ -116,7 +116,7 @@ Route::get('/csrf-token-refresh', function () {
 | Home: redirect authenticated users to their dashboard
 |--------------------------------------------------------------------------
 */
-Route::get('/home', function () {
+Route::get('/home', function (Request $request) {
     if (!Auth::check()) {
         return redirect()->route('login');
     }
@@ -127,7 +127,12 @@ Route::get('/home', function () {
     return match ($roleName) {
         'Manager'       => redirect()->route('manager.dashboard'),
         'Receptionist'  => redirect()->route('receptionist.dashboard'),
-        default         => redirect()->route('login')->withErrors(['email' => 'Your account role is not authorized to access this system.']),
+        default         => (function () use ($request) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->withErrors(['email' => 'Your account role is not authorized. Please contact your administrator.']);
+        })(),
     };
 })->name('home');
 
