@@ -1,4 +1,4 @@
-﻿<div class="sidebar-root">
+<div class="sidebar-root">
     {{-- Mobile Backdrop --}}
     <div x-show="mobileMenuOpen" x-transition.opacity class="sidebar-backdrop lg:hidden" @click="mobileMenuOpen = false" x-cloak></div>
 

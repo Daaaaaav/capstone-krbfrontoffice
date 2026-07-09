@@ -1,4 +1,4 @@
-﻿@php
+@php
 $routeName = request()->route() ? request()->route()->getName() : '';
 $path = request()->path();
 

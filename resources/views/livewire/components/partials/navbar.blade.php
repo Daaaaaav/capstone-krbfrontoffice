@@ -1,4 +1,4 @@
-﻿<div>
+<div>
     <style>
         .dropdown-menu { display: none; opacity: 0; transform: translateY(-10px); transition: opacity .2s ease, transform .2s ease; }
         .dropdown-menu.show { display: block; opacity: 1; transform: translateY(0); }

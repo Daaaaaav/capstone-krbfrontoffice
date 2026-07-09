@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
     <main class="px-4 sm:px-6 py-6 space-y-6">
 
         {{-- Page header --}}
