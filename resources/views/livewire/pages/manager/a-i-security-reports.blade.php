@@ -23,6 +23,9 @@
                         'yellow' => 'text-yellow-600',
                         'green' => 'text-green-600',
                     ][$stat['color']] }}">{{ $stat['value'] }}</h2>
+                    @if($stat['color'] === 'blue')
+                        <p class="text-xs text-[#7a8f6a] mt-1">{{ __('app.cumulative_from_log') }}</p>
+                    @endif
                 </div>
             @endforeach
         </section>
