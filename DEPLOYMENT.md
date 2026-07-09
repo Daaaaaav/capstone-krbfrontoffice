@@ -1,4 +1,4 @@
-# KRB System - Deployment Guide
+﻿# KRB System - Deployment Guide
 
 This guide covers deploying the KRB System with Docker, including the Laravel application and Python LSTM AI service.
 
@@ -76,7 +76,7 @@ After deployment completes:
 - **MySQL**: localhost:3307
 
 **Default Login:**
-- Superadmin: `superadmin@krbogor.id` / `superpassword`
+- Superadmin: `manager@krbogor.id` / `superpassword`
 - Receptionist: `receptionist@krbogor.id` / `receppassword`
 
 ---

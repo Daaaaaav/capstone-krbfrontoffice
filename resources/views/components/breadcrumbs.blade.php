@@ -1,4 +1,4 @@
-@php
+﻿@php
 $routeName = request()->route() ? request()->route()->getName() : '';
 $path = request()->path();
 
@@ -6,8 +6,8 @@ $path = request()->path();
 $breadcrumbs = [];
 
 // Home / Dashboard base
-if (str_starts_with($routeName, 'superadmin.')) {
-    $breadcrumbs[] = ['label' => __('app.dashboard'), 'url' => route('superadmin.dashboard')];
+if (str_starts_with($routeName, 'manager.')) {
+    $breadcrumbs[] = ['label' => __('app.dashboard'), 'url' => route('manager.dashboard')];
 } elseif (str_starts_with($routeName, 'receptionist.')) {
     $breadcrumbs[] = ['label' => __('app.home'), 'url' => route('receptionist.dashboard')];
 } else {
@@ -68,44 +68,44 @@ $routeMappings = [
         ['label' => __('app.help'), 'url' => route('receptionist.help')]
     ],
 
-    // Superadmin Page Mappings
-    'superadmin.receptionists' => [
+    // Manager Page Mappings
+    'manager.receptionists' => [
         ['label' => __('app.user_management')],
-        ['label' => __('app.receptionists'), 'url' => route('superadmin.receptionists')]
+        ['label' => __('app.receptionists'), 'url' => route('manager.receptionists')]
     ],
-    'superadmin.room' => [
+    'manager.room' => [
         ['label' => __('app.analytics')],
-        ['label' => __('app.room_bookings'), 'url' => route('superadmin.room')]
+        ['label' => __('app.room_bookings'), 'url' => route('manager.room')]
     ],
-    'superadmin.vehicle' => [
+    'manager.vehicle' => [
         ['label' => __('app.analytics')],
-        ['label' => __('app.vehicle_bookings'), 'url' => route('superadmin.vehicle')]
+        ['label' => __('app.vehicle_bookings'), 'url' => route('manager.vehicle')]
     ],
-    'superadmin.delivery' => [
+    'manager.delivery' => [
         ['label' => __('app.analytics')],
-        ['label' => __('app.deliveries'), 'url' => route('superadmin.delivery')]
+        ['label' => __('app.deliveries'), 'url' => route('manager.delivery')]
     ],
-    'superadmin.guestbook' => [
+    'manager.guestbook' => [
         ['label' => __('app.analytics')],
-        ['label' => __('app.guestbook'), 'url' => route('superadmin.guestbook')]
+        ['label' => __('app.guestbook'), 'url' => route('manager.guestbook')]
     ],
-    'superadmin.lstm-predictions' => [
+    'manager.lstm-predictions' => [
         ['label' => __('app.ai_security')],
-        ['label' => __('app.visitor_predictions'), 'url' => route('superadmin.lstm-predictions')]
+        ['label' => __('app.visitor_predictions'), 'url' => route('manager.lstm-predictions')]
     ],
-    'superadmin.occupancy' => [
+    'manager.occupancy' => [
         ['label' => __('app.ai_security')],
-        ['label' => __('app.occupancy_forecast'), 'url' => route('superadmin.occupancy')]
+        ['label' => __('app.occupancy_forecast'), 'url' => route('manager.occupancy')]
     ],
-    'superadmin.ai-security' => [
+    'manager.ai-security' => [
         ['label' => __('app.ai_security')],
-        ['label' => __('app.security_reports'), 'url' => route('superadmin.ai-security')]
+        ['label' => __('app.security_reports'), 'url' => route('manager.ai-security')]
     ],
-    'superadmin.settings' => [
-        ['label' => __('app.settings'), 'url' => route('superadmin.settings')]
+    'manager.settings' => [
+        ['label' => __('app.settings'), 'url' => route('manager.settings')]
     ],
-    'superadmin.help' => [
-        ['label' => __('app.help'), 'url' => route('superadmin.help')]
+    'manager.help' => [
+        ['label' => __('app.help'), 'url' => route('manager.help')]
     ],
 ];
 
@@ -115,7 +115,7 @@ if (isset($routeMappings[$routeName])) {
     // Fallback: parse URL path segments
     $segments = request()->segments();
     foreach ($segments as $index => $segment) {
-        if ($index === 0 && ($segment === 'superadmin-dashboard' || $segment === 'receptionist-dashboard')) {
+        if ($index === 0 && ($segment === 'manager-dashboard' || $segment === 'receptionist-dashboard')) {
             continue;
         }
         $label = ucwords(str_replace(['-', '_'], ' ', $segment));

@@ -1,4 +1,4 @@
-<div>
+﻿<div>
     <style>
         .dropdown-menu { display: none; opacity: 0; transform: translateY(-10px); transition: opacity .2s ease, transform .2s ease; }
         .dropdown-menu.show { display: block; opacity: 1; transform: translateY(0); }
@@ -137,11 +137,6 @@
                             <div class="px-3 lg:px-4 py-3 border-b border-sidebar-border/40">
                                 <p class="text-xs lg:text-sm font-semibold text-white truncate font-sans">{{ auth()->user()->full_name ?? auth()->user()->name ?? 'User' }}</p>
                                 <p class="text-xs text-sidebar-foreground/75 mt-0.5 truncate font-mono text-xs">{{ auth()->user()->email }}</p>
-                                @if(auth()->user()->is_agent == 'yes')
-                                <span class="inline-flex items-center gap-1 lg:gap-1.5 mt-2.5 px-2 lg:px-2.5 py-0.5 bg-primary/20 border border-primary/30 rounded-full text-xs font-semibold text-primary">
-                                    <x-heroicon-s-check-badge class="w-2.5 lg:w-3 h-2.5 lg:h-3" /> Agent
-                                </span>
-                                @endif
                             </div>
                             <a href="{{ route('profile') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors mt-2">
                                 <x-heroicon-o-user-circle class="w-4 lg:w-5 h-4 lg:h-5 flex-shrink-0" /> {{ __('app.my_profile') }}
@@ -149,18 +144,17 @@
 
                             @php $role = auth()->user()->role->name; @endphp
 
-                            @if($role === 'Superadmin')
-                            <a href="{{ route('superadmin.dashboard') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
-                                <x-heroicon-o-shield-check class="w-4 lg:w-5 h-4 lg:h-5 flex-shrink-0" /> {{ __('app.superadmin_db') }}
+                            @if($role === 'Manager')
+                            <a href="{{ route('manager.dashboard') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
+                                <x-heroicon-o-shield-check class="w-4 lg:w-5 h-4 lg:h-5 flex-shrink-0" /> {{ __('app.manager_db') }}
                             </a>
                             @endif
 
-                            @if(in_array($role, ['Superadmin', 'Receptionist']))
+                            @if(in_array($role, ['Manager', 'Receptionist']))
                             <a href="{{ route('receptionist.dashboard') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
                                 <x-heroicon-o-clipboard-document-list class="w-4 lg:w-5 h-4 lg:h-5 flex-shrink-0" /> {{ __('app.receptionist_db') }}
                             </a>
                             @endif
-
                             <div class="border-t border-sidebar-border/40 my-2"></div>
                             <form method="POST" action="{{ route('logout') }}" class="px-2 lg:px-3">
                                 @csrf
@@ -198,13 +192,6 @@
                             <p class="text-xs text-sidebar-foreground/75 truncate font-mono">{{ auth()->user()->email }}</p>
                         </div>
                     </div>
-                    @if(auth()->user()->is_agent == 'yes')
-                    <div class="mt-2">
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/20 border border-primary/30 rounded-full text-xs font-semibold text-primary">
-                            <x-heroicon-s-check-badge class="w-2.5 h-2.5" /> Agent
-                        </span>
-                    </div>
-                    @endif
                 </div>
                 @endauth
 
@@ -252,19 +239,13 @@
 
                     @php $role = auth()->user()->role->name; @endphp
 
-                    @if($role === 'Superadmin')
-                    <a href="{{ route('superadmin.dashboard') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
-                        <x-heroicon-o-shield-check class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.superadmin_db') }}
+                    @if($role === 'Manager')
+                    <a href="{{ route('manager.dashboard') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
+                        <x-heroicon-o-shield-check class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.manager_db') }}
                     </a>
                     @endif
 
-                    @if(in_array($role, ['Superadmin', 'Admin']))
-                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
-                        <x-heroicon-o-computer-desktop class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> Admin DB
-                    </a>
-                    @endif
-
-                    @if(in_array($role, ['Superadmin', 'Receptionist']))
+                    @if(in_array($role, ['Manager', 'Receptionist']))
                     <a href="{{ route('receptionist.dashboard') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
                         <x-heroicon-o-clipboard-document-list class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.receptionist_db') }}
                     </a>

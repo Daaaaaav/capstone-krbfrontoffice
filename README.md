@@ -1,4 +1,4 @@
-# KRB System - Run Guide
+﻿# KRB System - Run Guide
 
 This project supports multiple deployment methods:
 
@@ -53,7 +53,7 @@ The deployment script will:
 
 ### Default Login
 
-- **Superadmin**: `superadmin@krbogor.id` / `superpassword`
+- **Manager**: `manager@krbogor.id` / `superpassword`
 - **Receptionist**: `receptionist@krbogor.id` / `receppassword`
 
 ### Documentation
@@ -301,7 +301,7 @@ The system uses Google OAuth 2.0 to support both free Gmail accounts and Google 
 2. Add your deployment URL (`https://your-domain.com/google/callback`) and local URL (`http://127.0.0.1:8000/google/callback`) to the Authorized Redirect URIs.
 3. Download the credentials as `client_secret.json` and place it in `storage/app/google/`.
 4. Add your email to the **Test users** list in Google Cloud (if the app is in Testing mode).
-5. Login as a Superadmin in the application, go to **Settings > Integrations**, and click **Connect Google Meet**.
+5. Login as a Manager in the application, go to **Settings > Integrations**, and click **Connect Google Meet**.
 
 ### Zoom Setup
 The system uses Zoom Server-to-Server OAuth.

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
 
@@ -100,7 +100,7 @@ return [
     'meeting_status'    => 'Status Rapat',
     'vehicle_status'    => 'Status Kendaraan',
     'my_profile'        => 'Profil Saya',
-    'superadmin_db'     => 'Dasbor Superadmin',
+    'manager_db'     => 'Dasbor Manager',
     'receptionist_db'   => 'Dasbor Resepsionis',
     'login_register'    => 'Masuk / Daftar',
     'login'             => 'Masuk',
@@ -125,7 +125,7 @@ return [
     'docpac_history'        => 'Riwayat DocPac',
     'search_modules'        => 'Cari modul...',
 
-    // ── Sidebar (Superadmin) ──────────────────────────────────────────────────
+    // Sidebar (Manager)
     'user_management'       => 'Manajemen Pengguna',
     'receptionists'         => 'Resepsionis',
     'analytics'             => 'Analitik',
@@ -258,8 +258,8 @@ return [
     'guest_email_placeholder'   => 'email@tamu.com',
     'guest_email_hint'          => 'QR code akan dikirim ke email ini.',
 
-    // ── Superadmin Dashboard ──────────────────────────────────────────────────
-    'superadmin_analytics'      => 'Analitik Superadmin',
+    // Manager Dashboard
+    'manager_analytics'      => 'Analitik Manager',
     'interactive_insights'      => 'Wawasan sistem interaktif untuk',
     'booking_trends'            => 'Tren Reservasi',
     'bookings_axis'             => 'Reservasi',
@@ -839,7 +839,7 @@ return [
     'faq_shared_q_password'     => 'Bagaimana cara mengubah kata sandi?',
     'faq_shared_a_password'     => 'Buka Pengaturan (ikon roda gigi di sidebar). Perluas bagian Ubah Kata Sandi, masukkan kata sandi saat ini dan kata sandi baru, lalu simpan.',
 
-    // ── FAQ Superadmin ────────────────────────────────────────────────────────
+    // FAQ Manager
     'faq_sa_q1'  => 'Bagaimana cara mengelola akun resepsionis?',
     'faq_sa_a1'  => 'Buka Manajemen Pengguna → Resepsionis. Anda dapat membuat, mengedit, atau menonaktifkan akun resepsionis dari halaman tersebut.',
     'faq_sa_q2'  => 'Bagaimana cara melihat statistik reservasi ruangan?',

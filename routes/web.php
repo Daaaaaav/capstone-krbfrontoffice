@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -10,33 +10,32 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\VehicleAttachmentController;
 use App\Http\Controllers\GoogleAuthController;
 
-// ========== Livewire Pages (Superadmin) ==========
-use App\Livewire\Pages\Superadmin\Dashboard as SuperadminDashboard;
-use App\Livewire\Pages\Superadmin\ReceptionistUsers as ReceptionistUsers;
-use App\Livewire\Pages\Superadmin\RoomBookingStatistics as RoomBookingStatistics;
-use App\Livewire\Pages\Superadmin\VehicleBookingStatistics as VehicleBookingStatistics;
-use App\Livewire\Pages\Superadmin\DeliveryStatistics as DeliveryStatistics;
-use App\Livewire\Pages\Superadmin\GuestbookStatistics as GuestbookStatistics;
-use App\Livewire\Pages\Superadmin\AISecurityReports as AISecurityReports;
-use App\Livewire\Pages\Superadmin\Settings as SuperadminSettings;
-use App\Livewire\Pages\Superadmin\Help as SuperadminHelp;
-use App\Livewire\Pages\Superadmin\Announcement;
-use App\Livewire\Pages\Superadmin\Information;
-use App\Livewire\Pages\Superadmin\Report;
-use App\Livewire\Pages\Superadmin\Account as UserManagement;
-use App\Livewire\Pages\Superadmin\Department as DepartmentPage;
-use App\Livewire\Pages\Superadmin\Bookingroom as SuperadminBookingroom;
-use App\Livewire\Pages\Superadmin\Ticketsupport as SuperadminTicketsupport;
-use App\Livewire\Pages\Superadmin\Manageroom as Manageroom;
-use App\Livewire\Pages\Superadmin\Managerequirement as Managerequirements;
-use App\Livewire\Pages\Superadmin\Storage as StoragePage;
-use App\Livewire\Pages\Superadmin\Vehicle as VehiclePage;
-use App\Livewire\Pages\Superadmin\Packagemanagement as Packagemanagement;
-use App\Livewire\Pages\Superadmin\Documentsmanagement as Documentsmanagement;
-use App\Livewire\Pages\Superadmin\Guestbookmanagement as Guestbookmanagement;
-use App\Livewire\Pages\Superadmin\Bookingvehicle as SuperadminBookingvehicle;
-use App\Livewire\Pages\Superadmin\Adminmanagement as AdminmanagementPage;
-use App\Livewire\Pages\Superadmin\WifiManagement as SuperadminWifiManagement;
+// ========== Livewire Pages (Manager) ==========
+use App\Livewire\Pages\Manager\Dashboard as ManagerDashboard;
+use App\Livewire\Pages\Manager\ReceptionistUsers as ReceptionistUsers;
+use App\Livewire\Pages\Manager\RoomBookingStatistics as RoomBookingStatistics;
+use App\Livewire\Pages\Manager\VehicleBookingStatistics as VehicleBookingStatistics;
+use App\Livewire\Pages\Manager\DeliveryStatistics as DeliveryStatistics;
+use App\Livewire\Pages\Manager\GuestbookStatistics as GuestbookStatistics;
+use App\Livewire\Pages\Manager\AISecurityReports as AISecurityReports;
+use App\Livewire\Pages\Manager\Settings as ManagerSettings;
+use App\Livewire\Pages\Manager\Help as ManagerHelp;
+use App\Livewire\Pages\Manager\Announcement;
+use App\Livewire\Pages\Manager\Information;
+use App\Livewire\Pages\Manager\Report;
+use App\Livewire\Pages\Manager\Account as UserManagement;
+use App\Livewire\Pages\Manager\Department as DepartmentPage;
+use App\Livewire\Pages\Manager\Bookingroom as ManagerBookingroom;
+use App\Livewire\Pages\Manager\Ticketsupport as ManagerTicketsupport;
+use App\Livewire\Pages\Manager\Manageroom as Manageroom;
+use App\Livewire\Pages\Manager\Managerequirement as Managerequirements;
+use App\Livewire\Pages\Manager\Storage as StoragePage;
+use App\Livewire\Pages\Manager\Vehicle as VehiclePage;
+use App\Livewire\Pages\Manager\Packagemanagement as Packagemanagement;
+use App\Livewire\Pages\Manager\Documentsmanagement as Documentsmanagement;
+use App\Livewire\Pages\Manager\Guestbookmanagement as Guestbookmanagement;
+use App\Livewire\Pages\Manager\Bookingvehicle as ManagerBookingvehicle;
+use App\Livewire\Pages\Manager\WifiManagement as ManagerWifiManagement;
 
 // ========== Livewire Pages (Receptionist) ==========
 use App\Livewire\Pages\Receptionist\Dashboard as ReceptionistDashboard;
@@ -126,7 +125,7 @@ Route::get('/home', function () {
     $roleName = $user->role->name ?? $user->role ?? null;
 
     return match ($roleName) {
-        'Superadmin'    => redirect()->route('superadmin.dashboard'),
+        'Manager'    => redirect()->route('manager.dashboard'),
         'Receptionist'  => redirect()->route('receptionist.dashboard'),
     };
 })->name('home');
@@ -186,24 +185,24 @@ Route::middleware(['auth'])->group(function () {
             ->name('attachments.finalize');
     });
 
-    // ---------- Superadmin routes ----------
-    Route::middleware('is.superadmin')->group(function () {
-        Route::get('/superadmin-dashboard', SuperadminDashboard::class)->name('superadmin.dashboard');
-        Route::get('/receptionists', ReceptionistUsers::class)->name('superadmin.receptionists');
-        Route::get('/room-bookings', RoomBookingStatistics::class)->name('superadmin.room');
-        Route::get('/vehicle-bookings', VehicleBookingStatistics::class)->name('superadmin.vehicle');
-        Route::get('/deliveries', DeliveryStatistics::class)->name('superadmin.delivery');
-        Route::get('/guestbook', GuestbookStatistics::class)->name('superadmin.guestbook');
-        Route::get('/lstm-predictions', \App\Livewire\Pages\Superadmin\LSTMPredictions::class)->name('superadmin.lstm-predictions');
-        Route::get('/ai-security', AISecurityReports::class)->name('superadmin.ai-security');
-        // Route::get('/weather', \App\Livewire\Pages\Superadmin\WeatherDashboard::class)->name('superadmin.weather');
-        Route::get('/occupancy-forecasting', \App\Livewire\Pages\Superadmin\OccupancyForecasting::class)->name('superadmin.occupancy');
+    // ---------- Manager routes ----------
+    Route::middleware('is.manager')->group(function () {
+        Route::get('/manager-dashboard', ManagerDashboard::class)->name('manager.dashboard');
+        Route::get('/receptionists', ReceptionistUsers::class)->name('manager.receptionists');
+        Route::get('/room-bookings', RoomBookingStatistics::class)->name('manager.room');
+        Route::get('/vehicle-bookings', VehicleBookingStatistics::class)->name('manager.vehicle');
+        Route::get('/deliveries', DeliveryStatistics::class)->name('manager.delivery');
+        Route::get('/guestbook', GuestbookStatistics::class)->name('manager.guestbook');
+        Route::get('/lstm-predictions', \App\Livewire\Pages\Manager\LSTMPredictions::class)->name('manager.lstm-predictions');
+        Route::get('/ai-security', AISecurityReports::class)->name('manager.ai-security');
+        // Route::get('/weather', \App\Livewire\Pages\Manager\WeatherDashboard::class)->name('manager.weather');
+        Route::get('/occupancy-forecasting', \App\Livewire\Pages\Manager\OccupancyForecasting::class)->name('manager.occupancy');
         // Resource Management
-        Route::get('/manage-rooms', Manageroom::class)->name('superadmin.manageroom');
-        Route::get('/manage-vehicles', VehiclePage::class)->name('superadmin.managevehicle');
-        Route::get('/manage-storages', StoragePage::class)->name('superadmin.managestorage');
-        Route::get('/superadmin-settings', SuperadminSettings::class)->name('superadmin.settings');
-        Route::get('/superadmin-help', SuperadminHelp::class)->name('superadmin.help');
+        Route::get('/manage-rooms', Manageroom::class)->name('manager.manageroom');
+        Route::get('/manage-vehicles', VehiclePage::class)->name('manager.managevehicle');
+        Route::get('/manage-storages', StoragePage::class)->name('manager.managestorage');
+        Route::get('/manager-settings', ManagerSettings::class)->name('manager.settings');
+        Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
     });
 
     // ---------- Receptionist routes ----------

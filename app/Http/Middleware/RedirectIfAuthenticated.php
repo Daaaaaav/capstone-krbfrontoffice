@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Middleware;
 
@@ -18,7 +18,7 @@ class RedirectIfAuthenticated
                 $role = $user->role->name ?? $user->role ?? null;
 
                 $routeName = match ($role) {
-                    'Superadmin'   => 'superadmin.dashboard',
+                    'Manager'      => 'manager.dashboard',
                     'Receptionist' => 'receptionist.dashboard',
                     default        => 'login',
                 };

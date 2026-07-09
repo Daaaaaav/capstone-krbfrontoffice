@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,10 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
-            'is.admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'is.superadmin' => \App\Http\Middleware\IsSuperadmin::class,
+            'is.manager' => \App\Http\Middleware\IsManager::class,
             'is.receptionist'=> \App\Http\Middleware\IsReceptionist::class,
-            'is_agent' => \App\Http\Middleware\IsAgent::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

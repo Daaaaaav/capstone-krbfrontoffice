@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers;
 
@@ -10,7 +10,7 @@ class GoogleAuthController extends Controller
 {
     /**
      * Redirect to Google's OAuth consent screen.
-     * Only accessible when logged in as Superadmin.
+     * Only accessible when logged in as Manager.
      */
     public function auth()
     {
@@ -25,13 +25,13 @@ class GoogleAuthController extends Controller
     public function callback(Request $request)
     {
         if ($request->has('error')) {
-            return redirect('/superadmin-settings')
+            return redirect('/manager-settings')
                 ->with('error', 'Google authorization was denied: ' . $request->get('error'));
         }
 
         $code = $request->get('code');
         if (!$code) {
-            return redirect('/superadmin-settings')
+            return redirect('/manager-settings')
                 ->with('error', 'No authorization code received from Google.');
         }
 
@@ -40,7 +40,7 @@ class GoogleAuthController extends Controller
             $token  = $client->fetchAccessTokenWithAuthCode($code);
 
             if (isset($token['error'])) {
-                return redirect('/superadmin-settings')
+                return redirect('/manager-settings')
                     ->with('error', 'Google error: ' . ($token['error_description'] ?? $token['error']));
             }
 
@@ -56,11 +56,11 @@ class GoogleAuthController extends Controller
 
             file_put_contents($tokenPath, json_encode($token));
 
-            return redirect('/superadmin-settings')
+            return redirect('/manager-settings')
                 ->with('success', 'Google Calendar connected successfully. Google Meet links will now be generated automatically.');
 
         } catch (\Throwable $e) {
-            return redirect('/superadmin-settings')
+            return redirect('/manager-settings')
                 ->with('error', 'Failed to save Google token: ' . $e->getMessage());
         }
     }
@@ -79,7 +79,7 @@ class GoogleAuthController extends Controller
             unlink($tokenPath);
         }
 
-        return redirect('/superadmin-settings')
+        return redirect('/manager-settings')
             ->with('success', 'Google Calendar disconnected.');
     }
 

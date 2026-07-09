@@ -1,4 +1,4 @@
-# Local Development Guide
+﻿# Local Development Guide
 
 This guide covers running the KRB System locally without Docker (using Laragon, XAMPP, or native setup).
 
@@ -772,8 +772,8 @@ MAIL_MAILER=log                  # Logs emails instead of sending
 
 After seeding the database:
 
-**Superadmin:**
-- Email: `superadmin@krbogor.id`
+**Manager:**
+- Email: `manager@krbogor.id`
 - Password: `superpassword`
 
 **Receptionist:**

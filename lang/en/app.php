@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
 
@@ -113,7 +113,7 @@ return [
     'meeting_status'    => 'Meeting Status',
     'vehicle_status'    => 'Vehicle Status',
     'my_profile'        => 'My Profile',
-    'superadmin_db'     => 'Superadmin DB',
+    'manager_db'     => 'Manager DB',
     'receptionist_db'   => 'Receptionist DB',
     'login_register'    => 'Login / Register',
     'login'             => 'Login',
@@ -138,7 +138,7 @@ return [
     'docpac_history'        => 'DocPac History',
     'search_modules'        => 'Search modules...',
 
-    // ── Sidebar (Superadmin) ──────────────────────────────────────────────────
+    // Sidebar (Manager)
     'user_management'       => 'User Management',
     'receptionists'         => 'Receptionists',
     'analytics'             => 'Analytics',
@@ -306,7 +306,7 @@ return [
     'officer_label'                 => 'Officer',
     'edit_guest_title'              => 'Edit Guest Entry',
     'full_name_required'            => 'Full Name',
-    'superadmin_analytics'      => 'Superadmin Analytics',
+    'manager_analytics'      => 'Manager Analytics',
     'interactive_insights'      => 'Interactive system insights for',
     'booking_trends'            => 'Booking Trends',
     'bookings_axis'             => 'Bookings',
@@ -851,7 +851,7 @@ return [
     'faq_shared_q_password'     => 'How do I change my password?',
     'faq_shared_a_password'     => 'Go to Settings (the cog icon in the sidebar). Expand the Change Password section, enter your current password and your new password, then save.',
 
-    // ── FAQ Superadmin ────────────────────────────────────────────────────────
+    // FAQ Manager
     'faq_sa_q1'  => 'How do I manage receptionist accounts?',
     'faq_sa_a1'  => 'Go to User Management → Receptionists. You can create, edit, or deactivate receptionist accounts from that page.',
     'faq_sa_q2'  => 'How do I view room booking statistics?',
