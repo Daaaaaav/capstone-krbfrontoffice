@@ -5,16 +5,23 @@ namespace App\Livewire\Components\Ui;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Services\GroqService;
 
 class ChatModal extends Component
 {
-    public bool   $isOpen   = false;
-    public string $message  = '';
+    public bool   $isOpen    = false;
+    public string $message   = '';
     public bool   $isLoading = false;
 
     /**
-     * Chat history: array of ['role' => 'user'|'assistant', 'text' => string]
+     * Chat history.
+     *
+     * Each entry: [
+     *   'role'           => 'user'|'assistant',
+     *   'text'           => string,
+     *   'booking_prefill'=> array|null   // only on assistant messages with rebook intent
+     * ]
      */
     public array $messages = [];
 
@@ -32,9 +39,13 @@ class ChatModal extends Component
             $role     = $this->userRole();
             $greeting = $role === 'manager'
                 ? "Hello! I'm your analytics assistant. Ask me about bookings, occupancy trends, vehicle usage, or any statistics."
-                : "Hello! I'm your booking assistant. Ask me about today's schedule, pending approvals, or recent bookings.";
+                : "Hello! I'm your booking assistant. Ask me about today's schedule, pending approvals, recent bookings, or say \"rebook [meeting name] for next Monday\" to pre-fill a new booking.";
 
-            $this->messages[] = ['role' => 'assistant', 'text' => $greeting];
+            $this->messages[] = [
+                'role'            => 'assistant',
+                'text'            => $greeting,
+                'booking_prefill' => null,
+            ];
         }
     }
 
@@ -55,26 +66,38 @@ class ChatModal extends Component
             return;
         }
 
-        // Append the user bubble immediately
-        $this->messages[] = ['role' => 'user', 'text' => $text];
-        $this->message    = '';
-        $this->isLoading  = true;
+        $this->messages[] = [
+            'role'            => 'user',
+            'text'            => $text,
+            'booking_prefill' => null,
+        ];
+        $this->message   = '';
+        $this->isLoading = true;
 
-        // Call Groq based on the authenticated user's role
+        $reply   = 'Sorry, something went wrong. Please try again.';
+        $prefill = null;
+
         try {
-            $groq  = app(GroqService::class);
-            $reply = $this->userRole() === 'manager'
-                ? $groq->managerChat($text)
-                : $groq->receptionistChat($text);
+            $groq = app(GroqService::class);
+
+            if ($this->userRole() === 'manager') {
+                $reply = $groq->managerChat($text);
+            } else {
+                $result  = $groq->receptionistChatWithIntent($text);
+                $reply   = $result['reply'];
+                $prefill = $result['booking_prefill'] ?? null;
+            }
         } catch (\Throwable $e) {
-            $reply = 'Sorry, something went wrong. Please try again.';
-            \Illuminate\Support\Facades\Log::error('ChatModal: GroqService failed', ['error' => $e->getMessage()]);
+            Log::error('ChatModal: GroqService failed', ['error' => $e->getMessage()]);
         }
 
-        $this->messages[] = ['role' => 'assistant', 'text' => $reply];
-        $this->isLoading  = false;
+        $this->messages[] = [
+            'role'            => 'assistant',
+            'text'            => $reply,
+            'booking_prefill' => $prefill,
+        ];
+        $this->isLoading = false;
 
-        // Tell the browser to scroll the message list to the bottom
         $this->dispatch('chat-scroll-bottom');
     }
 
@@ -90,9 +113,6 @@ class ChatModal extends Component
     // Helpers
     // ──────────────────────────────────────────────────────────
 
-    /**
-     * Returns 'manager' or 'receptionist' based on the authenticated user's role.
-     */
     private function userRole(): string
     {
         $user = Auth::user();
@@ -100,7 +120,6 @@ class ChatModal extends Component
             return 'receptionist';
         }
 
-        // Support role as a relation (role->name) or a direct column
         $roleName = strtolower(
             $user->role?->name
             ?? $user->role_name

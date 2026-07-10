@@ -45,20 +45,34 @@ class QuickBookModal extends Component
     {
         $this->resetForm();
 
-        $roomId = $payload['roomId'] ?? ($payload[0] ?? 0);
-        $ymd    = $payload['ymd'] ?? ($payload[1] ?? '');
-        $time   = $payload['time'] ?? ($payload[2] ?? '');
-        $title  = $payload['title'] ?? ($payload[3] ?? '');
-        $mode   = $payload['mode'] ?? 'create';
+        $roomId    = $payload['roomId']    ?? ($payload[0] ?? 0);
+        $ymd       = $payload['ymd']       ?? ($payload[1] ?? '');
+        $time      = $payload['time']      ?? ($payload[2] ?? '');
+        $title     = $payload['title']     ?? ($payload[3] ?? '');
+        $endTime   = $payload['endTime']   ?? '';
+        $attendees = $payload['attendees'] ?? 1;
+        $notes     = $payload['notes']     ?? '';
+        $mode      = $payload['mode']      ?? 'create';
 
         $this->mode = in_array($mode, ['create','rebook'], true) ? $mode : 'create';
         $now = Carbon::now($this->tz);
 
-        $this->room_id = $roomId ?: null;
-        $this->date = $ymd ?: $now->toDateString();
+        $this->room_id    = $roomId ?: null;
+        $this->date       = $ymd ?: $now->toDateString();
         $this->start_time = $time ?: $now->format('H:i');
-        $this->end_time = Carbon::createFromFormat('H:i', $this->start_time)->addMinutes($this->slotMinutes)->format('H:i');
-        $this->meeting_title = $title ?? '';
+
+        // Use explicit end time from payload; fall back to +30 min from start
+        if ($endTime !== '') {
+            $this->end_time = substr($endTime, 0, 5); // normalise to HH:MM
+        } else {
+            $this->end_time = Carbon::createFromFormat('H:i', $this->start_time)
+                ->addMinutes($this->slotMinutes)
+                ->format('H:i');
+        }
+
+        $this->meeting_title        = $title ?? '';
+        $this->number_of_attendees  = max(1, (int) $attendees);
+        $this->special_notes        = $notes ?? '';
 
         $this->show = true;
     }
@@ -141,15 +155,15 @@ class QuickBookModal extends Component
 
     protected function resetForm(): void
     {
-        $this->room_id = null;
-        $this->date = '';
-        $this->start_time = '';
-        $this->end_time = '';
-        $this->meeting_title = '';
-        $this->number_of_attendees = 1;
-        $this->requirements = [];
-        $this->special_notes = '';
-        $this->mode = 'create';
+        $this->room_id              = null;
+        $this->date                 = '';
+        $this->start_time           = '';
+        $this->end_time             = '';
+        $this->meeting_title        = '';
+        $this->number_of_attendees  = 1;
+        $this->requirements         = [];
+        $this->special_notes        = '';
+        $this->mode                 = 'create';
     }
 
     public function render()

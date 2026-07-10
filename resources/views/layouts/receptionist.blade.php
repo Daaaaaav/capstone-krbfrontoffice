@@ -305,6 +305,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
 
 
     @livewire('components.ui.chat-modal')
+    @livewire('booking.quick-book-modal')
 
     {{-- Floating chat button --}}
     <div class="fixed bottom-6 right-6 z-[70]">
