@@ -178,6 +178,20 @@ class QuickBookModal extends Component
 
     public function render()
     {
-        return view('livewire.booking.quick-book-modal');
+        $now      = Carbon::now($this->tz);
+        $minStart = $now->toDateString() === $this->date
+            ? $now->format('H:i')   // today: can't pick a past time
+            : '00:00';              // future date: any time is fine
+
+        $roomName = '';
+        if ($this->room_id) {
+            $room = collect($this->rooms)->firstWhere('id', $this->room_id);
+            $roomName = $room['name'] ?? '';
+        }
+
+        return view('livewire.booking.quick-book-modal', [
+            'minStart' => $minStart,
+            'roomName' => $roomName,
+        ]);
     }
 }
