@@ -80,9 +80,12 @@ class GroqService
             $response = Http::withToken($this->apiKey)
                 ->timeout(30)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
-                    'model'       => $this->model,
-                    'temperature' => 0.3,
-                    'messages'    => [
+                    'model'            => $this->model,
+                    'temperature'      => 0.3,
+                    // Disable Qwen 3 chain-of-thought thinking — prevents <think>…</think>
+                    // blocks from leaking into the response text.
+                    'enable_thinking'  => false,
+                    'messages'         => [
                         ['role' => 'system', 'content' => $systemPrompt],
                         ['role' => 'user',   'content' => $userMessage],
                     ],
@@ -447,6 +450,10 @@ class GroqService
     private function parseIntentResponse(string $raw): array
     {
         $raw = trim($raw);
+
+        // Strip Qwen 3 chain-of-thought <think>…</think> blocks that sometimes
+        // appear even when enable_thinking is false (e.g. older cached responses).
+        $raw = preg_replace('/<think>.*?<\/think>/si', '', $raw);
 
         // Strip markdown code fences the model sometimes adds despite instructions
         $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);

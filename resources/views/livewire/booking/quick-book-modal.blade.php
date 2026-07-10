@@ -49,8 +49,14 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.quick_book_room') }}</label>
-                            <input type="text" value="{{ $roomName ?? '' }}" disabled
-                                class="w-full h-10 px-3.5 bg-muted text-foreground/80 border border-input rounded-lg text-sm cursor-not-allowed">
+                            <select wire:model="room_id"
+                                class="w-full h-10 px-3.5 border border-input rounded-lg bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                                <option value="">— Select a room —</option>
+                                @foreach ($rooms as $r)
+                                    <option value="{{ $r['id'] }}">{{ $r['name'] }}</option>
+                                @endforeach
+                            </select>
+                            @error('room_id') <span class="text-destructive text-xs mt-1.5 font-medium block">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.quick_book_date') }}</label>
