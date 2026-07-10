@@ -80,12 +80,9 @@ class GroqService
             $response = Http::withToken($this->apiKey)
                 ->timeout(30)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
-                    'model'            => $this->model,
-                    'temperature'      => 0.3,
-                    // Disable Qwen 3 chain-of-thought thinking — prevents <think>…</think>
-                    // blocks from leaking into the response text.
-                    'enable_thinking'  => false,
-                    'messages'         => [
+                    'model'       => $this->model,
+                    'temperature' => 0.3,
+                    'messages'    => [
                         ['role' => 'system', 'content' => $systemPrompt],
                         ['role' => 'user',   'content' => $userMessage],
                     ],

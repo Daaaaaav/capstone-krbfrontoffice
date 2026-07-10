@@ -51,6 +51,16 @@ class ChatModal extends Component
     // Modal lifecycle
     // ─────────────────────────────────────────────────────────
 
+    public function mount(): void
+    {
+        // Auto-archive any session this user left open (e.g. navigated away
+        // mid-conversation without clicking clear). This runs once per page load.
+        AiChatSession::where('user_id', Auth::id())
+            ->whereNull('ended_at')
+            ->whereNotNull('title')   // only archive sessions that had at least one user message
+            ->update(['ended_at' => now()]);
+    }
+
     #[On('openChatModal')]
     public function openModal(): void
     {
@@ -293,19 +303,21 @@ class ChatModal extends Component
     }
 
     /**
-     * Load the 20 most-recent completed sessions for the history panel.
+     * Load the 30 most-recent archived sessions for the history panel.
+     * Includes sessions auto-closed on page navigation (ended_at set by mount()).
      */
     private function loadHistorySessions(): void
     {
         $this->historySessions = AiChatSession::where('user_id', Auth::id())
             ->whereNotNull('ended_at')
+            ->whereNotNull('title')    // only sessions that had at least one real message
             ->withCount('messages')
             ->orderByDesc('started_at')
-            ->limit(20)
+            ->limit(30)
             ->get()
             ->map(fn(AiChatSession $s) => [
                 'id'            => $s->id,
-                'title'         => $s->title ?? 'Untitled session',
+                'title'         => $s->title,
                 'role'          => $s->role,
                 'started_at'    => $s->started_at->format('d M Y, H:i'),
                 'message_count' => $s->messages_count,

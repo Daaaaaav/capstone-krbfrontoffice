@@ -38,10 +38,14 @@ class QuickBookModal extends Component
 
     public function mount(): void
     {
-        $this->rooms = Room::orderBy('room_name')
-            ->get(['room_id','room_name'])
-            ->map(fn($r) => ['id'=>$r->room_id,'name'=>$r->room_name])
-            ->values()->all();
+        $companyId = Auth::user()->company_id ?? null;
+
+        $this->rooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->orderBy('room_name')
+            ->get(['room_id', 'room_name'])
+            ->map(fn($r) => ['id' => $r->room_id, 'name' => $r->room_name])
+            ->values()
+            ->all();
     }
 
     #[On('open-quick-book')]
