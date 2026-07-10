@@ -4,6 +4,7 @@ namespace App\Livewire\Pages\Receptionist;
 
 use App\Models\Delivery;
 use App\Models\User as UserModel;
+use App\Services\ImageHelper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
@@ -208,9 +209,12 @@ class DocPackStatus extends Component
             if ($row->image && Storage::disk('public')->exists($row->image)) {
                 Storage::disk('public')->delete($row->image);
             }
-            $ext = strtolower($this->editPhoto->getClientOriginalExtension() ?: 'png');
-            $filename = 'delivery_' . now()->format('Ymd_His') . '_' . uniqid() . '.' . $ext;
-            $data['image'] = $this->editPhoto->storeAs('images/deliveries', $filename, 'public');
+            $data['image'] = ImageHelper::storeAsWebp(
+                $this->editPhoto,
+                'images/deliveries',
+                'delivery',
+                'public'
+            );
         }
 
         $row->fill($data)->save();
