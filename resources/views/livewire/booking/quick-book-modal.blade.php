@@ -23,7 +23,30 @@
 
                 {{-- Form Body --}}
                 <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{-- AI context strip: department + historical user (display-only) --}}
+                @if ($ai_department || $ai_historical_user)
+                    <div class="flex flex-wrap gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
+                        @if ($ai_historical_user)
+                            <span class="flex items-center gap-1 text-xs text-muted-foreground">
+                                <svg class="w-3.5 h-3.5 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                                <span class="font-medium text-foreground">{{ $ai_historical_user }}</span>
+                            </span>
+                        @endif
+                        @if ($ai_department)
+                            <span class="flex items-center gap-1 text-xs text-muted-foreground">
+                                <svg class="w-3.5 h-3.5 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                                </svg>
+                                <span class="font-medium text-foreground">{{ $ai_department }}</span>
+                            </span>
+                        @endif
+                        <span class="text-[10px] text-muted-foreground/60 italic ml-auto self-center">from AI context</span>
+                    </div>
+                @endif
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.quick_book_room') }}</label>
                             <input type="text" value="{{ $roomName ?? '' }}" disabled

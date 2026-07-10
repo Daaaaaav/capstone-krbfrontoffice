@@ -99,58 +99,83 @@
                                     <p class="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">{{ $msg['text'] }}</p>
                                 </div>
 
-                                {{-- Pre-fill button — only shown when the AI detected a rebook intent --}}
-                                @if (!empty($msg['booking_prefill']) && is_array($msg['booking_prefill']))
+                                {{-- Booking form panel — always shown on receptionist assistant messages --}}
+                                @if (isset($msg['booking_prefill']) && is_array($msg['booking_prefill']))
                                     @php
-                                        $prefill = $msg['booking_prefill'];
-                                        // Build the payload the QuickBookModal open() method expects
-                                        $payload = [
-                                            'roomId'    => $prefill['room_id']             ?? null,
-                                            'ymd'       => $prefill['date']                ?? '',
-                                            'time'      => $prefill['start_time']          ?? '',
-                                            'endTime'   => $prefill['end_time']            ?? '',
-                                            'title'     => $prefill['meeting_title']       ?? '',
-                                            'attendees' => $prefill['number_of_attendees'] ?? 1,
-                                            'notes'     => $prefill['special_notes']       ?? '',
-                                            'mode'      => 'rebook',
+                                        $prefill   = $msg['booking_prefill'];
+                                        $hasData   = collect($prefill)->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
+                                        $payload   = [
+                                            'roomId'        => $prefill['room_id']             ?? null,
+                                            'ymd'           => $prefill['date']                ?? '',
+                                            'time'          => $prefill['start_time']          ?? '',
+                                            'endTime'       => $prefill['end_time']            ?? '',
+                                            'title'         => $prefill['meeting_title']       ?? '',
+                                            'attendees'     => $prefill['number_of_attendees'] ?? 1,
+                                            'notes'         => $prefill['special_notes']       ?? '',
+                                            'department'    => $prefill['department']          ?? null,
+                                            'historicalUser'=> $prefill['historical_user']     ?? null,
+                                            'mode'          => 'rebook',
                                         ];
                                     @endphp
-                                    <div class="border-t border-border/60 px-3.5 py-2.5 bg-primary/5">
-                                        <button
-                                            type="button"
-                                            x-data
-                                            x-on:click="
-                                                $dispatch('open-quick-book', @js($payload));
-                                                $wire.closeModal();
-                                            "
-                                            class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg
-                                                   bg-primary text-primary-foreground text-xs font-semibold
-                                                   hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
-                                        >
-                                            {{-- Calendar plus icon --}}
-                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                            </svg>
-                                            Pre-fill Booking Form
-                                        </button>
+                                    <div class="border-t border-border/60 bg-primary/5">
 
-                                        {{-- Summary chip: room · date · time --}}
-                                        @if (!empty($prefill['room_name']) || !empty($prefill['date']))
-                                            <p class="mt-1.5 text-[10px] text-muted-foreground text-center leading-snug">
-                                                @if (!empty($prefill['room_name']))
-                                                    {{ $prefill['room_name'] }}
-                                                @endif
-                                                @if (!empty($prefill['date']))
-                                                    &nbsp;·&nbsp;
-                                                    {{ \Carbon\Carbon::parse($prefill['date'])->format('d M Y') }}
-                                                @endif
-                                                @if (!empty($prefill['start_time']) && !empty($prefill['end_time']))
-                                                    &nbsp;·&nbsp;
-                                                    {{ substr($prefill['start_time'], 0, 5) }}–{{ substr($prefill['end_time'], 0, 5) }}
-                                                @endif
-                                            </p>
-                                        @endif
+                                        {{-- Structured form preview --}}
+                                        <div class="px-3.5 pt-2.5 pb-1.5 space-y-1">
+                                            <p class="text-[10px] font-semibold text-primary/70 uppercase tracking-wider mb-1.5">Booking Details</p>
+
+                                            @php
+                                                $formRows = [
+                                                    'Meeting Title' => $prefill['meeting_title']       ?? null,
+                                                    'Room'          => $prefill['room_name']            ?? null,
+                                                    'Department'    => $prefill['department']           ?? null,
+                                                    'Historical User'=> $prefill['historical_user']    ?? null,
+                                                    'Date'          => !empty($prefill['date'])
+                                                                         ? \Carbon\Carbon::parse($prefill['date'])->format('d M Y')
+                                                                         : null,
+                                                    'Participants'  => $prefill['number_of_attendees'] ?? null,
+                                                    'Start'         => !empty($prefill['start_time'])
+                                                                         ? substr($prefill['start_time'], 0, 5)
+                                                                         : null,
+                                                    'End'           => !empty($prefill['end_time'])
+                                                                         ? substr($prefill['end_time'], 0, 5)
+                                                                         : null,
+                                                    'Requirements'  => $prefill['special_notes']       ?? null,
+                                                ];
+                                            @endphp
+
+                                            @foreach ($formRows as $label => $value)
+                                                <div class="flex items-baseline gap-1.5">
+                                                    <span class="text-[10px] text-muted-foreground shrink-0 w-[88px]">{{ $label }}:</span>
+                                                    @if ($value !== null && $value !== '')
+                                                        <span class="text-[10px] text-foreground font-medium break-words">{{ $value }}</span>
+                                                    @else
+                                                        <span class="text-[10px] text-muted-foreground/40 italic">—</span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        {{-- Action button --}}
+                                        <div class="px-3.5 pb-2.5 pt-1">
+                                            <button
+                                                type="button"
+                                                x-data
+                                                x-on:click="
+                                                    $dispatch('open-quick-book', @js($payload));
+                                                    $wire.closeModal();
+                                                "
+                                                class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg
+                                                       bg-primary text-primary-foreground text-xs font-semibold
+                                                       hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+                                            >
+                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                                {{ $hasData ? 'Open Pre-filled Booking Form' : 'Open Booking Form' }}
+                                            </button>
+                                        </div>
+
                                     </div>
                                 @endif
 

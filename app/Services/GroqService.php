@@ -396,23 +396,35 @@ class GroqService
         - Keep answers short and practical — the receptionist is busy.
         - Respond in the same language the receptionist uses (English or Indonesian).
 
-        BOOKING FORM PRE-FILL (very important):
-        When the receptionist asks to re-book, repeat, or duplicate a previous booking (e.g. "book the same meeting", "rebook for next Monday", "repeat this booking"), you MUST:
-        1. Identify the matching booking from the data below.
-        2. Confirm what you found in a short human-readable reply.
-        3. Return your ENTIRE response as a single JSON object (no markdown, no code fences) with these two keys:
-           - "reply": your short confirmation message (string)
-           - "booking_prefill": an object with these fields:
-               - "room_id": integer room ID from the data (null if unknown)
-               - "room_name": string room name (for display)
-               - "date": target date in YYYY-MM-DD format (the NEW date requested)
-               - "start_time": HH:MM (24h)
-               - "end_time": HH:MM (24h)
-               - "meeting_title": string
-               - "number_of_attendees": integer (use the new count if the user changed it, otherwise use the original)
-               - "special_notes": string or null
+        RESPONSE FORMAT (mandatory — always follow this):
+        You MUST always return your ENTIRE response as a single valid JSON object with NO markdown, NO code fences,
+        and NO text outside the JSON. The object must always have exactly these two keys:
 
-        For ALL other questions (not a rebook request), respond with plain text only — do NOT output JSON.
+        {
+          "reply": "<your conversational reply to the receptionist>",
+          "booking_prefill": {
+            "meeting_title":        "<string or null>",
+            "room_id":              <integer or null>,
+            "room_name":            "<string or null>",
+            "department":           "<department name string or null>",
+            "historical_user":      "<name of the person who previously booked, or null>",
+            "date":                 "<YYYY-MM-DD or null>",
+            "number_of_attendees":  <integer or null>,
+            "start_time":           "<HH:MM 24h or null>",
+            "end_time":             "<HH:MM 24h or null>",
+            "special_notes":        "<room requirements / notes string or null>"
+          }
+        }
+
+        Rules for booking_prefill:
+        - Fill in ONLY what you can confidently determine from the conversation and the booking data below.
+        - Leave fields as null if the information was not provided or cannot be inferred.
+        - For rebook requests: copy all matching details from the historical booking and apply any changes the
+          receptionist asked for (new date, different attendee count, etc.).
+        - For general questions (e.g. "what rooms are free today?"): still include booking_prefill but leave
+          all fields null — the receptionist may want to start a new booking from the answer.
+        - room_id must come from the actual booking data below; never invent an ID.
+        - date must be the TARGET date for the new booking (not the historical date).
 
         PROMPT
         . $dataContext;
@@ -423,10 +435,12 @@ class GroqService
     // ──────────────────────────────────────────────────────────
 
     /**
-     * Parse the raw Groq response. If it contains a JSON envelope with a
-     * "booking_prefill" key, extract it and resolve the room_id by name
-     * if the model only returned a name. Otherwise treat the whole string
-     * as a plain text reply with no prefill.
+     * Parse the raw Groq response.
+     *
+     * For receptionist responses the model now always returns a JSON envelope,
+     * so this method decodes it, normalises types, and resolves room_id by name
+     * when the model omitted the integer ID. A booking_prefill with all-null
+     * fields is still returned — the view always shows the form panel.
      *
      * @return array{reply: string, booking_prefill: array|null}
      */
@@ -444,11 +458,11 @@ class GroqService
             $decoded = json_decode($raw, true);
 
             if (is_array($decoded) && isset($decoded['reply'])) {
-                $reply    = (string) $decoded['reply'];
-                $prefill  = $decoded['booking_prefill'] ?? null;
+                $reply   = (string) $decoded['reply'];
+                $prefill = $decoded['booking_prefill'] ?? null;
 
                 if (is_array($prefill)) {
-                    // Resolve room_id from name if the model omitted or nulled it
+                    // Resolve room_id from room_name when the model only gave a name
                     if (empty($prefill['room_id']) && !empty($prefill['room_name'])) {
                         $companyId = Auth::user()->company_id;
                         $room = \App\Models\Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
@@ -459,17 +473,20 @@ class GroqService
                     }
 
                     // Normalise field types
-                    $prefill['room_id']            = isset($prefill['room_id']) ? (int) $prefill['room_id'] : null;
-                    $prefill['number_of_attendees'] = (int) ($prefill['number_of_attendees'] ?? 1);
-                    $prefill['special_notes']       = $prefill['special_notes'] ?? null;
+                    $prefill['room_id']             = isset($prefill['room_id']) ? (int) $prefill['room_id'] : null;
+                    $prefill['number_of_attendees'] = isset($prefill['number_of_attendees']) ? (int) $prefill['number_of_attendees'] : null;
+                    $prefill['special_notes']       = $prefill['special_notes']   ?? null;
+                    $prefill['department']          = $prefill['department']      ?? null;
+                    $prefill['historical_user']     = $prefill['historical_user'] ?? null;
                 }
 
-                return ['reply' => $reply, 'booking_prefill' => $prefill];
+                // Always return prefill (even if all-null) so the view shows the form
+                return ['reply' => $reply, 'booking_prefill' => $prefill ?? []];
             }
         }
 
-        // Plain text — no prefill
-        return ['reply' => $raw, 'booking_prefill' => null];
+        // Fallback: plain text reply, show empty form panel
+        return ['reply' => $raw, 'booking_prefill' => []];
     }
 
     // ──────────────────────────────────────────────────────────

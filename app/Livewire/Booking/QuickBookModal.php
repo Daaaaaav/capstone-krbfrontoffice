@@ -17,14 +17,18 @@ class QuickBookModal extends Component
     public string $mode = 'create'; // create|rebook
 
     // form fields
-    public ?int $room_id = null;
-    public string $date = '';
-    public string $start_time = '';
-    public string $end_time   = '';
-    public string $meeting_title = '';
-    public int $number_of_attendees = 1;
-    public array $requirements = [];
-    public string $special_notes = '';
+    public ?int    $room_id              = null;
+    public string  $date                 = '';
+    public string  $start_time           = '';
+    public string  $end_time             = '';
+    public string  $meeting_title        = '';
+    public int     $number_of_attendees  = 1;
+    public array   $requirements         = [];
+    public string  $special_notes        = '';
+
+    // display-only context from the AI (not submitted to DB)
+    public ?string $ai_department     = null;  // e.g. "IT"
+    public ?string $ai_historical_user = null; // e.g. "Davina Test"
 
     // dropdown
     public array $rooms = [];
@@ -45,14 +49,16 @@ class QuickBookModal extends Component
     {
         $this->resetForm();
 
-        $roomId    = $payload['roomId']    ?? ($payload[0] ?? 0);
-        $ymd       = $payload['ymd']       ?? ($payload[1] ?? '');
-        $time      = $payload['time']      ?? ($payload[2] ?? '');
-        $title     = $payload['title']     ?? ($payload[3] ?? '');
-        $endTime   = $payload['endTime']   ?? '';
-        $attendees = $payload['attendees'] ?? 1;
-        $notes     = $payload['notes']     ?? '';
-        $mode      = $payload['mode']      ?? 'create';
+        $roomId    = $payload['roomId']        ?? ($payload[0] ?? 0);
+        $ymd       = $payload['ymd']           ?? ($payload[1] ?? '');
+        $time      = $payload['time']          ?? ($payload[2] ?? '');
+        $title     = $payload['title']         ?? ($payload[3] ?? '');
+        $endTime   = $payload['endTime']       ?? '';
+        $attendees = $payload['attendees']     ?? 1;
+        $notes     = $payload['notes']         ?? '';
+        $mode      = $payload['mode']          ?? 'create';
+        $dept      = $payload['department']    ?? null;
+        $histUser  = $payload['historicalUser'] ?? null;
 
         $this->mode = in_array($mode, ['create','rebook'], true) ? $mode : 'create';
         $now = Carbon::now($this->tz);
@@ -63,7 +69,7 @@ class QuickBookModal extends Component
 
         // Use explicit end time from payload; fall back to +30 min from start
         if ($endTime !== '') {
-            $this->end_time = substr($endTime, 0, 5); // normalise to HH:MM
+            $this->end_time = substr($endTime, 0, 5);
         } else {
             $this->end_time = Carbon::createFromFormat('H:i', $this->start_time)
                 ->addMinutes($this->slotMinutes)
@@ -73,6 +79,8 @@ class QuickBookModal extends Component
         $this->meeting_title        = $title ?? '';
         $this->number_of_attendees  = max(1, (int) $attendees);
         $this->special_notes        = $notes ?? '';
+        $this->ai_department        = $dept ?: null;
+        $this->ai_historical_user   = $histUser ?: null;
 
         $this->show = true;
     }
@@ -164,6 +172,8 @@ class QuickBookModal extends Component
         $this->requirements         = [];
         $this->special_notes        = '';
         $this->mode                 = 'create';
+        $this->ai_department        = null;
+        $this->ai_historical_user   = null;
     }
 
     public function render()
