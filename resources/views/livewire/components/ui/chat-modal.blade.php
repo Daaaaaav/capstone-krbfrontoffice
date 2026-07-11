@@ -197,7 +197,7 @@
                                         </div>
                                         <div class="px-3.5 pb-2.5 pt-1">
                                             <button type="button" x-data
-                                                    x-on:click="$dispatch('open-quick-book', @js($roomPayload)); $wire.closeModal()"
+                                                    x-on:click="$wire.dispatch('open-quick-book', @js($roomPayload)); $wire.closeModal()"
                                                     class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg text-xs font-semibold active:scale-95 transition-all shadow-sm
                                                            {{ $isOnline
                                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -277,7 +277,7 @@
                                         </div>
                                         <div class="px-3.5 pb-2.5 pt-1">
                                             <button type="button" x-data
-                                                    x-on:click="$dispatch('open-quick-vehicle-book', @js($vehiclePayload)); $wire.closeModal()"
+                                                    x-on:click="$wire.dispatch('open-quick-vehicle-book', @js($vehiclePayload)); $wire.closeModal()"
                                                     class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 active:scale-95 transition-all shadow-sm">
                                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
