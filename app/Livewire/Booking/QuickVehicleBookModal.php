@@ -125,7 +125,6 @@ class QuickVehicleBookModal extends Component
         // ── Overlapping booking check with 1-hour buffer ───────────────────
         $conflict = VehicleBooking::where('vehicle_id', $this->vehicle_id)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])
-            ->where('vehiclebooking_id', '!=', $this->mode === 'rebook' ? ($payload['bookingId'] ?? 0) : 0) // Ignore self if rebooking (wait, mode doesn't pass ID, let's just do standard)
             ->where(function($q) use ($startAt, $endAt) {
                 $q->where('start_at', '<', $endAt->toDateTimeString())
                   ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) > ?', [$startAt->toDateTimeString()]);

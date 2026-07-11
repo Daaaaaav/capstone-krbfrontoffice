@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Department;
 use App\Models\Storage;
 use App\Models\Delivery;
+use App\Services\ImageHelper;
 use App\Services\SecurityMonitoringService;
 use Carbon\Carbon;
 
@@ -133,13 +134,12 @@ class DocPackForm extends Component
         $imagePath = null;
 
         if ($this->photo) {
-            $ext = strtolower($this->photo->getClientOriginalExtension() ?: 'png');
-            $filename = 'delivery_' . $now->format('Ymd_His') . '_' . uniqid() . '.' . $ext;
-
-            // Store in public disk under images/deliveries
-            $path = $this->photo->storeAs('images/deliveries', $filename, 'public');
-            
-            $imagePath = $path;
+            $imagePath = ImageHelper::storeAsWebp(
+                $this->photo,
+                'images/deliveries',
+                'delivery',
+                'public'
+            );
         }
 
         Delivery::create([

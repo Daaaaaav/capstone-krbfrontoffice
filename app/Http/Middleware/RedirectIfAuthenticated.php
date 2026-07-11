@@ -17,13 +17,19 @@ class RedirectIfAuthenticated
                 $user = Auth::user();
                 $role = $user->role->name ?? $user->role ?? null;
 
+                // If role is unrecognized, log out and let them reach the guest page
+                if (!in_array($role, ['Manager', 'Receptionist'])) {
+                    Auth::guard($guard)->logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                    return $next($request);
+                }
+
                 $routeName = match ($role) {
-                    'Superadmin'   => 'superadmin.dashboard',
+                    'Manager'      => 'manager.dashboard',
                     'Receptionist' => 'receptionist.dashboard',
-                    default        => 'login',
                 };
 
-                // Abaikan intended, biar bener-bener ke role page
                 return redirect()->route($routeName);
             }
         }

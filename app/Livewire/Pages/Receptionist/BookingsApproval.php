@@ -154,6 +154,37 @@ class BookingsApproval extends Component
         });
     }
 
+    /**
+     * Auto-approve pending offline and online bookings whose start time has arrived.
+     * Mirrors the AutoApproveBookings command so it also works without a scheduler.
+     * Online bookings are approved directly without link creation (links are created
+     * at manual approval time, or by the scheduler if configured).
+     */
+    private function autoApprovePending(): void
+    {
+        $now       = Carbon::now($this->tz)->toDateTimeString();
+        $companyId = Auth::user()->company_id ?? null;
+
+        $startExpr = "COALESCE(
+            CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
+            CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
+            CONCAT(date, ' ', start_time)
+        )";
+
+        DB::table('booking_rooms')
+            ->whereNull('deleted_at')
+            ->where('status', 'pending')
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+            ->whereNotNull('date')
+            ->whereNotNull('start_time')
+            ->whereRaw("$startExpr <= ?", [$now])
+            ->update([
+                'status'     => 'approved',
+                'is_approve' => 1,
+                'updated_at' => $now,
+            ]);
+    }
+
     private function selectedDateValue(): ?string
     {
         return (is_string($this->selectedDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->selectedDate))
@@ -357,6 +388,15 @@ class BookingsApproval extends Component
             DB::transaction(function () {
                 /** @var BookingRoom $b */
                 $b = BookingRoom::lockForUpdate()->findOrFail($this->rejectId);
+
+                // Enforce 30-minute rejection threshold
+                $now = Carbon::now($this->tz);
+                $start = $this->buildDt($b->date, $b->start_time);
+                $minutesLeft = $now->diffInMinutes($start, false);
+
+                if ($minutesLeft < 30) {
+                    throw new \RuntimeException('Cannot reject: less than 30 minutes before meeting starts.');
+                }
 
                 $b->status      = 'rejected';
                 $b->is_approve  = 0;
@@ -638,6 +678,7 @@ class BookingsApproval extends Component
 
     public function render()
     {
+        $this->autoApprovePending();
         $this->autoProgressToCompleted();
 
         $cols = [

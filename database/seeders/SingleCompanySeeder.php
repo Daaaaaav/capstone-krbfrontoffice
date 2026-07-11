@@ -68,7 +68,7 @@ class SingleCompanySeeder extends Seeder
 
                 // === ROLES ===
                 $roles = [];
-                foreach (['Superadmin', 'Admin', 'User', 'Receptionist'] as $r) {
+                foreach (['Manager', 'Receptionist'] as $r) {
                     $roles[$r] = Role::firstOrCreate(['name' => $r]);
                 }
 
@@ -86,20 +86,20 @@ class SingleCompanySeeder extends Seeder
                     ]);
                 }
 
-                // === CORE USERS (Superadmin & Receptionist) ===
-                $superadmin = User::firstOrCreate(
-                    ['email' => "superadmin@{$domain}"],
+                // === CORE USERS (Manager & Receptionist) ===
+                $manager = User::firstOrCreate(
+                    ['email' => "manager@{$domain}"],
                     [
                         'company_id' => $companyId,
                         'department_id' => $depts['Executive']->department_id,
-                        'role_id' => $roles['Superadmin']->role_id,
-                        'full_name' => "Superadmin {$companyName}",
+                        'role_id' => $roles['Manager']->role_id,
+                        'full_name' => "Manager {$companyName}",
                         'phone_number' => '08000000000',
                         'password' => Hash::make('superpassword'),
                         'is_agent' => 'no', 
                     ]
                 );
-                echo "  ✅ Superadmin User: {$superadmin->email} (superpassword)\n";
+                echo "  ✅ Manager User: {$manager->email} (managerpassword)\n";
 
                 $receptionist = User::firstOrCreate(
                     ['email' => "receptionist@{$domain}"],
@@ -116,102 +116,14 @@ class SingleCompanySeeder extends Seeder
                 echo "  ✅ Receptionist User: {$receptionist->email} (receppassword)\n";
 
 
-                // === ADMINS ===
-                $admins = collect();
-                foreach ($depts as $name => $dept) {
-                    $slug = Str::slug($name);
-                    $admin = User::firstOrCreate(
-                        ['email' => "admin-{$slug}@{$domain}"], 
-                        [
-                            'company_id' => $companyId,
-                            'department_id' => $dept->department_id,
-                            'role_id' => $roles['Admin']->role_id, 
-                            'full_name' => "Admin {$name} ({$companyName})",
-                            'phone_number' => '081' . random_int(100000000, 999999999),
-                            'password' => Hash::make('password'),
-                            'is_agent' => 'no', 
-                        ]
-                    );
-                    $admins->push($admin);
-                }
-                echo "  ✅ Seeded Admins ({$admins->count()})\n";
+                // === GENERAL USERS ===
+                $users = collect([$manager, $receptionist]);
+                $agents = collect();
 
-                // === GENERAL USERS & AGENTS ===
-                $users = collect([$superadmin, $receptionist]);
-                $agents = collect(); 
-
-                $firstNames = ['Agus','Bambang','Cici','Dedi','Endang','Fajar','Gita','Hadi','Indah','Joko','Kartika','Lina','Mega','Nina','Oscar','Putra','Qori','Rian','Sari','Tono','Umar','Vina','Wati','Yoga','Zul'];
-                $lastNames = ['Susanto','Wijaya','Permata','Nugroho','Pratama','Wibowo','Hidayat','Kusuma','Lestari','Setiawan','Saputra','Santoso'];
-
-                $globalCounter = 1;
-
-                foreach ($depts as $deptName => $deptObj) {
-                    // 10 Agents per Department
-                    for ($k = 1; $k <= 10; $k++) {
-                        $name = Arr::random($firstNames) . ' ' . Arr::random($lastNames);
-                        $slug = Str::slug($name) . "-agent-" . $globalCounter;
-                        
-                        $newAgent = User::create([
-                            'email' => "{$slug}@{$domain}",
-                            'company_id' => $companyId,
-                            'department_id' => $deptObj->department_id,
-                            'role_id' => $roles['User']->role_id,
-                            'full_name' => $name,
-                            'phone_number' => '089' . random_int(100000000, 999999999),
-                            'password' => Hash::make('password'),
-                            'is_agent' => 'yes', 
-                        ]);
-                        
-                        $users->push($newAgent);
-                        $agents->push($newAgent);
-                        $globalCounter++;
-                    }
-
-                    // 5 Normal Users per Department
-                    for ($j = 1; $j <= 5; $j++) {
-                        $name = Arr::random($firstNames) . ' ' . Arr::random($lastNames);
-                        $slug = Str::slug($name) . "-user-" . $globalCounter;
-
-                        $newUser = User::create([
-                            'email' => "{$slug}@{$domain}",
-                            'company_id' => $companyId,
-                            'department_id' => $deptObj->department_id,
-                            'role_id' => $roles['User']->role_id,
-                            'full_name' => $name,
-                            'phone_number' => '085' . random_int(100000000, 999999999),
-                            'password' => Hash::make('password'),
-                            'is_agent' => 'no', 
-                        ]);
-
-                        $users->push($newUser);
-                        $globalCounter++;
-                    }
-                }
-                echo "  ✅ Seeded General Users and Agents ({$users->count()} total users)\n";
-
-                // === PIVOT user_departments ===
-                $allDeptIds = collect($depts)->pluck('department_id');
-                foreach ($admins as $user) {
-                    // Skip 50% of admins to keep it semi-realistic
-                    if (rand(1, 100) <= 50) continue; 
-
-                    $primaryDeptId = $user->department_id;
-                    $secondaryDeptIds = $allDeptIds
-                        ->reject(fn ($id) => $id === $primaryDeptId)
-                        ->shuffle()
-                        ->take(rand(1, 2));
-
-                    foreach ($secondaryDeptIds as $deptId) {
-                        DB::table('user_departments')->insertOrIgnore([
-                            'user_id'       => $user->user_id,
-                            'department_id' => $deptId,
-                        ]);
-                    }
-                }
-                echo "  ✅ Setup Admin secondary departments\n";
+                echo "  ✅ Seeded core users\n";
 
                 // Memanggil fungsi untuk data aset dan aktivitas spesifik perusahaan
-                $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, $admins, $users, $agents, $receptionist, $now);
+                $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now);
             }
         });
     }
@@ -308,50 +220,66 @@ class SingleCompanySeeder extends Seeder
         echo "  ✅ Seeded Announcements, Information, and Guestbooks\n";
 
         // ===== VEHICLE BOOKINGS =====
+        // The 4 vehicles are: index 0 & 1 = "clean" (never late_return),
+        // index 2 & 3 = "overdue" (may have late_return bookings).
         if ($vehicles->isNotEmpty()) {
+            $cleanVehicleIds  = $vehicles->take(2)->pluck('vehicle_id')->toArray();
+            $overdueVehicleIds = $vehicles->slice(2)->pluck('vehicle_id')->toArray();
+
+            // Statuses allowed for clean vehicles (no late_return)
+            $cleanStatuses   = ['pending', 'approved', 'on_progress', 'returned', 'completed', 'rejected'];
+            // Statuses for overdue vehicles (late_return included)
+            $overdueStatuses = ['pending', 'approved', 'on_progress', 'returned', 'completed', 'rejected', 'late_return'];
+
             foreach (range(1, 80) as $i) {
-                $user = $users->random();
+                $user    = $users->random();
                 $vehicle = $vehicles->random();
-                $start = $now->copy()->subDays(rand(0, $daysBack))->hour(rand(8,14));
-                $end = $start->copy()->addHours(rand(2,6));
+                $start   = $now->copy()->subDays(rand(0, $daysBack))->hour(rand(8,14));
+                $end     = $start->copy()->addHours(rand(2,6));
 
                 $purposeType = Arr::random(['dinas', 'operasional', 'antar_jemput', 'lainnya']);
-                $status = Arr::random(['pending', 'approved', 'on_progress', 'returned', 'completed', 'rejected', 'cancelled']);
-                
+
+                // Pick status pool based on whether this vehicle is "clean"
+                if (in_array($vehicle->vehicle_id, $cleanVehicleIds)) {
+                    $status = Arr::random($cleanStatuses);
+                } else {
+                    $status = Arr::random($overdueStatuses);
+                }
+
                 $booking = VehicleBooking::create([
-                    'vehicle_id' => $vehicle->vehicle_id,
-                    'company_id' => $companyId,
-                    'department_id' => $user->department_id,
-                    'user_id' => $user->user_id,
-                    'borrower_name' => $user->full_name,
-                    'start_at' => $start,
-                    'end_at' => $end,
-                    'purpose' => "Keperluan " . ucfirst($purposeType) . " #{$i}",
+                    'vehicle_id'   => $vehicle->vehicle_id,
+                    'company_id'   => $companyId,
+                    'department_id'=> $user->department_id,
+                    'user_id'      => $user->user_id,
+                    'borrower_name'=> $user->full_name,
+                    'start_at'     => $start,
+                    'end_at'       => $end,
+                    'purpose'      => "Keperluan " . ucfirst($purposeType) . " #{$i}",
                     'purpose_type' => $purposeType,
-                    'destination' => Arr::random(['Bogor','Jakarta','Bali','Purwodadi']),
-                    'odd_even_area' => Arr::random(['tidak', 'ganjil', 'genap']),
-                    'status' => $status,
+                    'destination'  => Arr::random(['Bogor','Jakarta','Bali','Purwodadi']),
+                    'odd_even_area'=> Arr::random(['tidak', 'ganjil', 'genap']),
+                    'status'       => $status,
                     'terms_agreed' => 1,
-                    'created_at' => $start,
-                    'updated_at' => $start,
+                    'created_at'   => $start,
+                    'updated_at'   => $start,
                 ]);
 
-                if (in_array($status, ['on_progress', 'returned', 'completed'])) {
+                if (in_array($status, ['on_progress', 'returned', 'completed', 'late_return'])) {
                     VehicleBookingPhoto::create([
                         'vehiclebooking_id' => $booking->vehiclebooking_id,
-                        'user_id' => $user->user_id,
-                        'photo_type' => 'before',
-                        'photo_path' => 'vehicle_photos/demo_sample_before_' . $i . '.jpg',
-                        'created_at' => $start,
+                        'user_id'           => $user->user_id,
+                        'photo_type'        => 'before',
+                        'photo_path'        => 'vehicle_photos/demo_sample_before_' . $i . '.jpg',
+                        'created_at'        => $start,
                     ]);
                 }
-                if ($status == 'completed') {
+                if ($status === 'completed') {
                     VehicleBookingPhoto::create([
                         'vehiclebooking_id' => $booking->vehiclebooking_id,
-                        'user_id' => $user->user_id,
-                        'photo_type' => 'after',
-                        'photo_path' => 'vehicle_photos/demo_sample_after_' . $i . '.jpg',
-                        'created_at' => $end,
+                        'user_id'           => $user->user_id,
+                        'photo_type'        => 'after',
+                        'photo_path'        => 'vehicle_photos/demo_sample_after_' . $i . '.jpg',
+                        'created_at'        => $end,
                     ]);
                 }
             }

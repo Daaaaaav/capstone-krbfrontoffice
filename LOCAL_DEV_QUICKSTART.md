@@ -1,4 +1,4 @@
-# Local Development - Quick Start
+﻿# Local Development - Quick Start
 
 Get the KRB System running locally in 5 minutes.
 
@@ -175,8 +175,8 @@ Should return:
 
 ## Default Login
 
-**Superadmin:**
-- Email: `superadmin@krbogor.id`
+**Manager:**
+- Email: `manager@krbogor.id`
 - Password: `superpassword`
 
 **Receptionist:**

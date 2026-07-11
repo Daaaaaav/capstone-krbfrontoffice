@@ -7,43 +7,33 @@
     $btn   = 'px-4 py-2 text-xs font-medium rounded-lg text-white focus:outline-none focus:ring-2 transition shadow-sm';
 @endphp
 
-<div class="min-h-screen bg-gray-50" wire:poll.2s="tick">
+<div class="min-h-screen bg-background" wire:poll.2s="tick">
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HERO --}}
-        <header class="rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center border border-[#CDDEA7]/20 shrink-0">
-                    <svg class="w-5 h-5 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M12 11c0 1.104.896 2 2 2h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.room_approval_title') }}"
+            subtitle="{{ __('app.room_approval_sub') }}">
+            <x-slot:actions>
+                <div class="flex items-center gap-1 bg-secondary p-1 rounded-lg border border-border">
+                    <button type="button"
+                            wire:click="setViewMode('card')"
+                            class="p-1.5 rounded-md transition-all {{ $viewMode === 'card' ? 'bg-background text-foreground shadow-sm border border-border/40' : 'text-muted-foreground hover:text-foreground' }}"
+                            title="Card View">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                    </button>
+                    <button type="button"
+                            wire:click="setViewMode('table')"
+                            class="p-1.5 rounded-md transition-all {{ $viewMode === 'table' ? 'bg-background text-foreground shadow-sm border border-border/40' : 'text-muted-foreground hover:text-foreground' }}"
+                            title="Table View">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </button>
                 </div>
-                <div>
-                    <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.room_approval_title') }}</h2>
-                    <p class="text-sm text-[#CDDEA7]/80">{{ __('app.room_approval_sub') }}</p>
-                </div>
-            </div>
-
-            {{-- VIEW TOGGLER --}}
-            <div class="flex items-center gap-1 bg-white/10 p-1 rounded-lg shrink-0 border border-white/20 self-start sm:self-auto">
-                <button type="button" 
-                        wire:click="setViewMode('card')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'card' ? 'bg-[#CDDEA7] text-[#4A2F24] shadow-sm' : 'text-[#CDDEA7]/70 hover:text-[#CDDEA7]' }}"
-                        title="Card View">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                </button>
-                <button type="button" 
-                        wire:click="setViewMode('table')" 
-                        class="p-1.5 rounded-md transition-all {{ $viewMode === 'table' ? 'bg-[#CDDEA7] text-[#4A2F24] shadow-sm' : 'text-[#CDDEA7]/70 hover:text-[#CDDEA7]' }}"
-                        title="Table View">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                </button>
-            </div>
-        </header>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- PENDING --}}
         <section class="{{ $card }}">
@@ -63,7 +53,7 @@
                         @forelse ($pending as $m)
                             @php $id = $m['id']; @endphp
                             <div wire:key="p-{{ $id }}"
-                                 class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition">
+                                 class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
                                 
                                 <div class="flex items-start gap-4">
                                     {{-- 1. Avatar/Initial --}}
@@ -80,8 +70,8 @@
                                             <div class="flex-shrink-0 flex items-center gap-2">
                                                 {{-- ID Chip --}}
                                                 <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-300 text-gray-700 bg-gray-50 flex-shrink-0 font-mono">
-                                                    #{{ $id }}
-                                                </span>
+                                                        {{ $loop->iteration }}
+                                                    </span>
                                             </div>
                                         </div>
                                         
@@ -137,6 +127,7 @@
                 @else
                     {{-- Premium Table Layout --}}
                     <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50/70">
@@ -146,27 +137,31 @@
                                     <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                     <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                     <th class="px-6 py-3.5">{{ __('app.participants') }}</th>
-                                    <th class="px-6 py-3.5 text-right">Status</th>
+                                    <th class="px-6 py-3.5">Status</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 @forelse ($pending as $m)
                                     @php $id = $m['id']; @endphp
                                     <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                        <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $id }}</td>
-                                        <td class="px-6 py-4 font-semibold text-gray-900">{{ $m['meeting_title'] }}</td>
-                                        <td class="px-6 py-4">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700">
-                                                {{ $m['room'] }}
-                                            </span>
+                                        <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
+                                        <td class="h-12 px-6 py-4 font-semibold text-gray-900">{{ $m['meeting_title'] }}</td>
+                                        <td class="h-12 px-6 py-0 ">
+                                            <div class="flex justify-end">
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700">
+                                                    {{ $m['room'] }}
+                                                </span>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-4 font-medium">{{ $m['date'] }}</td>
-                                        <td class="px-6 py-4 font-mono text-xs">{{ $m['time'] }}–{{ $m['time_end'] }}</td>
-                                        <td class="px-6 py-4 font-medium text-gray-800">{{ $m['participants'] }}</td>
-                                        <td class="px-6 py-4 text-right">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20">
-                                                {{ __('app.pending') }}
-                                            </span>
+                                        <td class="h-12 px-6 py-4 font-medium">{{ $m['date'] }}</td>
+                                        <td class="h-12 px-6 py-4 font-mono text-xs">{{ $m['time'] }}–{{ $m['time_end'] }}</td>
+                                        <td class="h-12 px-6 py-4 font-medium text-gray-800">{{ $m['participants'] }}</td>
+                                        <td class="h-12 px-6 py-4">
+                                            <div class="flex justify-end">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                                    {{ __('app.pending') }}
+                                                </span>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -205,7 +200,7 @@
                         @forelse ($ongoing as $m)
                             @php $id = $m['id']; @endphp
                             <div wire:key="o-{{ $id }}"
-                                 class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition">
+                                 class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
                                 
                                 <div class="flex items-start gap-4">
                                     {{-- 1. Avatar/Initial --}}
@@ -222,8 +217,8 @@
                                             <div class="flex-shrink-0 flex items-center gap-2">
                                                 {{-- ID Chip --}}
                                                 <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-300 text-gray-700 bg-gray-50 flex-shrink-0 font-mono">
-                                                    #{{ $id }}
-                                                </span>
+                                                        {{ $loop->iteration }}
+                                                    </span>
                                             </div>
                                         </div>
                                         
@@ -270,6 +265,7 @@
                 @else
                     {{-- Premium Table Layout --}}
                     <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-gray-50/70">
@@ -285,16 +281,18 @@
                                 @forelse ($ongoing as $m)
                                     @php $id = $m['id']; @endphp
                                     <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                        <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $id }}</td>
-                                        <td class="px-6 py-4 font-semibold text-gray-900">{{ $m['meeting_title'] }}</td>
-                                        <td class="px-6 py-4">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700">
-                                                {{ $m['room'] }}
-                                            </span>
+                                        <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
+                                        <td class="h-12 px-6 py-4 font-semibold text-gray-900">{{ $m['meeting_title'] }}</td>
+                                        <td class="h-12 px-6 py-0 ">
+                                            <div class="flex justify-end">
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-semibold text-gray-700">
+                                                    {{ $m['room'] }}
+                                                </span>
+                                            </div>
                                         </td>
-                                        <td class="px-6 py-4 font-medium">{{ $m['date'] }}</td>
-                                        <td class="px-6 py-4 font-mono text-xs">{{ $m['time'] }}–{{ $m['time_end'] }}</td>
-                                        <td class="px-6 py-4 font-medium text-gray-800">{{ $m['participants'] }}</td>
+                                        <td class="h-12 px-6 py-4 font-medium">{{ $m['date'] }}</td>
+                                        <td class="h-12 px-6 py-4 font-mono text-xs">{{ $m['time'] }}–{{ $m['time_end'] }}</td>
+                                        <td class="h-12 px-6 py-4 font-medium text-gray-800">{{ $m['participants'] }}</td>
                                     </tr>
                                 @empty
                                     <tr>

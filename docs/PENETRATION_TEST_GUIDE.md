@@ -1,4 +1,4 @@
-# SQL Injection Penetration Testing Guide
+﻿# SQL Injection Penetration Testing Guide
 
 ## Purpose
 This document provides authorized test cases to verify Wazuh monitoring effectiveness in detecting and logging SQL injection attempts against the KRB System.
@@ -183,7 +183,7 @@ Look for entries like:
    - **Time range**: Last 15 minutes
 
 ### 3. Check AI Security Reports Page
-1. Login as superadmin
+1. Login as manager
 2. Navigate to **AI Security Reports** page
 3. Verify alerts appear in the dashboard
 4. Check severity filtering works correctly

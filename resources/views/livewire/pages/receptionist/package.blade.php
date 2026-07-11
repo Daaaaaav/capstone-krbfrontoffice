@@ -25,26 +25,11 @@
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
 
-    <div class="px-4 sm:px-6 py-6 space-y-6">
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                        <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8M4 6h16v12H4z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.on_going_packages') }}</h2>
-                        <p class="text-xs text-[#CDDEA7]/80">{{ __('app.complete_package_data') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <main class="px-4 sm:px-6 py-6 space-y-6">
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.on_going_packages') }}"
+            subtitle="{{ __('app.complete_package_data') }}" />
 
         {{-- FORM TAMBAH/EDIT --}}
         <div class="{{ $card }}">
@@ -66,18 +51,92 @@
                         @error('form.package_name') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
+                    <div class="flex flex-col justify-end">
                         <label class="{{ $label }}">{{ __('app.storage') }}</label>
-                        <div class="relative">
-                            <select wire:model.defer="form.penyimpanan" class="{{ $input }} appearance-none pr-8">
-                                <option value="">-</option>
-                                <option value="1">Rak 1</option>
-                                <option value="2">Rak 2</option>
-                                <option value="3">Rak 3</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: $wire.entangle('form.penyimpanan'),
+                                options: [
+                                    { id: '1', label: 'Rak 1' },
+                                    { id: '2', label: 'Rak 2' },
+                                    { id: '3', label: 'Rak 3' }
+                                ],
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.selectedId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.selectedId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.selectedId = '';
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('selectedId', val => {
+                                    search = selectedLabel;
+                                });
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    x-model="search"
+                                    @focus="open = true"
+                                    @input="open = true"
+                                    @keydown.escape="open = false"
+                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                    autocomplete="off"
+                                    placeholder="-"
+                                    class="{{ $input }} pr-8"
+                                >
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button
+                                        x-show="search"
+                                        type="button"
+                                        @click.stop="clear()"
+                                        class="text-muted-foreground hover:text-foreground"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
+                            <ul
+                                x-show="open && items.length > 0"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm"
+                                style="display:none"
+                            >
+                                <template x-for="item in items" :key="item.id">
+                                    <li
+                                        @click="select(item.id, item.label)"
+                                        :class="selectedId == item.id
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-foreground hover:bg-muted cursor-pointer'"
+                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                        x-text="item.label"
+                                    ></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">
+                                {{ __('app.no_data') }}
+                            </p>
                         </div>
                         @error('form.penyimpanan') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                     </div>
@@ -161,10 +220,10 @@
                                 </span>
                             </button>
 
-                            <button wire:click="delete({{ $r->delivery_id }})" onclick="return confirm('{{ __('app.delete_package_confirm') }}')"
-                                    wire:loading.attr="disabled" wire:target="delete({{ $r->delivery_id }})" class="{{ $btnRed }}">
-                                <span wire:loading.remove wire:target="delete({{ $r->delivery_id }})">{{ __('app.delete') }}</span>
-                                <span wire:loading wire:target="delete({{ $r->delivery_id }})">{{ __('app.deleting_label') }}</span>
+                            <button wire:click="confirmDelete({{ $r->delivery_id }}, '{{ str_replace('\'', '', $r->package_name ?? '') }}')"
+                                    wire:loading.attr="disabled"
+                                    class="{{ $btnRed }}">
+                                <span>{{ __('app.delete') }}</span>
                             </button>
                         </div>
                     </div>
@@ -173,7 +232,7 @@
                 @endforelse
             </div>
 
-            <div class="px-6 py-4 bg-muted/10 border-t border-border flex justify-end">
+            <div class="px-6 py-4 bg-muted/10 border-t border-border w-full">
                 {{ $ongoing->onEachSide(1)->links() }}
             </div>
         </div>
@@ -264,10 +323,10 @@
                                         </span>
                                     </button>
 
-                                    <button wire:click="delete({{ $e->delivery_id }})" onclick="return confirm('{{ __('app.delete_package_confirm') }}')"
-                                            wire:loading.attr="disabled" wire:target="delete({{ $e->delivery_id }})" class="{{ $btnRed }}">
-                                        <span wire:loading.remove wire:target="delete({{ $e->delivery_id }})">{{ __('app.delete') }}</span>
-                                        <span wire:loading wire:target="delete({{ $e->delivery_id }})">{{ __('app.deleting_label') }}</span>
+                                    <button wire:click="confirmDelete({{ $e->delivery_id }}, '{{ str_replace('\'', '', $e->package_name ?? '') }}')"
+                                            wire:loading.attr="disabled"
+                                            class="{{ $btnRed }}">
+                                        <span>{{ __('app.delete') }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -278,9 +337,50 @@
                 @endforelse
             </div>
 
-            <div class="px-6 py-4 bg-muted/10 border-t border-border flex justify-end">
+            <div class="px-6 py-4 bg-muted/10 border-t border-border w-full">
                 {{ $done->onEachSide(1)->links() }}
             </div>
         </div>
     </div>
+
+    {{-- DELETE MODAL --}}
+    @if($showDeleteModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
+            <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">
+                        {{ $isForceDelete ? __(`app.delete_permanent_confirm`) : __(`app.delete_package_confirm`) }}
+                    </h3>
+                    <p class="text-sm text-gray-500">{{ __('app.are_you_sure_delete') }}</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                        {{ $deletingSummary }}
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                    <button type="button" wire:click="$set('showDeleteModal', false)"
+                        class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        {{ __('app.cancel') }}
+                    </button>
+                    <button type="button" wire:click="executeDelete" wire:loading.attr="disabled"
+                        class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="executeDelete">{{ __('app.delete') }}</span>
+                        <span wire:loading wire:target="executeDelete" class="flex items-center gap-1.5">
+                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                            {{ __('app.delete') }}...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

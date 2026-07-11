@@ -1,4 +1,4 @@
-# AI Data Preprocessing Guide
+﻿# AI Data Preprocessing Guide
 
 ## Overview
 
@@ -242,7 +242,7 @@ if ($visitor->jam_in && $visitor->jam_out) {
 ### Example: AI Security Reports
 
 ```php
-// app/Livewire/Pages/Superadmin/AISecurityReports.php
+// app/Livewire/Pages/Manager/AISecurityReports.php
 
 use App\Services\AI\PredictionService;
 
@@ -265,7 +265,7 @@ public function render()
         ];
     }
     
-    return view('livewire.pages.superadmin.a-i-security-reports', [
+    return view('livewire.pages.manager.a-i-security-reports', [
         'alerts' => $alerts,
     ]);
 }

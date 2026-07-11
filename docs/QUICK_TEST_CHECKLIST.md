@@ -1,4 +1,4 @@
-# Quick SQL Injection Testing Checklist
+﻿# Quick SQL Injection Testing Checklist
 
 ## 🎯 Quick Start (5 minutes)
 
@@ -178,7 +178,7 @@ Your security monitoring is working correctly if:
    ↓
 10. AISecurityReports page fetches alerts via WazuhAlertService
    ↓
-11. Superadmin sees the attack attempt
+11. Manager sees the attack attempt
 ```
 
 ### Why test this?

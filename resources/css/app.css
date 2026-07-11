@@ -6,33 +6,52 @@
 @source '..//*.js';
 
 :root {
-    --background: oklch(0.985 0.008 145);       /* Warm champagne cream/linen background */
-    --foreground: oklch(0.22 0.04 180);         /* Velvet spruce indigo dark text */
-    --card: oklch(0.995 0.005 145);             /* Pure milky sage white card background */
+    --background: oklch(0.985 0.008 145);
+    /* Warm champagne cream/linen background */
+    --foreground: oklch(0.22 0.04 180);
+    /* Velvet spruce indigo dark text */
+    --card: oklch(0.995 0.005 145);
+    /* Pure milky sage white card background */
     --card-foreground: oklch(0.22 0.04 180);
     --popover: oklch(0.995 0.005 145);
     --popover-foreground: oklch(0.22 0.04 180);
-    --primary: oklch(0.42 0.065 165);           /* Premium Eucalyptus Mint green */
-    --primary-foreground: oklch(0.99 0.005 140);/* Crispy cream white */
-    --secondary: oklch(0.95 0.015 145);         /* Soft sage */
+    --primary: oklch(0.42 0.065 165);
+    /* Premium Eucalyptus Mint green */
+    --primary-foreground: oklch(0.99 0.005 140);
+    /* Crispy cream white */
+    --secondary: oklch(0.95 0.015 145);
+    /* Soft sage */
     --secondary-foreground: oklch(0.22 0.04 180);
     --muted: oklch(0.96 0.015 145);
-    --muted-foreground: oklch(0.52 0.06 145);   /* Sage green midtone */
-    --accent: oklch(0.76 0.08 55);              /* Curated Terracotta Rose gold */
+    --muted-foreground: oklch(0.52 0.06 145);
+    /* Sage green midtone */
+    --accent: oklch(0.76 0.08 55);
+    /* Curated Terracotta Rose gold */
     --accent-foreground: oklch(0.22 0.04 180);
-    --destructive: oklch(0.55 0.18 28);          /* Elegant dark red */
-    --border: oklch(0.92 0.02 145);             /* Soft sage border */
+    --destructive: oklch(0.55 0.18 28);
+    /* Elegant dark red */
+    --success: #4E653D;
+    /* Forest green — matches Approved badge */
+    --border: oklch(0.92 0.02 145);
+    /* Soft sage border */
     --input: oklch(0.92 0.02 145);
     --ring: oklch(0.42 0.065 165);
-    --radius: 1rem;                             /* Curvaceous organic rounding */
+    --radius: 1rem;
+    /* Curvaceous organic rounding */
     --sbw: 16rem;
 
-    --sidebar: #4E653D;                         /* Warm forest green background */
-    --sidebar-foreground: #D7C9B8;              /* Warm cream/sand text color */
-    --sidebar-primary: #CDDEA7;                 /* Active green text color */
-    --sidebar-accent: #4A2F24;                  /* Active state reddish-brown background */
-    --sidebar-accent-foreground: #CDDEA7;       /* Active state green text */
-    --sidebar-border: #354C2B;                  /* Soft dark green border */
+    --sidebar: #4E653D;
+    /* Warm forest green background */
+    --sidebar-foreground: #D7C9B8;
+    /* Warm cream/sand text color */
+    --sidebar-primary: #CDDEA7;
+    /* Active green text color */
+    --sidebar-accent: #4A2F24;
+    /* Active state reddish-brown background */
+    --sidebar-accent-foreground: #CDDEA7;
+    /* Active state green text */
+    --sidebar-border: #354C2B;
+    /* Soft dark green border */
 
     --chart-1: oklch(0.42 0.065 165);
     --chart-2: oklch(0.76 0.08 55);
@@ -57,6 +76,7 @@
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
+    --color-success: var(--success);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -106,27 +126,31 @@
 }
 
 @layer base {
-    * { 
-        @apply border-border outline-ring/50 transition-colors duration-200; 
+    * {
+        @apply border-border outline-ring/50 transition-colors duration-200;
     }
-    body { 
-        @apply bg-background text-foreground font-sans selection:bg-primary/20 selection:text-primary; 
+
+    body {
+        @apply bg-background text-foreground font-sans selection:bg-primary/20 selection:text-primary;
         background-image: radial-gradient(at 0% 0%, oklch(0.96 0.015 145) 0px, transparent 50%), radial-gradient(at 100% 100%, oklch(0.97 0.01 145) 0px, transparent 50%);
         background-attachment: fixed;
     }
-    
+
     /* Modern sleek organic scrollbar */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
     }
+
     ::-webkit-scrollbar-track {
         background: var(--background);
     }
+
     ::-webkit-scrollbar-thumb {
         background: oklch(0.84 0.035 145);
         border-radius: 9999px;
     }
+
     ::-webkit-scrollbar-thumb:hover {
         background: oklch(0.68 0.05 145);
     }
@@ -143,431 +167,565 @@
     backdrop-filter: blur(12px) saturate(110%);
 }
 
-/* Elegant entrance animation */
+/* Elegant entrance animation
+   NOTE: Do NOT use `transform` here — it creates a new containing block
+   that breaks `position: fixed` on all descendant modals (CSS spec). */
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(12px);
     }
+
     to {
         opacity: 1;
-        transform: translateY(0);
     }
 }
 
 .animate-fade-in-up {
-    animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeInUp 0.4s ease-out forwards;
 }
+
+
 
 /* ==========================================================================
-   PREMIUM CUSTOM SIDEBAR THEME
-   - Background: #4E653D (Forest Green)
-   - Default Text color: #D7C9B8 (Warm Cream/Sand)
-   - Active/Clicked Item Background: #4A2F24 (Reddish-Brown)
-   - Active/Clicked Item Text: #354C2B (Green)
-   - Active/Clicked Item Shadow: #354C2B (Dark Green Shadow)
+   UNIFIED EXPANDABLE SIDEBAR
    ========================================================================== */
 
-/* Sidebar Containers & Headers */
-[data-flux-sidebar],
-ui-sidebar,
-aside.bg-sidebar {
-    background-color: #4E653D !important;
-    --sidebar: #4E653D !important;
-    --color-sidebar: #4E653D !important;
-    --sidebar-border: #354C2B !important;
-    border-color: #354C2B !important;
+.sidebar-root {
+    display: contents;
 }
 
-flux-header.bg-sidebar,
-header.bg-sidebar,
-[data-flux-header] {
-    background-color: #4E653D !important;
-    --sidebar: #4E653D !important;
-    --color-sidebar: #4E653D !important;
-    border-color: #354C2B !important;
+.sidebar-logo-img {
+    filter: brightness(0) invert(1);
+    transition: transform 0.3s;
+}
+.sidebar-logo-img:hover {
+    transform: rotate(12deg);
 }
 
-/* Sidebar Default Text & Icon colors */
-[data-flux-sidebar-brand],
-[data-flux-sidebar-brand] *,
-[data-flux-sidebar-search],
-[data-flux-sidebar-search] *,
-[data-flux-sidebar-group] button,
-[data-flux-sidebar-group] span,
-[data-flux-sidebar-group] div,
-[data-flux-sidebar-profile],
-[data-flux-sidebar-profile] *,
-[data-flux-sidebar] button,
-[data-flux-sidebar-item]:not([data-current]),
-[data-flux-sidebar-item]:not([data-current]) * {
-    color: #D7C9B8 !important;
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 45;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
 }
 
-[data-flux-sidebar-item]:not([data-current]) svg,
-[data-flux-sidebar-search] svg,
-[data-flux-sidebar] button svg {
-    color: #D7C9B8 !important;
-    stroke: #D7C9B8 !important;
-    fill: transparent !important;
+.sidebar-unified {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    background: #4E653D;
+    border-right: 1px solid #354C2B;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.1);
 }
 
-/* Sidebar Item Hover State (very soft white overlay) */
-[data-flux-sidebar-item]:hover:not([data-current]) {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    color: #D7C9B8 !important;
+/* States */
+.sidebar-unified.desktop-collapsed {
+    width: 64px;
 }
-[data-flux-sidebar-item]:hover:not([data-current]) * {
-    color: #D7C9B8 !important;
+.sidebar-unified.desktop-hovered {
+    width: 280px;
 }
-[data-flux-sidebar-item]:hover:not([data-current]) svg {
-    stroke: #D7C9B8 !important;
-    fill: transparent !important;
+.sidebar-unified.desktop-locked {
+    width: 280px;
 }
 
-/* Sidebar Active/Clicked Item State */
-[data-flux-sidebar-item][data-current],
-[data-flux-sidebar-item]:active,
-[data-flux-sidebar-item]:focus,
-aside.bg-sidebar a.bg-sidebar-accent {
-    color: #CDDEA7 !important;
-    background-color: #4A2F24 !important;
-    box-shadow: 0 4px 12px 0 rgba(53, 76, 43, 0.6), 0 2px 4px 0 rgba(53, 76, 43, 0.4) !important;
-    border-color: rgba(53, 76, 43, 0.15) !important;
-}
-
-[data-flux-sidebar-item][data-current] *,
-[data-flux-sidebar-item]:active *,
-[data-flux-sidebar-item]:focus * {
-    color: #CDDEA7 !important;
-}
-
-[data-flux-sidebar-item][data-current] svg,
-[data-flux-sidebar-item]:active svg,
-[data-flux-sidebar-item]:focus svg {
-    color: #CDDEA7 !important;
-    stroke: #CDDEA7 !important;
-    fill: transparent !important;
-}
-
-/* ==========================================================================
-   COLLAPSIBLE SIDEBAR OVERRIDES & ANIMATIONS
-   ========================================================================== */
-
-/* On desktop, fix the sidebar so it overlays content — no layout drift */
-@media (min-width: 1024px) {
-    [data-flux-sidebar],
-    ui-sidebar,
-    aside.bg-sidebar {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        height: 100vh !important;
-        z-index: 40 !important;
+@media (max-width: 1023px) {
+    .sidebar-unified.mobile-closed {
+        width: 280px;
+        transform: translateX(-100%);
+    }
+    .sidebar-unified.mobile-open {
+        width: 280px;
+        transform: translateX(0);
     }
 }
 
-/* Smooth transitions for sidebar width only (no main margin animation) */
-aside, 
-[data-flux-sidebar],
-ui-sidebar {
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.sidebar-unified-inner {
+    width: 280px; /* Force inner width to prevent text wrap during animation */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Main content: always offset by the collapsed sidebar width (4.5rem).
-   Use padding-left so mx-auto inside centers relative to the full viewport,
-   giving visually balanced centering on both sides. */
-@media (min-width: 1024px) {
-    main.sidebar-main {
-        padding-left: 4.5rem !important;
-        margin-left: 0 !important;
-        transition: none !important;
-    }
+/* Header */
+.sidebar-unified-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    height: 64px; /* fixed height for header */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
 }
 
-/* Collapsed Sidebar overrides */
-.sidebar-is-collapsed [data-flux-sidebar],
-.sidebar-is-collapsed ui-sidebar {
-    width: var(--sbw) !important;
-    max-width: var(--sbw) !important;
-    overflow-x: hidden !important;
+.sidebar-unified-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    padding: 0.25rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    width: 40px; /* Collapsed state space */
+    overflow: hidden;
 }
-
-/* Hide brand name, show logo only */
-.sidebar-is-collapsed [data-flux-sidebar-brand] > :not(img),
-.sidebar-is-collapsed [data-flux-sidebar-brand] > span:not(:first-child) {
-    display: none !important;
+.sidebar-unified-logo.expanded {
+    width: 100%;
 }
-.sidebar-is-collapsed [data-flux-sidebar-brand] img {
-    margin-right: 0 !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-brand] {
-    justify-content: center !important;
-}
-
-/* Hide search entirely in collapsed mode */
-.sidebar-is-collapsed flux-sidebar-search,
-.sidebar-is-collapsed [data-flux-sidebar-search] {
-    display: none !important;
-}
-
-/* Sidebar Item: Hide text labels, center icon, make compact */
-.sidebar-is-collapsed [data-flux-sidebar-item] > :not(svg):not([data-flux-icon]) {
-    display: none !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-item] {
-    justify-content: center !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    height: 2.75rem !important;
-    width: 2.75rem !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    border-radius: 0.75rem !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-item] svg {
-    margin-right: 0 !important;
-}
-
-/* Sidebar Group Headings: Hide text headings, add a nice divider line */
-.sidebar-is-collapsed [data-flux-sidebar-group] > button,
-.sidebar-is-collapsed [data-flux-sidebar-group] > [role="button"],
-.sidebar-is-collapsed [data-flux-sidebar-group] > h3,
-.sidebar-is-collapsed [data-flux-sidebar-group] > [role="heading"] {
-    display: none !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-group] {
-    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-    padding-top: 0.75rem !important;
-    margin-top: 0.75rem !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-group]:first-of-type {
-    border-top: none !important;
-    padding-top: 0 !important;
-    margin-top: 0 !important;
-}
-
-/* Profile Card: Hide name, center avatar */
-.sidebar-is-collapsed [data-flux-sidebar-profile] > :not(img):not([data-flux-avatar]) {
-    display: none !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-profile] {
-    justify-content: center !important;
-    padding: 0 !important;
-    height: 2.75rem !important;
-    width: 2.75rem !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-}
-.sidebar-is-collapsed [data-flux-sidebar-profile] [data-flux-avatar] {
-    margin-right: 0 !important;
-}
-
-/* ==========================================================================
-   COLLAPSIBLE SIDEBAR ULTRA-PREMIUM DOCK CUSTOM STYLES
-   ========================================================================== */
-
-/* Collapsed view container animation */
-.sidebar-collapsed-container {
-    animation: fadeInCollSide 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    pointer-events: auto;
-    position: relative;
-    z-index: 10;
-}
-
-@keyframes fadeInCollSide {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Collapsed Sidebar Item */
-.sidebar-collapsed-item {
-    position: relative;
+.logo-icon-wrapper {
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.75rem;
-    color: #D7C9B8;
-    background-color: transparent;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid transparent;
+    flex-shrink: 0;
+}
+.logo-text {
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    transition: opacity 0.3s, width 0.3s;
+}
+
+.sidebar-unified-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    transition: opacity 0.3s;
+}
+.sidebar-pin-btn, .sidebar-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+    border: none;
     cursor: pointer;
+    transition: all 0.2s;
+}
+.sidebar-pin-btn:hover, .sidebar-close-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+.sidebar-pin-btn.pinned {
+    color: #CDDEA7;
+    background: rgba(205, 222, 167, 0.15);
+}
+
+/* Search */
+.sidebar-unified-search {
+    padding: 0.75rem;
+    flex-shrink: 0;
+    transition: opacity 0.3s;
+}
+.sidebar-search-input {
+    height: 2.25rem;
+    padding-left: 2.25rem;
+    padding-right: 0.75rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: white;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: all 0.2s;
+}
+.sidebar-search-input:focus {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(205, 222, 167, 0.3);
+}
+.sidebar-search-input::placeholder {
+    color: rgba(255,255,255,0.4);
+}
+
+/* Navigation */
+.sidebar-unified-nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    min-height: 0; /* Enable proper flex shrinking */
+}
+.sidebar-unified-nav::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar-unified-nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+/* Items */
+.sidebar-unified-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 2.25rem;
+    padding: 0 0.5rem;
+    border-radius: 0.625rem;
+    color: #D7C9B8;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    width: 48px; /* Collapsed width */
+}
+.sidebar-unified-item.expanded {
+    width: 100%;
+}
+.sidebar-unified-item:hover {
+    color: white;
+    background: rgba(255,255,255,0.08);
+}
+.sidebar-unified-item.active {
+    color: #CDDEA7;
+    background: #4A2F24;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(53, 76, 43, 0.4);
+}
+.item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+.sidebar-unified-item:hover .item-icon {
+    transform: scale(1.05);
+}
+.item-label {
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    font-size: 0.8125rem;
+}
+.sidebar-unified-item.expanded .item-label {
+    opacity: 1;
     pointer-events: auto;
-    z-index: 10;
 }
-
-.sidebar-collapsed-item:hover {
-    color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.05);
-    transform: scale(1.06);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.sidebar-collapsed-item.active {
-    color: #CDDEA7 !important;
-    background-color: #4A2F24 !important;
-    border-color: rgba(53, 76, 43, 0.2) !important;
-    box-shadow: 0 4px 12px rgba(53, 76, 43, 0.6), 0 2px 4px rgba(53, 76, 43, 0.4) !important;
-}
-
-/* Active dot indicator on the left side */
-.active-dot-indicator {
+.active-pip {
     position: absolute;
-    left: -0.35rem;
+    left: -0.2rem;
     top: 50%;
     transform: translateY(-50%);
-    width: 0.25rem;
-    height: 0.8rem;
-    background-color: #CDDEA7;
-    border-radius: 9999px;
-    box-shadow: 0 0 8px #CDDEA7;
-    transition: all 0.3s ease;
+    width: 4px;
+    height: 16px;
+    background: #CDDEA7;
+    border-radius: 4px;
+    box-shadow: 0 0 8px rgba(205,222,167,0.6);
 }
 
-/* Tooltip implementation */
-.sidebar-tooltip {
-    pointer-events: none;
+/* Tooltip (only shows when collapsed) */
+.tooltip {
     position: absolute;
-    left: 3.25rem;
-    z-index: 50;
-    white-space: nowrap;
-    border-radius: 0.5rem;
+    left: 4.5rem;
+    top: 50%;
+    transform: translateY(-50%) translateX(-8px);
+    background: #4A2F24;
+    color: #CDDEA7;
     padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #CDDEA7;
-    background-color: #4A2F24;
-    border: 1px solid #354C2B;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    pointer-events: none;
     opacity: 0;
-    transform: scale(0.95) translateX(-8px);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border: 1px solid #354C2B;
+    transition: all 0.2s;
 }
-
-.sidebar-collapsed-item:hover .sidebar-tooltip {
+.sidebar-unified.desktop-collapsed .sidebar-unified-item:hover .tooltip,
+.sidebar-unified.desktop-collapsed .sidebar-unified-user-card:hover .tooltip {
     opacity: 1;
-    transform: scale(1) translateX(0);
+    transform: translateY(-50%) translateX(0);
 }
 
-/* Soft separators */
-.sidebar-collapsed-divider {
-    height: 1px;
-    background-image: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.08), transparent);
-    width: 80%;
-    margin: 0.25rem auto;
+/* Groups */
+.sidebar-unified-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.25rem;
 }
+.sidebar-unified-group + .sidebar-unified-group {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 0.25rem;
+    margin-top: 0.125rem;
+}
+.group-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 48px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+    overflow: hidden;
+}
+.group-heading.expanded {
+    width: 100%;
+}
+.group-heading:hover {
+    color: rgba(255,255,255,0.7);
+    background: rgba(255,255,255,0.04);
+}
+.group-label {
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.group-heading.expanded .group-label {
+    opacity: 1;
+}
+.group-chevron {
+    width: 1rem;
+    height: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.2s;
+    flex-shrink: 0;
+}
+.group-heading.expanded .group-chevron {
+    opacity: 1;
+}
+.group-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin-top: 0.125rem;
+}
+
+/* Footer & User Card */
+.sidebar-unified-footer {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+.sidebar-unified-user-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 3rem;
+    padding: 0 0.5rem;
+    border-radius: 0.75rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 48px;
+    text-align: left;
+}
+.sidebar-unified-user-card.expanded {
+    width: 100%;
+}
+.sidebar-unified-user-card:hover {
+    background: rgba(255,255,255,0.08);
+}
+.user-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-weight: 700;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.user-info {
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.3s;
+    min-width: 0;
+    flex: 1;
+}
+.sidebar-unified-user-card.expanded .user-info {
+    opacity: 1;
+}
+.user-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.user-role {
+    font-size: 0.6875rem;
+    color: rgba(255,255,255,0.4);
+}
+.user-chevron {
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.sidebar-unified-user-card.expanded .user-chevron {
+    opacity: 1;
+}
+
+.sidebar-profile-popover {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 0.5rem;
+    width: 200px;
+    background: #2a1f1a;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    z-index: 100;
+}
+.sidebar-profile-popover:not(.expanded) {
+    left: 4rem; /* Place next to avatar if collapsed */
+    bottom: 0;
+    margin-bottom: 0;
+}
+
 
 /* ==========================================================================
-   MOBILE SIDEBAR RESPONSIVE OVERRIDES (below lg / 1024px)
-   Ensures all text labels, nav items, and group headings are fully visible
-   inside the Flux mobile drawer overlay, even when sidebarCollapsed = true
+   RESPONSIVE SIDEBAR - Height-based Media Queries
    ========================================================================== */
 
-@media (max-width: 1023px) {
-    /* Always show nav item text labels on mobile */
-    .sidebar-is-collapsed [data-flux-sidebar-item] > :not(svg):not([data-flux-icon]) {
-        display: revert !important;
+@media (max-height: 800px) {
+    .sidebar-unified-nav {
+        gap: 0.0625rem; /* Reduce gap between items */
+        padding: 0.375rem 0.5rem; /* Reduce vertical padding */
     }
-
-    /* Restore item layout to normal on mobile */
-    .sidebar-is-collapsed [data-flux-sidebar-item] {
-        justify-content: flex-start !important;
-        padding-left: 0.75rem !important;
-        padding-right: 0.75rem !important;
-        height: auto !important;
-        width: auto !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
+    .sidebar-unified-item {
+        height: 2rem; /* Reduce height from 2.25rem */
     }
-
-    /* Restore icon spacing on mobile */
-    .sidebar-is-collapsed [data-flux-sidebar-item] svg {
-        margin-right: 0.5rem !important;
+    .sidebar-unified-group {
+        margin-bottom: 0.125rem; /* Reduce spacing */
     }
-
-    /* Show group headings on mobile */
-    .sidebar-is-collapsed [data-flux-sidebar-group] > button,
-    .sidebar-is-collapsed [data-flux-sidebar-group] > [role="button"],
-    .sidebar-is-collapsed [data-flux-sidebar-group] > h3,
-    .sidebar-is-collapsed [data-flux-sidebar-group] > [role="heading"] {
-        display: flex !important;
+    .group-heading {
+        padding: 0.125rem 0.5rem; /* Reduce padding */
+        font-size: 0.625rem; /* Slightly smaller */
     }
-
-    /* Remove the divider-only group styling on mobile */
-    .sidebar-is-collapsed [data-flux-sidebar-group] {
-        border-top: none !important;
-        padding-top: 0 !important;
-        margin-top: 0 !important;
+    .item-label {
+        font-size: 0.75rem; /* Slightly smaller */
     }
-
-    /* Show brand name on mobile */
-    .sidebar-is-collapsed [data-flux-sidebar-brand] > :not(img),
-    .sidebar-is-collapsed [data-flux-sidebar-brand] > span:not(:first-child) {
-        display: revert !important;
-    }
-    .sidebar-is-collapsed [data-flux-sidebar-brand] {
-        justify-content: flex-start !important;
-    }
-
-    /* Show search bar on mobile */
-    .sidebar-is-collapsed flux-sidebar-search,
-    .sidebar-is-collapsed [data-flux-sidebar-search] {
-        display: revert !important;
-    }
-
-    /* Restore sidebar width on mobile (Flux controls this via its overlay) */
-    .sidebar-is-collapsed [data-flux-sidebar],
-    .sidebar-is-collapsed ui-sidebar {
-        width: auto !important;
-        max-width: none !important;
-        overflow-x: visible !important;
+    .group-items {
+        gap: 0.0625rem; /* Reduce gap */
+        margin-top: 0.0625rem; /* Reduce margin */
     }
 }
 
-
-/* ==========================================================================
-   SMALL SCREEN / MOBILE SIDEBAR ENHANCEMENTS
-   Ensures proper behavior on screens smaller than 640px (phones)
-   ========================================================================== */
-
-/* Ensure the mobile top header bar doesn't overflow */
-@media (max-width: 1023px) {
-    /* Mobile sidebar drawer: cap width to 85vw on small phones */
-    [data-flux-sidebar],
-    ui-sidebar {
-        max-width: 85vw !important;
-        width: 16rem !important;
+@media (max-height: 700px) {
+    .sidebar-unified-header {
+        height: 56px; /* Reduce from 64px */
+        padding: 0.5rem 0.75rem; /* Reduce padding */
     }
-
-    /* Ensure sidebar nav items don't overflow on tiny screens */
-    [data-flux-sidebar-item] {
-        white-space: normal !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
+    .sidebar-unified-nav {
+        gap: 0; /* Remove gap between items */
+        padding: 0.25rem 0.5rem; /* Further reduce padding */
     }
-
-    /* Make the collapsed (icon-only) dock invisible on mobile — Flux handles the overlay */
-    .sidebar-collapsed-container {
-        display: none !important;
+    .sidebar-unified-item {
+        height: 1.875rem; /* Further reduce height */
     }
-
-    /* Ensure the sidebar can scroll on very small phones */
-    [data-flux-sidebar],
-    ui-sidebar {
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        -webkit-overflow-scrolling: touch;
+    .item-icon {
+        width: 1.5rem; /* Smaller icons */
+        height: 1.5rem;
+    }
+    .item-label {
+        font-size: 0.6875rem; /* Smaller text */
+    }
+    .sidebar-unified-group {
+        margin-bottom: 0;
+    }
+    .sidebar-unified-group + .sidebar-unified-group {
+        padding-top: 0.125rem;
+        margin-top: 0;
+    }
+    .group-heading {
+        padding: 0.0625rem 0.5rem;
+        font-size: 0.5625rem;
+    }
+    .sidebar-unified-footer {
+        padding: 0.375rem 0.5rem; /* Reduce footer padding */
+    }
+    .sidebar-unified-user-card {
+        height: 2.5rem; /* Reduce from 3rem */
+    }
+    .user-avatar {
+        width: 1.75rem; /* Smaller avatar */
+        height: 1.75rem;
+        font-size: 0.75rem;
+    }
+    .user-name {
+        font-size: 0.75rem;
+    }
+    .user-role {
+        font-size: 0.625rem;
     }
 }
 
-/* Extra small screens (< 400px) */
-@media (max-width: 399px) {
-    [data-flux-sidebar],
-    ui-sidebar {
-        width: 80vw !important;
-        max-width: 80vw !important;
+@media (max-height: 600px) {
+    .sidebar-unified-header {
+        height: 52px; /* Even smaller header */
+        padding: 0.375rem 0.75rem;
+    }
+    .logo-text {
+        font-size: 0.875rem; /* Smaller logo text */
+    }
+    .sidebar-unified-nav {
+        padding: 0.25rem 0.375rem;
+    }
+    .sidebar-unified-item {
+        height: 1.75rem;
+        padding: 0 0.375rem;
+        gap: 0.5rem;
+    }
+    .item-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+    .item-label {
+        font-size: 0.625rem;
+    }
+    .group-heading {
+        padding: 0 0.375rem;
+        font-size: 0.5rem;
+        height: 1.5rem;
+    }
+    .sidebar-unified-footer {
+        padding: 0.25rem 0.375rem;
+    }
+    .sidebar-unified-user-card {
+        height: 2.25rem;
+        gap: 0.5rem;
+    }
+    .user-avatar {
+        width: 1.5rem;
+        height: 1.5rem;
+        font-size: 0.625rem;
     }
 }

@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50" wire:poll.1000ms.keep-alive>
+<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -39,46 +39,28 @@
     </style>
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <x-heroicon-o-clock class="w-6 h-6 text-[#CDDEA7]"/>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.booking_history_title') }}</h2>
-                            <p class="text-sm text-[#CDDEA7]/80">
-                                {{ __('app.booking_history_subtitle') }}
-                            </p>
-                        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.booking_history_title') }}"
+            subtitle="{{ __('app.booking_history_subtitle') }}">
+            <x-slot:actions>
+                {{-- Show deleted toggle --}}
+                <button type="button" wire:click="$toggle('withTrashed')" class="flex items-center gap-2 group focus:outline-none">
+                    <div class="relative flex items-center">
+                        <div class="w-9 h-5 rounded-full transition-colors {{ $withTrashed ? 'bg-primary' : 'bg-border' }}"></div>
+                        <div class="absolute left-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-transform {{ $withTrashed ? 'translate-x-4' : '' }}"></div>
                     </div>
-
-                    <div class="flex items-center gap-3">
-                        {{-- Show deleted toggle --}}
-                        <label class="inline-flex items-center gap-2 text-sm text-[#CDDEA7]/90">
-                            <input type="checkbox"
-                                   wire:model.live="withTrashed"
-                                   class="rounded border-[#CDDEA7]/30 bg-[#CDDEA7]/10 focus:ring-[#CDDEA7]/40 text-[#CDDEA7]">
-                            <span>{{ __('app.show_deleted') }}</span>
-                        </label>
- 
-                        {{-- MOBILE FILTER BUTTON --}}
-                        <button type="button"
-                                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#CDDEA7]/10 text-xs font-medium border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/20 md:hidden"
-                                wire:click="openFilterModal">
-                            <x-heroicon-o-funnel class="w-4 h-4"/>
-                            <span>{{ __('app.filter') }}</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <span class="text-sm font-medium transition-colors" style="color:#CDDEA7 !important">{{ __('app.show_deleted') }}</span>
+                </button>
+                {{-- MOBILE FILTER BUTTON --}}
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                        @click="showFilterModal = true">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- MAIN LAYOUT --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -148,11 +130,6 @@
                                     <span>{{ __('app.room') }}: {{ $activeRoom['label'] ?? __('app.no_data') }}</span>
                                     <button type="button" class="ml-1 hover:text-white" wire:click="clearRoomFilter">×</button>
                                 </span>
-                            @else
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-dashed border-gray-300">
-                                    <x-heroicon-o-funnel class="w-3.5 h-3.5"/>
-                                    <span>{{ __('app.no_room_filter') }}</span>
-                                </span>
                             @endif
                         </div>
 
@@ -209,13 +186,62 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div class="flex flex-col justify-end">
                             <label class="{{ $label }}">{{ __('app.sort') }}</label>
-                            <select wire:model.live="dateMode" class="{{ $input }}">
-                                <option value="semua">{{ __('app.sort_default') }}</option>
-                                <option value="terbaru">{{ __('app.sort_newest') }}</option>
-                                <option value="terlama">{{ __('app.sort_oldest') }}</option>
-                            </select>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: $wire.entangle('dateMode').live,
+                                    options: [
+                                        { id: 'semua', label: '{{ __('app.sort_default') }}' },
+                                        { id: 'terbaru', label: '{{ __('app.sort_newest') }}' },
+                                        { id: 'terlama', label: '{{ __('app.sort_oldest') }}' }
+                                    ],
+                                    get items() {
+                                        const q = (this.search || '').toLowerCase().trim();
+                                        if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const found = this.options.find(i => i.id == this.selectedId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id, label) {
+                                        this.search = label;
+                                        this.selectedId = id;
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        this.selectedId = 'semua';
+                                    }
+                                }"
+                                x-init="
+                                    search = selectedLabel;
+                                    $watch('selectedId', val => {
+                                        search = selectedLabel;
+                                    });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="{{ __('app.sort') }}" class="{{ $input }} pr-8">
+                                    <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                        <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-600">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                        <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
+                                </div>
+                                <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm" style="display:none">
+                                    <template x-for="item in items" :key="item.id">
+                                        <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-[#4E653D] text-white' : 'text-gray-700 hover:bg-gray-100 cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                    </template>
+                                </ul>
+                                <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">{{ __('app.no_data') }}</p>
+                            </div>
                         </div>
                     </div>
                              {{-- LIST AREA (grid cards, same style as Approval) --}}
@@ -258,7 +284,7 @@
 
                                         {{-- START: MODIFIED HISTORY CARD DESIGN (DONE) --}}
                                         <div wire:key="done-{{ $row->bookingroom_id }}-{{ $stateKey }}"
-                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition">
+                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
                                             
                                             <div class="flex items-start gap-4">
                                                 {{-- 1. Avatar/Initial on the left --}}
@@ -374,9 +400,8 @@
                                                 @if(!$row->deleted_at)
                                                     {{-- DELETE BUTTON --}}
                                                     <button type="button"
-                                                            wire:click="destroy({{ $row->bookingroom_id }})"
+                                                            wire:click="confirmDelete({{ $row->bookingroom_id }}, '{{ str_replace('\'', '', $row->meeting_title ?? '') }}', false)"
                                                             wire:loading.attr="disabled"
-                                                            wire:target="destroy"
                                                             class="px-4 py-2 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-60 transition">
                                                         {{ __('app.delete') }}
                                                     </button>
@@ -407,7 +432,7 @@
                                                 <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.requester') }}</th>
-                                                <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
+                                                <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-100">
@@ -429,27 +454,29 @@
                                                                     ?? null;
                                                 @endphp
                                                 <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                                    <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $row->bookingroom_id }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         <div class="font-semibold text-gray-900">{{ $row->meeting_title ?? '—' }}</div>
                                                         @if($row->deleted_at)
                                                             <span class="inline-flex items-center text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded font-medium mt-1">{{ __('app.deleted') }}</span>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4">
-                                                        @if($isOnline)
-                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase border border-emerald-200">
-                                                                {{ $platform ?? 'ONLINE' }}
-                                                            </span>
-                                                        @else
-                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-semibold uppercase border border-blue-200">
-                                                                {{ $row->room?->room_name ?? 'OFFLINE' }}
-                                                            </span>
-                                                        @endif
+                                                    <td class="h-12 px-6 py-0 ">
+                                                        <div class="flex justify-end">
+                                                            @if($isOnline)
+                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase border border-emerald-200">
+                                                                    {{ $platform ?? 'ONLINE' }}
+                                                                </span>
+                                                            @else
+                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-semibold uppercase border border-blue-200">
+                                                                    {{ $row->room?->room_name ?? 'OFFLINE' }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
                                                     </td>
-                                                    <td class="px-6 py-4 font-medium">{{ fmtDate($row->date) }}</td>
-                                                    <td class="px-6 py-4 font-mono text-xs">{{ fmtTime($row->start_time) }}–{{ fmtTime($row->end_time) }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-medium">{{ fmtDate($row->date) }}</td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs">{{ fmtTime($row->start_time) }}–{{ fmtTime($row->end_time) }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         @if($requesterName)
                                                             <div class="font-semibold text-gray-800">{{ $requesterName }}</div>
                                                         @endif
@@ -457,7 +484,7 @@
                                                             <div class="text-xs text-gray-500">{{ $requesterDept }}</div>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4 text-right">
+                                                    <td class="h-12 px-6 py-4">
                                                         <div class="flex items-center justify-end gap-2">
                                                             <button type="button"
                                                                     wire:click="edit({{ $row->bookingroom_id }})"
@@ -467,8 +494,7 @@
                                                             </button>
                                                             @if(!$row->deleted_at)
                                                                 <button type="button"
-                                                                        wire:click="destroy({{ $row->bookingroom_id }})"
-                                                                        wire:confirm="{{ __(`app.delete_booking_confirm`) }}"
+                                                                        wire:click="confirmDelete({{ $row->bookingroom_id }}, '{{ str_replace('\'', '', $row->meeting_title ?? '') }}', false)"
                                                                         wire:loading.attr="disabled"
                                                                         class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
                                                                     {{ __('app.delete') }}
@@ -532,7 +558,7 @@
 
                                         {{-- START: MODIFIED HISTORY CARD DESIGN (REJECTED) --}}
                                         <div wire:key="rej-{{ $row->bookingroom_id }}-{{ $stateKey }}"
-                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition">
+                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
                                             
                                             <div class="flex items-start gap-4">
                                                 {{-- 1. Avatar/Initial on the left --}}
@@ -648,9 +674,8 @@
                                                 @if(!$row->deleted_at)
                                                     {{-- DELETE BUTTON --}}
                                                     <button type="button"
-                                                            wire:click="destroy({{ $row->bookingroom_id }})"
+                                                            wire:click="confirmDelete({{ $row->bookingroom_id }}, '{{ str_replace('\'', '', $row->meeting_title ?? '') }}', false)"
                                                             wire:loading.attr="disabled"
-                                                            wire:target="destroy"
                                                             class="px-4 py-2 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-60 transition">
                                                         {{ __('app.delete') }}
                                                     </button>
@@ -681,7 +706,7 @@
                                                 <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.reason') }}</th>
-                                                <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
+                                                <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-100">
@@ -696,32 +721,34 @@
                                                                 ?? ($isOnline ? 'Online Meeting' : null);
                                                 @endphp
                                                 <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                                    <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $row->bookingroom_id }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         <div class="font-semibold text-gray-900">{{ $row->meeting_title ?? '—' }}</div>
                                                         @if($row->deleted_at)
                                                             <span class="inline-flex items-center text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded font-medium mt-1">{{ __('app.deleted') }}</span>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4">
-                                                        @if($isOnline)
-                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase border border-emerald-200">
-                                                                {{ $platform ?? 'ONLINE' }}
-                                                            </span>
-                                                        @else
-                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-semibold uppercase border border-blue-200">
-                                                                {{ $row->room?->room_name ?? 'OFFLINE' }}
-                                                            </span>
-                                                        @endif
+                                                    <td class="h-12 px-6 py-0 ">
+                                                        <div class="flex justify-end">
+                                                            @if($isOnline)
+                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase border border-emerald-200">
+                                                                    {{ $platform ?? 'ONLINE' }}
+                                                                </span>
+                                                            @else
+                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-semibold uppercase border border-blue-200">
+                                                                    {{ $row->room?->room_name ?? 'OFFLINE' }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
                                                     </td>
-                                                    <td class="px-6 py-4 font-medium">{{ fmtDate($row->date) }}</td>
-                                                    <td class="px-6 py-4 font-mono text-xs">{{ fmtTime($row->start_time) }}–{{ fmtTime($row->end_time) }}</td>
-                                                    <td class="px-6 py-4">
-                                                        <div class="text-xs text-rose-600 font-medium italic truncate max-w-xs" title="{{ $row->book_reject }}">
+                                                    <td class="h-12 px-6 py-4 font-medium">{{ fmtDate($row->date) }}</td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs">{{ fmtTime($row->start_time) }}–{{ fmtTime($row->end_time) }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
+                                                        <div class="text-xs text-rose-600 font-medium italic md:truncate md:max-w-xs" title="{{ $row->book_reject }}">
                                                             {{ $row->book_reject ?? __('app.no_reason_provided') }}
                                                         </div>
                                                     </td>
-                                                    <td class="px-6 py-4 text-right">
+                                                    <td class="h-12 px-6 py-4">
                                                         <div class="flex items-center justify-end gap-2">
                                                             <button type="button"
                                                                     wire:click="edit({{ $row->bookingroom_id }})"
@@ -731,8 +758,7 @@
                                                             </button>
                                                             @if(!$row->deleted_at)
                                                                 <button type="button"
-                                                                        wire:click="destroy({{ $row->bookingroom_id }})"
-                                                                        wire:confirm="{{ __(`app.delete_booking_confirm`) }}"
+                                                                        wire:click="confirmDelete({{ $row->bookingroom_id }}, '{{ str_replace('\'', '', $row->meeting_title ?? '') }}', false)"
                                                                         wire:loading.attr="disabled"
                                                                         class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
                                                                     {{ __('app.delete') }}
@@ -759,7 +785,7 @@
 
                 {{-- PAGINATION --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50 border-t border-gray-200">
-                    <div class="flex justify-center">
+                    <div class="w-full">
                         @if($activeTab === 'done')
                             {{ $doneRows->onEachSide(1)->links() }}
                         @else
@@ -772,93 +798,189 @@
             {{-- RIGHT: SIDEBAR (ROOM FILTER) --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 <section class="{{ $card }}">
-                    <div class="px-4 py-4 border-b border-gray-200">
-                        <h3 class="text-sm font-semibold text-gray-900">{{ __('app.filter_by_room_label') }}</h3>
-                        <p class="text-xs text-gray-500 mt-1">{{ __('app.click_room_filter_history') }}</p>
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_room_label') }}</p>
                     </div>
 
-                    <div class="px-4 py-3 max-h-64 overflow-y-auto">
-                        {{-- All rooms --}}
-                        <button type="button"
-                                wire:click="clearRoomFilter"
-                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium
-                                    {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
-                            <span class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                    {{ __('app.all') }}
-                                </span>
-                                <span>{{ __('app.all_rooms') }}</span>
-                            </span>
-                            @if(is_null($roomFilterId))
-                                <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                            @endif
-                        </button>
-
-                        {{-- Each room --}}
-                        <div class="mt-2 space-y-1.5">
-                            @forelse($roomsOptions as $r)
-                                @php $active = !is_null($roomFilterId) && (int) $roomFilterId === (int) $r['id']; @endphp
+                    <div class="p-4 space-y-4 bg-white">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.room') }}</label>
+                            <div class="px-1 py-1 max-h-80 overflow-y-auto">
+                                {{-- All rooms --}}
                                 <button type="button"
-                                        wire:click="selectRoom({{ $r['id'] }})"
-                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs
-                                            {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                                        wire:click="clearRoomFilter"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
+                                            {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                                     <span class="flex items-center gap-2">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                            {{ substr($r['label'], 0, 2) }}
-                                        </span>
-                                        <span class="truncate">{{ $r['label'] }}</span>
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
+                                        <span>{{ __('app.all_rooms') }}</span>
                                     </span>
-                                    @if($active)
-                                        <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                                    @endif
                                 </button>
-                            @empty
-                                <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
-                            @endforelse
+
+                                {{-- Each room --}}
+                                <div class="mt-2 space-y-1.5">
+                                    @forelse($roomsOptions as $r)
+                                        @php $active = !is_null($roomFilterId) && (int) $roomFilterId === (int) $r['id']; @endphp
+                                        <button type="button"
+                                                wire:click="selectRoom({{ $r['id'] }})"
+                                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                            <span class="flex items-center gap-2">
+                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                                    {{ substr($r['label'], 0, 2) }}
+                                                </span>
+                                                <span class="truncate font-medium">{{ $r['label'] }}</span>
+                                            </span>
+                                        </button>
+                                    @empty
+                                        <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
+                                    @endforelse
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
             </aside>
         </div>
+    </main>
 
         {{-- EDIT / CREATE MODAL --}}
         @if($showModal)
-            <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
                 {{-- Backdrop --}}
                 <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="$set('showModal', false)"></div>
 
                 {{-- Modal Content --}}
                 <div class="relative w-full max-w-2xl bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
                     {{-- Header --}}
-                    <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
+                    <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <x-heroicon-o-pencil class="w-4 h-4 text-primary" />
+                            <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                                <x-heroicon-o-pencil class="w-4 h-4 text-[#CDDEA7]" />
                             </div>
-                            <h3 class="font-bold text-foreground text-base tracking-tight">
+                            <h3 class="font-bold tracking-tight text-base">
                                 {{ $modalMode === 'create' ? __('app.create') : __('app.edit') }} {{ __('app.history_item') }}
                             </h3>
                         </div>
-                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" wire:click="$set('showModal', false)">✕</button>
+                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showModal', false)">✕</button>
                     </div>
 
                     {{-- Body --}}
                     <div class="p-6 space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            <div class="flex flex-col justify-end">
                                 <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.type') }}</label>
-                                <select class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" wire:model.live="form.booking_type">
-                                    <option value="bookingroom">{{ __('app.booking_room_option') }}</option>
-                                    <option value="meeting">{{ __('app.meeting_option') }}</option>
-                                    <option value="onlinemeeting">{{ __('app.online_meeting_option') }}</option>
-                                </select>
+                                <div
+                                    x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedId: $wire.entangle('form.booking_type').live,
+                                        options: [
+                                            { id: 'bookingroom', label: '{{ __('app.booking_room_option') }}' },
+                                            { id: 'meeting', label: '{{ __('app.meeting_option') }}' },
+                                            { id: 'onlinemeeting', label: '{{ __('app.online_meeting_option') }}' }
+                                        ],
+                                        get items() {
+                                            const q = (this.search || '').toLowerCase().trim();
+                                            if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                            return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                        },
+                                        get selectedLabel() {
+                                            const found = this.options.find(i => i.id == this.selectedId);
+                                            return found ? found.label : '';
+                                        },
+                                        select(id, label) {
+                                            this.search = label;
+                                            this.selectedId = id;
+                                            this.open = false;
+                                        },
+                                        clear() {
+                                            this.search = '';
+                                            this.selectedId = 'bookingroom';
+                                        }
+                                    }"
+                                    x-init="
+                                        search = selectedLabel;
+                                        $watch('selectedId', val => {
+                                            search = selectedLabel;
+                                        });
+                                    "
+                                    class="relative"
+                                    @click.outside="open = false"
+                                >
+                                    <div class="relative">
+                                        <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="{{ __('app.type') }}" class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-8">
+                                        <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                            <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                            <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                    <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                        <template x-for="item in items" :key="item.id">
+                                            <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                        </template>
+                                    </ul>
+                                    <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
+                                </div>
                             </div>
-                            <div>
+                            <div class="flex flex-col justify-end">
                                 <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.status_label') }}</label>
-                                <select class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" wire:model.live="form.status">
-                                    <option value="completed">{{ __('app.done') }}</option>
-                                    <option value="rejected">{{ __('app.rejected') }}</option>
-                                </select>
+                                <div
+                                    x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedId: $wire.entangle('form.status').live,
+                                        options: [
+                                            { id: 'completed', label: '{{ __('app.done') }}' },
+                                            { id: 'rejected', label: '{{ __('app.rejected') }}' }
+                                        ],
+                                        get items() {
+                                            const q = (this.search || '').toLowerCase().trim();
+                                            if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                            return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                        },
+                                        get selectedLabel() {
+                                            const found = this.options.find(i => i.id == this.selectedId);
+                                            return found ? found.label : '';
+                                        },
+                                        select(id, label) {
+                                            this.search = label;
+                                            this.selectedId = id;
+                                            this.open = false;
+                                        },
+                                        clear() {
+                                            this.search = '';
+                                            this.selectedId = 'completed';
+                                        }
+                                    }"
+                                    x-init="
+                                        search = selectedLabel;
+                                        $watch('selectedId', val => {
+                                            search = selectedLabel;
+                                        });
+                                    "
+                                    class="relative"
+                                    @click.outside="open = false"
+                                >
+                                    <div class="relative">
+                                        <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="{{ __('app.status_label') }}" class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-8">
+                                        <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                            <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                            <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                    <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                        <template x-for="item in items" :key="item.id">
+                                            <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                        </template>
+                                    </ul>
+                                    <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
+                                </div>
                             </div>
                         </div>
 
@@ -886,25 +1008,119 @@
                         </div>
 
                         @if(in_array($form['booking_type'] ?? null, ['bookingroom','meeting']))
-                            <div>
+                            <div class="flex flex-col justify-end">
                                 <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.room_label') }}</label>
-                                <select class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" wire:model.live="form.room_id">
-                                    <option value="">{{ __('app.select_room_ph') }}</option>
-                                    @foreach(($rooms ?? []) as $r)
-                                        <option value="{{ $r['id'] }}">{{ $r['name'] }}</option>
-                                    @endforeach
-                                </select>
+                                <div
+                                    x-data="{
+                                        open: false,
+                                        search: '',
+                                        roomId: $wire.entangle('form.room_id').live,
+                                        get items() {
+                                            const q = (this.search || '').toLowerCase().trim();
+                                            const list = @js(collect($rooms ?? [])->values()->toArray());
+                                            if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
+                                            return list.filter(i => !q || i.name.toLowerCase().includes(q));
+                                        },
+                                        get selectedLabel() {
+                                            const list = @js(collect($rooms ?? [])->values()->toArray());
+                                            const found = list.find(i => i.id == this.roomId);
+                                            return found ? found.name : '';
+                                        },
+                                        select(id, name) {
+                                            this.search = name;
+                                            this.roomId = id;
+                                            this.open = false;
+                                        },
+                                        clear() {
+                                            this.search = '';
+                                            this.roomId = null;
+                                        }
+                                    }"
+                                    x-init="
+                                        search = selectedLabel;
+                                        $watch('roomId', val => {
+                                            search = selectedLabel;
+                                        });
+                                    "
+                                    class="relative"
+                                    @click.outside="open = false"
+                                >
+                                    <div class="relative">
+                                        <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].name)" autocomplete="off" placeholder="{{ __('app.select_room_ph') }}" class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-8">
+                                        <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                            <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                            <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                    <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                        <template x-for="item in items" :key="item.id">
+                                            <li @click="select(item.id, item.name)" :class="roomId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.name"></li>
+                                        </template>
+                                    </ul>
+                                    <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
+                                </div>
                                 @error('form.room_id')
                                     <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p>
                                 @enderror
                             </div>
                         @else
-                            <div>
+                            <div class="flex flex-col justify-end">
                                 <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.online_provider_label') }}</label>
-                                <select class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" wire:model.live="form.online_provider">
-                                    <option value="zoom">Zoom</option>
-                                    <option value="google_meet">Google Meet</option>
-                                </select>
+                                <div
+                                    x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedId: $wire.entangle('form.online_provider').live,
+                                        options: [
+                                            { id: 'zoom', label: 'Zoom' },
+                                            { id: 'google_meet', label: 'Google Meet' }
+                                        ],
+                                        get items() {
+                                            const q = (this.search || '').toLowerCase().trim();
+                                            if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                            return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                        },
+                                        get selectedLabel() {
+                                            const found = this.options.find(i => i.id == this.selectedId);
+                                            return found ? found.label : '';
+                                        },
+                                        select(id, label) {
+                                            this.search = label;
+                                            this.selectedId = id;
+                                            this.open = false;
+                                        },
+                                        clear() {
+                                            this.search = '';
+                                            this.selectedId = 'zoom';
+                                        }
+                                    }"
+                                    x-init="
+                                        search = selectedLabel;
+                                        $watch('selectedId', val => {
+                                            search = selectedLabel;
+                                        });
+                                    "
+                                    class="relative"
+                                    @click.outside="open = false"
+                                >
+                                    <div class="relative">
+                                        <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="{{ __('app.online_provider_label') }}" class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-8">
+                                        <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                            <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                            <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                    <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                        <template x-for="item in items" :key="item.id">
+                                            <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                        </template>
+                                    </ul>
+                                    <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
+                                </div>
                                 @error('form.online_provider')
                                     <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p>
                                 @enderror
@@ -933,6 +1149,59 @@
                         </div>
                     </div>
 
+                    {{-- Status Logs Section --}}
+                    @if(count($statusLogs) > 0)
+                        <div class="mt-6 border-t border-border pt-5 px-6 pb-6">
+                            <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-muted-foreground"/>
+                                Status Logs
+                            </h4>
+                            <div class="bg-muted/10 rounded-xl border border-border overflow-hidden">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-muted/20 border-b border-border text-muted-foreground uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-3 py-2">Step</th>
+                                            <th class="px-3 py-2">Status</th>
+                                            <th class="px-3 py-2">Logged At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-border/50 text-foreground">
+                                        @foreach($statusLogs as $index => $log)
+                                            @php
+                                                $bgClass = match($log['type']) {
+                                                    'success' => 'bg-emerald-100 text-emerald-800',
+                                                    'danger'  => 'bg-rose-100 text-rose-800',
+                                                    'warning' => 'bg-amber-100 text-amber-800',
+                                                    'primary' => 'bg-blue-100 text-blue-800',
+                                                    default   => 'bg-gray-200 text-gray-800',
+                                                };
+                                            @endphp
+                                            <tr class="hover:bg-background transition-colors">
+                                                <td class="px-3 py-2 font-medium">Log {{ $index + 1 }}</td>
+                                                <td class="px-3 py-2">
+                                                    <span class="inline-flex items-center gap-1 text-[10px] {{ $bgClass }} px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                        {{ $log['status'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-2 whitespace-nowrap">
+                                                    {{ \Carbon\Carbon::parse($log['time'])->format('d M Y, H:i') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="mt-6 border-t border-border pt-5 px-6 pb-6">
+                            <h4 class="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-muted-foreground"/>
+                                Status Logs
+                            </h4>
+                            <p class="text-xs text-muted-foreground bg-muted/10 p-3 rounded-lg border border-border text-center">No timeline data available.</p>
+                        </div>
+                    @endif
+
                     {{-- Footer --}}
                     <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
                         <button type="button"
@@ -955,70 +1224,111 @@
         @endif
 
         {{-- MOBILE FILTER MODAL --}}
-        @if($showFilterModal)
-            <div class="fixed inset-0 z-50 md:hidden flex items-end">
-                <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeFilterModal"></div>
-                <div class="relative w-full bg-card rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-border">
-                    <div class="px-5 py-4 border-b border-border flex items-center justify-between bg-muted/10">
-                        <div>
-                            <h3 class="text-sm font-semibold tracking-tight text-foreground">{{ __('app.filter_and_recent') }}</h3>
-                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('app.filter_by_room_recent') }}</p>
-                        </div>
-                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" wire:click="closeFilterModal">✕</button>
-                    </div>
+    <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
+        <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
+        <div x-show="showFilterModal" 
+             x-transition:enter="transform transition ease-out duration-300"
+             x-transition:enter-start="translate-y-full"
+             x-transition:enter-end="translate-y-0"
+             x-transition:leave="transform transition ease-in duration-200"
+             x-transition:leave-start="translate-y-0"
+             x-transition:leave-end="translate-y-full"
+             class="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-gray-200">
+            <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                <div>
+                    <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.filter_and_recent') }}</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_room_recent') }}</p>
+                </div>
+                <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition" @click="showFilterModal = false">✕</button>
+            </div>
 
-                    <div class="p-5 space-y-4 overflow-y-auto flex-1">
-                        <div>
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-foreground mb-3 flex items-center gap-1.5">{{ __('app.filter_by_room_label') }}</h4>
+            <div class="p-5 space-y-4 overflow-y-auto flex-1 bg-white">
+                <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3 flex items-center gap-1.5">{{ __('app.filter_by_room_label') }}</h4>
 
+                    <button type="button"
+                            wire:click="clearRoomFilter"
+                            @click="showFilterModal = false"
+                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                        <span class="flex items-center gap-2">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                {{ __('app.all') }}
+                            </span>
+                            <span>{{ __('app.all_rooms') }}</span>
+                        </span>
+                    </button>
+
+                    <div class="mt-2 space-y-1.5">
+                        @forelse($roomsOptions as $r)
+                            @php $active = !is_null($roomFilterId) && (int) $roomFilterId === (int) $r['id']; @endphp
                             <button type="button"
-                                    wire:click="clearRoomFilter"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium
-                                        {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                                    wire:click="selectRoom({{ $r['id'] }})"
+                                    @click="showFilterModal = false"
+                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                        {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                                 <span class="flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                        {{ __('app.all') }}
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                        {{ substr($r['label'], 0, 2) }}
                                     </span>
-                                    <span>{{ __('app.all_rooms') }}</span>
+                                    <span class="truncate">{{ $r['label'] }}</span>
                                 </span>
-                                @if(is_null($roomFilterId))
-                                    <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                                @endif
                             </button>
+                        @empty
+                            <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
 
-                            <div class="mt-2 space-y-1.5">
-                                @forelse($roomsOptions as $r)
-                                    @php $active = !is_null($roomFilterId) && (int) $roomFilterId === (int) $r['id']; @endphp
-                                    <button type="button"
-                                            wire:click="selectRoom({{ $r['id'] }})"
-                                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs
-                                                {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
-                                        <span class="flex items-center gap-2">
-                                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                                {{ substr($r['label'], 0, 2) }}
-                                            </span>
-                                            <span class="truncate">{{ $r['label'] }}</span>
-                                        </span>
-                                        @if($active)
-                                            <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                                        @endif
-                                    </button>
-                                @empty
-                                    <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
-                                @endforelse
-                            </div>
+            <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
+                <button type="button"
+                        class="w-full h-10 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition-colors shadow-sm"
+                        @click="showFilterModal = false">
+                    {{ __('app.apply_close') }}
+                </button>
+            </div>
+        </div>
+    </div>
+    
+        {{-- DELETE MODAL --}}
+        @if($showDeleteModal)
+            <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
+                <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                        <h3 class="text-lg font-bold text-gray-900 mb-2">
+                            {{ $isForceDelete ? __(`app.delete_permanent_confirm`) : __(`app.delete_booking_confirm`) }}
+                        </h3>
+                        <p class="text-sm text-gray-500">{{ __('app.are_you_sure_delete') }}</p>
+                        <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                            {{ $deletingSummary }}
                         </div>
                     </div>
-
-                    <div class="p-5 border-t border-border bg-muted/10">
-                        <button type="button"
-                                class="w-full h-10 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/95 transition-colors shadow-sm"
-                                wire:click="closeFilterModal">
-                            {{ __('app.apply_close') }}
+                    <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                        <button type="button" wire:click="$set('showDeleteModal', false)"
+                            class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                            {{ __('app.cancel') }}
+                        </button>
+                        <button type="button" wire:click="executeDelete" wire:loading.attr="disabled"
+                            class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                            <span wire:loading.remove wire:target="executeDelete">{{ __('app.delete') }}</span>
+                            <span wire:loading wire:target="executeDelete" class="flex items-center gap-1.5">
+                                <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                                {{ __('app.delete') }}...
+                            </span>
                         </button>
                     </div>
                 </div>
             </div>
         @endif
-    </main>
 </div>

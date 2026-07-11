@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50" wire:poll.15s>
+<div class="min-h-screen bg-background" x-data="{ showFilterModal: false }" wire:poll.15s>
     @php
         use Carbon\Carbon;
 
@@ -53,36 +53,26 @@
             </div>
         @endif
 
-        {{-- HERO BANNER --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <x-heroicon-o-book-open class="w-6 h-6 text-[#CDDEA7]"/>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.guestbook_history_title') }}</h2>
-                            <p class="text-sm text-[#CDDEA7]/80">{{ __('app.guestbook_history_subtitle') }}</p>
-                        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.guestbook_history_title') }}"
+            subtitle="{{ __('app.guestbook_history_subtitle') }}">
+            <x-slot:actions>
+                <button type="button" wire:click="$toggle('withTrashed')" class="flex items-center gap-2 group focus:outline-none">
+                    <div class="relative flex items-center">
+                        <div class="w-9 h-5 rounded-full transition-colors {{ $withTrashed ? 'bg-primary' : 'bg-border' }}"></div>
+                        <div class="absolute left-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-transform {{ $withTrashed ? 'translate-x-4' : '' }}"></div>
                     </div>
-
-                    <div class="flex items-center gap-3">
-                        {{-- Show deleted toggle --}}
-                        <label class="inline-flex items-center gap-2 text-sm text-[#CDDEA7]/90 cursor-pointer">
-                            <input type="checkbox"
-                                   wire:model.live="withTrashed"
-                                   class="rounded border-[#CDDEA7]/30 bg-[#CDDEA7]/10 focus:ring-[#CDDEA7]/40 text-[#CDDEA7]">
-                            <span>{{ __('app.show_deleted') }}</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <span class="text-sm font-medium transition-colors" style="color:#CDDEA7 !important">{{ __('app.show_deleted') }}</span>
+                </button>
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                        @click="showFilterModal = true">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') ?? 'Filter' }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- MAIN LAYOUT GRID --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -100,25 +90,7 @@
 
                         {{-- Tabs + View Mode Toggle --}}
                         <div class="flex items-center gap-3 self-start sm:self-auto">
-                            {{-- Segmented Tabs --}}
-                            <div class="inline-flex items-center bg-gray-100 rounded-full p-1 text-xs font-medium">
-                                <button type="button"
-                                        wire:click="setTab('entries')"
-                                        class="px-3.5 py-1.5 rounded-full transition
-                                            {{ $activeTab === 'entries'
-                                                ? 'bg-[#4E653D] text-white shadow-sm'
-                                                : 'text-gray-700 hover:bg-gray-200' }}">
-                                    {{ __('app.visit_list') }}
-                                </button>
-                                <button type="button"
-                                        wire:click="setTab('latest')"
-                                        class="px-3.5 py-1.5 rounded-full transition
-                                            {{ $activeTab === 'latest'
-                                                ? 'bg-[#4E653D] text-white shadow-sm'
-                                                : 'text-gray-700 hover:bg-gray-200' }}">
-                                    {{ __('app.recent_visits') }}
-                                </button>
-                            </div>
+
 
                             {{-- Layout Toggler --}}
                             <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg shrink-0 border border-gray-200/50">
@@ -151,11 +123,6 @@
                                     <span>{{ __('app.officer') }}: {{ $petugasFilter }}</span>
                                     <button type="button" class="ml-1 hover:text-white font-bold" wire:click="clearPetugasFilter">×</button>
                                 </span>
-                            @else
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-dashed border-gray-300">
-                                    <x-heroicon-o-funnel class="w-3.5 h-3.5 text-gray-400"/>
-                                    <span>{{ __('app.all_officers') }}</span>
-                                </span>
                             @endif
                         </div>
                     </div>
@@ -169,7 +136,7 @@
                             <div class="relative">
                                 <input type="text"
                                        class="{{ $input }} pl-9"
-                                       placeholder="{{ __('app.search') }}�"
+                                       placeholder="{{ __('app.search') }}..."
                                        wire:model.live.debounce.300ms="q">
                                 <x-heroicon-o-magnifying-glass class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
                             </div>
@@ -187,17 +154,77 @@
 
                         <div>
                             <label class="{{ $label }}">{{ __('app.sort') }}</label>
-                            <select wire:model.live="dateMode" class="{{ $input }}">
-                                <option value="semua">{{ __('app.sort_default') }}</option>
-                                <option value="terbaru">{{ __('app.sort_newest') }}</option>
-                                <option value="terlama">{{ __('app.sort_oldest') }}</option>
-                            </select>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: @entangle('dateMode').live,
+                                    options: [
+                                        { id: 'semua', label: '{{ __('app.sort_default') }}' },
+                                        { id: 'terbaru', label: '{{ __('app.sort_newest') }}' },
+                                        { id: 'terlama', label: '{{ __('app.sort_oldest') }}' }
+                                    ],
+                                    get items() {
+                                        const q = this.search.toLowerCase().trim();
+                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const found = this.options.find(i => i.id === this.selectedId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id) {
+                                        this.selectedId = id;
+                                        this.open = false;
+                                    }
+                                }"
+                                x-init="
+                                    if (!selectedId) selectedId = 'semua';
+                                    $watch('selectedId', () => { search = ''; });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        x-model="search"
+                                        @focus="open = true"
+                                        @input="open = true"
+                                        @keydown.escape="open = false"
+                                        @keydown.enter.prevent="items.length === 1 && select(items[0].id)"
+                                        autocomplete="off"
+                                        :placeholder="selectedLabel || '{{ __('app.sort_default') }}'"
+                                        class="{{ $input }} pr-8 cursor-pointer"
+                                        :class="{ 'placeholder-gray-900': selectedId, 'placeholder-gray-400': !selectedId }"
+                                    >
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+                                <ul
+                                    x-show="open && items.length > 0"
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                    style="display:none"
+                                >
+                                    <template x-for="item in items" :key="item.id">
+                                        <li
+                                            @click="select(item.id)"
+                                            :class="selectedId === item.id ? 'bg-[#4E653D] text-white' : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                            class="px-3.5 py-2.5 transition-colors"
+                                            x-text="item.label"
+                                        ></li>
+                                    </template>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {{-- LIST AREA --}}
-                @if($activeTab === 'entries')
+
                     {{-- TAB: RIWAYAT KUNJUNGAN (DONE) --}}
                     @if($entries->isEmpty())
                         <div class="px-4 sm:px-6 py-14 text-center text-gray-500 text-sm">
@@ -213,12 +240,23 @@
                                             $rowNo = ($entries->firstItem() ?? 1) + $loop->index;
                                             $stateKey = $e->deleted_at ? 'trash' : 'ok';
                                             $avatarChar = strtoupper(substr($e->name ?? 'G', 0, 1));
+                                            
+                                            $durationLabel = null;
+                                            try {
+                                                if ($e->jam_in && $e->jam_out) {
+                                                    $tIn = Carbon::parse($e->jam_in);
+                                                    $tOut = Carbon::parse($e->jam_out);
+                                                    $dMins = (int) $tIn->diffInMinutes($tOut);
+                                                    $dH = intdiv($dMins, 60);
+                                                    $dM = $dMins % 60;
+                                                    $durationLabel = str_pad($dH, 2, '0', STR_PAD_LEFT) . ':' . str_pad($dM, 2, '0', STR_PAD_LEFT);
+                                                }
+                                            } catch (\Throwable $th) {}
                                         @endphp
                                         <div wire:key="entry-card-{{ $e->guestbook_id }}-{{ $stateKey }}"
-                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition flex flex-col justify-between {{ $e->deleted_at ? 'opacity-60 bg-gray-50/50' : '' }}">
-
-                                            <div class="space-y-3">
-                                                <div class="flex items-start gap-4">
+                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition {{ $e->deleted_at ? 'opacity-60 bg-gray-50/50' : '' }}">
+                                             
+                                            <div class="flex items-start gap-4">
                                                     {{-- Avatar/Initial --}}
                                                     <div class="{{ $icoAvatar }} mt-0.5">{{ $avatarChar }}</div>
 
@@ -227,18 +265,26 @@
                                                             <h4 class="font-semibold text-gray-900 text-base truncate pr-2">
                                                                 {{ $e->name }}
                                                             </h4>
-                                                            <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 bg-gray-50 flex-shrink-0 font-mono">
-                                                                #{{ $rowNo }}
-                                                            </span>
+                                                            <div class="flex-shrink-0 flex items-center gap-2">
+                                                                @if($durationLabel)
+                                                                    <span class="inline-flex items-center gap-1 h-6 px-2 rounded-full bg-[#4A2F24] text-white text-[10px] font-bold font-mono" title="Durasi kunjungan">
+                                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                                        {{ $durationLabel }}
+                                                                    </span>
+                                                                @endif
+                                                                @if($e->deleted_at)
+                                                                    <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex-shrink-0">
+                                                                        {{ strtoupper(__('app.deleted')) }}
+                                                                    </span>
+                                                                @endif
+                                                            </div>
                                                         </div>
                                                         @if($e->phone_number)
                                                             <p class="text-xs text-gray-500 font-mono">{{ $e->phone_number }}</p>
                                                         @endif
-                                                    </div>
-                                                </div>
 
                                                 {{-- Middle: Details --}}
-                                                <div class="space-y-2 text-[13px] text-gray-600 mb-3 border-y border-gray-100 py-2">
+                                                <div class="space-y-2 text-[13px] text-gray-600 mb-3 border-y border-gray-100 py-2 mt-3">
                                                     @if($e->instansi)
                                                         <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-building-office class="w-4 h-4 text-gray-500 shrink-0"/>
@@ -251,46 +297,55 @@
                                                             <span class="truncate">{{ __('app.visit_purpose') }}: <span class="font-semibold text-gray-900">{{ $e->keperluan }}</span></span>
                                                         </div>
                                                     @endif
-                                                </div>
-
-                                                {{-- Time and Officer --}}
-                                                <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg p-2">
-                                                    <div class="flex items-center gap-1.5 min-w-0">
-                                                        <x-heroicon-o-calendar class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                        <span class="truncate font-medium text-gray-700">{{ fmtDate($e->date) }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-1.5 min-w-0">
-                                                        <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                        <span class="truncate font-medium text-emerald-600">{{ fmtTime($e->jam_in) }}</span>
-                                                        <span class="text-gray-400 font-medium">-</span>
-                                                        <span class="truncate font-medium text-rose-600">{{ fmtTime($e->jam_out) }}</span>
-                                                    </div>
-                                                    @if($e->petugas_penjaga)
-                                                        <div class="col-span-2 flex items-center gap-1.5 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
-                                                            <x-heroicon-o-user class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                            <span class="truncate font-medium text-gray-600">{{ __('app.officer') }}: <span class="text-gray-900 font-semibold">{{ $e->petugas_penjaga }}</span></span>
+                                                    @if($e->visitor_count)
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <x-heroicon-o-users class="w-4 h-4 text-gray-500 shrink-0"/>
+                                                            <span class="truncate">Jumlah Pengunjung: <span class="font-semibold text-gray-900">{{ $e->visitor_count }} org</span></span>
                                                         </div>
                                                     @endif
                                                 </div>
+
+                                                {{-- BOTTOM LEFT: Time and Officer --}}
+                                                <div class="text-[12px] text-gray-600 space-y-2 mt-2">
+                                                    <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg p-2">
+                                                        <div class="flex items-center gap-1.5 min-w-0">
+                                                            <x-heroicon-o-calendar class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                            <span class="truncate font-medium text-gray-700">{{ fmtDate($e->date) }}</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5 min-w-0">
+                                                            <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                            <span class="truncate font-medium text-emerald-600">{{ fmtTime($e->jam_in) }}</span>
+                                                            <span class="text-gray-400 font-medium">-</span>
+                                                            <span class="truncate font-medium text-rose-600">{{ fmtTime($e->jam_out) }}</span>
+                                                        </div>
+                                                        @if($e->petugas_penjaga)
+                                                            <div class="col-span-2 flex items-center gap-1.5 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
+                                                                <x-heroicon-o-user class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                <span class="truncate font-medium text-gray-600">{{ __('app.officer') }}: <span class="text-gray-900 font-semibold">{{ $e->petugas_penjaga }}</span></span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
                                             </div>
 
-                                            <div class="pt-3 border-t border-gray-100 mt-4 flex items-center justify-between">
-                                                <span>
-                                                    @if($e->deleted_at)
-                                                        <span class="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.deleted')) }}</span>
-                                                    @else
-                                                        <span class="inline-flex items-center text-[10px] text-[#4E653D] bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.active')) }}</span>
-                                                    @endif
-                                                </span>
-                                                <div class="flex gap-1.5 font-medium">
+                                            <div class="pt-3 border-t border-gray-100 mt-4 flex items-end justify-between">
+                                                <div class="flex flex-col gap-1.5 mr-auto">
+                                                    <span class="text-[11px] text-gray-500">No. {{ $rowNo }}</span>
+                                                    <div class="flex flex-wrap items-center gap-1.5">
+                                                        @if($e->deleted_at)
+                                                            <span class="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.deleted')) }}</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <div class="flex gap-1.5 font-medium shrink-0">
                                                     <button wire:click="openEdit({{ $e->guestbook_id }})"
                                                             wire:loading.attr="disabled"
-                                                            class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition shadow-sm">
+                                                            class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
                                                         {{ __('app.edit') }}
                                                     </button>
                                                     @if(!$e->deleted_at)
-                                                        <button wire:click="delete({{ $e->guestbook_id }})"
-                                                                wire:confirm="{{ __(`app.delete_entry_confirm`) }}"
+                                                        <button wire:click="confirmDelete({{ $e->guestbook_id }}, '{{ str_replace('\'', '', $e->name) }}', false)"
                                                                 wire:loading.attr="disabled"
                                                                 class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">{{ __('app.delete') }}</button>
                                                     @else
@@ -299,8 +354,7 @@
                                                                 class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-[#4E653D] border border-emerald-200 hover:bg-emerald-100 focus:outline-none transition">
                                                             {{ __('app.restore') }}
                                                         </button>
-                                                        <button wire:click="destroyForever({{ $e->guestbook_id }})"
-                                                                wire:confirm="{{ __(`app.delete_permanent_confirm`) }}"
+                                                        <button wire:click="confirmDelete({{ $e->guestbook_id }}, '{{ str_replace('\'', '', $e->name) }}', true)"
                                                                 wire:loading.attr="disabled"
                                                                 class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 focus:outline-none transition">{{ __('app.delete') }}</button>
                                                     @endif
@@ -316,14 +370,15 @@
                                         <thead>
                                             <tr class="border-b border-gray-200 bg-gray-50/50">
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __(`app.name_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">{{ __(`app.institution_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{{ __(`app.purpose_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __(`app.date_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">{{ __(`app.check_in_out_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{{ __(`app.officer_col`) }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.name_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.institution_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.date_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_out_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Durasi</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.officer_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.status') }}</th>
-                                                <th class="h-10 px-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.actions') }}</th>
+                                                <th class="h-10 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-200">
@@ -334,8 +389,12 @@
                                                 @endphp
                                                 <tr wire:key="entry-{{ $e->guestbook_id }}-{{ $stateKey }}"
                                                     class="hover:bg-gray-50/50 transition-colors {{ $e->deleted_at ? 'opacity-60 bg-gray-50/20' : '' }}">
-                                                    <td class="h-12 px-4 text-gray-400 text-xs font-mono">{{ $rowNo }}</td>
-                                                    <td class="h-12 px-4">
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-400 text-xs font-mono">
+                                                        {{ $rowNo }}
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0 ">
                                                         <div class="flex items-center gap-2.5">
                                                             <div class="w-7 h-7 rounded-full bg-[#4E653D] text-white flex items-center justify-center text-xs font-semibold shrink-0">
                                                                 {{ strtoupper(substr($e->name ?? 'G', 0, 1)) }}
@@ -348,23 +407,69 @@
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td class="h-12 px-4 text-gray-600 hidden md:table-cell truncate max-w-[160px] font-medium">{{ $e->instansi ?? '-' }}</td>
-                                                    <td class="h-12 px-4 text-gray-600 hidden lg:table-cell truncate max-w-[200px] font-medium">{{ $e->keperluan ?? '-' }}</td>
-                                                    <td class="h-12 px-4 text-gray-900 font-medium whitespace-nowrap">{{ fmtDate($e->date) }}</td>
-                                                    <td class="h-12 px-4 text-gray-500 whitespace-nowrap hidden sm:table-cell">
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
+                                                        {{ $e->instansi ?? '-' }}
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
+                                                        {{ $e->keperluan ?? '-' }}
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-900 font-medium whitespace-nowrap">
+                                                        {{ fmtDate($e->date) }}
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-500 whitespace-nowrap">
                                                         <span class="text-emerald-600 font-semibold">{{ fmtTime($e->jam_in) }}</span>
                                                         <span class="mx-1 text-gray-300">–</span>
                                                         <span class="text-rose-600 font-semibold">{{ fmtTime($e->jam_out) }}</span>
                                                     </td>
-                                                    <td class="h-12 px-4 text-gray-900 hidden lg:table-cell font-semibold">{{ $e->petugas_penjaga }}</td>
-                                                    <td class="h-12 px-4">
-                                                        @if($e->deleted_at)
-                                                            <span class="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.deleted')) }}</span>
+
+                                                    {{-- Duration column --}}
+                                                    <td class="h-12 px-4 py-0">
+                                                        @php
+                                                            $durationLabel2 = null;
+                                                            try {
+                                                                if ($e->jam_in && $e->jam_out) {
+                                                                    $tIn2 = Carbon::parse($e->jam_in);
+                                                                    $tOut2 = Carbon::parse($e->jam_out);
+                                                                    $dMins2 = (int) $tIn2->diffInMinutes($tOut2);
+                                                                    $dH2 = intdiv($dMins2, 60);
+                                                                    $dM2 = $dMins2 % 60;
+                                                                    $durationLabel2 = str_pad($dH2, 2, '0', STR_PAD_LEFT) . ':' . str_pad($dM2, 2, '0', STR_PAD_LEFT);
+                                                                }
+                                                            } catch (\Throwable $th) {}
+                                                        @endphp
+                                                        @if($durationLabel2)
+                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4A2F24] text-white text-[10px] font-bold font-mono">
+                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                                {{ $durationLabel2 }}
+                                                            </span>
                                                         @else
-                                                            <span class="inline-flex items-center text-[10px] text-[#4E653D] bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.active')) }}</span>
+                                                            <span class="text-xs text-gray-400">—</span>
                                                         @endif
                                                     </td>
-                                                    <td class="h-12 px-4 text-right">
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-900 font-semibold">
+                                                        {{ $e->petugas_penjaga }}
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0 ">
+                                                        <div class="flex flex-col justify-center">
+                                                            @if($e->deleted_at)
+                                                                <span class="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.deleted')) }}</span>
+                                                            @endif
+                                                            @if($e->visitor_count)
+                                                                <span class="inline-flex items-center gap-1 text-xs text-gray-600 font-medium mt-1">
+                                                                    <x-heroicon-o-users class="w-3.5 h-3.5 text-gray-400" />
+                                                                    {{ $e->visitor_count }} org
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0">
                                                         <div class="flex items-center justify-end gap-1">
                                                             <button wire:click="openEdit({{ $e->guestbook_id }})"
                                                                     wire:loading.attr="disabled"
@@ -374,12 +479,10 @@
                                                                 <x-heroicon-o-pencil-square class="w-4 h-4" />
                                                             </button>
                                                             @if(!$e->deleted_at)
-                                                                <button wire:click="delete({{ $e->guestbook_id }})"
-                                                                        wire:confirm="{{ __(`app.delete_entry_confirm`) }}"
+                                                                <button wire:click="confirmDelete({{ $e->guestbook_id }}, '{{ str_replace('\'', '', $e->name) }}', false)"
                                                                         wire:loading.attr="disabled"
-                                                                        wire:target="delete({{ $e->guestbook_id }})"
                                                                         class="p-1.5 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                                                                        title="{{ __(`app.delete`) }}">
+                                                                        title="{{ __('app.delete') }}">
                                                                     <x-heroicon-o-trash class="w-4 h-4" />
                                                                 </button>
                                                             @else
@@ -390,12 +493,10 @@
                                                                         title="{{ __('app.restore') }}">
                                                                     <x-heroicon-o-arrow-uturn-left class="w-4 h-4" />
                                                                 </button>
-                                                                <button wire:click="destroyForever({{ $e->guestbook_id }})"
-                                                                        wire:confirm="{{ __(`app.delete_permanent_confirm`) }}"
+                                                                <button wire:click="confirmDelete({{ $e->guestbook_id }}, '{{ str_replace('\'', '', $e->name) }}', true)"
                                                                         wire:loading.attr="disabled"
-                                                                        wire:target="destroyForever({{ $e->guestbook_id }})"
                                                                         class="p-1.5 rounded-lg text-gray-500 hover:text-rose-700 hover:bg-rose-100 transition-colors"
-                                                                        title="{{ __(`app.delete_permanent`) }}">
+                                                                        title="{{ __('app.delete_permanent') }}">
                                                                     <x-heroicon-o-x-circle class="w-4 h-4" />
                                                                 </button>
                                                             @endif
@@ -410,179 +511,11 @@
                         </div>
                     @endif
 
-                {{-- TAB: KUNJUNGAN TERBARU (BELUM KELUAR) --}}
-                @else
-                    @if($latest->isEmpty())
-                        <div class="px-4 sm:px-6 py-14 text-center text-gray-500 text-sm">
-                            <x-heroicon-o-user-group class="w-8 h-8 mx-auto text-gray-300 mb-2"/>
-                            {{ __('app.no_active_visits') }}
-                        </div>
-                    @else
-                        <div class="px-4 sm:px-6 py-5 bg-gray-50/30">
-                            @if($viewMode === 'card')
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    @foreach ($latest as $r)
-                                        @php
-                                            $rowNoLatest = ($latest->firstItem() ?? 1) + $loop->index;
-                                            $avatarChar = strtoupper(substr($r->name ?? 'G', 0, 1));
-                                        @endphp
-                                        <div wire:key="latest-card-{{ $r->guestbook_id }}"
-                                             class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition flex flex-col justify-between">
-
-                                            <div class="space-y-3">
-                                                <div class="flex items-start gap-4">
-                                                    <div class="{{ $icoAvatar }} mt-0.5">{{ $avatarChar }}</div>
-
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="flex items-center justify-between gap-3 min-w-0 mb-1">
-                                                            <h4 class="font-semibold text-gray-900 text-base truncate pr-2">
-                                                                {{ $r->name }}
-                                                            </h4>
-                                                            <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 bg-gray-50 flex-shrink-0 font-mono">
-                                                                #{{ $rowNoLatest }}
-                                                            </span>
-                                                        </div>
-                                                        @if($r->phone_number)
-                                                            <p class="text-xs text-gray-500 font-mono">{{ $r->phone_number }}</p>
-                                                        @endif
-                                                    </div>
-                                                </div>
-
-                                                <div class="space-y-2 text-[13px] text-gray-600 mb-3 border-y border-gray-100 py-2">
-                                                    @if($r->instansi)
-                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
-                                                            <x-heroicon-o-building-office class="w-4 h-4 text-gray-500 shrink-0"/>
-                                                            <span class="truncate">{{ __('app.institution') }}: <span class="font-semibold text-gray-900">{{ $r->instansi }}</span></span>
-                                                        </div>
-                                                    @endif
-                                                    @if($r->keperluan)
-                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
-                                                            <x-heroicon-o-information-circle class="w-4 h-4 text-gray-500 shrink-0"/>
-                                                            <span class="truncate">{{ __('app.visit_purpose') }}: <span class="font-semibold text-gray-900">{{ $r->keperluan }}</span></span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
-                                                <div class="grid grid-cols-2 gap-2 text-[11px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg p-2">
-                                                    <div class="flex items-center gap-1.5 min-w-0">
-                                                        <x-heroicon-o-calendar class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                        <span class="truncate font-medium text-gray-700">{{ fmtDate($r->date) }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-1.5 min-w-0">
-                                                        <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                        <span class="truncate font-semibold text-emerald-600">{{ __('app.check_in') }}: {{ fmtTime($r->jam_in) }}</span>
-                                                    </div>
-                                                    @if($r->petugas_penjaga)
-                                                        <div class="col-span-2 flex items-center gap-1.5 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
-                                                            <x-heroicon-o-user class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                            <span class="truncate font-medium text-gray-600">{{ __('app.officer') }}: <span class="text-gray-900 font-semibold">{{ $r->petugas_penjaga }}</span></span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            <div class="pt-3 border-t border-gray-100 mt-4 flex items-center justify-end gap-1.5 font-medium">
-                                                <button wire:click="openEdit({{ $r->guestbook_id }})"
-                                                        wire:loading.attr="disabled"
-                                                        class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition shadow-sm">
-                                                    {{ __('app.edit') }}
-                                                </button>
-                                                <button wire:click="setJamKeluarNow({{ $r->guestbook_id }})"
-                                                        wire:loading.attr="disabled"
-                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm">
-                                                    <x-heroicon-o-arrow-right-start-on-rectangle class="w-3.5 h-3.5" />
-                                                    <span>{{ __('app.check_out_btn') }}</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                {{-- Table View --}}
-                                <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-                                    <table class="w-full text-sm">
-                                        <thead>
-                                            <tr class="border-b border-gray-200 bg-gray-50/50">
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __(`app.name_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">{{ __(`app.institution_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{{ __(`app.purpose_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __(`app.date_col`) }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_time') }}</th>
-                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{{ __(`app.officer_col`) }}</th>
-                                                <th class="h-10 px-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.actions') }}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-200">
-                                            @foreach ($latest as $r)
-                                                @php $rowNoLatest = ($latest->firstItem() ?? 1) + $loop->index; @endphp
-                                                <tr wire:key="latest-{{ $r->guestbook_id }}" class="hover:bg-gray-50/50 transition-colors">
-                                                    <td class="h-12 px-4 text-gray-400 text-xs font-mono">{{ $rowNoLatest }}</td>
-                                                    <td class="h-12 px-4">
-                                                        <div class="flex items-center gap-2.5">
-                                                            <div class="w-7 h-7 rounded-full bg-[#4E653D] text-white flex items-center justify-center text-xs font-semibold shrink-0">
-                                                                {{ strtoupper(substr($r->name ?? '�', 0, 1)) }}
-                                                            </div>
-                                                            <div class="min-w-0">
-                                                                <p class="font-semibold text-gray-900 truncate">{{ $r->name }}</p>
-                                                                @if($r->phone_number)
-                                                                    <p class="text-xs text-gray-400 font-mono">{{ $r->phone_number }}</p>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="h-12 px-4 text-gray-600 hidden md:table-cell truncate max-w-[160px] font-medium">{{ $r->instansi ?? '�' }}</td>
-                                                    <td class="h-12 px-4 text-gray-600 hidden lg:table-cell truncate max-w-[200px] font-medium">{{ $r->keperluan ?? '�' }}</td>
-                                                    <td class="h-12 px-4 text-gray-900 font-medium whitespace-nowrap">{{ fmtDate($r->date) }}</td>
-                                                    <td class="h-12 px-4 text-emerald-600 font-semibold whitespace-nowrap">{{ fmtTime($r->jam_in) }}</td>
-                                                    <td class="h-12 px-4 text-gray-900 hidden lg:table-cell font-semibold">{{ $r->petugas_penjaga }}</td>
-                                                    <td class="h-12 px-4 text-right">
-                                                        <div class="flex items-center justify-end gap-1.5">
-                                                            <button wire:click="openEdit({{ $r->guestbook_id }})"
-                                                                    wire:loading.attr="disabled"
-                                                                    wire:target="openEdit({{ $r->guestbook_id }})"
-                                                                    class="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#4E653D] transition-colors"
-                                                                    title="{{ __('app.edit') }}">
-                                                                <x-heroicon-o-pencil-square class="w-4 h-4" />
-                                                            </button>
-                                                            <button wire:click="setJamKeluarNow({{ $r->guestbook_id }})"
-                                                                    wire:loading.attr="disabled"
-                                                                    wire:target="setJamKeluarNow({{ $r->guestbook_id }})"
-                                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm"
-                                                                    title="{{ __('app.check_out_btn') }}">
-                                                                <x-heroicon-o-arrow-right-start-on-rectangle class="w-3.5 h-3.5" />
-                                                                <span wire:loading.remove wire:target="setJamKeluarNow({{ $r->guestbook_id }})">{{ __('app.check_out_btn') }}</span>
-                                                                <span wire:loading wire:target="setJamKeluarNow({{ $r->guestbook_id }})">...</span>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @endif
-                        </div>
-                    @endif
-                @endif
 
                 {{-- PAGINATION --}}
                 <div class="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div class="flex items-center justify-between flex-wrap gap-2">
-                        <p class="text-xs text-gray-500 font-medium">
-                            @if($activeTab === 'entries')
-                                Showing {{ $entries->firstItem() ?? 0 }}–{{ $entries->lastItem() ?? 0 }} of {{ $entries->total() }} entries
-                            @else
-                                Showing {{ $latest->firstItem() ?? 0 }}–{{ $latest->lastItem() ?? 0 }} of {{ $latest->total() }} entries
-                            @endif
-                        </p>
-                        <div class="text-sm">
-                            @if($activeTab === 'entries')
-                                {{ $entries->onEachSide(1)->links() }}
-                            @else
-                                {{ $latest->onEachSide(1)->links() }}
-                            @endif
-                        </div>
+                    <div class="w-full">
+                            {{ $entries->onEachSide(1)->links() }}
                     </div>
                 </div>
             </section>
@@ -590,56 +523,56 @@
             {{-- RIGHT: SIDEBAR (OFFICER FILTER) (1 Column) --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 <section class="{{ $card }}">
-                    <div class="px-4 py-4 border-b border-gray-200 bg-gray-50/50">
-                        <h3 class="text-sm font-semibold text-gray-900">{{ __('app.all_officers') }}</h3>
-                        <p class="text-xs text-gray-500 mt-1">Klik salah satu petugas untuk mem-filter daftar history.</p>
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_officer') ?? 'Filter by Officer' }}</p>
                     </div>
 
-                    <div class="px-4 py-3 max-h-80 overflow-y-auto space-y-1.5">
-                        {{-- All Officers --}}
-                        <button type="button"
-                                wire:click="clearPetugasFilter"
-                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition
-                                    {{ is_null($petugasFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-700 hover:bg-gray-100' }}">
-                            <span class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200 text-[10px] bg-white font-mono text-gray-500">
-                                    ALL
-                                </span>
-                                <span>{{ __('app.all_officers') }}</span>
-                            </span>
-                            @if(is_null($petugasFilter))
-                                <span class="text-[9px] uppercase font-bold tracking-wider opacity-85">{{ __('app.active') }}</span>
-                            @endif
-                        </button>
+                    <div class="p-4 space-y-4 bg-white">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.officer') ?? 'Officer' }}</label>
+                            <div class="px-1 py-1 max-h-80 overflow-y-auto">
+                                {{-- All Officers --}}
+                                <button type="button"
+                                        wire:click="clearPetugasFilter"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
+                                            {{ is_null($petugasFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                    <span class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
+                                        <span>{{ __('app.all_officers') }}</span>
+                                    </span>
+                                </button>
 
-                        {{-- Each Officer option --}}
-                        @forelse($petugasOptions as $p)
-                            @php $active = !is_null($petugasFilter) && $petugasFilter === $p; @endphp
-                            <button type="button"
-                                    wire:click="selectPetugas('{{ $p }}')"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition text-left
-                                        {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-700 hover:bg-gray-100' }}">
-                                <span class="flex items-center gap-2 min-w-0">
-                                    <div class="w-6 h-6 rounded-md bg-[#4E653D]/10 text-[#4E653D] flex items-center justify-center font-bold text-[10px] shrink-0">
-                                        {{ strtoupper(substr($p, 0, 1)) }}
-                                    </div>
-                                    <span class="truncate pr-1">{{ $p }}</span>
-                                </span>
-                                @if($active)
-                                    <span class="text-[9px] uppercase font-bold tracking-wider opacity-85">{{ __('app.active') }}</span>
-                                @endif
-                            </button>
-                        @empty
-                            <p class="text-[11px] text-gray-400 text-center py-4">Belum ada data petugas.</p>
-                        @endforelse
+                                {{-- Each Officer option --}}
+                                <div class="mt-2 space-y-1.5">
+                                    @forelse($petugasOptions as $p)
+                                        @php $active = !is_null($petugasFilter) && $petugasFilter === $p; @endphp
+                                        <button type="button"
+                                                wire:click="selectPetugas('{{ $p }}')"
+                                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                            <span class="flex items-center gap-2">
+                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                                    {{ substr($p, 0, 2) }}
+                                                </span>
+                                                <span class="truncate font-medium">{{ $p }}</span>
+                                            </span>
+                                        </button>
+                                    @empty
+                                        <p class="text-[11px] text-gray-400 text-center py-4">{{ __('app.no_data') }}</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </aside>
         </div>
+    </main>
 
         {{-- EDIT MODAL (Matching premium modal style from booking history) --}}
         @if ($showEdit)
-            <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
                  x-data x-on:keydown.escape.window="$wire.closeEdit()">
                 {{-- Backdrop with blur --}}
                 <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300" wire:click="closeEdit"></div>
@@ -665,59 +598,136 @@
                             {{-- Nama --}}
                             <div>
                                 <label for="edit_name" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.guest_name_label') }} <span class="text-rose-500">*</span></label>
-                                <input type="text" id="edit_name" class="{{ $input }}" wire:model.defer="edit.name">
+                                <input type="text" id="edit_name" class="{{ $input }}" wire:model="edit.name">
                                 @error('edit.name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- No HP --}}
                             <div>
-                                <label for="edit_phone_number" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.no_hp_label`) }}</label>
-                                <input type="text" id="edit_phone_number" class="{{ $input }}" wire:model.defer="edit.phone_number">
+                                <label for="edit_phone_number" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.no_hp_label') }}</label>
+                                <input type="text" id="edit_phone_number" class="{{ $input }}" wire:model="edit.phone_number">
                                 @error('edit.phone_number') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Instansi --}}
                             <div>
-                                <label for="edit_instansi" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.institution_col`) }}</label>
-                                <input type="text" id="edit_instansi" class="{{ $input }}" wire:model.defer="edit.instansi">
+                                <label for="edit_instansi" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.institution_col') }}</label>
+                                <input type="text" id="edit_instansi" class="{{ $input }}" wire:model="edit.instansi">
                                 @error('edit.instansi') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Keperluan --}}
                             <div>
-                                <label for="edit_keperluan" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.purpose_col`) }} <span class="text-rose-500">*</span></label>
-                                <textarea id="edit_keperluan" rows="3" class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all resize-none" wire:model.defer="edit.keperluan"></textarea>
+                                <label for="edit_keperluan" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.purpose_col') }} <span class="text-rose-500">*</span></label>
+                                <textarea id="edit_keperluan" rows="3" class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all resize-none" wire:model="edit.keperluan"></textarea>
                                 @error('edit.keperluan') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Petugas Penjaga --}}
                             <div>
-                                <label for="edit_petugas_penjaga" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.petugas_label`) }} <span class="text-rose-500">*</span></label>
-                                <input type="text" id="edit_petugas_penjaga" class="{{ $input }}" wire:model.defer="edit.petugas_penjaga">
+                                <label for="edit_petugas_penjaga" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.petugas_label') }} <span class="text-rose-500">*</span></label>
+                                <input type="text" id="edit_petugas_penjaga" class="{{ $input }}" wire:model="edit.petugas_penjaga">
                                 @error('edit.petugas_penjaga') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Visitor Count --}}
+                            <div>
+                                <label for="edit_visitor_count" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.visitors_count') ?? 'Visitor Count' }} <span class="text-rose-500">*</span></label>
+                                <input type="number" min="1" max="999" id="edit_visitor_count" class="{{ $input }}" wire:model="edit.visitor_count">
+                                @error('edit.visitor_count') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Date / Jam In / Jam Out --}}
                             <div class="grid grid-cols-3 gap-3">
                                 <div>
-                                    <label for="edit_date" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.date_col`) }} <span class="text-rose-500">*</span></label>
-                                    <input type="date" id="edit_date" class="{{ $input }}" wire:model.defer="edit.date">
+                                    <label for="edit_date" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.date_col') }} <span class="text-rose-500">*</span></label>
+                                    <input type="date" id="edit_date" class="{{ $input }}" wire:model="edit.date">
                                     @error('edit.date') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
-                                    <label for="edit_jam_in" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.jam_masuk_label`) }} <span class="text-rose-500">*</span></label>
-                                    <input type="time" id="edit_jam_in" class="{{ $input }}" wire:model.defer="edit.jam_in">
+                                    <label for="edit_jam_in" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.jam_masuk_label') }} <span class="text-rose-500">*</span></label>
+                                    <input type="time" id="edit_jam_in" class="{{ $input }}" wire:model="edit.jam_in">
                                     @error('edit.jam_in') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
-                                    <label for="edit_jam_out" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __(`app.jam_keluar_label`) }}</label>
-                                    <input type="time" id="edit_jam_out" class="{{ $input }}" wire:model.defer="edit.jam_out">
+                                    <label for="edit_jam_out" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.jam_keluar_label') }}</label>
+                                    <input type="time" id="edit_jam_out" class="{{ $input }}" wire:model="edit.jam_out">
                                     @error('edit.jam_out') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                                 </div>
                             </div>
 
+                            {{-- QR Logs Section --}}
+                            <div class="mt-6 border-t border-gray-100 pt-5">
+                                <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                    <x-heroicon-o-qr-code class="w-4 h-4 text-gray-500"/>
+                                    QR Code Logs
+                                </h4>
+                                
+                                @if(count($qrLogs) > 0)
+                                    <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                                        <table class="w-full text-left text-xs">
+                                            <thead class="bg-gray-100 border-b border-gray-200 text-gray-600 uppercase font-semibold">
+                                                <tr>
+                                                    <th class="px-3 py-2">Visitor #</th>
+                                                    <th class="px-3 py-2">Status</th>
+                                                    <th class="px-3 py-2">Scanned At</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100 text-gray-700">
+                                                @foreach($qrLogs as $log)
+                                                    <tr class="hover:bg-white transition-colors">
+                                                        <td class="px-3 py-2 font-medium">Visitor {{ $log['visitor_number'] }}</td>
+                                                        <td class="px-3 py-2">
+                                                            @if($log['is_scanned'])
+                                                                <span class="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                                    Scanned
+                                                                </span>
+                                                            @else
+                                                                <span class="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                                    Pending
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="px-3 py-2 whitespace-nowrap">
+                                                            @if($log['scanned_at'])
+                                                                {{ \Carbon\Carbon::parse($log['scanned_at'])->format('d M Y, H:i:s') }}
+                                                            @else
+                                                                <span class="text-gray-400">—</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">No QR codes generated for this booking.</p>
+                                @endif
+                            </div>
+                            
+                            {{-- Scanner Logs Section (optional) --}}
+                            @if(count($scanLogs) > 0)
+                                <div class="mt-4 border-t border-gray-100 pt-5">
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <x-heroicon-o-device-phone-mobile class="w-4 h-4 text-gray-500"/>
+                                        Scanner Logs
+                                    </h4>
+                                    <div class="space-y-2">
+                                        @foreach($scanLogs as $sLog)
+                                            <div class="text-xs flex flex-col gap-1 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="font-medium text-gray-800">{{ $sLog['visitor_name'] ?? 'Unknown Visitor' }}</span>
+                                                    <span class="text-gray-500 font-mono">{{ \Carbon\Carbon::parse($sLog['scanned_at'])->format('H:i:s') }}</span>
+                                                </div>
+                                                <span class="text-[11px] text-gray-500">IP: {{ $sLog['scanned_by_ip'] ?? 'N/A' }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
                             {{-- Footer actions --}}
-                            <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4">
+                            <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4 mt-6">
                                 <button type="button"
                                         class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition text-xs font-semibold"
                                         wire:click="closeEdit">{{ __('app.cancel') }}</button>
@@ -726,14 +736,14 @@
                                         wire:loading.attr="disabled" wire:target="saveEdit">
                                     <span wire:loading.remove wire:target="saveEdit" class="flex items-center gap-1.5">
                                         <x-heroicon-o-check class="w-3.5 h-3.5" />
-                                        {{ __(`app.save_changes`) }}
+                                        {{ __('app.save_changes') }}
                                     </span>
                                     <span wire:loading wire:target="saveEdit" class="flex items-center gap-1.5">
                                         <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span>{{ __(`app.saving`) }}</span>
+                                        <span>{{ __('app.saving') }}</span>
                                     </span>
                                 </button>
                             </div>
@@ -742,5 +752,113 @@
                 </div>
             </div>
         @endif
-    </main>
+
+        {{-- MOBILE FILTER MODAL --}}
+        <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
+            <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
+            <div x-show="showFilterModal" 
+                 x-transition:enter="transform transition ease-out duration-300"
+                 x-transition:enter-start="translate-y-full"
+                 x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transform transition ease-in duration-200"
+                 x-transition:leave-start="translate-y-0"
+                 x-transition:leave-end="translate-y-full"
+                 class="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-gray-200">
+                <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                    <div>
+                        <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.advanced_filters') }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_officer') ?? 'Filter by Officer' }}</p>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition" @click="showFilterModal = false">✕</button>
+                </div>
+
+                <div class="p-5 space-y-4 overflow-y-auto flex-1 bg-white">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3 flex items-center gap-1.5">{{ __('app.officer') ?? 'Officer' }}</h4>
+
+                        <button type="button"
+                                wire:click="clearPetugasFilter"
+                                @click="showFilterModal = false"
+                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-2
+                                    {{ is_null($petugasFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                            <span class="flex items-center gap-2">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                    {{ __('app.all') ?? 'All' }}
+                                </span>
+                                <span>{{ __('app.all_officers') }}</span>
+                            </span>
+                        </button>
+
+                        <div class="mt-2 space-y-1.5">
+                            @forelse($petugasOptions as $p)
+                                @php $active = !is_null($petugasFilter) && $petugasFilter === $p; @endphp
+                                <button type="button"
+                                        wire:click="selectPetugas('{{ $p }}')"
+                                        @click="showFilterModal = false"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                            {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                    <span class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                            {{ substr($p, 0, 2) }}
+                                        </span>
+                                        <span class="truncate font-medium">{{ $p }}</span>
+                                    </span>
+                                </button>
+                            @empty
+                                <p class="text-[11px] text-gray-400 text-center py-4">{{ __('app.no_data') }}</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
+                    <button type="button"
+                            class="w-full h-10 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition-colors shadow-sm"
+                            @click="showFilterModal = false">
+                        {{ __('app.apply_close') ?? 'Apply & Close' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- DELETE MODAL --}}
+        @if($showDeleteModal)
+            <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
+                <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                        <h3 class="text-lg font-bold text-gray-900 mb-2">
+                            {{ $isForceDelete ? __('app.delete_permanent_confirm') : __('app.delete_entry_confirm') }}
+                        </h3>
+                        <p class="text-sm text-gray-500">{{ __('app.are_you_sure_delete') }}</p>
+                        <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                            {{ $deletingSummary }}
+                        </div>
+                    </div>
+                    <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                        <button type="button" wire:click="$set('showDeleteModal', false)"
+                            class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                            {{ __('app.cancel') }}
+                        </button>
+                        <button type="button" wire:click="executeDelete" wire:loading.attr="disabled"
+                            class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                            <span wire:loading.remove wire:target="executeDelete">{{ __('app.delete') }}</span>
+                            <span wire:loading wire:target="executeDelete" class="flex items-center gap-1.5">
+                                <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                                {{ __('app.delete') }}...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
 </div>

@@ -74,7 +74,7 @@ class DatabaseSeeder extends Seeder
 
                 // === ROLES ===
                 $roles = [];
-                foreach (['Superadmin', 'Admin', 'User', 'Receptionist'] as $r) {
+                foreach (['Manager', 'Receptionist'] as $r) {
                     $roles[$r] = Role::firstOrCreate(['name' => $r]);
                 }
 
@@ -93,7 +93,6 @@ class DatabaseSeeder extends Seeder
                 }
 
                 $users = collect();
-                $agents = collect();
 
                 // === CUSTOM USERS ===
                     $customUsers = [
@@ -106,9 +105,9 @@ class DatabaseSeeder extends Seeder
                         ],
                         [
                             'full_name' => 'Davina Amarina',
-                            'email' => 'davina.superadmin@gmail.com',
+                            'email' => 'davina.managerkrb@gmail.com',
                             'phone_number' => '081234567891',
-                            'role' => 'Superadmin',
+                            'role' => 'Manager',
                             'department' => 'IT',
                         ],
                          [
@@ -122,7 +121,7 @@ class DatabaseSeeder extends Seeder
                             'full_name' => 'Madoka Higuchi',
                             'email' => 'davinad828@gmail.com',
                             'phone_number' => '081234567890',
-                            'role' => 'Superadmin',
+                            'role' => 'Manager',
                             'department' => 'Executive',
                         ],
                         [
@@ -143,14 +142,14 @@ class DatabaseSeeder extends Seeder
                             'full_name' => 'Izumi Katsuragi',
                             'email' => 'danzakuduro263@gmail.com',
                             'phone_number' => '08000000000',
-                            'role' => 'Superadmin',
+                            'role' => 'Manager',
                             'department' => 'Executive',
                         ],
                         [
                             'full_name' => 'Izumi Katsuragi 2',
                             'email' => 'izumikatsuragi@gmail.com',
                             'phone_number' => '08000000000',
-                            'role' => 'Superadmin',
+                            'role' => 'Manager',
                             'department' => 'Executive',
                         ],
                             ];
@@ -179,13 +178,13 @@ class DatabaseSeeder extends Seeder
                             }
 
                 // === CORE USERS ===
-                $superadmin = User::firstOrCreate(
-                    ['email' => "superadmin@{$domain}"],
+                $manager = User::firstOrCreate(
+                    ['email' => "manager@{$domain}"],
                     [
                         'company_id' => $companyId,
                         'department_id' => $depts['Executive']->department_id,
-                        'role_id' => $roles['Superadmin']->role_id,
-                        'full_name' => "Superadmin {$companyName}",
+                        'role_id' => $roles['Manager']->role_id,
+                        'full_name' => "Manager {$companyName}",
                         'phone_number' => '08000000000',
                         'password' => Hash::make('superpassword'),
                         'is_agent' => 'no',
@@ -205,97 +204,11 @@ class DatabaseSeeder extends Seeder
                     ]
                 );
 
-                // === ADMINS ===
-                $admins = collect();
-                foreach ($depts as $name => $dept) {
-                    $slug = Str::slug($name);
-                    $admin = User::firstOrCreate(
-                        ['email' => "admin-{$slug}@{$domain}"],
-                        [
-                            'company_id' => $companyId,
-                            'department_id' => $dept->department_id,
-                            'role_id' => $roles['Admin']->role_id,
-                            'full_name' => "Admin {$name} ({$companyName})",
-                            'phone_number' => '081' . random_int(100000000, 999999999),
-                            'password' => Hash::make('password'),
-                            'is_agent' => 'no',
-                        ]
-                    );
-                    $admins->push($admin);
-                }
-
                 // === GENERAL USERS & AGENTS ===
-                $users = collect([$superadmin, $receptionist]);
+                $users = collect([$manager, $receptionist]);
                 $agents = collect();
 
-                $firstNames = ['Agus','Bambang','Cici','Dedi','Endang','Fajar','Gita','Hadi','Indah','Joko','Kartika','Lina','Mega','Nina','Oscar','Putra','Qori','Rian','Sari','Tono','Umar','Vina','Wati','Yoga','Zul'];
-                $lastNames = ['Susanto','Wijaya','Permata','Nugroho','Pratama','Wibowo','Hidayat','Kusuma','Lestari','Setiawan','Saputra','Santoso'];
-
-                $globalCounter = 1;
-
-                foreach ($depts as $deptName => $deptObj) {
-                    // 10 Agents per Department
-                    for ($k = 1; $k <= 10; $k++) {
-                        $name = Arr::random($firstNames) . ' ' . Arr::random($lastNames);
-                        $slug = Str::slug($name) . "-agent-" . $globalCounter;
-
-                        $newAgent = User::create([
-                            'email' => "{$slug}@{$domain}",
-                            'company_id' => $companyId,
-                            'department_id' => $deptObj->department_id,
-                            'role_id' => $roles['User']->role_id,
-                            'full_name' => $name,
-                            'phone_number' => '089' . random_int(100000000, 999999999),
-                            'password' => Hash::make('password'),
-                            'is_agent' => 'yes',
-                        ]);
-
-                        $users->push($newAgent);
-                        $agents->push($newAgent);
-                        $globalCounter++;
-                    }
-
-                    // 5 Normal Users per Department
-                    for ($j = 1; $j <= 5; $j++) {
-                        $name = Arr::random($firstNames) . ' ' . Arr::random($lastNames);
-                        $slug = Str::slug($name) . "-user-" . $globalCounter;
-
-                        $newUser = User::create([
-                            'email' => "{$slug}@{$domain}",
-                            'company_id' => $companyId,
-                            'department_id' => $deptObj->department_id,
-                            'role_id' => $roles['User']->role_id,
-                            'full_name' => $name,
-                            'phone_number' => '085' . random_int(100000000, 999999999),
-                            'password' => Hash::make('password'),
-                            'is_agent' => 'no',
-                        ]);
-
-                        $users->push($newUser);
-                        $globalCounter++;
-                    }
-                }
-
-                // === PIVOT user_departments ===
-                $allDeptIds = collect($depts)->pluck('department_id');
-                foreach ($admins as $user) {
-                    if (rand(1, 100) <= 50) continue;
-
-                    $primaryDeptId = $user->department_id;
-                    $secondaryDeptIds = $allDeptIds
-                        ->reject(fn ($id) => $id === $primaryDeptId)
-                        ->shuffle()
-                        ->take(rand(1, 2));
-
-                    foreach ($secondaryDeptIds as $deptId) {
-                        DB::table('user_departments')->insertOrIgnore([
-                            'user_id'       => $user->user_id,
-                            'department_id' => $deptId,
-                        ]);
-                    }
-                }
-
-                $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, $admins, $users, $agents, $receptionist, $now);
+                $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now);
             }
         });
     }
@@ -584,103 +497,5 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // ===== TICKETING =====
-        $this->seedTicketSystem($companyId, $companyName, $depts, $users, $agents, $now, $demoImages, $daysBack);
-    }
-
-    protected function seedTicketSystem($companyId, $companyName, $depts, $users, $agents, $now, $demoImages, $daysBack)
-    {
-        $priorities = ['low', 'medium', 'high'];
-        $statuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
-
-        $slaLimits = ['low' => 72, 'medium' => 48, 'high' => 24];
-
-        if ($agents->isEmpty()) {
-            echo "⚠️ No agents found. Skipping ticket seeding.\n";
-            return;
-        }
-
-        $counter = 1;
-
-        foreach ($agents as $agent) {
-            for ($k = 1; $k <= 10; $k++) {
-                $creator = $users->random();
-                $requestDept = Arr::random($depts);
-                $priority = Arr::random($priorities);
-                $status = Arr::random($statuses);
-
-                $created = $now->copy()->subDays(rand(0, $daysBack));
-
-                $limitHours = $slaLimits[$priority];
-                $violatesSla = (rand(1, 100) <= 30);
-
-                if ($violatesSla) {
-                    $hoursTaken = rand($limitHours + 1, $limitHours + 120);
-                } else {
-                    $hoursTaken = rand(1, $limitHours - 1);
-                }
-
-                if (in_array($status, ['RESOLVED', 'CLOSED'])) {
-                    $updated = $created->copy()->addHours($hoursTaken);
-                } else {
-                    $updated = $created->copy()->addHours(rand(1, 24));
-                }
-
-                if ($updated->gt($now)) {
-                    $updated = $now;
-                }
-
-                $ticket = Ticket::create([
-                    'company_id' => $companyId,
-                    'department_id' => $agent->department_id,
-                    'requestdept_id' => $requestDept->department_id,
-                    'user_id' => $creator->user_id,
-                    'subject' => "Ticket #{$counter} - Priority {$priority}",
-                    'description' => "Issue detected. SLA Target: {$limitHours}h. Created: {$created->toDateString()}",
-                    'priority' => $priority,
-                    'status' => $status,
-                    'created_at' => $created,
-                    'updated_at' => $updated,
-                ]);
-
-                TicketAssignment::create([
-                    'ticket_id' => $ticket->ticket_id,
-                    'user_id' => $agent->user_id,
-                    'created_at' => $created,
-                ]);
-
-                $numAttachments = rand(1, 2);
-                for ($att = 1; $att <= $numAttachments; $att++) {
-                    TicketAttachment::create([
-                        'ticket_id' => $ticket->ticket_id,
-                        'file_url' => Arr::random($demoImages),
-                        'file_type' => 'image/jpeg',
-                        'uploaded_by' => $creator->user_id,
-                        'cloudinary_public_id' => 'demo_ticket_' . $counter . '_' . $att,
-                        'bytes' => random_int(15000, 60000),
-                        'original_filename' => "evidence_{$counter}_{$att}.jpg",
-                        'created_at' => $created,
-                    ]);
-                }
-
-                TicketComment::create([
-                    'ticket_id' => $ticket->ticket_id,
-                    'user_id' => $creator->user_id,
-                    'comment_text' => "Follow up for ticket #{$counter}",
-                    'created_at' => $created->copy()->addHours(1),
-                ]);
-
-                // TicketHistory::create([
-                //     'ticket_id' => $ticket->ticket_id,
-                //     'status' => $status,
-                //     'changed_by' => $creator->user_id,
-                //     'created_at' => $updated,
-                // ]);
-
-                $counter++;
-            }
-        }
-
-        echo "  ✅ Created " . ($counter - 1) . " tickets with realistic SLA data.\n";
     }
 }

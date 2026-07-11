@@ -21,23 +21,32 @@ class WazuhAlertService
                 'last_updated' => null,
                 'alerts' => [],
                 'stats' => $this->emptyStats(),
+                'total_count' => 0,
                 'available' => false,
             ];
         }
 
-        $lines = $this->tailLines($source, max($limit * 4, 100));
-        $alerts = [];
+        // Read enough lines to get accurate global totals (up to 5000 entries)
+        // while keeping the display list capped at $limit.
+        $lines = $this->tailLines($source, 5000);
 
+        $allAlerts = [];
         foreach (array_reverse($lines) as $line) {
-            $alert = $this->parseAlertLine($line);
+            $allAlerts[] = $this->parseAlertLine($line);
+        }
 
+        // Stats are computed from the full set for accurate cumulative counts.
+        $stats = $this->buildStats($allAlerts);
+        $totalCount = count($allAlerts);
+
+        // The displayed list is filtered by severity and limited for UI performance.
+        $displayAlerts = [];
+        foreach ($allAlerts as $alert) {
             if ($severity !== 'all' && $alert['severity'] !== $severity) {
                 continue;
             }
-
-            $alerts[] = $alert;
-
-            if (count($alerts) >= $limit) {
+            $displayAlerts[] = $alert;
+            if (count($displayAlerts) >= $limit) {
                 break;
             }
         }
@@ -48,8 +57,9 @@ class WazuhAlertService
             'source_host' => $this->resolveSourceHost(),
             'api_endpoints' => [],
             'last_updated' => Carbon::createFromTimestamp(filemtime($source) ?: time())->toDateTimeString(),
-            'alerts' => $alerts,
-            'stats' => $this->buildStats($alerts),
+            'alerts' => $displayAlerts,
+            'stats' => $stats,
+            'total_count' => $totalCount,
             'available' => true,
         ];
     }
