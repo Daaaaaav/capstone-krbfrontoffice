@@ -140,22 +140,34 @@
                                 @if (isset($msg['booking_prefill']) && is_array($msg['booking_prefill']))
                                     @php
                                         $prefill = $msg['booking_prefill'];
+                                        $isOnline = ($prefill['booking_type'] ?? '') === 'online_meeting';
                                         $hasRoomData = collect($prefill)->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
                                         $roomPayload = [
-                                            'roomId'         => $prefill['room_id']             ?? null,
-                                            'ymd'            => $prefill['date']                ?? '',
-                                            'time'           => $prefill['start_time']          ?? '',
-                                            'endTime'        => $prefill['end_time']            ?? '',
-                                            'title'          => $prefill['meeting_title']       ?? '',
-                                            'attendees'      => $prefill['number_of_attendees'] ?? 1,
-                                            'notes'          => $prefill['special_notes']       ?? '',
-                                            'department'     => $prefill['department']          ?? null,
-                                            'historicalUser' => $prefill['historical_user']     ?? null,
-                                            'mode'           => 'rebook',
+                                            'roomId'          => $prefill['room_id']             ?? null,
+                                            'ymd'             => $prefill['date']                ?? '',
+                                            'time'            => $prefill['start_time']          ?? '',
+                                            'endTime'         => $prefill['end_time']            ?? '',
+                                            'title'           => $prefill['meeting_title']       ?? '',
+                                            'attendees'       => $prefill['number_of_attendees'] ?? 1,
+                                            'notes'           => $prefill['special_notes']       ?? '',
+                                            'department'      => $prefill['department']          ?? null,
+                                            'historicalUser'  => $prefill['historical_user']     ?? null,
+                                            'bookingType'     => $prefill['booking_type']        ?? 'meeting',
+                                            'onlineProvider'  => $prefill['online_provider']     ?? 'google_meet',
+                                            'mode'            => 'rebook',
                                         ];
+                                        $providerLabel = match($prefill['online_provider'] ?? '') {
+                                            'zoom'         => 'Zoom',
+                                            'google_meet'  => 'Google Meet',
+                                            default        => null,
+                                        };
                                         $roomRows = [
                                             'Meeting Title'   => $prefill['meeting_title']       ?? null,
-                                            'Room'            => $prefill['room_name']            ?? null,
+                                            'Type'            => $isOnline
+                                                                   ? ('Online' . ($providerLabel ? ' · ' . $providerLabel : ''))
+                                                                   : 'In-Room',
+                                            'Room'            => !$isOnline ? ($prefill['room_name'] ?? null) : null,
+                                            'Provider'        => $isOnline ? $providerLabel : null,
                                             'Department'      => $prefill['department']           ?? null,
                                             'Historical User' => $prefill['historical_user']      ?? null,
                                             'Date'            => !empty($prefill['date'])
@@ -165,34 +177,47 @@
                                                                    ? substr($prefill['start_time'], 0, 5) : null,
                                             'End'             => !empty($prefill['end_time'])
                                                                    ? substr($prefill['end_time'], 0, 5) : null,
-                                            'Requirements'    => $prefill['special_notes']        ?? null,
+                                            'Requirements'    => !$isOnline ? ($prefill['special_notes'] ?? null) : null,
                                         ];
+                                        // Remove null-only rows that are type-specific
+                                        $roomRows = array_filter($roomRows, fn($v) => $v !== null);
                                     @endphp
-                                    <div class="border-t border-border/60 bg-primary/5">
+                                    <div class="border-t border-border/60 {{ $isOnline ? 'bg-blue-500/5' : 'bg-primary/5' }}">
                                         <div class="px-3.5 pt-2.5 pb-1.5 space-y-1">
-                                            <p class="text-[10px] font-semibold text-primary/70 uppercase tracking-wider mb-1.5">
-                                                🏢 Room Booking
+                                            <p class="text-[10px] font-semibold uppercase tracking-wider mb-1.5
+                                                       {{ $isOnline ? 'text-blue-500/70' : 'text-primary/70' }}">
+                                                {{ $isOnline ? '🎥 Online Meeting' : '🏢 Room Booking' }}
                                             </p>
                                             @foreach ($roomRows as $label => $value)
                                                 <div class="flex items-baseline gap-1.5">
                                                     <span class="text-[10px] text-muted-foreground shrink-0 w-[88px]">{{ $label }}:</span>
-                                                    @if ($value !== null && $value !== '')
-                                                        <span class="text-[10px] text-foreground font-medium break-words">{{ $value }}</span>
-                                                    @else
-                                                        <span class="text-[10px] text-muted-foreground/40 italic">—</span>
-                                                    @endif
+                                                    <span class="text-[10px] text-foreground font-medium break-words">{{ $value }}</span>
                                                 </div>
                                             @endforeach
                                         </div>
                                         <div class="px-3.5 pb-2.5 pt-1">
                                             <button type="button" x-data
                                                     x-on:click="$dispatch('open-quick-book', @js($roomPayload)); $wire.closeModal()"
-                                                    class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm">
-                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                                                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                                </svg>
-                                                {{ $hasRoomData ? 'Open Pre-filled Room Form' : 'Open Room Booking Form' }}
+                                                    class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg text-xs font-semibold active:scale-95 transition-all shadow-sm
+                                                           {{ $isOnline
+                                                               ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                               : 'bg-primary text-primary-foreground hover:bg-primary/90' }}">
+                                                @if ($isOnline)
+                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                              d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+                                                    </svg>
+                                                @else
+                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
+                                                @endif
+                                                @if ($isOnline)
+                                                    {{ $hasRoomData ? 'Open Pre-filled Online Meeting Form' : 'Open Online Meeting Form' }}
+                                                @else
+                                                    {{ $hasRoomData ? 'Open Pre-filled Room Form' : 'Open Room Booking Form' }}
+                                                @endif
                                             </button>
                                         </div>
                                     </div>

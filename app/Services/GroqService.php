@@ -330,7 +330,7 @@ class GroqService
             ))
             ->join("\n");
 
-        // Recent bookings (last 7 days)
+        // Recent bookings (last 7 days) — room + online, with type annotation
         $recentRooms = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['room', 'department'])
             ->whereBetween('date', [$now->copy()->subDays(6)->toDateString(), $today])
@@ -338,11 +338,35 @@ class GroqService
             ->take(10)
             ->get()
             ->map(fn($b) => sprintf(
-                '  [ID:%d] %s | Room: %s | Date: %s | Status: %s',
+                '  [ID:%d] %s | Type: %s | Room: %s | Date: %s | Status: %s',
                 $b->bookingroom_id,
                 $b->meeting_title ?? '—',
+                $b->booking_type === 'online_meeting'
+                    ? 'Online (' . ($b->online_provider ?? '—') . ')'
+                    : 'In-Room',
                 $b->room?->room_name ?? '—',
                 $b->date?->format('d M Y') ?? '—',
+                ucfirst($b->status ?? '—')
+            ))
+            ->join("\n");
+
+        // Recent online meetings (last 30 days) — dedicated block for rebook context
+        $recentOnline = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->with(['department'])
+            ->where('booking_type', 'online_meeting')
+            ->whereBetween('date', [$now->copy()->subDays(29)->toDateString(), $today])
+            ->orderByDesc('date')
+            ->take(8)
+            ->get()
+            ->map(fn($b) => sprintf(
+                '  [ID:%d] %s | Provider: %s | Dept: %s | Date: %s %s–%s | Status: %s',
+                $b->bookingroom_id,
+                $b->meeting_title ?? '—',
+                ucfirst(str_replace('_', ' ', $b->online_provider ?? '—')),
+                $b->department?->name ?? '—',
+                $b->date?->format('d M Y') ?? '—',
+                substr($b->start_time ?? '—', 0, 5),
+                substr($b->end_time ?? '—', 0, 5),
                 ucfirst($b->status ?? '—')
             ))
             ->join("\n");
@@ -406,6 +430,7 @@ class GroqService
         $todayRoomsBlock    = $todayRooms    ?: '  (none)';
         $pendingBlock       = $pendingRooms  ?: '  (none)';
         $recentRoomsBlock   = $recentRooms   ?: '  (none)';
+        $recentOnlineBlock  = $recentOnline  ?: '  (none)';
         $availVehicleBlock  = $availableVehicles ?: '  (none)';
         $todayVehicleBlock  = $todayVehicles ?: '  (none)';
         $recentVehicleBlock = $recentVehicles ?: '  (none)';
@@ -419,8 +444,11 @@ class GroqService
         PENDING ROOM APPROVALS (up to 5):
         {$pendingBlock}
 
-        RECENT ROOM BOOKINGS (last 7 days, up to 10):
+        RECENT ROOM BOOKINGS (last 7 days, up to 10 — includes both in-room and online):
         {$recentRoomsBlock}
+
+        RECENT ONLINE MEETINGS (last 30 days, up to 8 — use for online rebook requests):
+        {$recentOnlineBlock}
 
         AVAILABLE VEHICLES (active fleet):
         {$availVehicleBlock}
@@ -455,6 +483,8 @@ class GroqService
             "meeting_title":        "<string or null>",
             "room_id":              <integer or null>,
             "room_name":            "<string or null>",
+            "booking_type":         "<meeting|online_meeting or null>",
+            "online_provider":      "<google_meet|zoom or null — only set when booking_type is online_meeting>",
             "department":           "<department name string or null>",
             "historical_user":      "<name of the person who previously booked, or null>",
             "date":                 "<YYYY-MM-DD or null>",
@@ -486,6 +516,9 @@ class GroqService
         - For non-room questions: include booking_prefill with all fields null.
         - room_id must come from the actual booking data below; never invent an ID.
         - date must be the TARGET date for the new booking (not the historical date).
+        - booking_type: set to "meeting" for in-room meetings, "online_meeting" for Zoom/Google Meet, or null if unspecified.
+        - online_provider: set to "google_meet" or "zoom" only when booking_type is "online_meeting". Use the RECENT ONLINE MEETINGS section to determine the historical provider. Null for in-room meetings.
+        - For online meeting rebooks: room_id and room_name should be null (no room needed).
 
         Rules for vehicle_prefill (vehicle booking):
         - Fill in ONLY what you can confidently determine from the conversation and the data below.
@@ -558,6 +591,21 @@ class GroqService
             $prefill['special_notes']       = $prefill['special_notes']   ?? null;
             $prefill['department']          = $prefill['department']      ?? null;
             $prefill['historical_user']     = $prefill['historical_user'] ?? null;
+
+            // Normalise booking_type and online_provider
+            $validBookingTypes = ['meeting', 'online_meeting'];
+            $prefill['booking_type'] = in_array($prefill['booking_type'] ?? '', $validBookingTypes, true)
+                ? $prefill['booking_type'] : null;
+
+            $validProviders = ['google_meet', 'zoom'];
+            $prefill['online_provider'] = in_array($prefill['online_provider'] ?? '', $validProviders, true)
+                ? $prefill['online_provider'] : null;
+
+            // If online_meeting, room is not needed
+            if ($prefill['booking_type'] === 'online_meeting') {
+                $prefill['room_id']   = null;
+                $prefill['room_name'] = null;
+            }
         }
 
         // ── vehicle_prefill ───────────────────────────────────────
