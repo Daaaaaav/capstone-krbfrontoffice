@@ -122,6 +122,22 @@ class QuickVehicleBookModal extends Component
             return;
         }
 
+        // ── Overlapping booking check with 1-hour buffer ───────────────────
+        $conflict = VehicleBooking::where('vehicle_id', $this->vehicle_id)
+            ->whereIn('status', ['pending', 'approved', 'on_progress'])
+            ->where(function($q) use ($startAt, $endAt) {
+                $q->where('start_at', '<', $endAt->toDateTimeString())
+                  ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) > ?', [$startAt->toDateTimeString()]);
+            })
+            ->first();
+
+        if ($conflict) {
+            $this->dispatch('toast', type: 'error',
+                message: 'This vehicle is already booked from ' . $conflict->start_at->format('H:i') . ' to ' . $conflict->end_at->format('H:i') . '. (1-hour buffer required)');
+            return;
+        }
+        // ── end overlapping booking check ──────────────────────────────────
+
         SecurityMonitoringService::logFormSubmit('quick_vehicle_booking', [
             'vehicle_id'   => $this->vehicle_id,
             'borrower_name'=> $this->borrower_name,

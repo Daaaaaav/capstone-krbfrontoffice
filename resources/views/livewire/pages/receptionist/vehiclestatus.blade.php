@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-gray-50" wire:poll.5000ms.keep-alive>
     @php
     use Carbon\Carbon;
 
@@ -35,19 +35,45 @@
     </style>
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HEADER --}}
-        <x-page-header
-            title="{{ __('app.vehicle_status_title') }}"
-            subtitle="{{ __('app.vehicle_status_sub') }}">
-            <x-slot:actions>
-                <button type="button"
-                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
-                        @click="showFilterModal = true">
-                    <x-heroicon-o-funnel class="w-4 h-4"/>
-                    <span>{{ __('app.filter') }}</span>
-                </button>
-            </x-slot:actions>
-        </x-page-header>
+        {{-- HERO --}}
+        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
+            <div class="pointer-events-none absolute inset-0 opacity-10">
+                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
+                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
+            </div>
+            <div class="relative z-10 p-6 sm:p-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
+                            <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.vehicle_status_title') }}</h2>
+                            <p class="text-sm text-[#CDDEA7]/80">{{ __('app.vehicle_status_sub') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <label class="inline-flex items-center gap-2 text-sm text-[#CDDEA7]/90 cursor-pointer">
+                            <input type="checkbox" wire:model.live="includeDeleted"
+                                   class="rounded border-[#CDDEA7]/30 bg-[#CDDEA7]/10 focus:ring-[#CDDEA7]/40 text-[#CDDEA7] cursor-pointer">
+                            <span>{{ __('app.include_deleted') }}</span>
+                        </label>
+
+                        {{-- MOBILE FILTER BUTTON --}}
+                        <button type="button"
+                                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#CDDEA7]/10 text-xs font-medium border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/20 md:hidden"
+                                wire:click="openFilterModal">
+                            <x-heroicon-o-funnel class="w-4 h-4"/>
+                            <span>{{ __('app.filter') }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
             {{-- LIST --}}
@@ -63,7 +89,7 @@
                         <div class="flex flex-wrap items-center gap-3 self-start sm:self-auto">
                             {{-- Tabs --}}
                             <div class="inline-flex items-center bg-gray-100 rounded-full p-1 text-xs font-medium">
-                                @foreach(['pending'=>__('app.pending'),'approved'=>__('app.approved'),'on_progress'=>__('app.on_progress')] as $key=>$lbl)
+                                @foreach(['pending'=>__('app.pending'),'approved'=>__('app.approved'),'on_progress'=>__('app.on_progress'),'returned'=>__('app.returned')] as $key=>$lbl)
                                     <button type="button"
                                             wire:click="$set('statusTab','{{ $key }}')"
                                             class="px-3.5 py-1 rounded-full transition {{ $statusTab === $key ? 'bg-[#4E653D] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200' }}">
@@ -107,6 +133,11 @@
                                     <span>Vehicle: {{ $activeVehLabel }}</span>
                                     <button type="button" class="ml-1 hover:text-white" wire:click="clearVehicleFilter">×</button>
                                 </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-dashed border-gray-300">
+                                    <x-heroicon-o-funnel class="w-3.5 h-3.5"/>
+                                    <span>{{ __('app.no_vehicle_filter') }}</span>
+                                </span>
                             @endif
                         </div>
                     </div>
@@ -134,70 +165,15 @@
 
                         <div>
                             <label class="{{ $label }}">{{ __('app.sort') }}</label>
-                            <div
-                                x-data="{
-                                    open: false,
-                                    search: '',
-                                    selectedId: @entangle('sortFilter').live,
-                                    options: [
-                                        { id: 'recent', label: '{{ __('app.sort_default') }}' },
-                                        { id: 'oldest', label: '{{ __('app.sort_oldest_first') }}' },
-                                        { id: 'nearest', label: '{{ __('app.sort_nearest') }}' }
-                                    ],
-                                    get items() {
-                                        const q = this.search.toLowerCase().trim();
-                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
-                                    },
-                                    get selectedLabel() {
-                                        const found = this.options.find(i => i.id === this.selectedId);
-                                        return found ? found.label : '';
-                                    },
-                                    select(id) {
-                                        this.selectedId = id;
-                                        this.open = false;
-                                    }
-                                }"
-                                x-init="
-                                    if (!selectedId) selectedId = 'recent';
-                                    $watch('selectedId', () => { search = ''; });
-                                "
-                                class="relative"
-                                @click.outside="open = false"
-                            >
-                                <div class="relative">
-                                    <input
-                                        type="text"
-                                        x-model="search"
-                                        @focus="open = true"
-                                        @input="open = true"
-                                        @keydown.escape="open = false"
-                                        @keydown.enter.prevent="items.length === 1 && select(items[0].id)"
-                                        autocomplete="off"
-                                        :placeholder="selectedLabel || '{{ __('app.sort_default') }}'"
-                                        class="{{ $input }} pr-8 cursor-pointer"
-                                        :class="{ 'placeholder-gray-900': selectedId, 'placeholder-gray-400': !selectedId }"
-                                    >
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                    </div>
+                            <div class="relative">
+                                <select wire:model.live="sortFilter" class="{{ $input }} appearance-none pr-8 bg-white">
+                                    <option value="recent">{{ __('app.sort_default') }}</option>
+                                    <option value="oldest">{{ __('app.sort_oldest_first') }}</option>
+                                    <option value="nearest">{{ __('app.sort_nearest') }}</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                                 </div>
-                                <ul
-                                    x-show="open && items.length > 0"
-                                    x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 -translate-y-1"
-                                    x-transition:enter-end="opacity-100 translate-y-0"
-                                    class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
-                                    style="display:none"
-                                >
-                                    <template x-for="item in items" :key="item.id">
-                                        <li
-                                            @click="select(item.id)"
-                                            :class="selectedId === item.id ? 'bg-[#4E653D] text-white' : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
-                                            class="px-3.5 py-2.5 transition-colors"
-                                            x-text="item.label"
-                                        ></li>
-                                    </template>
-                                </ul>
                             </div>
                         </div>
                     </div>
@@ -226,6 +202,8 @@
                                 @php
                                     $vehicleName = $vehicleMap[$b->vehicle_id] ?? 'Unknown';
                                     $avatarChar  = strtoupper(substr($vehicleName, 0, 1));
+                                    $beforeC = $photoCounts[$b->vehiclebooking_id]['before'] ?? 0;
+                                    $afterC  = $photoCounts[$b->vehiclebooking_id]['after']  ?? 0;
                                     $statusColors = [
                                         'pending'      => ['bg'=>'bg-amber-100','text'=>'text-amber-800','label'=>__('app.pending')],
                                         'approved'     => ['bg'=>'bg-emerald-100','text'=>'text-emerald-800','label'=>__('app.approved')],
@@ -233,17 +211,16 @@
                                         'returned'     => ['bg'=>'bg-indigo-100','text'=>'text-indigo-800','label'=>__('app.returned')],
                                         'rejected'     => ['bg'=>'bg-rose-100','text'=>'text-rose-800','label'=>__('app.rejected')],
                                         'completed'    => ['bg'=>'bg-emerald-100','text'=>'text-emerald-800','label'=>__('app.completed')],
-                                        'late_return'  => ['bg'=>'bg-blue-100','text'=>'text-blue-800','label'=>__('app.on_progress')],
                                     ];
                                     $statusStyle = $statusColors[$b->status] ?? ['bg'=>'bg-gray-100','text'=>'text-gray-800','label'=>ucfirst($b->status)];
-                                    $overdue = $b->status === 'late_return' ? $this->overdueDuration($b) : null;
                                 @endphp
 
                                 {{-- START: MODIFIED VEHICLE BOOKING CARD DESIGN --}}
                                 <div wire:key="booking-{{ $b->vehiclebooking_id }}"
-                                     class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
+                                     class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition flex flex-col justify-between">
                                     
-                                    <div class="flex items-start gap-4">
+                                    <div class="space-y-3">
+                                        <div class="flex items-start gap-4">
                                             {{-- 1. Avatar/Initial on the left --}}
                                             <div class="{{ $icoAvatar }} mt-0.5">{{ $avatarChar }}</div>
                                             
@@ -259,16 +236,10 @@
                                                         <span class="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 {{ $statusStyle['bg'] }} {{ $statusStyle['text'] }}">
                                                             {{ $statusStyle['label'] }}
                                                         </span>
-                                                        {{-- Late return overdue marker on badge row --}}
-                                                        @if($b->status === 'late_return')
-                                                            @php $overdue = $this->overdueDuration($b); @endphp
-                                                            @if($overdue)
-                                                                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full flex-shrink-0">
-                                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                                                                    +{{ $overdue }} late
-                                                                </span>
-                                                            @endif
-                                                        @endif
+                                                        {{-- ID Chip --}}
+                                                        <span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200 flex-shrink-0 font-medium">
+                                                            #{{ $b->vehiclebooking_id }}
+                                                        </span>
                                                     </div>
                                                 </div>
 
@@ -302,8 +273,16 @@
                                                     </div>
                                                 </div>
 
-                                                {{-- 4. BOTTOM LEFT: Created Timestamp --}}
+                                                {{-- 4. BOTTOM LEFT: Photo Counts & Created Timestamp --}}
                                                 <div class="text-[12px] text-gray-600 space-y-2">
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-50 border border-gray-200 text-[11px]">
+                                                            Before: <span class="font-semibold text-gray-800 pl-0.5">{{ $beforeC }}</span>
+                                                        </span>
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-50 border border-gray-200 text-[11px]">
+                                                            After: <span class="font-semibold text-gray-800 pl-0.5">{{ $afterC }}</span>
+                                                        </span>
+                                                    </div>
                                                     <div class="flex items-center gap-1 text-[10px] text-gray-500">
                                                         <x-heroicon-o-document-plus class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
                                                         <span>{{ __('app.created') }}: {{ optional($b->created_at)->timezone('Asia/Jakarta')->format('d M Y · H:i') }}</span>
@@ -318,10 +297,11 @@
                                                 @endif
                                             </div>
                                         </div>
-                                    
+                                    </div>
+
                                     {{-- 5. BOTTOM ACTIONS (Horizontally aligned and right justified) --}}
-                                    <div class="pt-3 border-t border-gray-100 flex justify-end gap-3 items-center">
-                                        <span class="text-[11px] text-gray-500 mr-auto">No. {{ ($bookings->firstItem() ?? 1) + $loop->index }}</span>
+                                    <div class="pt-3 border-t border-gray-100 mt-4 flex justify-end gap-3 items-center">
+                                        <span class="text-[11px] text-gray-500 mr-auto font-medium">No. {{ ($bookings->firstItem() ?? 1) + $loop->index }}</span>
 
                                         {{-- Actions based on Status --}}
                                         @if($b->status === 'pending')
@@ -342,23 +322,32 @@
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
                                                 {{ __('app.approve') }}
                                             </button>
-                                        @elseif($b->status === 'on_progress' || $b->status === 'late_return')
-                                            {{-- Overdue badge (only when past end_at) --}}
-                                            @php $overdue = $this->overdueDuration($b); @endphp
-                                            @if($overdue)
-                                                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                                                    +{{ $overdue }} late
-                                                </span>
-                                            @endif
-                                            {{-- Mark Completed Button --}}
+                                        @elseif($b->status === 'on_progress')
+                                            {{-- Mark Returned Button --}}
                                             <button type="button"
-                                                    wire:click.stop="markReturned({{ $b->vehiclebooking_id }})"
+                                                    wire:click.stop="confirmMarkReturned({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
-                                                    wire:target="markReturned({{ $b->vehiclebooking_id }})"
+                                                    wire:target="confirmMarkReturned({{ $b->vehiclebooking_id }})"
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
-                                                {{ __('app.mark_done') }}
+                                                {{ __('app.mark_returned') }}
                                             </button>
+                                        @elseif($b->status === 'returned')
+                                            {{-- Mark Done Button (Conditional styling based on after photos) --}}
+                                            <div class="flex items-center gap-2">
+                                                @if($afterC === 0)
+                                                    <span class="text-[11px] text-gray-500">
+                                                        {{ __('app.wait_after_photos') }}
+                                                    </span>
+                                                @endif
+                                                <button type="button"
+                                                        wire:click.stop="markDone({{ $b->vehiclebooking_id }})"
+                                                        wire:loading.attr="disabled"
+                                                        wire:target="markDone({{ $b->vehiclebooking_id }})"
+                                                        class="px-4 py-1.5 text-xs font-medium rounded-lg {{ $afterC === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300' : 'bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 transition shadow-sm' }}"
+                                                        @disabled($afterC === 0)>
+                                                    {{ __('app.mark_done') }}
+                                                </button>
+                                            </div>
                                         @endif
                                     </div>
                                 </div>
@@ -381,7 +370,8 @@
                                             <th class="px-6 py-3.5">{{ __('app.purpose') }}</th>
                                             <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                             <th class="px-6 py-3.5">{{ __('app.time') }}</th>
-                                            <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
+                                            <th class="px-6 py-3.5">Photos</th>
+                                            <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100"
@@ -396,24 +386,32 @@
                                         @forelse($bookings as $b)
                                             @php
                                                 $vehicleName = $vehicleMap[$b->vehicle_id] ?? 'Unknown';
+                                                $beforeC = $photoCounts[$b->vehiclebooking_id]['before'] ?? 0;
+                                                $afterC  = $photoCounts[$b->vehiclebooking_id]['after']  ?? 0;
                                                 $rowNo = ($bookings->firstItem() ?? 1) + $loop->index;
                                             @endphp
                                             <tr data-booking-id="{{ $b->vehiclebooking_id }}"
                                                 class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                                <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $rowNo }}</td>
-                                                <td class="h-12 px-6 py-4 font-semibold text-gray-900">
-                                                    <div class="flex items-center justify-end gap-2">
+                                                <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $rowNo }}</td>
+                                                <td class="px-6 py-4 font-semibold text-gray-900">
+                                                    <div class="flex items-center gap-2">
                                                         <div class="w-7 h-7 bg-[#4E653D]/10 rounded flex items-center justify-center text-[#4E653D] font-bold text-xs shrink-0">
                                                             {{ substr($vehicleName, 0, 2) }}
                                                         </div>
                                                         <span>{{ $vehicleName }}</span>
                                                     </div>
                                                 </td>
-                                                <td class="h-12 px-6 py-0 ">{{ $b->borrower_name ?? '—' }}</td>
-                                                <td class="h-12 px-6 py-4 max-w-xs truncate font-medium text-gray-950" title="{{ $b->purpose }}">{{ $b->purpose ?? '—' }}</td>
-                                                <td class="h-12 px-6 py-4 font-medium">{{ fmtDate($b->start_at) }}</td>
-                                                <td class="h-12 px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_at) }}–{{ fmtTime($b->end_at) }}</td>
-                                                <td class="h-12 px-6 py-4">
+                                                <td class="px-6 py-4">{{ $b->borrower_name ?? '—' }}</td>
+                                                <td class="px-6 py-4 max-w-xs truncate font-medium text-gray-950" title="{{ $b->purpose }}">{{ $b->purpose ?? '—' }}</td>
+                                                <td class="px-6 py-4 font-medium">{{ fmtDate($b->start_at) }}</td>
+                                                <td class="px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_at) }}–{{ fmtTime($b->end_at) }}</td>
+                                                <td class="px-6 py-4 text-xs text-gray-500">
+                                                    <span class="inline-flex gap-1.5">
+                                                        <span class="px-1.5 py-0.5 rounded bg-gray-50 border border-gray-200">{{ __('app.borrow_date') }}: {{ $beforeC }}</span>
+                                                        <span class="px-1.5 py-0.5 rounded bg-gray-50 border border-gray-200">{{ __('app.return_date') }}: {{ $afterC }}</span>
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 text-right">
                                                     <div class="flex items-center justify-end gap-2 font-medium">
                                                         @if($b->status === 'pending')
                                                             <button type="button" wire:click.stop="confirmReject({{ $b->vehiclebooking_id }})"
@@ -432,8 +430,19 @@
                                                                     +{{ $overdueTable }} late
                                                                 </span>
                                                             @endif
-                                                            <button type="button" wire:click.stop="markReturned({{ $b->vehiclebooking_id }})"
+                                                            @if(str_contains($b->notes ?? '', '[Late Return]'))
+                                                                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full shadow-sm mr-1">
+                                                                    Late Return
+                                                                </span>
+                                                            @endif
+                                                            <button type="button" wire:click.stop="confirmMarkReturned({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
+                                                                {{ __('app.mark_returned') }}
+                                                            </button>
+                                                        @elseif($b->status === 'returned')
+                                                            <button type="button" wire:click.stop="markDone({{ $b->vehiclebooking_id }})"
+                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg {{ $afterC === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300' : 'bg-[#4E653D] text-white hover:bg-[#354C2B] transition' }}"
+                                                                @disabled($afterC === 0)>
                                                                 {{ __('app.mark_done') }}
                                                             </button>
                                                         @else
@@ -444,7 +453,7 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">{{ __('app.no_data_filter') }}</td>
+                                                <td colspan="8" class="px-6 py-12 text-center text-gray-500">{{ __('app.no_data_filter') }}</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
@@ -457,7 +466,7 @@
                 {{-- Pagination --}}
                 @if(method_exists($bookings, 'links'))
                     <div class="px-4 sm:px-6 py-4 bg-white border-t border-gray-200">
-                        <div class="w-full">
+                        <div class="flex justify-center">
                             {{ $bookings->links() }}
                         </div>
                     </div>
@@ -467,47 +476,46 @@
             {{-- SIDEBAR: vehicle filter --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 <section class="{{ $card }}">
-                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
-                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_vehicle') }}</p>
+                    <div class="px-4 py-4 border-b border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
+                        <p class="text-xs text-gray-500 mt-1">{{ __('app.click_to_filter') }}</p>
                     </div>
 
-                    <div class="p-4 space-y-4 bg-white">
-                        <div class="space-y-1">
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.vehicle') }}</label>
-                            <div class="px-1 py-1 max-h-80 overflow-y-auto">
-                                <button type="button"
-                                        wire:click="clearVehicleFilter"
-                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
-                                            {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                                    <span class="flex items-center gap-2">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
-                                        <span>{{ __('app.all_vehicles') }}</span>
-                                    </span>
-                                </button>
+                    <div class="px-4 py-3 max-h-64 overflow-y-auto">
+                        <button type="button"
+                                wire:click="clearVehicleFilter"
+                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                            <span class="flex items-center gap-2">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">All</span>
+                                <span>{{ __('app.all_vehicles') }}</span>
+                            </span>
+                            @if(is_null($vehicleFilter))
+                                <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
+                            @endif
+                        </button>
 
-                                <div class="mt-2 space-y-1.5">
-                                    @forelse($vehicles as $v)
-                                        @php
-                                            $vLabel = $v->name ?? $v->plate_number ?? ('#'.$v->vehicle_id);
-                                            $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
-                                        @endphp
-                                        <button type="button"
-                                                wire:click="selectVehicle({{ $v->vehicle_id }})"
-                                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
-                                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                                            <span class="flex items-center gap-2">
-                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
-                                                    {{ substr($vLabel, 0, 2) }}
-                                                </span>
-                                                <span class="truncate font-medium">{{ $vLabel }}</span>
-                                            </span>
-                                        </button>
-                                    @empty
-                                        <p class="text-xs text-gray-500">{{ __('app.no_vehicle_data_filter') }}</p>
-                                    @endforelse
-                                </div>
-                            </div>
+                        <div class="mt-2 space-y-1.5">
+                            @forelse($vehicles as $v)
+                                @php
+                                    $vLabel = $v->name ?? $v->plate_number ?? ('#'.$v->vehicle_id);
+                                    $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
+                                @endphp
+                                <button type="button"
+                                        wire:click="selectVehicle({{ $v->vehicle_id }})"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                                    <span class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
+                                            {{ substr($vLabel, 0, 2) }}
+                                        </span>
+                                        <span class="truncate">{{ $vLabel }}</span>
+                                    </span>
+                                    @if($active)
+                                        <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
+                                    @endif
+                                </button>
+                            @empty
+                                <p class="text-xs text-gray-500">{{ __('app.no_vehicle_data_filter') }}</p>
+                            @endforelse
                         </div>
                     </div>
                 </section>
@@ -515,59 +523,65 @@
         </div>
 
         {{-- MOBILE FILTER MODAL --}}
-        <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
-            <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
-            <div x-show="showFilterModal" 
-                 x-transition:enter="transform transition ease-out duration-300"
-                 x-transition:enter-start="translate-y-full"
-                 x-transition:enter-end="translate-y-0"
-                 x-transition:leave="transform transition ease-in duration-200"
-                 x-transition:leave-start="translate-y-0"
-                 x-transition:leave-end="translate-y-full"
-                 class="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-gray-200">
-                <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-                    <div>
-                        <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
-                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_vehicle_history') }}</p>
+        @if($showFilterModal)
+            <div class="fixed inset-0 z-50 md:hidden flex items-end">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeFilterModal"></div>
+                <div class="relative w-full bg-card rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-border">
+                    <div class="px-5 py-4 border-b border-border flex items-center justify-between bg-muted/10">
+                        <div>
+                            <h3 class="text-sm font-semibold tracking-tight text-foreground">{{ __('app.filter_by_vehicle') }}</h3>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('app.filter_by_vehicle_history') }}</p>
+                        </div>
+                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" wire:click="closeFilterModal">✕</button>
                     </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="showFilterModal = false">✕</button>
-                </div>
 
-                <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-white">
-                    {{-- All vehicles option --}}
-                    <button type="button"
-                            wire:click="clearVehicleFilter"
-                            @click="showFilterModal = false"
-                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
-                                {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                        <span class="flex items-center gap-2">
-                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">All</span>
-                            <span>{{ __('app.all_vehicles') }}</span>
-                        </span>
-                    </button>
+                    <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-background">
+                        {{-- All vehicles option --}}
+                        <button type="button"
+                                wire:click="clearVehicleFilter"
+                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium
+                                    {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                            <span class="flex items-center gap-2">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">All</span>
+                                <span>{{ __('app.all_vehicles') }}</span>
+                            </span>
+                            @if(is_null($vehicleFilter))
+                                <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
+                            @endif
+                        </button>
 
-                    <div class="space-y-1.5">
-                        @foreach($vehicles as $v)
-                            @php
-                                $vLabel = $v->name ?? $v->plate_number ?? ('#'.$v->vehicle_id);
-                                $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
-                            @endphp
-                            <button type="button"
-                                    wire:click="selectVehicle({{ $v->vehicle_id }})"
-                                    @click="showFilterModal = false"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
-                                <span class="flex items-center gap-2">
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                        {{ substr($vLabel, 0, 2) }}
+                        <div class="space-y-1.5">
+                            @foreach($vehicles as $v)
+                                @php
+                                    $vLabel = $v->name ?? $v->plate_number ?? ('#'.$v->vehicle_id);
+                                    $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
+                                @endphp
+                                <button type="button"
+                                        wire:click="selectVehicle({{ $v->vehicle_id }})"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                                    <span class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
+                                            {{ substr($vLabel, 0, 2) }}
+                                        </span>
+                                        <span class="truncate">{{ $vLabel }}</span>
                                     </span>
-                                    <span class="truncate">{{ $vLabel }}</span>
-                                </span>
-                            </button>
-                        @endforeach
+                                    @if($active)
+                                        <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="p-5 border-t border-border bg-muted/10">
+                        <button type="button" class="w-full h-10 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm"
+                                wire:click="closeFilterModal">
+                            {{ __('app.close') }}
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
+        @endif
     </main>
 
     {{-- DETAIL MODAL --}}
@@ -580,7 +594,7 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4"
              style="display: none;">
 
             {{-- Backdrop --}}
@@ -594,26 +608,26 @@
                  x-transition:leave="transition ease-in duration-200"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 class="relative z-10 w-full max-w-3xl bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                 class="relative z-10 w-full max-w-3xl bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
 
                 {{-- Header --}}
-                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
-                            <svg class="w-4 h-4 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="w-8 h-8 rounded-lg bg-[#4E653D]/10 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-[#4E653D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
                             </svg>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold tracking-tight">
+                            <h3 class="text-base font-bold text-foreground tracking-tight">
                                 {{ __('app.detail') }} Booking #{{ $selectedBooking->vehiclebooking_id }}
                             </h3>
-                            <p class="text-xs text-[#CDDEA7]/80 mt-0.5">
+                            <p class="text-xs text-muted-foreground mt-0.5">
                                 {{ $selectedBooking->purpose }}
                             </p>
                         </div>
                     </div>
-                    <button type="button" wire:click="closeDetailModal" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">✕</button>
+                    <button type="button" wire:click="closeDetailModal" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition">✕</button>
                 </div>
 
                 {{-- Body --}}
@@ -717,7 +731,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+         class="fixed inset-0 z-[60] flex items-center justify-center p-4"
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -797,7 +811,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -816,18 +830,18 @@
 
             <form wire:submit.prevent="submitReject">
                 {{-- Header --}}
-                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                <div class="px-6 py-5 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
-                            <x-heroicon-o-x-circle class="w-4 h-4 text-[#CDDEA7]" />
+                        <div class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center">
+                            <x-heroicon-o-x-circle class="w-4 h-4 text-rose-700" />
                         </div>
-                        <h3 class="text-base font-bold tracking-tight">
+                        <h3 class="text-base font-bold text-gray-900 tracking-tight">
                             {{ __('app.reject_booking_title') }} #{{ $rejectId }}
                         </h3>
                     </div>
                     <button type="button"
                             @click="$wire.cancelReject()"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">✕</button>
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition">✕</button>
                 </div>
 
                 {{-- Body --}}
@@ -868,6 +882,76 @@
                     </button>
                 </div>
             </form>
+         </div>
+    </div>
+
+    {{-- LATE REASON MODAL --}}
+    <div x-data="{ show: @entangle('showLateReasonModal').live }"
+         x-show="show"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         style="display: none;">
+
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300" wire:click="closeLateReasonModal"></div>
+
+        {{-- Modal --}}
+        <div x-show="show"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="relative z-10 w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+
+            {{-- Header --}}
+            <div class="px-5 py-4 border-b border-gray-200 bg-red-50 text-red-900 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold tracking-tight">Late Return (Over 3 Hours)</h3>
+                    <p class="text-xs text-red-700/80 mt-0.5">Please provide a reason before completing.</p>
+                </div>
+            </div>
+
+            {{-- Body --}}
+            <div class="p-5">
+                <form wire:submit.prevent="submitLateReason">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Reason</label>
+                            <textarea wire:model="lateReasonText" rows="3"
+                                      class="w-full rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500/20 shadow-sm"
+                                      placeholder="Explain the reason for the late return..." required></textarea>
+                            @error('lateReasonText')
+                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" wire:click="closeLateReasonModal"
+                                class="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                wire:loading.attr="disabled"
+                                class="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition disabled:opacity-50">
+                            Submit Reason & Mark Done
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+
 </div>

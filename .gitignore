@@ -77,3 +77,4 @@ storage/app/google_tokens/*.json
 /bootstrap/cache/*.php
 !/bootstrap/cache/.gitignore
 
+*.patch

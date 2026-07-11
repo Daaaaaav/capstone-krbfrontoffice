@@ -30,167 +30,73 @@ $invertStyle = 'filter: brightness(0) invert(1);';
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
     @livewireStyles
-
-    <style>
-        /* Responsive Tables for Receptionist Module - Mobile Only */
-        @media (max-width: 767px) {
-            table {
-                display: block !important;
-                width: 100% !important;
-            }
-            table thead {
-                display: none !important;
-            }
-            table tbody {
-                display: block !important;
-                width: 100% !important;
-            }
-            table tr {
-                display: flex !important;
-                flex-direction: column !important;
-                margin-bottom: 1rem !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 0.75rem !important;
-                background-color: white !important;
-                overflow: hidden !important;
-            }
-            table td {
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                position: relative !important;
-                padding: 1rem !important;
-                padding-left: 40% !important;
-                text-align: left !important;
-                border-bottom: 1px solid #f3f4f6 !important;
-                min-height: 3.5rem !important;
-            }
-            table td:last-child {
-                border-bottom: none !important;
-            }
-            table td::before {
-                content: attr(data-label) !important;
-                position: absolute !important;
-                left: 1rem !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
-                font-size: 11px !important;
-                font-weight: 700 !important;
-                text-transform: uppercase !important;
-                color: #6b7280 !important;
-                text-align: left !important;
-                max-width: 35% !important;
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-            }
-        }
-    </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            function applyDataLabels() {
-                document.querySelectorAll('table').forEach(table => {
-                    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.trim());
-                    table.querySelectorAll('tbody tr').forEach(tr => {
-                        Array.from(tr.children).forEach((td, index) => {
-                            if (headers[index] && !td.hasAttribute('data-label')) {
-                                td.setAttribute('data-label', headers[index]);
-                            }
-                        });
-                    });
-                });
-            }
-            
-            applyDataLabels();
-
-            if (typeof document.addEventListener !== 'undefined') {
-                document.addEventListener('livewire:navigated', applyDataLabels);
-                document.addEventListener('livewire:initialized', () => {
-                    Livewire.hook('morph.updated', ({ el, component }) => {
-                        applyDataLabels();
-                    });
-                });
-            }
-        });
-    </script>
-    @stack('styles')
 </head>
 
-<body class="h-screen bg-background text-foreground font-sans overflow-hidden"
-    :class="sidebarLocked && !isMobile ? 'sidebar-pinned' : ''"
-    x-data="{
-        sidebarCollapsed: true,
-        hoverTimeout: null,
-        sidebarLocked: false,
-        mobileMenuOpen: false,
-        isMobile: window.innerWidth < 1024,
-        init() {
-            // Restore lock state from localStorage
-            const saved = localStorage.getItem('receptionist-sidebar-locked');
-            if (saved === 'true') {
-                this.sidebarLocked = true;
-                this.sidebarCollapsed = false;
-            }
-            const handler = () => {
-                this.isMobile = window.innerWidth < 1024;
-                if (this.isMobile) {
-                    this.sidebarCollapsed = true;
-                }
-            };
-            window.addEventListener('resize', handler);
-            this.$cleanup = () => window.removeEventListener('resize', handler);
-            // Watch lock changes and persist
-            this.$watch('sidebarLocked', (val) => {
-                localStorage.setItem('receptionist-sidebar-locked', val ? 'true' : 'false');
-                if (val) this.sidebarCollapsed = false;
-                if (!val) this.sidebarCollapsed = true;
-            });
-
-            // Check if we just navigated from a sidebar link
-            if (!this.sidebarLocked && !this.isMobile) {
-                if (sessionStorage.getItem('sidebar-navigated') === 'true') {
-                    this.sidebarCollapsed = false;
-                    sessionStorage.removeItem('sidebar-navigated');
-                }
-            }
-
-            // Bind click listener to sidebar links to set the flag
-            this.$nextTick(() => {
-                const sidebar = document.querySelector('.sidebar-unified');
-                if (sidebar) {
-                    sidebar.addEventListener('click', (e) => {
-                        if (e.target.closest('a')) {
-                            sessionStorage.setItem('sidebar-navigated', 'true');
-                        }
-                    });
-                }
-            });
-
-
-        },
-        sidebarEnter() {
-            if (!this.sidebarLocked && !this.isMobile) {
-                clearTimeout(this.hoverTimeout);
-                this.sidebarCollapsed = false;
-            }
-        },
-        sidebarLeave() {
-            if (!this.sidebarLocked && !this.isMobile) {
-                clearTimeout(this.hoverTimeout);
-                this.hoverTimeout = setTimeout(() => {
-                    this.sidebarCollapsed = true;
-                }, 150);
-            }
-        }
-                }"
+<body class="min-h-screen bg-background text-foreground font-sans"
+    x-data="{ sidebarCollapsed: true }"
+    :style="sidebarCollapsed ? '--sbw: 4.5rem' : '--sbw: 16rem'"
+    :class="sidebarCollapsed ? 'sidebar-is-collapsed' : 'sidebar-is-expanded'"
 >
-    {{-- Form logout tersembunyi --}}
+    {{-- Mobile header only (<lg) --}}
+    <flux:header class="lg:hidden bg-sidebar border-b border-sidebar-border">
+        <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+
+        <div class="font-semibold text-sidebar-foreground tracking-wide font-sans">Kebun Raya Bogor</div>
+
+        <flux:spacer />
+
+        {{-- Language Toggle (Mobile Header) --}}
+        @php $isEnHeader = app()->getLocale() === 'en'; @endphp
+        <div x-data="{ open: false }" class="relative shrink-0">
+            <button @click.stop="open = !open" type="button"
+                class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-sidebar-foreground hover:bg-sidebar-accent border border-sidebar-border/50 transition-all">
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <span>{{ $isEnHeader ? 'EN' : 'ID' }}</span>
+            </button>
+            <div x-show="open" x-transition @click.outside="open = false"
+                class="absolute right-0 top-full mt-1.5 w-36 rounded-xl bg-sidebar border border-sidebar-border shadow-xl z-[9999] overflow-hidden"
+                style="display:none;">
+                <a href="{{ route('lang.switch', 'en') }}" class="flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors {{ $isEnHeader ? 'bg-sidebar-accent font-semibold text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground' }}">
+                    <span>🇬🇧</span><span>{{ __('app.english') }}</span>
+                    @if($isEnHeader)<svg class="w-3.5 h-3.5 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>@endif
+                </a>
+                <a href="{{ route('lang.switch', 'id') }}" class="flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors {{ !$isEnHeader ? 'bg-sidebar-accent font-semibold text-sidebar-foreground' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground' }}">
+                    <span>🇮🇩</span><span>{{ __('app.indonesian') }}</span>
+                    @if(!$isEnHeader)<svg class="w-3.5 h-3.5 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>@endif
+                </a>
+            </div>
+        </div>
+
+        <flux:dropdown position="top" align="start">
+            <flux:profile avatar-text="{{ strtoupper($initials) }}" />
+            <flux:menu>
+                <flux:menu.radio.group>
+                    <flux:menu.radio checked>{{ $fullName }}</flux:menu.radio>
+                </flux:menu.radio.group>
+
+                <flux:menu.separator />
+
+                <flux:menu.item
+                    icon="arrow-right-start-on-rectangle"
+                    as="button"
+                    type="submit"
+                    form="logout-form">
+                    Logout
+                </flux:menu.item>
+            </flux:menu>
+        </flux:dropdown>
+    </flux:header>
+
+    {{-- Form logout tersembunyi (di luar dropdown) --}}
     <form id="logout-form" method="POST" action="{{ route('logout') }}" class="hidden">
         @csrf
     </form>
 
-    <div class="flex h-screen w-full overflow-hidden">
-        {{-- Sidebar Component --}}
+    <div class="flex min-h-screen lg:min-h-0">
+        {{-- Sidebar (always full height) --}}
         @include('livewire.components.partials.receptionist.sidebar')
 
         {{-- Main Content Wrapper --}}
@@ -205,6 +111,14 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                 </div>
 
                 <div class="flex items-center gap-3 shrink-0">
+                    <a href="{{ route('notifications.index') }}" class="relative flex items-center justify-center w-8 h-8 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent border border-sidebar-border/50 transition-all focus:outline-none">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-[#2a1f1a]"></span>
+                    </a>
+
                     {{-- Language Toggle (Mobile Header) --}}
                     @php $isEnHeader = app()->getLocale() === 'en'; @endphp
                     <div x-data="{ open: false }" class="relative">
@@ -263,8 +177,16 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                         @include('components.breadcrumbs')
                     </div>
 
-                    {{-- Right side: language toggle + date badge --}}
+                    {{-- Right side: notification bell + language toggle + date badge --}}
                     <div class="flex items-center gap-3">
+                        <a href="{{ route('notifications.index') }}" class="relative flex items-center justify-center w-8 h-8 rounded-lg bg-secondary/80 border border-border text-foreground hover:bg-accent transition-all duration-200">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                            </svg>
+                            <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-background"></span>
+                        </a>
+
                         {{-- Language Toggle --}}
                         <div class="relative" x-data="{ open: false }">
                             @php $isEn = app()->getLocale() === 'en'; @endphp
@@ -296,38 +218,18 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     </div>
                 </header>
 
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
 
             </div>
         </main>
-        </div> {{-- End Main Content Wrapper --}}
-    </div> {{-- End Flex Wrapper --}}
-
-
-    @livewire('components.ui.chat-modal')
-    @livewire('booking.quick-book-modal')
-    @livewire('booking.quick-vehicle-book-modal')
-
-    {{-- Floating chat button --}}
-    <div class="fixed bottom-6 right-6 z-[70]">
-        <button
-            x-data
-            x-on:click="$dispatch('openChatModal')"
-            class="bg-primary hover:bg-primary/90 text-primary-foreground p-3.5 rounded-2xl shadow-xl shadow-primary/10
-                   hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:-translate-y-1 active:scale-95
-                   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            aria-label="Open AI assistant"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-        </button>
     </div>
+
 
     @livewire('components.ui.toast')
 
     @livewireScripts
+    @fluxScripts
     @vite('resources/js/app.js')
 
     {{-- Refresh CSRF token periodically so long-lived pages don't get 419 Page Expired --}}
@@ -354,32 +256,6 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             setInterval(refreshCsrf, 30 * 60 * 1000);
         })();
     </script>
-
-    {{-- Scroll lock: prevent background scrolling when any modal overlay is visible --}}
-    <script>
-        (function(){
-            var raf;
-            function checkScrollLock() {
-                cancelAnimationFrame(raf);
-                raf = requestAnimationFrame(function() {
-                    var modals = document.querySelectorAll('.fixed.inset-0');
-                    var shouldLock = false;
-                    for (var i = 0; i < modals.length; i++) {
-                        if (window.getComputedStyle(modals[i]).display !== 'none') {
-                            shouldLock = true;
-                            break;
-                        }
-                    }
-                    document.body.style.overflow = shouldLock ? 'hidden' : '';
-                });
-            }
-            new MutationObserver(checkScrollLock).observe(document.body, {
-                childList: true, subtree: true, attributes: true, attributeFilter: ['style']
-            });
-            checkScrollLock();
-        })();
-    </script>
-    @stack('scripts')
 </body>
 
 </html>

@@ -23,8 +23,10 @@
             title="{{ __('app.vehicle_booking_title') }}"
             subtitle="{{ __('app.vehicle_booking_subtitle') }}" />
 
-        {{-- FORM --}}
-        <div class="{{ $card }}">
+        {{-- MAIN LAYOUT: LEFT (FORM) + RIGHT (SIDEBAR) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            {{-- LEFT: FORM CARD --}}
+            <div class="{{ $card }} lg:col-span-3">
             <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                     <x-heroicon-o-truck class="w-4.5 h-4.5 text-primary" />
@@ -44,6 +46,20 @@
                         <span>{{ session('success') }}</span>
                     </div>
                 @endif
+
+                {{-- Rules & Notes Alert --}}
+                <div class="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 shadow-sm">
+                    <div class="flex items-center gap-2 mb-2.5">
+                        <x-heroicon-o-information-circle class="w-5 h-5 shrink-0" />
+                        <h4 class="text-sm font-bold tracking-wide">Rules & Notes</h4>
+                    </div>
+                    <ul class="list-disc list-outside text-xs space-y-1.5 ml-5 text-blue-600/90 dark:text-blue-300/90 leading-relaxed">
+                        <li><strong>Maximum Booking Limit:</strong> You can only book a vehicle up to 1 month in advance from today's date.</li>
+                        <li><strong>Late Return Label:</strong> Returns delayed by more than 1 hour will be automatically flagged as 'Late Return'.</li>
+                        <li><strong>Mandatory Reason:</strong> If the return is delayed by more than 3 hours, a mandatory explanation/reason must be provided before completing the task.</li>
+                        <li><strong>Grace Period:</strong> Delays under 1 hour are still considered on-time (Success).</li>
+                    </ul>
+                </div>
 
                 <form wire:submit.prevent="submit" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -681,6 +697,105 @@
                     </div>
                 </form>
             </div>
+            </div>
+
+            {{-- RIGHT: SIDEBAR (DESKTOP) --}}
+            <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
+                {{-- Available Vehicles Widget --}}
+                <div class="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">Fleet Availability</h3>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">Quick overview of available vehicles</p>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        @forelse(array_slice($vehiclesForCombobox ?? [], 0, 5) as $vehicle)
+                            <div wire:click="openVehicleScheduleModal({{ $vehicle['id'] }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+                                    <x-heroicon-o-truck class="w-4 h-4" />
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-foreground truncate">{{ explode(' — ', $vehicle['label'])[0] }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">{{ explode(' — ', $vehicle['label'])[1] ?? 'No Plate' }}</p>
+                                </div>
+                            </div>
+
+                        @empty
+                            <div class="text-center py-6">
+                                <x-heroicon-o-truck class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2"/>
+                                <p class="text-xs text-muted-foreground">No vehicles available.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </aside>
         </div>
-    </div>
+    </main>
+
+    {{-- Vehicle Schedule Modal --}}
+    @if($showVehicleScheduleModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" x-data="{ show: @entangle('showVehicleScheduleModal') }" x-show="show" x-cloak>
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="show = false"></div>
+            <div class="relative w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden transform transition-all"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            >
+                <div class="px-5 py-4 border-b border-border bg-muted/10 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-semibold text-foreground">Vehicle Schedule</h3>
+                        <p class="text-xs text-muted-foreground mt-0.5">30-Day Timeline</p>
+                    </div>
+                    <button @click="show = false" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition">
+                        ✕
+                    </button>
+                </div>
+                <div class="p-6 max-h-[70vh] overflow-y-auto">
+                    @if(empty($vehicleScheduleData))
+                        <div class="text-center py-8">
+                            <x-heroicon-o-calendar-days class="w-10 h-10 mx-auto text-muted-foreground/30 mb-3"/>
+                            <h4 class="text-sm font-medium text-foreground">No bookings</h4>
+                            <p class="text-xs text-muted-foreground mt-1">This vehicle is fully available for the next 30 days.</p>
+                        </div>
+                    @else
+                        @php
+                            $groupedVehicleSchedule = collect($vehicleScheduleData)->groupBy('date');
+                        @endphp
+                        <div class="grid grid-cols-1 gap-6">
+                            @foreach($groupedVehicleSchedule as $date => $bookings)
+                                <div class="relative pl-4 border-l-2 border-primary/20">
+                                    <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary ring-4 ring-background"></div>
+                                    <h4 class="text-sm font-bold text-foreground mb-3 leading-none">{{ \Carbon\Carbon::parse($date)->format('l, j F Y') }}</h4>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        @foreach($bookings as $booking)
+                                            <div class="p-3 rounded-xl border border-border bg-muted/5 shadow-sm hover:border-primary/30 transition-colors">
+                                                <div class="flex items-start justify-between gap-2 mb-2">
+                                                    <div class="font-bold text-foreground text-sm leading-tight break-words">{{ $booking['title'] }}</div>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary whitespace-nowrap">
+                                                        {{ $booking['status'] }}
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center text-xs text-muted-foreground font-medium gap-1.5">
+                                                    <x-heroicon-o-clock class="w-3.5 h-3.5"/>
+                                                    {{ $booking['start'] }} - {{ $booking['end'] }}
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                <div class="px-5 py-4 border-t border-border bg-muted/5 flex justify-end">
+                    <button @click="show = false" class="px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/95 transition shadow-sm">Close</button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

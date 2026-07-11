@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use App\Models\VehicleBooking;
 use App\Models\Vehicle;
+use App\Models\VehicleBookingPhoto;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -27,19 +28,28 @@ class Vehiclestatus extends Component
     public string $q = '';
     public ?int $vehicleFilter = null;
     public ?string $selectedDate = null;   // YYYY-MM-DD
-    public string $statusTab = 'pending';  // pending | approved | on_progress
+    public string $statusTab = 'pending';  // pending | approved | on_progress | returned
     public string $sortFilter = 'recent';  // recent | oldest | nearest
     public int $perPage = 10;
+    public bool $includeDeleted = false;
 
     /** cache */
     public $vehicles;
     /** @var array<int,string> */
     public array $vehicleMap = [];
+    /** @var array<int,array{before:int,after:int}> */
+    public array $photoCounts = [];
 
     // Reject modal state
     public bool $showRejectModal = false;
     public ?int $rejectId = null;
     public string $rejectNote = '';
+
+    // Late reason modal state
+    public bool $showLateReasonModal = false;
+    public ?int $lateBookingId = null;
+    public string $lateReasonText = '';
+
 
     // Reject result popup state
     public bool $showRejectResult = false;
@@ -88,6 +98,10 @@ class Vehiclestatus extends Component
     {
         $this->resetPage();
     }
+    public function updatedIncludeDeleted()
+    {
+        $this->resetPage();
+    }
 
     public function mount(): void
     {
@@ -103,7 +117,22 @@ class Vehiclestatus extends Component
 
     public function render()
     {
+        // Dynamic check: Automatically move 'pending' to 'rejected' if start_at has passed
+        VehicleBooking::where('status', 'pending')
+            ->where('start_at', '<=', DB::raw('NOW()'))
+            ->update([
+                'status' => 'rejected',
+                'notes' => DB::raw("TRIM(CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', '\n'), '[System Auto-Rejected] Not approved before start time.'))")
+            ]);
+
+        // Dynamic check: Automatically move 'approved' to 'on_progress' if start_at has passed
+        VehicleBooking::where('status', 'approved')
+            ->where('start_at', '<=', DB::raw('NOW()'))
+            ->update(['status' => 'on_progress']);
+
         $bookings = VehicleBooking::query()
+            ->when(!$this->includeDeleted, fn(Builder $q) => $q->whereNull('deleted_at'))
+            ->when($this->includeDeleted, fn(Builder $q) => $q->withTrashed())
             ->when($this->vehicleFilter, fn(Builder $q) => $q->where('vehicle_id', $this->vehicleFilter))
             ->when($this->q !== '', function (Builder $q) {
                 $like = '%' . $this->q . '%';
@@ -114,23 +143,42 @@ class Vehiclestatus extends Component
                 });
             })
             ->when($this->selectedDate, fn(Builder $q) => $q->whereDate('start_at', $this->selectedDate))
-            ->when($this->statusTab, function (Builder $q) {
-                // Sanitise: only allow valid active-workflow tabs
-                $tab = in_array($this->statusTab, ['pending', 'approved', 'on_progress'], true)
-                    ? $this->statusTab
-                    : 'pending';
-                return $tab === 'on_progress'
-                    ? $q->whereIn('status', ['on_progress', 'late_return'])
-                    : $q->where('status', $tab);
-            })
+            ->when($this->statusTab, fn(Builder $q) => $q->where('status', $this->statusTab))
             ->when($this->sortFilter === 'recent', fn(Builder $q) => $q->orderByDesc('vehiclebooking_id'))
             ->when($this->sortFilter === 'oldest', fn(Builder $q) => $q->orderBy('vehiclebooking_id'))
             ->when($this->sortFilter === 'nearest', fn(Builder $q) => $q->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, NOW(), start_at))'))
             ->paginate($this->perPage);
 
+        $ids = $bookings->pluck('vehiclebooking_id')->all();
+        $this->photoCounts = $this->buildPhotoCounts($ids);
+
         return view('livewire.pages.receptionist.vehiclestatus', [
             'bookings' => $bookings,
         ]);
+    }
+
+    /**
+     * @param  array<int> $bookingIds
+     * @return array<int,array{before:int,after:int}>
+     */
+    protected function buildPhotoCounts(array $bookingIds): array
+    {
+        if (empty($bookingIds))
+            return [];
+        $rows = VehicleBookingPhoto::selectRaw('vehiclebooking_id, photo_type, COUNT(*) as c')
+            ->whereIn('vehiclebooking_id', $bookingIds)
+            ->groupBy('vehiclebooking_id', 'photo_type')
+            ->get();
+
+        $out = [];
+        foreach ($bookingIds as $id)
+            $out[$id] = ['before' => 0, 'after' => 0];
+        foreach ($rows as $r) {
+            $vb = (int) $r->vehiclebooking_id;
+            $type = $r->photo_type === 'after' ? 'after' : 'before';
+            $out[$vb][$type] = (int) $r->c;
+        }
+        return $out;
     }
 
     /* =========================
@@ -143,6 +191,7 @@ class Vehiclestatus extends Component
             DB::transaction(function () use ($id) {
                 /** @var VehicleBooking $b */
                 $b = VehicleBooking::lockForUpdate()
+                    ->when($this->includeDeleted, fn($q) => $q->withTrashed())
                     ->findOrFail($id);
 
                 if ($b->status !== 'pending') {
@@ -198,6 +247,7 @@ class Vehiclestatus extends Component
             $affected = DB::table('vehicle_bookings')
                 ->where('vehiclebooking_id', $bookingId)
                 ->where('status', 'pending')
+                ->when(!$this->includeDeleted, fn($q) => $q->whereNull('deleted_at'))
                 ->update([
                     'status' => 'rejected',
                     'notes'  => DB::raw(
@@ -250,20 +300,98 @@ class Vehiclestatus extends Component
         $this->rejectNote = '';
     }
 
+    public function confirmMarkReturned(int $id): void
+    {
+        try {
+            $b = VehicleBooking::findOrFail($id);
+            if (!in_array($b->status, ['approved', 'on_progress', 'late_return'], true)) {
+                $this->dispatch('toast', type: 'warning', title: 'Cannot Update', message: "Booking #{$b->vehiclebooking_id} cannot be completed from status '{$b->status}'.");
+                return;
+            }
+
+            if ($b->end_at) {
+                $end = \Carbon\Carbon::parse($b->end_at, $this->tz);
+                $now = \Carbon\Carbon::now($this->tz);
+                if ($now->greaterThan($end) && $end->diffInHours($now) >= 3) {
+                    $this->lateBookingId = $id;
+                    $this->lateReasonText = '';
+                    $this->showLateReasonModal = true;
+                    return;
+                }
+            }
+
+            // If not > 3 hours late, mark done directly
+            $this->markReturned($id);
+
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to process: ' . $e->getMessage());
+        }
+    }
+
+    public function closeLateReasonModal(): void
+    {
+        $this->showLateReasonModal = false;
+        $this->lateBookingId = null;
+        $this->lateReasonText = '';
+    }
+
+    public function submitLateReason(): void
+    {
+        $this->validate([
+            'lateReasonText' => 'required|string|min:5|max:2000',
+            'lateBookingId'  => 'required|integer',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($this->lateBookingId);
+                $b->status = 'completed';
+                $prefix = '[Late Return Reason] ';
+                $fullNote = $prefix . trim($this->lateReasonText);
+                $b->notes = trim($b->notes . "\n" . $fullNote);
+                $b->save();
+            });
+
+            $this->showLateReasonModal = false;
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed with reason.');
+            $this->resetPage();
+
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update: ' . $e->getMessage());
+        }
+    }
+
     public function markReturned(int $id): void
     {
         try {
             DB::transaction(function () use ($id) {
                 $b = VehicleBooking::lockForUpdate()
+                    ->when($this->includeDeleted, fn($q) => $q->withTrashed())
                     ->findOrFail($id);
-                if (!in_array($b->status, ['approved', 'on_progress', 'late_return'], true)) {
-                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} cannot be completed from status '{$b->status}'.");
+                if (!in_array($b->status, ['approved', 'on_progress'], true)) {
+                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not yet on progress.");
                 }
+
                 $b->status = 'completed';
+
+                if ($b->end_at) {
+                    $end = \Carbon\Carbon::parse($b->end_at, $this->tz);
+                    $now = \Carbon\Carbon::now($this->tz);
+                    if ($now->greaterThan($end)) {
+                        $diffInHours = $end->diffInHours($now);
+                        if ($diffInHours >= 1 && $diffInHours < 3) {
+                            $prefix = '[Late Return] ';
+                            $b->notes = trim($b->notes . "\n" . $prefix);
+                        }
+                    }
+                }
+
                 $b->save();
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed.');
+            $this->dispatch('toast', type: 'success', title: 'Returned', message: 'Status updated to Returned.');
             $this->resetPage();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Update', message: $e->getMessage());
@@ -273,49 +401,21 @@ class Vehiclestatus extends Component
         }
     }
 
-    /**
-     * Return a human-readable overdue duration string for a booking that is past its end_at.
-     * e.g. "2d 3h", "45m". Returns '' if the booking is not overdue.
-     */
-    public function overdueDuration(VehicleBooking $booking): string
-    {
-        if (!$booking->end_at) {
-            return '';
-        }
-
-        $end = \Carbon\Carbon::parse($booking->end_at, $this->tz);
-        $now = \Carbon\Carbon::now($this->tz);
-
-        if (!$now->greaterThan($end)) {
-            return '';
-        }
-
-        $diff = $now->diff($end);
-
-        $days    = (int) $diff->days;
-        $hours   = (int) $diff->h;
-        $minutes = (int) $diff->i;
-
-        if ($days >= 1) {
-            return $days . 'd' . ($hours > 0 ? ' ' . $hours . 'h' : '');
-        }
-
-        if ($hours >= 1) {
-            return $hours . 'h' . ($minutes > 0 ? ' ' . $minutes . 'm' : '');
-        }
-
-        return max(1, $minutes) . 'm';
-    }
-
     public function markDone(int $id): void
     {
-        // Kept for backward compatibility: any existing 'returned' records can still be completed.
         try {
             DB::transaction(function () use ($id) {
                 $b = VehicleBooking::lockForUpdate()
+                    ->when($this->includeDeleted, fn($q) => $q->withTrashed())
                     ->findOrFail($id);
                 if ($b->status !== 'returned') {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} has not been returned yet.");
+                }
+                $afterCount = VehicleBookingPhoto::where('vehiclebooking_id', $b->vehiclebooking_id)
+                    ->where('photo_type', 'after')
+                    ->count();
+                if ($afterCount < 1) {
+                    throw new \RuntimeException('Please upload at least 1 AFTER photo first.');
                 }
                 $b->status = 'completed';
                 $b->save();
@@ -335,26 +435,27 @@ class Vehiclestatus extends Component
     public function showDetails(int $id): void
     {
         try {
-            $booking = VehicleBooking::findOrFail($id);
+            $booking = VehicleBooking::when($this->includeDeleted, fn($q) => $q->withTrashed())
+                ->findOrFail($id);
 
-            // $photos = VehicleBookingPhoto::where('vehiclebooking_id', $id)
-            //     ->with('user') // Pastikan relasi user ada di model VehicleBookingPhoto
-            //     ->orderBy('created_at')
-            //     ->get();
+            $photos = VehicleBookingPhoto::where('vehiclebooking_id', $id)
+                ->with('user') // Pastikan relasi user ada di model VehicleBookingPhoto
+                ->orderBy('created_at')
+                ->get();
 
-            // $this->selectedBooking = $booking;
+            $this->selectedBooking = $booking;
 
-            // // Sort photos
-            // $before = [];
-            // $after = [];
-            // foreach ($photos as $photo) {
-            //     if ($photo->photo_type === 'after') {
-            //         $after[] = $photo;
-            //     } else {
-            //         $before[] = $photo;
-            //     }
-            // }
-            // $this->selectedPhotos = ['before' => $before, 'after' => $after];
+            // Sort photos
+            $before = [];
+            $after = [];
+            foreach ($photos as $photo) {
+                if ($photo->photo_type === 'after') {
+                    $after[] = $photo;
+                } else {
+                    $before[] = $photo;
+                }
+            }
+            $this->selectedPhotos = ['before' => $before, 'after' => $after];
 
             $this->showDetailModal = true;
             $this->resetErrorBag();

@@ -1,6 +1,6 @@
-<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-gray-50">
     @php
-        $card   = 'bg-white rounded-2xl border border-gray-200 shadow-sm';
+        $card   = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
         $head   = 'bg-[#4A2F24]';
         $label  = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
         $input  = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
@@ -18,13 +18,40 @@
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
 
-        {{-- HEADER --}}
-        <x-page-header
-            title="{{ __('app.guestbook_title') }}"
-            subtitle="{{ __('app.guestbook_subtitle') }}" />
+        {{-- Hero Header --}}
+        <div class="relative overflow-hidden rounded-2xl {{ $head }} text-[#CDDEA7] shadow-2xl">
+            <div class="pointer-events-none absolute inset-0 opacity-10">
+                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
+                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
+            </div>
+            <div class="relative z-10 p-6 sm:p-8">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
+                            <x-heroicon-o-book-open class="w-6 h-6 text-[#CDDEA7]" />
+                        </div>
+                        <div>
+                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.guestbook_title') }}</h2>
+                            <p class="text-xs text-[#CDDEA7]/80">{{ __('app.guestbook_subtitle') }}</p>
+                        </div>
+                    </div>
 
-        {{-- Form Entri Baru --}}
-        <div class="{{ $card }}">
+                    <div class="inline-flex rounded-lg overflow-hidden bg-[#CDDEA7]/10 border border-[#CDDEA7]/20 backdrop-blur-sm shadow-sm">
+                        <a href="{{ route('receptionist.guestbookhistory') }}"
+                           class="px-4 py-2 text-xs font-bold bg-[#CDDEA7] text-[#4A2F24] hover:bg-[#CDDEA7]/90 inline-flex items-center gap-1.5 transition">
+                            <x-heroicon-o-calendar class="w-4 h-4"/>
+                            <span>{{ __('app.guestbook_history') }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- MAIN LAYOUT: LEFT (FORM) + RIGHT (SIDEBAR) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+
+            {{-- LEFT: FORM CARD --}}
+            <div class="{{ $card }} lg:col-span-3">
             <div class="px-6 py-5 border-b border-gray-200 bg-gray-50/50 rounded-t-2xl flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-[#4E653D]/10 flex items-center justify-center border border-[#4E653D]/20">
                     <x-heroicon-o-plus class="w-4.5 h-4.5 text-[#4E653D]" />
@@ -54,28 +81,41 @@
 
                 {{-- Grid Form Tamu --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div>
+                    <div class="relative">
                         <label class="{{ $label }}">{{ __('app.full_name') }} <span class="text-rose-500">*</span></label>
-                        <input type="text" wire:model.defer="name" placeholder="{{ __('app.full_name_placeholder') }}" class="{{ $input }}">
+                        <input type="text" wire:model.live.debounce.300ms="name" placeholder="{{ __('app.full_name_placeholder') }}" class="{{ $input }}" autocomplete="off">
+                        @if(!empty($historyGuests))
+                            <ul class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm">
+                                @foreach($historyGuests as $index => $guest)
+                                    <li wire:click="selectHistoryGuest({{ $index }})"
+                                        class="px-3.5 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
+                                        <div class="font-medium text-gray-900">{{ $guest['name'] }}</div>
+                                        <div class="text-[10px] text-gray-500">{{ $guest['instansi'] ?? 'No Instansi' }} - {{ $guest['phone_number'] ?? 'No Phone' }}</div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                         @error('name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
-                        <label class="{{ $label }}">{{ __('app.guest_email') }} <span class="text-rose-500">*</span></label>
-                        <input type="email" wire:model.defer="email" placeholder="{{ __('app.guest_email_placeholder') }}" class="{{ $input }}">
-                        @error('email') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                        <p class="mt-1 text-[10px] text-gray-400 font-medium leading-tight">
-                            {{ __('app.guest_email_hint') }}
-                        </p>
+                    {{-- Email --}}
+                    <div class="space-y-1.5">
+                        <label class="{{ $label }}">{{ __('app.email') }} <span class="text-rose-500">*</span></label>
+                        <input type="email" wire:model.lazy="email" placeholder="{{ __('app.email_placeholder') }}" class="{{ $input }}">
+                        @error('email') <p class="text-xs text-red-500 font-medium">{{ $message }}</p> @enderror
+                        @if($isAutoFilled ?? false)
+                            <p class="mt-1 text-[11px] text-amber-600 font-medium leading-tight bg-amber-50 p-1.5 rounded border border-amber-200 inline-block w-full">
+                                <x-heroicon-o-information-circle class="w-3.5 h-3.5 inline mr-0.5" />
+                                Is the email still the same or has it changed? You can overwrite it.
+                            </p>
+                        @endif
                     </div>
 
-                    <div>
-                        <label class="{{ $label }}">Jumlah Pengunjung <span class="text-rose-500">*</span></label>
-                        <input type="number" wire:model.defer="visitor_count" min="1" max="999" placeholder="1" class="{{ $input }}">
-                        @error('visitor_count') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                        <p class="mt-1 text-[10px] text-gray-400 font-medium leading-tight">
-                            Jumlah orang dalam rombongan. Setiap pengunjung akan mendapat QR code unik.
-                        </p>
+                    {{-- Visitor Count --}}
+                    <div class="space-y-1.5">
+                        <label class="{{ $label }}">{{ __('app.visitor_count') }} <span class="text-rose-500">*</span></label>
+                        <input type="number" wire:model="visitor_count" min="1" max="50" placeholder="1" class="{{ $input }}">
+                        @error('visitor_count') <p class="text-xs text-red-500 font-medium">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
@@ -96,109 +136,21 @@
                         @error('keperluan') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
 
-                    <div>
-                        <label class="{{ $label }}">Tempat Penyimpanan (1-100)</label>
-                        <input type="number" wire:model.defer="storage_place" min="1" max="100" placeholder="Contoh: 12" class="{{ $input }}">
-                        @error('storage_place') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                        <p class="mt-1 text-[10px] text-gray-400 font-medium leading-tight">
-                            Nomor laci atau slot penyimpanan KTP (opsional).
-                        </p>
-                    </div>
-
                     {{-- Departemen yang Dituju --}}
                     <div>
                         <label class="{{ $label }}">
                             {{ __('app.target_department_opt') }}
                         </label>
-                        <div
-                            wire:ignore
-                            x-data="{
-                                open: false,
-                                search: '',
-                                selectedId: $wire.department_id,
-                                get items() {
-                                    const q = (this.search || '').toLowerCase().trim();
-                                    const list = @js($departments_list);
-                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
-                                    return list.filter(i => !q || i.name.toLowerCase().includes(q));
-                                },
-                                get selectedLabel() {
-                                    const list = @js($departments_list);
-                                    const found = list.find(i => i.id == $wire.department_id);
-                                    return found ? found.name : '';
-                                },
-                                select(id, label) {
-                                    this.search = label;
-                                    this.selectedId = id;
-                                    $wire.set('department_id', id);
-                                    this.open = false;
-                                },
-                                clear() {
-                                    this.search = '';
-                                    this.selectedId = null;
-                                    $wire.set('department_id', null);
-                                }
-                            }"
-                            x-init="
-                                search = selectedLabel;
-                                $watch('$wire.department_id', val => {
-                                    this.selectedId = val || null;
-                                    search = selectedLabel;
-                                });
-                            "
-                            @guestbook-form-reset.window="clear()"
-                            class="relative"
-                            @click.outside="open = false"
-                        >
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    x-model="search"
-                                    @focus="open = true"
-                                    @input="open = true"
-                                    @keydown.escape="open = false"
-                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].name)"
-                                    autocomplete="off"
-                                    placeholder="{{ __('app.select_department_opt') }}"
-                                    class="{{ $input }} pr-8"
-                                >
-                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
-                                    <button
-                                        x-show="search"
-                                        type="button"
-                                        @click.stop="clear()"
-                                        class="text-gray-400 hover:text-gray-600"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                    <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                                </div>
+                        <div class="relative">
+                            <select wire:model.live="department_id" class="{{ $input }} appearance-none pr-8">
+                                <option value="">{{ __('app.select_department_opt') }}</option>
+                                @foreach($departments_list as $dept)
+                                    <option value="{{ $dept['id'] }}">{{ $dept['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                             </div>
-
-                            <ul
-                                x-show="open && items.length > 0"
-                                x-transition:enter="transition ease-out duration-100"
-                                x-transition:enter-start="opacity-0 -translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
-                                style="display:none"
-                            >
-                                <template x-for="item in items" :key="item.id">
-                                    <li
-                                        @click="select(item.id, item.name)"
-                                        :class="selectedId == item.id
-                                            ? 'bg-[#4E653D] text-white'
-                                            : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
-                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
-                                        x-text="item.name"
-                                    ></li>
-                                </template>
-                            </ul>
-                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">
-                                {{ __('app.no_data') }}
-                            </p>
-
-                            <input type="hidden" wire:model="department_id">
                         </div>
                         @error('department_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
@@ -208,105 +160,28 @@
                         <label class="{{ $label }}">
                             {{ __('app.meet_with_opt') }}
                         </label>
-                        <div
-                            wire:ignore
-                            x-data="{
-                                open: false,
-                                search: '',
-                                selectedId: $wire.user_id,
-                                usersList: [],
-                                get items() {
-                                    const q = (this.search || '').toLowerCase().trim();
-                                    const list = this.usersList;
-                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
-                                    return list.filter(i => !q || i.full_name.toLowerCase().includes(q));
-                                },
-                                get selectedLabel() {
-                                    const found = this.usersList.find(i => i.id == $wire.user_id);
-                                    return found ? found.full_name : '';
-                                },
-                                select(id, label) {
-                                    this.search = label;
-                                    this.selectedId = id;
-                                    $wire.set('user_id', id);
-                                    this.open = false;
-                                },
-                                clear() {
-                                    this.search = '';
-                                    this.selectedId = null;
-                                    $wire.set('user_id', null);
-                                }
-                            }"
-                            x-init="
-                                search = selectedLabel;
-                                $watch('$wire.department_id', () => { search = ''; selectedId = null; usersList = []; });
-                                $watch('$wire.user_id', val => {
-                                    selectedId = val || null;
-                                    search = selectedLabel;
-                                });
-                            "
-                            @users-list-updated.window="usersList = $event.detail.users; search = ''; selectedId = null;"
-                            @guestbook-form-reset.window="usersList = []; search = ''; selectedId = null; open = false;"
-                            class="relative"
-                            @click.outside="open = false"
-                        >
-                            <div class="relative">
-                                <input
-                                    type="text"
-                                    x-model="search"
-                                    @focus="if ($wire.department_id) open = true"
-                                    @input="if ($wire.department_id) open = true"
-                                    @keydown.escape="open = false"
-                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].full_name)"
-                                    autocomplete="off"
-                                    placeholder="{{ __('app.select_employee') }}"
-                                    :disabled="!$wire.department_id"
-                                    class="{{ $input }} pr-8 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                >
-                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
-                                    <button
-                                        x-show="search"
-                                        type="button"
-                                        @click.stop="clear()"
-                                        class="text-gray-400 hover:text-gray-600"
-                                    >
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
-                                    <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                                </div>
+                        <div class="relative">
+                            <select wire:model.defer="user_id"
+                                    class="{{ $input }} appearance-none pr-8 disabled:bg-gray-100 disabled:text-gray-400"
+                                    @if(empty($users_list) && $department_id) disabled @endif>
+                                <option value="">{{ __('app.select_employee') }}</option>
+                                @foreach($users_list as $user)
+                                    <option value="{{ $user['id'] }}">{{ $user['full_name'] }}</option>
+                                @endforeach
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
+                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                             </div>
-
-                            <ul
-                                x-show="open && items.length > 0"
-                                x-transition:enter="transition ease-out duration-100"
-                                x-transition:enter-start="opacity-0 -translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
-                                style="display:none"
-                            >
-                                <template x-for="item in items" :key="item.id">
-                                    <li
-                                        @click="select(item.id, item.full_name)"
-                                        :class="selectedId == item.id
-                                            ? 'bg-[#4E653D] text-white'
-                                            : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
-                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
-                                        x-text="item.full_name"
-                                    ></li>
-                                </template>
-                            </ul>
-                            <p x-show="open && items.length === 0 && search && $wire.department_id" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">
-                                {{ __('app.no_users_dept') }}
-                            </p>
-
-                            <input type="hidden" wire:model="user_id">
                         </div>
+                        @if(empty($users_list) && $department_id)
+                            <p class="mt-1.5 text-xs text-amber-600 font-semibold">{{ __('app.no_users_dept') }}</p>
+                        @endif
                         @error('user_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
                 {{-- Submit Button --}}
-                <div class="pt-5 border-t border-gray-200 bg-gray-50/50 -mx-6 -mb-6 p-6 rounded-b-2xl flex items-center justify-end gap-3">
+                <div class="pt-5 border-t border-gray-200 bg-gray-50/50 -mx-6 -mb-6 p-6 flex items-center justify-end gap-3">
                     @if (session('saved'))
                         <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 text-xs font-bold shadow-sm">
                             <x-heroicon-o-check class="w-3.5 h-3.5 font-bold" />
@@ -329,6 +204,39 @@
                     </button>
                 </div>
             </form>
+            </div>
+
+            {{-- RIGHT: SIDEBAR (DESKTOP) --}}
+            <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
+                {{-- Guest History Widget --}}
+                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">Guest Directory</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Quick select previous guests</p>
+                        </div>
+                        <a href="{{ route('receptionist.guestbookhistory') }}" class="text-xs font-medium text-[#4E653D] hover:underline">View All</a>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        @forelse(array_slice($historyGuests ?? [], 0, 5) as $index => $guest)
+                            <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition" wire:click="selectHistoryGuest({{ $index }})">
+                                <div class="w-8 h-8 rounded-full bg-[#4E653D]/10 text-[#4E653D] flex items-center justify-center text-xs font-semibold shrink-0">
+                                    {{ strtoupper(substr($guest['name'], 0, 1)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ $guest['name'] }}</p>
+                                    <p class="text-[11px] text-gray-500 truncate">{{ $guest['instansi'] ?? 'Personal' }}</p>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-6">
+                                <x-heroicon-o-users class="w-8 h-8 mx-auto text-gray-300 mb-2"/>
+                                <p class="text-xs text-gray-500">No guest history available.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </aside>
         </div>
     </main>
 </div>

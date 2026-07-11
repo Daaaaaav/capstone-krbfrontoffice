@@ -6,14 +6,10 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Models\Guestbook as GuestbookModel;
-use App\Models\GuestbookQrCode;
-use App\Models\Department;
+use App\Models\Department; 
 use App\Models\User;
-use App\Mail\GuestbookQrMail;
 use App\Services\SecurityMonitoringService;
 
 #[Layout('layouts.receptionist')]
@@ -22,12 +18,9 @@ class Guestbook extends Component
 {
     // Form fields yang diisi user
     public $name;
-    public $email;
     public $phone_number;
     public $instansi;
     public $keperluan;
-    public $visitor_count = 1;
-    public $storage_place;
     
     // Field baru (Nullable / Optional)
     public $department_id;
@@ -41,6 +34,10 @@ class Guestbook extends Component
     public $date;
     public $jam_in;
     public $petugas_penjaga;
+
+    // Autocomplete state
+    public $historyGuests = [];
+    public $isAutoFilled = false;
 
     // ---- Compatibility props (omitted for brevity, assume they exist) ----
     
@@ -74,10 +71,55 @@ class Guestbook extends Component
         // Reset user yang dipilih sebelumnya
         $this->user_id = null; 
         $this->loadUsers($value);
-        // Push updated list to Alpine (needed because the dropdown uses wire:ignore)
-        $this->dispatch('users-list-updated', users: $this->users_list);
     }
     
+    // Autocomplete for Name
+    public function updatedName($value)
+    {
+        $this->isAutoFilled = false;
+
+        if (strlen($value) >= 2) {
+            $companyId = $this->companyId();
+            $query = GuestbookModel::where('name', 'like', "%{$value}%");
+            if ($companyId) {
+                $query->where('company_id', $companyId);
+            }
+
+            // Get unique guests by name, sorted alphabetically
+            $this->historyGuests = $query->orderBy('name', 'asc')
+                ->get()
+                ->unique('name')
+                ->take(5)
+                ->map(fn($g) => [
+                    'name' => $g->name,
+                    'email' => $g->email,
+                    'phone_number' => $g->phone_number,
+                    'instansi' => $g->instansi,
+                    'keperluan' => $g->keperluan
+                ])
+                ->values()
+                ->toArray();
+        } else {
+            $this->historyGuests = [];
+        }
+    }
+
+    public function selectHistoryGuest($index)
+    {
+        if (isset($this->historyGuests[$index])) {
+            $guest = $this->historyGuests[$index];
+            $this->name = $guest['name'];
+            $this->email = $guest['email'];
+            $this->phone_number = $guest['phone_number'];
+            $this->instansi = $guest['instansi'];
+            // Force visitor_count to be empty so the receptionist must verify and input it
+            $this->visitor_count = null;
+
+            $this->isAutoFilled = true;
+            $this->historyGuests = [];
+        }
+    }
+
     // Helper function to load users
     private function loadUsers(?string $departmentId = null): void
     {
@@ -100,12 +142,9 @@ class Guestbook extends Component
     {
         return [
             'name'          => ['required', 'string', 'max:255'],
-            'email'         => ['required', 'email', 'max:255'],
             'phone_number'  => ['nullable', 'string', 'max:50'],
             'instansi'      => ['nullable', 'string', 'max:255'],
             'keperluan'     => ['nullable', 'string', 'max:255'],
-            'visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
-            'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
             // Ensures department_id and user_id are nullable
             'department_id' => ['nullable', 'exists:departments,department_id'],
             'user_id'       => ['nullable', 'exists:users,user_id'],
@@ -137,69 +176,26 @@ class Guestbook extends Component
 
         SecurityMonitoringService::logFormSubmit('guestbook', $validatedData);
 
-        // Generate master QR token for backward compat
-        $qrToken = GuestbookModel::generateQrToken();
-        $visitorCount = (int) $validatedData['visitor_count'];
-
         // Prepare data including auto-filled fields
         $entryData = array_merge($validatedData, [
             'date'              => $this->date,
             'jam_in'            => $this->jam_in,
             'petugas_penjaga'   => $this->petugas_penjaga,
-            'company_id'        => $companyId,
-            'jam_out'           => null,
-            'qr_token'          => $qrToken,
-            'qr_status'         => 'pending',
-            'visitor_count'     => $visitorCount,
+            'company_id'        => $companyId, 
+            'jam_out'           => null, 
         ]);
 
         // Saves data to the database
-        $entry = GuestbookModel::create($entryData);
-
-        // Generate individual QR codes for each visitor
-        $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
-        foreach ($qrTokens as $index => $token) {
-            GuestbookQrCode::create([
-                'guestbook_id'   => $entry->guestbook_id,
-                'qr_token'       => $token,
-                'visitor_number' => $index + 1,
-            ]);
-        }
-
-        // Send QR code email if an email address was provided
-        if (!empty($validatedData['email'])) {
-            try {
-                // Reload with qrCodes for the email
-                $entry->load('qrCodes');
-                Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry));
-            } catch (\Throwable $e) {
-                Log::error('GuestbookQrMail failed: ' . $e->getMessage(), ['exception' => $e]);
-                // Non-fatal — entry is already saved, just warn the receptionist
-                $this->dispatch(
-                    'toast',
-                    type: 'warning',
-                    title: 'Email Gagal Terkirim',
-                    message: 'Data tamu disimpan, namun QR code gagal dikirim ke email. Periksa konfigurasi mail.',
-                    duration: 6000
-                );
-            }
-        }
+        GuestbookModel::create($entryData); 
 
         // Reset form
-        $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place']);
+        $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place', 'isAutoFilled', 'historyGuests']);
         $this->visitor_count = 1;
         // Reset user list 
-        $this->users_list = [];
+        $this->users_list = []; 
 
         $this->dispatch('$refresh');
-        // Tell Alpine dropdowns to clear (needed because they use wire:ignore)
-        $this->dispatch('guestbook-form-reset');
-
-        $toastMessage = !empty($validatedData['email'])
-            ? 'Guest ditambah (' . $visitorCount . ' pengunjung). QR code dikirim ke ' . $validatedData['email'] . '.'
-            : 'Guest ditambah (' . $visitorCount . ' pengunjung). (Tidak ada email – QR tidak dikirim)';
-
-        $this->dispatch('toast', type: 'success', title: 'Ditambah', message: $toastMessage, duration: 4000);
+        $this->dispatch('toast', type: 'success', title: 'Ditambah', message: 'Guest ditambah.', duration: 3000);
         session()->flash('saved', true);
     }
 

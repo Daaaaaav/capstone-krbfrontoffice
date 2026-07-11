@@ -108,6 +108,7 @@ class Dashboard extends Component
                 'borrower' => $vb->borrower_name ?? '—',
                 'purpose' => $vb->purpose ?? '—',
                 'destination' => $vb->destination ?? '—',
+                'date' => $this->fmtDate($vb->start_at),
                 'time' => $this->fmtTime($vb->start_at) . ' - ' . $this->fmtTime($vb->end_at),
                 'status' => ucfirst($vb->status ?? '—'),
             ]);
