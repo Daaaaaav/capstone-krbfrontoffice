@@ -37,7 +37,6 @@ class DocPackStatus extends Component
 
     // Pagination per box
     public int $perPending = 6;
-    public int $perStored = 6;
 
     // Mobile filter modal
     public bool $showFilterModal = false;
@@ -65,19 +64,17 @@ class DocPackStatus extends Component
 
         if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'departmentId', 'userId', 'departmentQ', 'userQ'], true)) {
             $this->resetPage('pendingPage');
-            $this->resetPage('storedPage');
         }
     }
 
     // ───────── Tabs ─────────
     public function setTab(string $tab): void
     {
-        if (!in_array($tab, ['pending', 'stored'], true)) {
+        if (!in_array($tab, ['pending'], true)) {
             return;
         }
         $this->activeTab = $tab;
         $this->resetPage('pendingPage');
-        $this->resetPage('storedPage');
     }
 
     // ───────── Mobile Filter Modal ─────────
@@ -163,14 +160,6 @@ class DocPackStatus extends Component
         return $q->with('receptionist')->paginate($this->perPending, pageName: 'pendingPage');
     }
 
-    public function getStoredProperty()
-    {
-        $q = $this->base()->where('status', 'stored');
-        $this->applySharedFilters($q)->latest('created_at');
-
-        return $q->with('receptionist')->paginate($this->perStored, pageName: 'storedPage');
-    }
-
     public function openEdit(int $id): void
     {
         $row = $this->base()->findOrFail($id);
@@ -203,16 +192,7 @@ class DocPackStatus extends Component
         $this->dispatch('toast', type: 'success', title: 'Saved', message: 'Information successfully saved.', duration: 3000);
     }
 
-    public function storeItem(int $id): void
-    {
-        $row = $this->base()->where('status', 'pending')->findOrFail($id);
-        $row->status = 'stored';
-        $row->save();
 
-        $this->resetPage('pendingPage');
-        $this->resetPage('storedPage');
-        $this->dispatch('toast', type: 'success', title: 'Stored', message: 'Item successfully stored.', duration: 3000);
-    }
 
     private function getDirectionFor(Delivery $row): string
     {
@@ -254,9 +234,9 @@ class DocPackStatus extends Component
         return ($row->type === 'document') ? 'deliver' : 'taken';
     }
 
-    public function finalizeItem(int $id): void
+    public function markDone(int $id): void
     {
-        $row = $this->base()->where('status', 'stored')->findOrFail($id);
+        $row = $this->base()->where('status', 'pending')->findOrFail($id);
         $dir = $this->getDirectionFor($row);
 
         $when = now();
@@ -271,8 +251,8 @@ class DocPackStatus extends Component
 
         $row->save();
 
-        $this->resetPage('storedPage');
-        $this->dispatch('toast', type: 'success', title: 'Done', message: 'Item successfully finalized.', duration: 3000);
+        $this->resetPage('pendingPage');
+        $this->dispatch('toast', type: 'success', title: 'Done', message: 'Item successfully marked as done.', duration: 3000);
     }
 
     public function render()
@@ -296,17 +276,8 @@ class DocPackStatus extends Component
             ->orderBy('full_name')
             ->get(['user_id', 'full_name']);
 
-        $storedDirections = collect($this->stored->items())
-            ->mapWithKeys(function ($row) {
-                $dir = $this->getDirectionFor($row);
-                return [($row->delivery_id ?? $row->id) => $dir];
-            })
-            ->toArray();
-
         return view('livewire.pages.receptionist.docpackstatus', [
             'pending' => $this->pending,
-            'stored' => $this->stored,
-            'storedDirections' => $storedDirections,
             'departments' => $departments,
             'users' => $users,
         ]);

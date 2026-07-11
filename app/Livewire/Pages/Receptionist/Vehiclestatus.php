@@ -45,6 +45,12 @@ class Vehiclestatus extends Component
     public ?int $rejectId = null;
     public string $rejectNote = '';
 
+    // Late reason modal state
+    public bool $showLateReasonModal = false;
+    public ?int $lateBookingId = null;
+    public string $lateReasonText = '';
+
+
     // Reject result popup state
     public bool $showRejectResult = false;
     public string $rejectResultType = 'success'; // 'success' | 'error'
@@ -111,6 +117,19 @@ class Vehiclestatus extends Component
 
     public function render()
     {
+        // Dynamic check: Automatically move 'pending' to 'rejected' if start_at has passed
+        VehicleBooking::where('status', 'pending')
+            ->where('start_at', '<=', DB::raw('NOW()'))
+            ->update([
+                'status' => 'rejected',
+                'notes' => DB::raw("TRIM(CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', '\n'), '[System Auto-Rejected] Not approved before start time.'))")
+            ]);
+
+        // Dynamic check: Automatically move 'approved' to 'on_progress' if start_at has passed
+        VehicleBooking::where('status', 'approved')
+            ->where('start_at', '<=', DB::raw('NOW()'))
+            ->update(['status' => 'on_progress']);
+
         $bookings = VehicleBooking::query()
             ->when(!$this->includeDeleted, fn(Builder $q) => $q->whereNull('deleted_at'))
             ->when($this->includeDeleted, fn(Builder $q) => $q->withTrashed())
@@ -281,6 +300,69 @@ class Vehiclestatus extends Component
         $this->rejectNote = '';
     }
 
+    public function confirmMarkReturned(int $id): void
+    {
+        try {
+            $b = VehicleBooking::findOrFail($id);
+            if (!in_array($b->status, ['approved', 'on_progress', 'late_return'], true)) {
+                $this->dispatch('toast', type: 'warning', title: 'Cannot Update', message: "Booking #{$b->vehiclebooking_id} cannot be completed from status '{$b->status}'.");
+                return;
+            }
+
+            if ($b->end_at) {
+                $end = \Carbon\Carbon::parse($b->end_at, $this->tz);
+                $now = \Carbon\Carbon::now($this->tz);
+                if ($now->greaterThan($end) && $end->diffInHours($now) >= 3) {
+                    $this->lateBookingId = $id;
+                    $this->lateReasonText = '';
+                    $this->showLateReasonModal = true;
+                    return;
+                }
+            }
+
+            // If not > 3 hours late, mark done directly
+            $this->markReturned($id);
+
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to process: ' . $e->getMessage());
+        }
+    }
+
+    public function closeLateReasonModal(): void
+    {
+        $this->showLateReasonModal = false;
+        $this->lateBookingId = null;
+        $this->lateReasonText = '';
+    }
+
+    public function submitLateReason(): void
+    {
+        $this->validate([
+            'lateReasonText' => 'required|string|min:5|max:2000',
+            'lateBookingId'  => 'required|integer',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($this->lateBookingId);
+                $b->status = 'completed';
+                $prefix = '[Late Return Reason] ';
+                $fullNote = $prefix . trim($this->lateReasonText);
+                $b->notes = trim($b->notes . "\n" . $fullNote);
+                $b->save();
+            });
+
+            $this->showLateReasonModal = false;
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed with reason.');
+            $this->resetPage();
+
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update: ' . $e->getMessage());
+        }
+    }
+
     public function markReturned(int $id): void
     {
         try {
@@ -291,7 +373,21 @@ class Vehiclestatus extends Component
                 if (!in_array($b->status, ['approved', 'on_progress'], true)) {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not yet on progress.");
                 }
-                $b->status = 'returned';
+
+                $b->status = 'completed';
+
+                if ($b->end_at) {
+                    $end = \Carbon\Carbon::parse($b->end_at, $this->tz);
+                    $now = \Carbon\Carbon::now($this->tz);
+                    if ($now->greaterThan($end)) {
+                        $diffInHours = $end->diffInHours($now);
+                        if ($diffInHours >= 1 && $diffInHours < 3) {
+                            $prefix = '[Late Return] ';
+                            $b->notes = trim($b->notes . "\n" . $prefix);
+                        }
+                    }
+                }
+
                 $b->save();
             });
 

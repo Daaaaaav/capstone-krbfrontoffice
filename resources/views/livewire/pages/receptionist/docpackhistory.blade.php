@@ -700,9 +700,11 @@
         </div>
     @endif
 
+{{-- MODALS WRAPPER --}}
+<div>
     {{-- EDIT MODAL --}}
     @if($showEdit)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div wire:key="edit-modal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showEdit', false)"></div>
             <div class="relative w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
                 <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
@@ -751,4 +753,66 @@
             </div>
         </div>
     @endif
+
+    {{-- IMAGE LIGHTBOX --}}
+    <div
+        x-data="{ open: false, src: '' }"
+        @open-lightbox.window="open = true; src = $event.detail.src"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="open = false"
+        style="display:none">
+        <button type="button" @click="open = false"
+            class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img :src="src" alt="Bukti foto" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain">
+    </div>
+
+    {{-- DELETE MODAL --}}
+    @if($showDeleteModal)
+        <div wire:key="delete-modal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
+            <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">{{ __('app.are_you_sure_delete') }}</h3>
+                    <p class="text-sm text-gray-500">{{ __('app.are_you_sure_delete') }}</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                        {{ $deletingSummary }}
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                    <button type="button" wire:click="$set('showDeleteModal', false)"
+                        class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        {{ __('app.cancel') }}
+                    </button>
+                    <button type="button" wire:click="executeDelete" wire:loading.attr="disabled"
+                        class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="executeDelete">{{ __('app.delete') }}</span>
+                        <span wire:loading wire:target="executeDelete" class="flex items-center gap-1.5">
+                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                            {{ __('app.delete') }}...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
 </div>

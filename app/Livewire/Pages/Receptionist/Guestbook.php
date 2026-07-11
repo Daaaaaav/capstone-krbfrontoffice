@@ -35,6 +35,10 @@ class Guestbook extends Component
     public $jam_in;
     public $petugas_penjaga;
 
+    // Autocomplete state
+    public $historyGuests = [];
+    public $isAutoFilled = false;
+
     // ---- Compatibility props (omitted for brevity, assume they exist) ----
     
     public function mount(): void
@@ -69,6 +73,53 @@ class Guestbook extends Component
         $this->loadUsers($value);
     }
     
+    // Autocomplete for Name
+    public function updatedName($value)
+    {
+        $this->isAutoFilled = false;
+
+        if (strlen($value) >= 2) {
+            $companyId = $this->companyId();
+            $query = GuestbookModel::where('name', 'like', "%{$value}%");
+            if ($companyId) {
+                $query->where('company_id', $companyId);
+            }
+
+            // Get unique guests by name, sorted alphabetically
+            $this->historyGuests = $query->orderBy('name', 'asc')
+                ->get()
+                ->unique('name')
+                ->take(5)
+                ->map(fn($g) => [
+                    'name' => $g->name,
+                    'email' => $g->email,
+                    'phone_number' => $g->phone_number,
+                    'instansi' => $g->instansi,
+                    'keperluan' => $g->keperluan
+                ])
+                ->values()
+                ->toArray();
+        } else {
+            $this->historyGuests = [];
+        }
+    }
+
+    public function selectHistoryGuest($index)
+    {
+        if (isset($this->historyGuests[$index])) {
+            $guest = $this->historyGuests[$index];
+            $this->name = $guest['name'];
+            $this->email = $guest['email'];
+            $this->phone_number = $guest['phone_number'];
+            $this->instansi = $guest['instansi'];
+            // Force visitor_count to be empty so the receptionist must verify and input it
+            $this->visitor_count = null;
+
+            $this->isAutoFilled = true;
+            $this->historyGuests = [];
+        }
+    }
+
     // Helper function to load users
     private function loadUsers(?string $departmentId = null): void
     {
@@ -138,7 +189,8 @@ class Guestbook extends Component
         GuestbookModel::create($entryData); 
 
         // Reset form
-        $this->reset(['name', 'phone_number', 'instansi', 'keperluan', 'department_id', 'user_id']);
+        $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place', 'isAutoFilled', 'historyGuests']);
+        $this->visitor_count = 1;
         // Reset user list 
         $this->users_list = []; 
 

@@ -81,15 +81,10 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
-                        {{-- Staging Tabs: Pending vs Stored --}}
                         <div class="inline-flex items-center bg-gray-100 rounded-full p-1 text-xs font-medium shrink-0">
                             <button type="button" wire:click="setTab('pending')" 
-                                class="px-3.5 py-1 rounded-full transition {{ $activeTab === 'pending' ? 'bg-[#4E653D] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200' }}">
+                                class="px-3.5 py-1 rounded-full transition bg-[#4E653D] text-white shadow-sm">
                                 {{ __('app.tab_pending') }}
-                            </button>
-                            <button type="button" wire:click="setTab('stored')" 
-                                class="px-3.5 py-1 rounded-full transition {{ $activeTab === 'stored' ? 'bg-[#4E653D] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200' }}">
-                                {{ __('app.tab_stored') }}
                             </button>
                         </div>
 
@@ -285,10 +280,10 @@
                                                     class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 text-gray-700 border border-gray-300 hover:bg-gray-100 focus:ring-2 focus:ring-gray-900/10 focus:outline-none transition shadow-sm">
                                                     Edit
                                                 </button>
-                                                <button type="button" wire:click="storeItem({{ $row->delivery_id }})"
+                                                <button type="button" wire:click="markDone({{ $row->delivery_id }})"
                                                     wire:loading.attr="disabled"
                                                     class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:ring-2 focus:ring-[#4E653D]/20 focus:outline-none transition shadow-sm">
-                                                    {{ __('app.store_action') }}
+                                                    {{ __('app.mark_done') }}
                                                 </button>
                                             </div>
                                         </div>
@@ -301,101 +296,8 @@
                                 @endforelse
                             @endif
 
-                            {{-- STORED TAB --}}
-                            @if($activeTab === 'stored')
-                                @forelse($stored as $row)
-                                    @php
-                                        $avatarChar = strtoupper(substr($row->item_name ?? 'S', 0, 1));
-                                        $rowNo = ($stored->firstItem() ?? 1) + $loop->index;
-                                        $dir = $storedDirections[$row->delivery_id] ?? 'taken';
-                                        $dirLabel = $dir === 'deliver' ? __('app.deliver') : __('app.taken');
-                                        $actionLabel = $dir === 'deliver' ? __('app.delivered') : __('app.taken');
-                                    @endphp
 
-                                    <div wire:key="stor-{{ $row->delivery_id }}"
-                                        class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition flex flex-col justify-between">
-                                        
-                                        <div class="space-y-3">
-                                            <div class="flex items-start gap-4">
-                                                {{-- Image on the left --}}
-                                                <div class="{{ $icoAvatar }} mt-0.5 border border-gray-200 shrink-0">
-                                                    @if($row->image)
-                                                        <img src="{{ Storage::disk('public')->url($row->image) }}" alt="Bukti foto"
-                                                            class="w-full h-full object-cover">
-                                                    @else
-                                                        <span class="text-white font-semibold text-sm">{{ $avatarChar }}</span>
-                                                    @endif
-                                                </div>
 
-                                                <div class="min-w-0 flex-1 space-y-1">
-                                                    {{-- TOP ROW: Title, Type, Status --}}
-                                                    <div class="flex items-center justify-between gap-3 min-w-0 mb-2">
-                                                        <h4 class="font-semibold text-gray-900 text-base truncate pr-2">
-                                                            {{ $row->item_name }}
-                                                        </h4>
-                                                        <div class="flex-shrink-0 flex items-center gap-2">
-                                                            {{-- Type Badge --}}
-                                                            <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-300 text-gray-700 bg-gray-50 flex-shrink-0 font-medium uppercase">
-                                                                {{ __('app.type_' . $row->type) }}
-                                                            </span>
-                                                            {{-- Status Badge --}}
-                                                            <span class="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 bg-blue-100 text-blue-800">
-                                                                {{ __('app.tab_stored') }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Senders & Receiver information --}}
-                                                    <div class="space-y-2 text-[13px] text-gray-600 mb-3 border-y border-gray-100 py-2">
-                                                        @if($row->nama_pengirim)
-                                                            <div class="flex items-center gap-1.5 font-medium text-gray-800">
-                                                                <x-heroicon-o-user class="w-4 h-4 text-gray-500 shrink-0"/>
-                                                                <span class="truncate">{{ __('app.sender') }}: <span class="font-semibold">{{ $row->nama_pengirim }}</span></span>
-                                                            </div>
-                                                        @endif
-                                                        @if($row->nama_penerima)
-                                                            <div class="flex items-center gap-1.5 font-medium text-gray-800">
-                                                                <x-heroicon-o-user class="w-4 h-4 text-gray-500 shrink-0"/>
-                                                                <span class="truncate">{{ __('app.receiver') }}: <span class="font-semibold">{{ $row->nama_penerima }}</span></span>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {{-- Direction info --}}
-                                            <div class="flex items-center gap-1.5 text-[11px] text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-2">
-                                                <x-heroicon-o-arrow-up-right class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                <span>{{ __('app.direction_label') }}: <span class="font-semibold text-gray-700 uppercase tracking-wide">{{ $dirLabel }}</span></span>
-                                            </div>
-                                        </div>
-
-                                        {{-- BOTTOM ACTIONS --}}
-                                        <div class="pt-3 border-t border-gray-100 mt-4 flex items-center justify-between">
-                                            <span class="text-[11px] font-semibold text-gray-500 mr-auto">
-                                                No. {{ $rowNo }}
-                                            </span>
-                                            <div class="flex gap-2">
-                                                <button type="button" wire:click="openEdit({{ $row->delivery_id }})"
-                                                    wire:loading.attr="disabled"
-                                                    class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 text-gray-700 border border-gray-300 hover:bg-gray-100 focus:ring-2 focus:ring-gray-900/10 focus:outline-none transition shadow-sm">
-                                                    Edit
-                                                </button>
-                                                <button type="button" wire:click="finalizeItem({{ $row->delivery_id }})"
-                                                    wire:loading.attr="disabled"
-                                                    class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:ring-2 focus:ring-[#4E653D]/20 focus:outline-none transition shadow-sm">
-                                                    {{ $actionLabel }}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div class="col-span-full py-16 text-center text-gray-500 text-sm bg-white border border-dashed border-gray-200 rounded-xl">
-                                        <x-heroicon-o-document-text class="w-8 h-8 mx-auto text-gray-300 mb-2"/>
-                                        {{ __('app.no_data_stored') }}
-                                    </div>
-                                @endforelse
-                            @endif
                         </div>
                     @else
                         {{-- TABLE VIEW MODE --}}
@@ -410,8 +312,6 @@
                                         <th class="px-6 py-3.5">{{ __('app.receiver') }}</th>
                                         @if($activeTab === 'pending')
                                             <th class="px-6 py-3.5">{{ __('app.date') }}</th>
-                                        @else
-                                            <th class="px-6 py-3.5">{{ __('app.direction_label') }}</th>
                                         @endif
                                         <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
                                     </tr>
@@ -452,9 +352,9 @@
                                                             class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition shadow-sm">
                                                             {{ __('app.edit') }}
                                                         </button>
-                                                        <button type="button" wire:click="storeItem({{ $row->delivery_id }})"
+                                                        <button type="button" wire:click="markDone({{ $row->delivery_id }})"
                                                             class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
-                                                            {{ __('app.store_action') }}
+                                                            {{ __('app.mark_done') }}
                                                         </button>
                                                     </div>
                                                 </td>
@@ -464,64 +364,8 @@
                                                 <td colspan="7" class="px-6 py-12 text-center text-gray-500">{{ __('app.no_data_pending') }}</td>
                                             </tr>
                                         @endforelse
-                                    @else
-                                        @forelse($stored as $row)
-                                            @php
-                                                $rowNo = ($stored->firstItem() ?? 1) + $loop->index;
-                                                $dir = $storedDirections[$row->delivery_id] ?? 'taken';
-                                                $dirLabel = $dir === 'deliver' ? __('app.deliver') : __('app.taken');
-                                                $actionLabel = $dir === 'deliver' ? __('app.delivered') : __('app.taken');
-                                            @endphp
-                                            <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                                <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $rowNo }}</td>
-                                                <td class="px-6 py-4">
-                                                    <div class="flex items-center gap-3">
-                                                        <div class="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200 bg-[#4E653D] flex items-center justify-center text-white text-xs font-semibold">
-                                                            @if($row->image)
-                                                                <img src="{{ Storage::disk('public')->url($row->image) }}" class="w-full h-full object-cover">
-                                                            @else
-                                                                {{ strtoupper(substr($row->item_name ?? 'S', 0, 1)) }}
-                                                            @endif
-                                                        </div>
-                                                        <div class="font-semibold text-gray-900">{{ $row->item_name }}</div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-6 py-4">
-                                                    <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium uppercase border border-gray-200 text-gray-700 bg-gray-50">
-                                                        {{ __('app.type_' . $row->type) }}
-                                                    </span>
-                                                </td>
-                                                <td class="px-6 py-4">{{ $row->nama_pengirim ?? '—' }}</td>
-                                                <td class="px-6 py-4 font-medium">{{ $row->nama_penerima ?? '—' }}</td>
-                                                <td class="px-6 py-4">
-                                                    @if($dir === 'deliver')
-                                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold border border-blue-200 text-blue-700 bg-blue-50">
-                                                            {{ $dirLabel }}
-                                                        </span>
-                                                    @else
-                                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50">
-                                                            {{ $dirLabel }}
-                                                        </span>
-                                                    @endif
-                                                </td>
-                                                <td class="px-6 py-4 text-right">
-                                                    <div class="flex items-center justify-end gap-2">
-                                                        <button type="button" wire:click="openEdit({{ $row->delivery_id }})"
-                                                            class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition shadow-sm">
-                                                            {{ __('app.edit') }}
-                                                        </button>
-                                                        <button type="button" wire:click="finalizeItem({{ $row->delivery_id }})"
-                                                            class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
-                                                            {{ $actionLabel }}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="7" class="px-6 py-12 text-center text-gray-500">{{ __('app.no_data_stored') }}</td>
-                                            </tr>
-                                        @endforelse
+
+
                                     @endif
                                 </tbody>
                             </table>
@@ -534,8 +378,6 @@
                     <div class="flex justify-center">
                         @if($activeTab === 'pending')
                             {{ $pending->onEachSide(1)->links() }}
-                        @else
-                            {{ $stored->onEachSide(1)->links() }}
                         @endif
                     </div>
                 </div>

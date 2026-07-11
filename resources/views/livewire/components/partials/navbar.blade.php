@@ -97,6 +97,14 @@
                     </a>
                     @endguest
 
+                    {{-- Notification Bell (Desktop) --}}
+                    @auth
+                    <a href="{{ route('notifications.index') }}" class="relative ml-1 lg:ml-2 flex items-center justify-center w-8 h-8 lg:w-9 lg:h-9 rounded-full text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300">
+                        <x-heroicon-o-bell class="w-4.5 h-4.5 lg:w-5 lg:h-5" />
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-sidebar"></span>
+                    </a>
+                    @endauth
+
                     {{-- Language Toggle (Desktop) --}}
                     <div class="relative ml-1 lg:ml-2" x-data="{ open: false }">
                         @php $isEn = app()->getLocale() === 'en'; @endphp
@@ -248,6 +256,11 @@
 
                 @auth
                 <div class="border-t border-sidebar-border/40 pt-3 mt-3 space-y-1">
+                    <a href="{{ route('notifications.index') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
+                        <x-heroicon-o-bell class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" />
+                        <span>{{ __('app.notifications', ['default' => 'Notifications']) }}</span>
+                        <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">New</span>
+                    </a>
                     <a href="{{ route('profile') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors"><x-heroicon-o-user-circle class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.my_profile') }}</a>
 
                     @php $role = auth()->user()->role->name; @endphp

@@ -150,6 +150,11 @@ Route::middleware(['auth'])->group(function () {
             ->name('attachments.finalize');
     });
 
+    // ---------- Notifications UI (Static View) ----------
+    Route::get('/notifications', function () {
+        return view('pages.notifications');
+    })->name('notifications.index');
+
     // ---------- Superadmin routes ----------
     Route::middleware('is.superadmin')->group(function () {
         Route::get('/superadmin-dashboard', SuperadminDashboard::class)->name('superadmin.dashboard');
@@ -165,6 +170,25 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/superadmin-settings', SuperadminSettings::class)->name('superadmin.settings');
         Route::get('/superadmin-help', SuperadminHelp::class)->name('superadmin.help');
     });
+
+    // ---------- Manager routes ----------
+    // TODO: Uncomment when Manager Livewire classes are created
+    // Route::middleware('is.manager')->group(function () {
+    //     Route::get('/manager-dashboard', ManagerDashboard::class)->name('manager.dashboard');
+    //     Route::get('/receptionists', ReceptionistUsers::class)->name('manager.receptionists');
+    //     Route::get('/room-bookings', RoomBookingStatistics::class)->name('manager.room');
+    //     Route::get('/vehicle-bookings', VehicleBookingStatistics::class)->name('manager.vehicle');
+    //     Route::get('/deliveries', DeliveryStatistics::class)->name('manager.delivery');
+    //     Route::get('/guestbook', GuestbookStatistics::class)->name('manager.guestbook');
+    //     Route::get('/lstm-predictions', \App\Livewire\Pages\Manager\LSTMPredictions::class)->name('manager.lstm-predictions');
+    //     Route::get('/ai-security', AISecurityReports::class)->name('manager.ai-security');
+    //     Route::get('/occupancy-forecasting', \App\Livewire\Pages\Manager\OccupancyForecasting::class)->name('manager.occupancy');
+    //     Route::get('/manage-rooms', Manageroom::class)->name('manager.manageroom');
+    //     Route::get('/manage-vehicles', VehiclePage::class)->name('manager.managevehicle');
+    //     Route::get('/manage-storages', StoragePage::class)->name('manager.managestorage');
+    //     Route::get('/manager-settings', ManagerSettings::class)->name('manager.settings');
+    //     Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
+    // });
 
     // ---------- Receptionist routes ----------
     Route::middleware('is.receptionist')->group(function () {

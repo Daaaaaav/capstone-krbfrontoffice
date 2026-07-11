@@ -47,9 +47,12 @@
             </div>
         </div>
 
-        {{-- Form Entri Baru --}}
-        <div class="{{ $card }}">
-            <div class="px-6 py-5 border-b border-gray-200 bg-gray-50/50 flex items-center gap-3">
+        {{-- MAIN LAYOUT: LEFT (FORM) + RIGHT (SIDEBAR) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+
+            {{-- LEFT: FORM CARD --}}
+            <div class="{{ $card }} lg:col-span-3">
+            <div class="px-6 py-5 border-b border-gray-200 bg-gray-50/50 rounded-t-2xl flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-[#4E653D]/10 flex items-center justify-center border border-[#4E653D]/20">
                     <x-heroicon-o-plus class="w-4.5 h-4.5 text-[#4E653D]" />
                 </div>
@@ -78,10 +81,41 @@
 
                 {{-- Grid Form Tamu --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div>
+                    <div class="relative">
                         <label class="{{ $label }}">{{ __('app.full_name') }} <span class="text-rose-500">*</span></label>
-                        <input type="text" wire:model.defer="name" placeholder="{{ __('app.full_name_placeholder') }}" class="{{ $input }}">
+                        <input type="text" wire:model.live.debounce.300ms="name" placeholder="{{ __('app.full_name_placeholder') }}" class="{{ $input }}" autocomplete="off">
+                        @if(!empty($historyGuests))
+                            <ul class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm">
+                                @foreach($historyGuests as $index => $guest)
+                                    <li wire:click="selectHistoryGuest({{ $index }})"
+                                        class="px-3.5 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
+                                        <div class="font-medium text-gray-900">{{ $guest['name'] }}</div>
+                                        <div class="text-[10px] text-gray-500">{{ $guest['instansi'] ?? 'No Instansi' }} - {{ $guest['phone_number'] ?? 'No Phone' }}</div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                         @error('name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Email --}}
+                    <div class="space-y-1.5">
+                        <label class="{{ $label }}">{{ __('app.email') }} <span class="text-rose-500">*</span></label>
+                        <input type="email" wire:model.lazy="email" placeholder="{{ __('app.email_placeholder') }}" class="{{ $input }}">
+                        @error('email') <p class="text-xs text-red-500 font-medium">{{ $message }}</p> @enderror
+                        @if($isAutoFilled ?? false)
+                            <p class="mt-1 text-[11px] text-amber-600 font-medium leading-tight bg-amber-50 p-1.5 rounded border border-amber-200 inline-block w-full">
+                                <x-heroicon-o-information-circle class="w-3.5 h-3.5 inline mr-0.5" />
+                                Is the email still the same or has it changed? You can overwrite it.
+                            </p>
+                        @endif
+                    </div>
+
+                    {{-- Visitor Count --}}
+                    <div class="space-y-1.5">
+                        <label class="{{ $label }}">{{ __('app.visitor_count') }} <span class="text-rose-500">*</span></label>
+                        <input type="number" wire:model="visitor_count" min="1" max="50" placeholder="1" class="{{ $input }}">
+                        @error('visitor_count') <p class="text-xs text-red-500 font-medium">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
@@ -170,6 +204,39 @@
                     </button>
                 </div>
             </form>
+            </div>
+
+            {{-- RIGHT: SIDEBAR (DESKTOP) --}}
+            <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
+                {{-- Guest History Widget --}}
+                <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">Guest Directory</h3>
+                            <p class="text-[11px] text-gray-500 mt-0.5">Quick select previous guests</p>
+                        </div>
+                        <a href="{{ route('receptionist.guestbookhistory') }}" class="text-xs font-medium text-[#4E653D] hover:underline">View All</a>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        @forelse(array_slice($historyGuests ?? [], 0, 5) as $index => $guest)
+                            <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition" wire:click="selectHistoryGuest({{ $index }})">
+                                <div class="w-8 h-8 rounded-full bg-[#4E653D]/10 text-[#4E653D] flex items-center justify-center text-xs font-semibold shrink-0">
+                                    {{ strtoupper(substr($guest['name'], 0, 1)) }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ $guest['name'] }}</p>
+                                    <p class="text-[11px] text-gray-500 truncate">{{ $guest['instansi'] ?? 'Personal' }}</p>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-6">
+                                <x-heroicon-o-users class="w-8 h-8 mx-auto text-gray-300 mb-2"/>
+                                <p class="text-xs text-gray-500">No guest history available.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </aside>
         </div>
     </main>
 </div>

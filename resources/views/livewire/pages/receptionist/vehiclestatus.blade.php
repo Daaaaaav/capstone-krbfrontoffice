@@ -325,9 +325,9 @@
                                         @elseif($b->status === 'on_progress')
                                             {{-- Mark Returned Button --}}
                                             <button type="button"
-                                                    wire:click.stop="markReturned({{ $b->vehiclebooking_id }})"
+                                                    wire:click.stop="confirmMarkReturned({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
-                                                    wire:target="markReturned({{ $b->vehiclebooking_id }})"
+                                                    wire:target="confirmMarkReturned({{ $b->vehiclebooking_id }})"
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
                                                 {{ __('app.mark_returned') }}
                                             </button>
@@ -422,8 +422,20 @@
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.approve') }}
                                                             </button>
-                                                        @elseif($b->status === 'on_progress')
-                                                            <button type="button" wire:click.stop="markReturned({{ $b->vehiclebooking_id }})"
+                                                        @elseif($b->status === 'on_progress' || $b->status === 'late_return')
+                                                            @php $overdueTable = $this->overdueDuration($b); @endphp
+                                                            @if($overdueTable)
+                                                                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full mr-1">
+                                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                                                    +{{ $overdueTable }} late
+                                                                </span>
+                                                            @endif
+                                                            @if(str_contains($b->notes ?? '', '[Late Return]'))
+                                                                <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full shadow-sm mr-1">
+                                                                    Late Return
+                                                                </span>
+                                                            @endif
+                                                            <button type="button" wire:click.stop="confirmMarkReturned({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.mark_returned') }}
                                                             </button>
@@ -870,6 +882,76 @@
                     </button>
                 </div>
             </form>
+         </div>
+    </div>
+
+    {{-- LATE REASON MODAL --}}
+    <div x-data="{ show: @entangle('showLateReasonModal').live }"
+         x-show="show"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         style="display: none;">
+
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300" wire:click="closeLateReasonModal"></div>
+
+        {{-- Modal --}}
+        <div x-show="show"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="relative z-10 w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+
+            {{-- Header --}}
+            <div class="px-5 py-4 border-b border-gray-200 bg-red-50 text-red-900 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-red-600">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold tracking-tight">Late Return (Over 3 Hours)</h3>
+                    <p class="text-xs text-red-700/80 mt-0.5">Please provide a reason before completing.</p>
+                </div>
+            </div>
+
+            {{-- Body --}}
+            <div class="p-5">
+                <form wire:submit.prevent="submitLateReason">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Reason</label>
+                            <textarea wire:model="lateReasonText" rows="3"
+                                      class="w-full rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500/20 shadow-sm"
+                                      placeholder="Explain the reason for the late return..." required></textarea>
+                            @error('lateReasonText')
+                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" wire:click="closeLateReasonModal"
+                                class="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                wire:loading.attr="disabled"
+                                class="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition disabled:opacity-50">
+                            Submit Reason & Mark Done
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
+
 </div>

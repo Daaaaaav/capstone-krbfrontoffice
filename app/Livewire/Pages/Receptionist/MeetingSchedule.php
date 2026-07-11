@@ -28,6 +28,10 @@ class MeetingSchedule extends Component
     public bool $showOfflineForm = false;
     public bool $showOnlineForm = false;
 
+    public bool $showScheduleModal = false;
+    public ?int $selectedRoomForSchedule = null;
+    public array $roomScheduleData = [];
+
     /** OFFLINE form state */
     public array $form = [
         'meeting_title' => null,
@@ -404,6 +408,34 @@ class MeetingSchedule extends Component
             return;
         }
 
+        // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
+        $startCarbon = Carbon::parse($startAt, $this->tz);
+        $minAdvanceDate = now($this->tz)->addHour();
+        if ($startCarbon->lessThan($minAdvanceDate)) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Minimum Booking Limit',
+                message: 'Bookings must be made at least 1 hour in advance.',
+                duration: 7000
+            );
+            return;
+        }
+
+        // ── 1-Month Advance Booking Constraint ─────────────────────────────
+        $maxAdvanceDate = now($this->tz)->addMonths(1);
+        if ($startCarbon->greaterThan($maxAdvanceDate)) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Booking Limit Exceeded',
+                message: 'Booking can only be made up to 1 month in advance.',
+                duration: 7000
+            );
+            return;
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         // 3. Overlap Check
         if ($this->hasRoomOverlap((int)$this->form['room_id'], (string)$this->form['date'], $startAt, $endAt, $this->editingId)) {
             $humanStart = Carbon::parse($startAt, $this->tz)->format('d M Y H:i');
@@ -507,6 +539,34 @@ class MeetingSchedule extends Component
             return;
         }
 
+        // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
+        $startCarbon = Carbon::parse($startAt, $this->tz);
+        $minAdvanceDate = now($this->tz)->addHour();
+        if ($startCarbon->lessThan($minAdvanceDate)) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Minimum Booking Limit',
+                message: 'Bookings must be made at least 1 hour in advance.',
+                duration: 7000
+            );
+            return;
+        }
+
+        // ── 1-Month Advance Booking Constraint ─────────────────────────────
+        $maxAdvanceDate = now($this->tz)->addMonths(1);
+        if ($startCarbon->greaterThan($maxAdvanceDate)) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Booking Limit Exceeded',
+                message: 'Booking can only be made up to 1 month in advance.',
+                duration: 7000
+            );
+            return;
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         // 3. Create meeting link immediately at submission
         $meetingUrl = null;
         $meetingCode = null;
@@ -605,6 +665,33 @@ class MeetingSchedule extends Component
     }
 
     /* ===================== Utilities & Rendering ===================== */
+
+    public function openScheduleModal($roomId): void
+    {
+        $this->selectedRoomForSchedule = (int) $roomId;
+        $now = now($this->tz);
+        $endDate = $now->copy()->addDays(30);
+
+        $this->roomScheduleData = DB::table('booking_rooms')
+            ->where('room_id', $roomId)
+            ->whereBetween('date', [$now->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->whereIn('status', ['pending', 'approved', '0', '1', 'PENDING', 'APPROVED'])
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($b) {
+                return [
+                    'title' => $b->meeting_title ?? 'Meeting',
+                    'date' => $b->date,
+                    'start' => Carbon::parse($b->start_time)->format('H:i'),
+                    'end' => Carbon::parse($b->end_time)->format('H:i'),
+                    'status' => $b->status,
+                ];
+            })
+            ->toArray();
+        $this->showScheduleModal = true;
+    }
+
 
     protected function detectGoogleConnected(): bool
     {
