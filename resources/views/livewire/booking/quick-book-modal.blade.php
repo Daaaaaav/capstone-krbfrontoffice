@@ -143,7 +143,7 @@
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
                                 {{ __('app.quick_book_date') }}
                             </label>
-                            <input type="date" wire:model="date"
+                            <input type="date" wire:model.live="date"
                                    class="w-full h-10 px-3.5 border border-input rounded-lg bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @error('date') <span class="text-destructive text-xs mt-1.5 font-medium block">{{ $message }}</span> @enderror
                         </div>
