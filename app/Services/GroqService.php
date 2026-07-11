@@ -406,12 +406,12 @@ class GroqService
             ))
             ->join("\n");
 
-        // Recent vehicle bookings (last 7 days)
+        // Recent vehicle bookings (last 90 days)
         $recentVehicles = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['vehicle', 'department'])
-            ->where('start_at', '>=', $now->copy()->subDays(6)->startOfDay())
+            ->where('start_at', '>=', $now->copy()->subDays(89)->startOfDay())
             ->orderByDesc('start_at')
-            ->take(8)
+            ->take(15)
             ->get()
             ->map(fn($v) => sprintf(
                 '  [ID:%d] %s | Vehicle: %s (%s) | %s → %s | Purpose: %s | Dept: %s | Status: %s',
@@ -456,7 +456,7 @@ class GroqService
         TODAY'S VEHICLE TRIPS:
         {$todayVehicleBlock}
 
-        RECENT VEHICLE BOOKINGS (last 7 days, up to 8):
+        RECENT VEHICLE BOOKINGS (last 90 days, up to 15):
         {$recentVehicleBlock}
         CONTEXT;
     }
