@@ -25,9 +25,9 @@ return new class extends Migration {
 
     public function down(): void
     {
-        // Query which indexes actually exist before trying to drop them,
-        // so rollback is safe even if they were never created or already removed.
         $dbName  = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+
+        // Check which of our indexes exist
         $indexes = \Illuminate\Support\Facades\DB::select(
             "SELECT INDEX_NAME FROM information_schema.STATISTICS
              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'",
@@ -35,10 +35,33 @@ return new class extends Migration {
         );
         $existing = collect($indexes)->pluck('INDEX_NAME')->unique()->all();
 
-        Schema::table('users', function (Blueprint $table) use ($existing) {
-            if (in_array('users_full_name_index',    $existing, true)) $table->dropIndex('users_full_name_index');
-            if (in_array('users_phone_number_index', $existing, true)) $table->dropIndex('users_phone_number_index');
-            if (in_array('users_company_role_index', $existing, true)) $table->dropIndex('users_company_role_index');
+        // Check whether any FK depends on users_company_role_index
+        $fkBlocking = \Illuminate\Support\Facades\DB::select(
+            "SELECT COUNT(*) as cnt
+             FROM information_schema.KEY_COLUMN_USAGE k
+             JOIN information_schema.TABLE_CONSTRAINTS tc
+               ON tc.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+              AND tc.TABLE_SCHEMA    = k.TABLE_SCHEMA
+              AND tc.TABLE_NAME      = k.TABLE_NAME
+             WHERE k.TABLE_SCHEMA        = ?
+               AND k.TABLE_NAME          = 'users'
+               AND tc.CONSTRAINT_TYPE    = 'FOREIGN KEY'
+               AND k.COLUMN_NAME        IN ('company_id', 'role_id')",
+            [$dbName]
+        );
+        $hasFkBlocking = ($fkBlocking[0]->cnt ?? 0) > 0;
+
+        Schema::table('users', function (Blueprint $table) use ($existing, $hasFkBlocking) {
+            if (in_array('users_full_name_index',    $existing, true)) {
+                $table->dropIndex('users_full_name_index');
+            }
+            if (in_array('users_phone_number_index', $existing, true)) {
+                $table->dropIndex('users_phone_number_index');
+            }
+            // Only drop the composite index if no FK is using it as its backing index
+            if (!$hasFkBlocking && in_array('users_company_role_index', $existing, true)) {
+                $table->dropIndex('users_company_role_index');
+            }
         });
     }
 };
