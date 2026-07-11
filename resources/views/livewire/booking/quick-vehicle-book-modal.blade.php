@@ -1,6 +1,14 @@
 <div>
-    @if ($show)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         x-data="{ show: @entangle('show') }"
+         x-show="show"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         style="display:none">
 
         {{-- Backdrop --}}
         <div class="absolute inset-0 bg-black/60 backdrop-blur-md" wire:click="close"></div>
@@ -69,7 +77,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Borrower Name</label>
-                        <input type="text" wire:model="borrower_name" placeholder="Full name of borrower"
+                        <input type="text" wire:model.live="borrower_name" placeholder="Full name of borrower"
                                class="w-full h-10 px-3.5 border border-input rounded-lg bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                         @error('borrower_name') <span class="text-destructive text-xs mt-1.5 block">{{ $message }}</span> @enderror
                     </div>
@@ -126,13 +134,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Purpose / Description</label>
-                        <input type="text" wire:model="purpose" placeholder="Brief purpose of the trip"
+                        <input type="text" wire:model.live="purpose" placeholder="Brief purpose of the trip"
                                class="w-full h-10 px-3.5 border border-input rounded-lg bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                         @error('purpose') <span class="text-destructive text-xs mt-1.5 block">{{ $message }}</span> @enderror
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Destination</label>
-                        <input type="text" wire:model="destination" placeholder="Destination (optional)"
+                        <input type="text" wire:model.live="destination" placeholder="Destination (optional)"
                                class="w-full h-10 px-3.5 border border-input rounded-lg bg-background text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                         @error('destination') <span class="text-destructive text-xs mt-1.5 block">{{ $message }}</span> @enderror
                     </div>
@@ -154,5 +162,4 @@
 
         </div>{{-- /modal --}}
     </div>{{-- /overlay --}}
-    @endif
 </div>

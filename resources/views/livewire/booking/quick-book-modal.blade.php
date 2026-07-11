@@ -1,12 +1,20 @@
 <div>
-    @if($show)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {{-- Backdrop --}}
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="close"></div>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         x-data="{ show: @entangle('show') }"
+         x-show="show"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         style="display:none">
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="close"></div>
 
-            {{-- Modal --}}
-            <div class="relative z-10 w-full max-w-xl bg-card rounded-2xl border border-border shadow-2xl overflow-hidden"
-                 wire:keydown.escape="close">
+        {{-- Modal --}}
+        <div class="relative z-10 w-full max-w-xl bg-card rounded-2xl border border-border shadow-2xl overflow-hidden"
+             wire:keydown.escape="close">
 
                 {{-- Header --}}
                 <div class="px-6 py-5 border-b border-border flex items-center justify-between bg-muted/10">
@@ -259,5 +267,4 @@
 
             </div>{{-- /modal --}}
         </div>{{-- /overlay --}}
-    @endif
 </div>
