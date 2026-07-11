@@ -67,7 +67,7 @@ class QuickBookModal extends Component
         $this->mode = in_array($mode, ['create','rebook'], true) ? $mode : 'create';
         $now = Carbon::now($this->tz);
 
-        $this->room_id    = $roomId ?: null;
+        $this->room_id    = $roomId ? (int) $roomId : null;
         $this->date       = $ymd ?: $now->toDateString();
         $this->start_time = $time ?: $now->format('H:i');
 

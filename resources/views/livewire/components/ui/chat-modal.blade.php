@@ -136,12 +136,12 @@
                                     @endif
                                 </div>
 
-                                {{-- Booking form panel --}}
+                                {{-- ── Room booking panel ── --}}
                                 @if (isset($msg['booking_prefill']) && is_array($msg['booking_prefill']))
                                     @php
                                         $prefill = $msg['booking_prefill'];
-                                        $hasData = collect($prefill)->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
-                                        $payload = [
+                                        $hasRoomData = collect($prefill)->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
+                                        $roomPayload = [
                                             'roomId'         => $prefill['room_id']             ?? null,
                                             'ymd'            => $prefill['date']                ?? '',
                                             'time'           => $prefill['start_time']          ?? '',
@@ -153,25 +153,27 @@
                                             'historicalUser' => $prefill['historical_user']     ?? null,
                                             'mode'           => 'rebook',
                                         ];
-                                        $formRows = [
-                                            'Meeting Title'  => $prefill['meeting_title']       ?? null,
-                                            'Room'           => $prefill['room_name']            ?? null,
-                                            'Department'     => $prefill['department']           ?? null,
-                                            'Historical User'=> $prefill['historical_user']      ?? null,
-                                            'Date'           => !empty($prefill['date'])
-                                                                  ? \Carbon\Carbon::parse($prefill['date'])->format('d M Y') : null,
-                                            'Participants'   => $prefill['number_of_attendees'] ?? null,
-                                            'Start'          => !empty($prefill['start_time'])
-                                                                  ? substr($prefill['start_time'], 0, 5) : null,
-                                            'End'            => !empty($prefill['end_time'])
-                                                                  ? substr($prefill['end_time'], 0, 5) : null,
-                                            'Requirements'   => $prefill['special_notes']       ?? null,
+                                        $roomRows = [
+                                            'Meeting Title'   => $prefill['meeting_title']       ?? null,
+                                            'Room'            => $prefill['room_name']            ?? null,
+                                            'Department'      => $prefill['department']           ?? null,
+                                            'Historical User' => $prefill['historical_user']      ?? null,
+                                            'Date'            => !empty($prefill['date'])
+                                                                   ? \Carbon\Carbon::parse($prefill['date'])->format('d M Y') : null,
+                                            'Participants'    => $prefill['number_of_attendees']  ?? null,
+                                            'Start'           => !empty($prefill['start_time'])
+                                                                   ? substr($prefill['start_time'], 0, 5) : null,
+                                            'End'             => !empty($prefill['end_time'])
+                                                                   ? substr($prefill['end_time'], 0, 5) : null,
+                                            'Requirements'    => $prefill['special_notes']        ?? null,
                                         ];
                                     @endphp
                                     <div class="border-t border-border/60 bg-primary/5">
                                         <div class="px-3.5 pt-2.5 pb-1.5 space-y-1">
-                                            <p class="text-[10px] font-semibold text-primary/70 uppercase tracking-wider mb-1.5">Booking Details</p>
-                                            @foreach ($formRows as $label => $value)
+                                            <p class="text-[10px] font-semibold text-primary/70 uppercase tracking-wider mb-1.5">
+                                                🏢 Room Booking
+                                            </p>
+                                            @foreach ($roomRows as $label => $value)
                                                 <div class="flex items-baseline gap-1.5">
                                                     <span class="text-[10px] text-muted-foreground shrink-0 w-[88px]">{{ $label }}:</span>
                                                     @if ($value !== null && $value !== '')
@@ -184,13 +186,79 @@
                                         </div>
                                         <div class="px-3.5 pb-2.5 pt-1">
                                             <button type="button" x-data
-                                                    x-on:click="$dispatch('open-quick-book', @js($payload)); $wire.closeModal()"
+                                                    x-on:click="$dispatch('open-quick-book', @js($roomPayload)); $wire.closeModal()"
                                                     class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm">
                                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                                           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                                 </svg>
-                                                {{ $hasData ? 'Open Pre-filled Booking Form' : 'Open Booking Form' }}
+                                                {{ $hasRoomData ? 'Open Pre-filled Room Form' : 'Open Room Booking Form' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- ── Vehicle booking panel ── --}}
+                                @if (isset($msg['vehicle_prefill']) && is_array($msg['vehicle_prefill']))
+                                    @php
+                                        $vp = $msg['vehicle_prefill'];
+                                        $hasVehicleData = collect($vp)->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
+                                        $vehiclePayload = [
+                                            'vehicleId'     => $vp['vehicle_id']    ?? null,
+                                            'borrowerName'  => $vp['borrower_name'] ?? '',
+                                            'dateFrom'      => $vp['date_from']     ?? '',
+                                            'dateTo'        => $vp['date_to']       ?? '',
+                                            'startTime'     => $vp['start_time']    ?? '',
+                                            'endTime'       => $vp['end_time']      ?? '',
+                                            'purpose'       => $vp['purpose']       ?? '',
+                                            'destination'   => $vp['destination']   ?? '',
+                                            'purposeType'   => $vp['purpose_type']  ?? null,
+                                            'department'    => $vp['department']    ?? null,
+                                            'historicalUser'=> $vp['borrower_name'] ?? null,
+                                            'mode'          => 'rebook',
+                                        ];
+                                        $vehicleRows = [
+                                            'Vehicle'       => !empty($vp['vehicle_name'])
+                                                                 ? $vp['vehicle_name'] . (!empty($vp['plate_number']) ? ' (' . $vp['plate_number'] . ')' : '')
+                                                                 : null,
+                                            'Borrower'      => $vp['borrower_name']  ?? null,
+                                            'Department'    => $vp['department']     ?? null,
+                                            'Date From'     => !empty($vp['date_from'])
+                                                                 ? \Carbon\Carbon::parse($vp['date_from'])->format('d M Y') : null,
+                                            'Date To'       => !empty($vp['date_to'])
+                                                                 ? \Carbon\Carbon::parse($vp['date_to'])->format('d M Y') : null,
+                                            'Start'         => !empty($vp['start_time']) ? substr($vp['start_time'], 0, 5) : null,
+                                            'End'           => !empty($vp['end_time'])   ? substr($vp['end_time'],   0, 5) : null,
+                                            'Purpose'       => $vp['purpose']       ?? null,
+                                            'Destination'   => $vp['destination']   ?? null,
+                                            'Purpose Type'  => $vp['purpose_type']  ?? null,
+                                        ];
+                                    @endphp
+                                    <div class="border-t border-border/60 bg-amber-500/5">
+                                        <div class="px-3.5 pt-2.5 pb-1.5 space-y-1">
+                                            <p class="text-[10px] font-semibold text-amber-600/80 uppercase tracking-wider mb-1.5">
+                                                🚗 Vehicle Booking
+                                            </p>
+                                            @foreach ($vehicleRows as $label => $value)
+                                                <div class="flex items-baseline gap-1.5">
+                                                    <span class="text-[10px] text-muted-foreground shrink-0 w-[88px]">{{ $label }}:</span>
+                                                    @if ($value !== null && $value !== '')
+                                                        <span class="text-[10px] text-foreground font-medium break-words">{{ $value }}</span>
+                                                    @else
+                                                        <span class="text-[10px] text-muted-foreground/40 italic">—</span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <div class="px-3.5 pb-2.5 pt-1">
+                                            <button type="button" x-data
+                                                    x-on:click="$dispatch('open-quick-vehicle-book', @js($vehiclePayload)); $wire.closeModal()"
+                                                    class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 active:scale-95 transition-all shadow-sm">
+                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                                          d="M8 17h8M3 11l2-5h14l2 5M5 11v6a1 1 0 001 1h1m10 0h1a1 1 0 001-1v-6"/>
+                                                </svg>
+                                                {{ $hasVehicleData ? 'Open Pre-filled Vehicle Form' : 'Open Vehicle Booking Form' }}
                                             </button>
                                         </div>
                                     </div>

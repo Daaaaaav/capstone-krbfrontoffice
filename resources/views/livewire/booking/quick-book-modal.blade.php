@@ -49,7 +49,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.quick_book_room') }}</label>
-                            <select wire:model="room_id"
+                            <select wire:model.live="room_id"
                                 class="w-full h-10 px-3.5 border border-input rounded-lg bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                                 <option value="">— Select a room —</option>
                                 @foreach ($rooms as $r)

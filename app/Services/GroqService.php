@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\BookingRoom;
 use App\Models\VehicleBooking;
+use App\Models\Vehicle;
 use App\Models\Delivery;
 use App\Models\Guestbook;
 use Carbon\Carbon;
@@ -346,26 +347,68 @@ class GroqService
             ))
             ->join("\n");
 
+        // Available vehicles (for new bookings)
+        $availableVehicles = Vehicle::where('company_id', $companyId)
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get(['vehicle_id', 'name', 'plate_number', 'category'])
+            ->map(fn($v) => sprintf(
+                '  [VehicleID:%d] %s | Plate: %s | Type: %s',
+                $v->vehicle_id,
+                $v->name ?? '—',
+                $v->plate_number ?? '—',
+                $v->category ?? '—'
+            ))
+            ->join("\n");
+
         // Vehicle bookings today
         $todayVehicles = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->with(['vehicle', 'department'])
             ->whereDate('start_at', $today)
             ->orderBy('start_at')
-            ->take(5)
+            ->take(8)
             ->get()
             ->map(fn($v) => sprintf(
-                '  [ID:%d] %s | Purpose: %s | Dest: %s | Status: %s',
+                '  [ID:%d] %s | Vehicle: %s (%s) | %s–%s | Dest: %s | Dept: %s | Status: %s',
                 $v->vehiclebooking_id,
                 $v->borrower_name ?? '—',
-                $v->purpose ?? '—',
+                $v->vehicle?->name ?? '—',
+                $v->vehicle?->plate_number ?? '—',
+                optional($v->start_at)->format('H:i') ?? '—',
+                optional($v->end_at)->format('H:i') ?? '—',
                 $v->destination ?? '—',
+                $v->department?->name ?? '—',
                 ucfirst($v->status ?? '—')
             ))
             ->join("\n");
 
-        $todayRoomsBlock   = $todayRooms   ?: '  (none)';
-        $pendingBlock      = $pendingRooms ?: '  (none)';
-        $recentRoomsBlock  = $recentRooms  ?: '  (none)';
-        $todayVehicleBlock = $todayVehicles ?: '  (none)';
+        // Recent vehicle bookings (last 7 days)
+        $recentVehicles = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->with(['vehicle', 'department'])
+            ->where('start_at', '>=', $now->copy()->subDays(6)->startOfDay())
+            ->orderByDesc('start_at')
+            ->take(8)
+            ->get()
+            ->map(fn($v) => sprintf(
+                '  [ID:%d] %s | Vehicle: %s (%s) | %s → %s | Purpose: %s | Dept: %s | Status: %s',
+                $v->vehiclebooking_id,
+                $v->borrower_name ?? '—',
+                $v->vehicle?->name ?? '—',
+                $v->vehicle?->plate_number ?? '—',
+                optional($v->start_at)->format('d M H:i') ?? '—',
+                optional($v->end_at)->format('d M H:i') ?? '—',
+                $v->purpose ?? '—',
+                $v->department?->name ?? '—',
+                ucfirst($v->status ?? '—')
+            ))
+            ->join("\n");
+
+        $todayRoomsBlock    = $todayRooms    ?: '  (none)';
+        $pendingBlock       = $pendingRooms  ?: '  (none)';
+        $recentRoomsBlock   = $recentRooms   ?: '  (none)';
+        $availVehicleBlock  = $availableVehicles ?: '  (none)';
+        $todayVehicleBlock  = $todayVehicles ?: '  (none)';
+        $recentVehicleBlock = $recentVehicles ?: '  (none)';
 
         return <<<CONTEXT
         === CURRENT BOOKING DATA (as of {$now->format('d M Y, H:i')} WIB) ===
@@ -373,14 +416,20 @@ class GroqService
         TODAY'S ROOM MEETINGS ({$today}):
         {$todayRoomsBlock}
 
-        PENDING APPROVALS (up to 5):
+        PENDING ROOM APPROVALS (up to 5):
         {$pendingBlock}
 
-        RECENT BOOKINGS (last 7 days, up to 10):
+        RECENT ROOM BOOKINGS (last 7 days, up to 10):
         {$recentRoomsBlock}
+
+        AVAILABLE VEHICLES (active fleet):
+        {$availVehicleBlock}
 
         TODAY'S VEHICLE TRIPS:
         {$todayVehicleBlock}
+
+        RECENT VEHICLE BOOKINGS (last 7 days, up to 8):
+        {$recentVehicleBlock}
         CONTEXT;
     }
 
@@ -391,14 +440,14 @@ class GroqService
 
         Your role:
         - Help the receptionist look up booking information, check schedules, and understand statuses.
-        - Only answer based on the booking data provided below. Never invent booking details (IDs, times, room names).
+        - Only answer based on the booking data provided below. Never invent booking details (IDs, times, names).
         - If you cannot find the requested information in the context, say so politely.
         - Keep answers short and practical — the receptionist is busy.
         - Respond in the same language the receptionist uses (English or Indonesian).
 
         RESPONSE FORMAT (mandatory — always follow this):
         You MUST always return your ENTIRE response as a single valid JSON object with NO markdown, NO code fences,
-        and NO text outside the JSON. The object must always have exactly these two keys:
+        and NO text outside the JSON. The object must always have exactly these three keys:
 
         {
           "reply": "<your conversational reply to the receptionist>",
@@ -413,18 +462,39 @@ class GroqService
             "start_time":           "<HH:MM 24h or null>",
             "end_time":             "<HH:MM 24h or null>",
             "special_notes":        "<room requirements / notes string or null>"
+          },
+          "vehicle_prefill": {
+            "vehicle_id":     <integer or null>,
+            "vehicle_name":   "<string or null>",
+            "plate_number":   "<string or null>",
+            "borrower_name":  "<string or null>",
+            "department":     "<department name string or null>",
+            "date_from":      "<YYYY-MM-DD or null>",
+            "date_to":        "<YYYY-MM-DD or null>",
+            "start_time":     "<HH:MM 24h or null>",
+            "end_time":       "<HH:MM 24h or null>",
+            "purpose":        "<string or null>",
+            "destination":    "<string or null>",
+            "purpose_type":   "<dinas|operasional|antar_jemput|lainnya or null>"
           }
         }
 
-        Rules for booking_prefill:
-        - Fill in ONLY what you can confidently determine from the conversation and the booking data below.
+        Rules for booking_prefill (room booking):
+        - Fill in ONLY what you can confidently determine from the conversation and the data below.
         - Leave fields as null if the information was not provided or cannot be inferred.
-        - For rebook requests: copy all matching details from the historical booking and apply any changes the
-          receptionist asked for (new date, different attendee count, etc.).
-        - For general questions (e.g. "what rooms are free today?"): still include booking_prefill but leave
-          all fields null — the receptionist may want to start a new booking from the answer.
+        - For rebook/repeat room requests: copy matching details and apply any changes (new date, attendees, etc.).
+        - For non-room questions: include booking_prefill with all fields null.
         - room_id must come from the actual booking data below; never invent an ID.
         - date must be the TARGET date for the new booking (not the historical date).
+
+        Rules for vehicle_prefill (vehicle booking):
+        - Fill in ONLY what you can confidently determine from the conversation and the data below.
+        - Leave fields as null if the information was not provided or cannot be inferred.
+        - For rebook/repeat vehicle trip requests: copy matching details from the RECENT VEHICLE BOOKINGS section and apply any changes.
+        - For non-vehicle questions: include vehicle_prefill with all fields null.
+        - vehicle_id must come from the AVAILABLE VEHICLES section in the data below; never invent an ID.
+        - date_from and date_to must be the TARGET dates (not historical dates).
+        - purpose_type must be one of: dinas, operasional, antar_jemput, lainnya — or null.
 
         PROMPT
         . $dataContext;
@@ -437,60 +507,96 @@ class GroqService
     /**
      * Parse the raw Groq response.
      *
-     * For receptionist responses the model now always returns a JSON envelope,
-     * so this method decodes it, normalises types, and resolves room_id by name
-     * when the model omitted the integer ID. A booking_prefill with all-null
-     * fields is still returned — the view always shows the form panel.
+     * The model always returns a JSON envelope with reply, booking_prefill,
+     * and vehicle_prefill. This method decodes it, normalises types, and
+     * resolves room_id / vehicle_id by name when the model omitted the integer.
      *
-     * @return array{reply: string, booking_prefill: array|null}
+     * @return array{reply: string, booking_prefill: array, vehicle_prefill: array}
      */
     private function parseIntentResponse(string $raw): array
     {
+        $empty = [
+            'reply'           => $raw,
+            'booking_prefill' => [],
+            'vehicle_prefill' => [],
+        ];
+
         $raw = trim($raw);
 
-        // Strip Qwen 3 chain-of-thought <think>…</think> blocks that sometimes
-        // appear even when enable_thinking is false (e.g. older cached responses).
+        // Strip Qwen 3 <think>…</think> reasoning blocks
         $raw = preg_replace('/<think>.*?<\/think>/si', '', $raw);
 
-        // Strip markdown code fences the model sometimes adds despite instructions
+        // Strip markdown code fences
         $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
         $raw = preg_replace('/\s*```$/', '', $raw);
         $raw = trim($raw);
 
-        // Only attempt JSON decode if it looks like an object
-        if (str_starts_with($raw, '{')) {
-            $decoded = json_decode($raw, true);
-
-            if (is_array($decoded) && isset($decoded['reply'])) {
-                $reply   = (string) $decoded['reply'];
-                $prefill = $decoded['booking_prefill'] ?? null;
-
-                if (is_array($prefill)) {
-                    // Resolve room_id from room_name when the model only gave a name
-                    if (empty($prefill['room_id']) && !empty($prefill['room_name'])) {
-                        $companyId = Auth::user()->company_id;
-                        $room = \App\Models\Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
-                            ->where('room_name', 'like', '%' . trim($prefill['room_name']) . '%')
-                            ->first();
-                        $prefill['room_id']   = $room?->room_id;
-                        $prefill['room_name'] = $room?->room_name ?? $prefill['room_name'];
-                    }
-
-                    // Normalise field types
-                    $prefill['room_id']             = isset($prefill['room_id']) ? (int) $prefill['room_id'] : null;
-                    $prefill['number_of_attendees'] = isset($prefill['number_of_attendees']) ? (int) $prefill['number_of_attendees'] : null;
-                    $prefill['special_notes']       = $prefill['special_notes']   ?? null;
-                    $prefill['department']          = $prefill['department']      ?? null;
-                    $prefill['historical_user']     = $prefill['historical_user'] ?? null;
-                }
-
-                // Always return prefill (even if all-null) so the view shows the form
-                return ['reply' => $reply, 'booking_prefill' => $prefill ?? []];
-            }
+        if (!str_starts_with($raw, '{')) {
+            return $empty;
         }
 
-        // Fallback: plain text reply, show empty form panel
-        return ['reply' => $raw, 'booking_prefill' => []];
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded) || !isset($decoded['reply'])) {
+            return $empty;
+        }
+
+        $reply   = (string) $decoded['reply'];
+        $companyId = Auth::user()->company_id;
+
+        // ── booking_prefill (room) ────────────────────────────────
+        $prefill = $decoded['booking_prefill'] ?? [];
+        if (is_array($prefill)) {
+            if (empty($prefill['room_id']) && !empty($prefill['room_name'])) {
+                $room = \App\Models\Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+                    ->where('room_name', 'like', '%' . trim($prefill['room_name']) . '%')
+                    ->first();
+                $prefill['room_id']   = $room?->room_id;
+                $prefill['room_name'] = $room?->room_name ?? $prefill['room_name'];
+            }
+            $prefill['room_id']             = isset($prefill['room_id'])             ? (int) $prefill['room_id']             : null;
+            $prefill['number_of_attendees'] = isset($prefill['number_of_attendees']) ? (int) $prefill['number_of_attendees'] : null;
+            $prefill['special_notes']       = $prefill['special_notes']   ?? null;
+            $prefill['department']          = $prefill['department']      ?? null;
+            $prefill['historical_user']     = $prefill['historical_user'] ?? null;
+        }
+
+        // ── vehicle_prefill ───────────────────────────────────────
+        $vprefill = $decoded['vehicle_prefill'] ?? [];
+        if (is_array($vprefill)) {
+            // Resolve vehicle_id by name or plate when model gave text only
+            if (empty($vprefill['vehicle_id']) && (!empty($vprefill['vehicle_name']) || !empty($vprefill['plate_number']))) {
+                $vq = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId));
+                if (!empty($vprefill['vehicle_name'])) {
+                    $vq = $vq->where('name', 'like', '%' . trim($vprefill['vehicle_name']) . '%');
+                } elseif (!empty($vprefill['plate_number'])) {
+                    $vq = $vq->where('plate_number', 'like', '%' . trim($vprefill['plate_number']) . '%');
+                }
+                $vehicle = $vq->first();
+                $vprefill['vehicle_id']   = $vehicle?->vehicle_id;
+                $vprefill['vehicle_name'] = $vehicle?->name         ?? $vprefill['vehicle_name']  ?? null;
+                $vprefill['plate_number'] = $vehicle?->plate_number ?? $vprefill['plate_number']  ?? null;
+            }
+            $vprefill['vehicle_id']   = isset($vprefill['vehicle_id'])   ? (int) $vprefill['vehicle_id'] : null;
+            $vprefill['borrower_name']= $vprefill['borrower_name'] ?? null;
+            $vprefill['department']   = $vprefill['department']    ?? null;
+            $vprefill['date_from']    = $vprefill['date_from']     ?? null;
+            $vprefill['date_to']      = $vprefill['date_to']       ?? null;
+            $vprefill['start_time']   = $vprefill['start_time']    ?? null;
+            $vprefill['end_time']     = $vprefill['end_time']      ?? null;
+            $vprefill['purpose']      = $vprefill['purpose']       ?? null;
+            $vprefill['destination']  = $vprefill['destination']   ?? null;
+
+            $validTypes = ['dinas', 'operasional', 'antar_jemput', 'lainnya'];
+            $vprefill['purpose_type'] = in_array($vprefill['purpose_type'] ?? '', $validTypes, true)
+                ? $vprefill['purpose_type']
+                : null;
+        }
+
+        return [
+            'reply'           => $reply,
+            'booking_prefill' => $prefill  ?? [],
+            'vehicle_prefill' => $vprefill ?? [],
+        ];
     }
 
     // ──────────────────────────────────────────────────────────

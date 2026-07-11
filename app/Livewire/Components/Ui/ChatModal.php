@@ -110,7 +110,8 @@ class ChatModal extends Component
         $this->viewingMessages = $session->messages->map(fn(AiChatMessage $m) => [
             'role'            => $m->role,
             'text'            => $m->text,
-            'booking_prefill' => $m->booking_prefill,
+            'booking_prefill' => is_array($m->booking_prefill) ? ($m->booking_prefill['room']    ?? $m->booking_prefill) : null,
+            'vehicle_prefill' => is_array($m->booking_prefill) ? ($m->booking_prefill['vehicle'] ?? null) : null,
             'sent_at'         => $m->sent_at->format('H:i'),
         ])->values()->toArray();
 
@@ -155,7 +156,8 @@ class ChatModal extends Component
         $this->messages = $session->messages->map(fn(AiChatMessage $m) => [
             'role'            => $m->role,
             'text'            => $m->text,
-            'booking_prefill' => $m->booking_prefill,
+            'booking_prefill' => is_array($m->booking_prefill) ? ($m->booking_prefill['room']    ?? $m->booking_prefill) : null,
+            'vehicle_prefill' => is_array($m->booking_prefill) ? ($m->booking_prefill['vehicle'] ?? null) : null,
             'sent_at'         => $m->sent_at->format('H:i'),
         ])->values()->toArray();
 
@@ -184,16 +186,18 @@ class ChatModal extends Component
             'role'            => 'user',
             'text'            => $text,
             'booking_prefill' => null,
+            'vehicle_prefill' => null,
             'sent_at'         => $sentAt,
         ];
         $this->message   = '';
         $this->isLoading = true;
 
         // Persist user message
-        $this->persistMessage('user', $text, null);
+        $this->persistMessage('user', $text, null, null);
 
-        $reply   = 'Sorry, something went wrong. Please try again.';
-        $prefill = null;
+        $reply    = 'Sorry, something went wrong. Please try again.';
+        $prefill  = null;
+        $vprefill = null;
 
         try {
             $groq = app(GroqService::class);
@@ -201,9 +205,10 @@ class ChatModal extends Component
             if ($this->userRole() === 'manager') {
                 $reply = $groq->managerChat($text);
             } else {
-                $result  = $groq->receptionistChatWithIntent($text);
-                $reply   = $result['reply'];
-                $prefill = $result['booking_prefill'] ?? null;
+                $result   = $groq->receptionistChatWithIntent($text);
+                $reply    = $result['reply'];
+                $prefill  = $result['booking_prefill']  ?? null;
+                $vprefill = $result['vehicle_prefill']  ?? null;
             }
         } catch (\Throwable $e) {
             Log::error('ChatModal: GroqService failed', ['error' => $e->getMessage()]);
@@ -215,12 +220,13 @@ class ChatModal extends Component
             'role'            => 'assistant',
             'text'            => $reply,
             'booking_prefill' => $prefill,
+            'vehicle_prefill' => $vprefill,
             'sent_at'         => $replySentAt,
         ];
         $this->isLoading = false;
 
         // Persist assistant message
-        $this->persistMessage('assistant', $reply, $prefill);
+        $this->persistMessage('assistant', $reply, $prefill, $vprefill);
 
         $this->dispatch('chat-scroll-bottom');
     }
@@ -267,7 +273,7 @@ class ChatModal extends Component
      * Save a single message to the DB and update the session title
      * from the first user message.
      */
-    private function persistMessage(string $role, string $text, ?array $prefill): void
+    private function persistMessage(string $role, string $text, ?array $prefill, ?array $vprefill = null): void
     {
         if (!$this->activeSessionId) {
             return;
@@ -277,7 +283,9 @@ class ChatModal extends Component
             'session_id'      => $this->activeSessionId,
             'role'            => $role,
             'text'            => $text,
-            'booking_prefill' => $prefill,
+            'booking_prefill' => $prefill !== null || $vprefill !== null
+                ? ['room' => $prefill, 'vehicle' => $vprefill]
+                : null,
             'sent_at'         => now(),
         ]);
 
@@ -341,6 +349,7 @@ class ChatModal extends Component
             'role'            => 'assistant',
             'text'            => $greeting,
             'booking_prefill' => null,
+            'vehicle_prefill' => null,
             'sent_at'         => now()->format('H:i'),
         ];
     }
