@@ -250,9 +250,8 @@
                                             class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:ring-2 focus:ring-[#4E653D]/20 focus:outline-none transition shadow-sm">
                                             {{ __('app.edit') }}
                                         </button>
-                                        <button type="button" wire:click="softDelete({{ $row->delivery_id }})"
+                                        <button type="button" wire:click="confirmDelete({{ $row->delivery_id }}, '{{ addslashes($row->item_name) }}')"
                                             wire:loading.attr="disabled"
-                                            wire:confirm="{{ __('app.are_you_sure_delete') }}"
                                             class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
                                             {{ __('app.delete') }}
                                         </button>
@@ -321,8 +320,7 @@
                                                         class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                         {{ __('app.edit') }}
                                                     </button>
-                                                    <button type="button" wire:click="softDelete({{ $row->delivery_id }})"
-                                                        wire:confirm="{{ __('app.are_you_sure_delete') }}"
+                                                    <button type="button" wire:click="confirmDelete({{ $row->delivery_id }}, '{{ addslashes($row->item_name) }}')"
                                                         class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
                                                         {{ __('app.delete') }}
                                                     </button>
@@ -351,8 +349,8 @@
             {{-- RIGHT: SIDEBAR (DESKTOP / TABLET) --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 {{-- Filter by Department & User --}}
-                <section class="{{ $card }}">
-                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
+                <section class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
                         <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_dept_user') }}</p>
                     </div>
@@ -707,14 +705,14 @@
         <div wire:key="edit-modal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showEdit', false)"></div>
             <div class="relative w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
-                <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-[#4E653D]/10 flex items-center justify-center">
-                            <x-heroicon-o-pencil class="w-4 h-4 text-[#4E653D]" />
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-pencil class="w-4 h-4 text-[#CDDEA7]" />
                         </div>
-                        <h3 class="font-bold text-gray-900 text-base tracking-tight">{{ __('app.edit') }}</h3>
+                        <h3 class="font-bold text-base tracking-tight">{{ __('app.edit') }}</h3>
                     </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition" wire:click="$set('showEdit', false)">✕</button>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showEdit', false)">✕</button>
                 </div>
                 <div class="p-6 space-y-4 bg-white">
                     <div class="space-y-1.5">
@@ -735,9 +733,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 p-4 mt-6">
                     <button type="button" wire:click="$set('showEdit', false)"
-                        class="h-9 px-4 rounded-lg bg-[#4A2F24]/10 text-[#4A2F24] border border-[#4A2F24]/20 hover:bg-[#4A2F24]/20 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition inline-flex items-center gap-1.5 text-xs font-semibold">
                         <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5" />
                         <span>{{ __('app.cancel') }}</span>
                     </button>

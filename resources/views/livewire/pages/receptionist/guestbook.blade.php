@@ -101,7 +101,7 @@
                     {{-- Email --}}
                     <div class="space-y-1.5">
                         <label class="{{ $label }}">{{ __('app.email') }} <span class="text-rose-500">*</span></label>
-                        <input type="email" wire:model.lazy="email" placeholder="{{ __('app.email_placeholder') }}" class="{{ $input }}">
+                        <input type="email" wire:model.lazy="email" placeholder="{{ __('app.guest_email_placeholder') ?? 'guest@email.com' }}" class="{{ $input }}">
                         @error('email') <p class="text-xs text-red-500 font-medium">{{ $message }}</p> @enderror
                         @if($isAutoFilled ?? false)
                             <p class="mt-1 text-[11px] text-amber-600 font-medium leading-tight bg-amber-50 p-1.5 rounded border border-amber-200 inline-block w-full">
@@ -128,6 +128,12 @@
                         <label class="{{ $label }}">{{ __('app.institution') }}</label>
                         <input type="text" wire:model.defer="instansi" placeholder="{{ __('app.institution_placeholder') }}" class="{{ $input }}">
                         @error('instansi') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label class="{{ $label }}">{{ __('app.storage_place') ?? 'Storage / Locker' }}</label>
+                        <input type="number" wire:model.defer="storage_place" min="1" max="100" placeholder="e.g. 12" class="{{ $input }}">
+                        @error('storage_place') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
 
                     <div>

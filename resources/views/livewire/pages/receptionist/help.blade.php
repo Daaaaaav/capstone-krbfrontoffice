@@ -1,5 +1,5 @@
 <div>
-    <main class="max-w-3xl mx-auto py-6 space-y-6">
+    <main class="px-4 sm:px-6 py-6 space-y-6">
 
         {{-- HERO BANNER --}}
         <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">

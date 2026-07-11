@@ -310,7 +310,6 @@ class Bookingvehicle extends Component
                 'purpose_type_other',
                 'departmentSearch',
                 'userSearch',
-                'vehicleSearch',
             ]);
 
             // list user dikosongkan lagi
@@ -403,7 +402,7 @@ class Bookingvehicle extends Component
             'departments' => $departments,
             'users'       => $users,
             'vehicles'    => $this->vehicles,
-            'hasVehicles' => $this->hasVehicles,
+            'hasVehicles' => $this->hasVehicles
         ]);
     }
 }

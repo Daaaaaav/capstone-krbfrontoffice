@@ -602,6 +602,13 @@
                                 @error('edit.name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
+                            {{-- Email --}}
+                            <div>
+                                <label for="edit_email" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Email</label>
+                                <input type="email" id="edit_email" class="{{ $input }}" wire:model="edit.email">
+                                @error('edit.email') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
                             {{-- No HP --}}
                             <div>
                                 <label for="edit_phone_number" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.no_hp_label') }}</label>

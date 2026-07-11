@@ -405,17 +405,17 @@
                             <div
                                 x-data="{
                                     open: false,
-                                    search: $wire.vehicleSearch,
+                                    search: '',
                                     selectedId: null,
                                     get items() {
                                         const q = (this.search || '').toLowerCase().trim();
-                                        const list = ($wire.vehiclesForCombobox || []);
+                                        const list = @js(collect($vehicles)->map(fn($v) => ['id' => $v->vehicle_id, 'label' => ($v->name ?? __('app.vehicle')) . ($v->plate_number ? ' — ' . $v->plate_number : '')])->values()->toArray());
                                         if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
                                         return list.filter(i => !q || i.label.toLowerCase().includes(q));
                                     },
                                     get selectedLabel() {
                                         const id = $wire.vehicle_id;
-                                        const list = ($wire.vehiclesForCombobox || []);
+                                        const list = @js(collect($vehicles)->map(fn($v) => ['id' => $v->vehicle_id, 'label' => ($v->name ?? __('app.vehicle')) . ($v->plate_number ? ' — ' . $v->plate_number : '')])->values()->toArray());
                                         const found = list.find(i => i.id == id);
                                         return found ? found.label : '';
                                     },
@@ -429,11 +429,9 @@
                                         this.search = '';
                                         this.selectedId = null;
                                         $wire.set('vehicle_id', null);
-                                        $wire.set('vehicleSearch', '');
                                     }
                                 }"
                                 x-init="
-                                    $watch('search', val => $wire.set('vehicleSearch', val));
                                     $watch('$wire.vehicle_id', val => {
                                         this.selectedId = val || null;
                                         if (!val) { search = ''; }
@@ -710,14 +708,14 @@
                         </div>
                     </div>
                     <div class="p-4 space-y-4">
-                        @forelse(array_slice($vehiclesForCombobox ?? [], 0, 5) as $vehicle)
-                            <div wire:click="openVehicleScheduleModal({{ $vehicle['id'] }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
+                        @forelse(collect($vehicles)->take(5) as $vehicle)
+                            <div wire:click="openVehicleScheduleModal({{ $vehicle->vehicle_id }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
                                 <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
                                     <x-heroicon-o-truck class="w-4 h-4" />
                                 </div>
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-foreground truncate">{{ explode(' — ', $vehicle['label'])[0] }}</p>
-                                    <p class="text-[11px] text-muted-foreground truncate">{{ explode(' — ', $vehicle['label'])[1] ?? 'No Plate' }}</p>
+                                    <p class="text-sm font-semibold text-foreground truncate">{{ $vehicle->name ?? __('app.vehicle') }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">{{ $vehicle->plate_number ?? 'No Plate' }}</p>
                                 </div>
                             </div>
 

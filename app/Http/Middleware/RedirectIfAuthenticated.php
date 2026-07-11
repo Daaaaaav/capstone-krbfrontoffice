@@ -18,7 +18,7 @@ class RedirectIfAuthenticated
                 $role = $user->role->name ?? $user->role ?? null;
 
                 // If role is unrecognized, log out and let them reach the guest page
-                if (!in_array($role, ['Manager', 'Receptionist'])) {
+                if (!in_array($role, ['Manager', 'Admin', 'Superadmin', 'Receptionist'])) {
                     Auth::guard($guard)->logout();
                     $request->session()->invalidate();
                     $request->session()->regenerateToken();
@@ -26,8 +26,8 @@ class RedirectIfAuthenticated
                 }
 
                 $routeName = match ($role) {
-                    'Manager'      => 'manager.dashboard',
-                    'Receptionist' => 'receptionist.dashboard',
+                    'Manager', 'Admin', 'Superadmin' => 'manager.dashboard',
+                    'Receptionist'                   => 'receptionist.dashboard',
                 };
 
                 return redirect()->route($routeName);

@@ -7,7 +7,7 @@
     $btnSecondary = 'px-5 py-2.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200 hover:bg-gray-200 focus:outline-none transition';
     @endphp
 
-    <main class="max-w-3xl mx-auto py-6 space-y-6">
+    <main class="px-4 sm:px-6 py-6 space-y-6">
 
         {{-- HERO BANNER --}}
         <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">

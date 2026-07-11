@@ -1,9 +1,8 @@
 @extends('layouts.receptionist', ['title' => 'Notifications'])
 
 @section('content')
-    <div class="min-h-screen bg-background">
-        <main class="px-4 sm:px-6 py-6 space-y-6 max-w-5xl mx-auto">
-            <x-page-header
+    <main class="px-4 sm:px-6 py-6 space-y-6">
+        <x-page-header
                 title="Notifications"
                 subtitle="View all system alerts and messages" />
 
@@ -55,6 +54,5 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+    </main>
 @endsection

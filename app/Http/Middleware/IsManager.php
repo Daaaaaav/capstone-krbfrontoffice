@@ -13,7 +13,7 @@ class IsManager
 
         $roleName = $user->role->name ?? $user->role ?? null;
 
-        if ($user && $roleName === 'Manager') {
+        if ($user && in_array($roleName, ['Manager', 'Admin', 'Superadmin'])) {
             return $next($request);
         }
 
