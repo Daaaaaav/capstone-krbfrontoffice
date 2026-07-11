@@ -105,7 +105,7 @@ class DatabaseSeeder extends Seeder
                         ],
                         [
                             'full_name' => 'Davina Amarina',
-                            'email' => 'davina.manager@gmail.com',
+                            'email' => 'davina.managerkrb@gmail.com',
                             'phone_number' => '081234567891',
                             'role' => 'Manager',
                             'department' => 'IT',
