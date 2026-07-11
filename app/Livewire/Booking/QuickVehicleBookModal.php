@@ -64,21 +64,21 @@ class QuickVehicleBookModal extends Component
 
         $now = Carbon::now($this->tz);
 
-        $this->vehicle_id     = isset($payload['vehicleId']) && $payload['vehicleId']
-                                    ? (int) $payload['vehicleId'] : null;
-        $this->borrower_name  = $payload['borrowerName']  ?? '';
-        $this->date_from      = $payload['dateFrom']      ?: $now->toDateString();
-        $this->date_to        = $payload['dateTo']        ?: $now->toDateString();
-        $this->start_time     = $payload['startTime']     ?: null;
-        $this->end_time       = $payload['endTime']       ?: null;
-        $this->purpose        = $payload['purpose']       ?? '';
-        $this->destination    = $payload['destination']   ?: null;
-        $this->purpose_type   = $payload['purposeType']   ?: null;
-        $this->odd_even_area  = $payload['oddEvenArea']   ?? 'tidak';
-        $this->ai_department        = $payload['department']    ?: null;
-        $this->ai_historical_user   = $payload['historicalUser'] ?: null;
-        $this->mode           = in_array($payload['mode'] ?? '', ['create', 'rebook'], true)
-                                    ? $payload['mode'] : 'create';
+        $this->vehicle_id           = isset($payload['vehicleId']) && $payload['vehicleId']
+                                          ? (int) $payload['vehicleId'] : null;
+        $this->borrower_name        = $payload['borrowerName']   ?? '';
+        $this->date_from            = ($payload['dateFrom']      ?? '') ?: $now->toDateString();
+        $this->date_to              = ($payload['dateTo']        ?? '') ?: $now->toDateString();
+        $this->start_time           = ($payload['startTime']     ?? '') ?: null;
+        $this->end_time             = ($payload['endTime']       ?? '') ?: null;
+        $this->purpose              = $payload['purpose']        ?? '';
+        $this->destination          = ($payload['destination']   ?? '') ?: null;
+        $this->purpose_type         = ($payload['purposeType']   ?? '') ?: null;
+        $this->odd_even_area        = $payload['oddEvenArea']    ?? 'tidak';
+        $this->ai_department        = ($payload['department']    ?? '') ?: null;
+        $this->ai_historical_user   = ($payload['historicalUser'] ?? '') ?: null;
+        $this->mode                 = in_array($payload['mode'] ?? '', ['create', 'rebook'], true)
+                                          ? $payload['mode'] : 'create';
 
         $this->show = true;
     }
