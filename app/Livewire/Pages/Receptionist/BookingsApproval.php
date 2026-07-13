@@ -16,6 +16,8 @@ use App\Services\ZoomService;
 use Carbon\Carbon;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
+use App\Models\PriorityRoomBooking;
+use App\Models\ManagerNotification;
 
 #[Layout('layouts.receptionist')]
 #[Title('Bookings Approval')]
@@ -730,8 +732,181 @@ class BookingsApproval extends Component
             'ongoing',
             'recentCompleted'
         ) + [
-            'zoomConfigured'   => $this->zoomConfigured,
-            'googleConnected'  => $this->googleConnected,
+            'zoomConfigured'        => $this->zoomConfigured,
+            'googleConnected'       => $this->googleConnected,
+            'roomNotifCount'        => $this->roomNotifCount,
+            'roomNotifs'            => $this->roomNotifs,
+            // Manager priority room bookings — pending & approved stages
+            'priorityRoomPending'   => PriorityRoomBooking::with(['room', 'manager'])
+                ->forCompany($companyId)
+                ->whereIn('status', [
+                    PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                    PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+                ])
+                ->orderByDesc('created_at')
+                ->get(),
+            'priorityRoomApproved'  => PriorityRoomBooking::with(['room', 'manager'])
+                ->forCompany($companyId)
+                ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get(),
         ]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Priority Room Booking — Notification handling
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public bool $showRoomNotifPanel          = false;
+    public bool $showRoomPriorityApprovalModal = false;
+    public ?int $roomPriorityNotifId          = null;
+    public ?int $roomPriorityBookingId        = null;
+
+    public function toggleRoomNotifPanel(): void
+    {
+        $this->showRoomNotifPanel = !$this->showRoomNotifPanel;
+    }
+
+    public function closeRoomNotifPanel(): void
+    {
+        $this->showRoomNotifPanel = false;
+    }
+
+    public function openRoomPriorityApprovalModal(int $notifId): void
+    {
+        $companyId = Auth::user()->company_id ?? null;
+
+        $notif = ManagerNotification::where('id', $notifId)
+            ->where('company_id', $companyId)
+            ->where('action_required', true)
+            ->whereNull('action_taken')
+            ->first();
+
+        if (!$notif) {
+            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Notification not found or already actioned.');
+            return;
+        }
+
+        $this->roomPriorityNotifId          = $notifId;
+        $this->roomPriorityBookingId        = $notif->notifiable_id;
+        $this->showRoomPriorityApprovalModal = true;
+        $this->showRoomNotifPanel           = false;
+        $notif->markRead();
+    }
+
+    public function closeRoomPriorityApprovalModal(): void
+    {
+        $this->showRoomPriorityApprovalModal = false;
+        $this->roomPriorityNotifId           = null;
+        $this->roomPriorityBookingId         = null;
+    }
+
+    /**
+     * Receptionist approves: cancel the conflicting offline booking, approve the priority booking.
+     */
+    public function approveRoomPriority(): void
+    {
+        if (!$this->roomPriorityBookingId) return;
+
+        $companyId = Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                $priority = PriorityRoomBooking::where('id', $this->roomPriorityBookingId)
+                    ->where('company_id', $companyId)
+                    ->firstOrFail();
+
+                if ($priority->cancels_booking_id) {
+                    BookingRoom::where('bookingroom_id', $priority->cancels_booking_id)
+                        ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
+                        ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
+                        ->update([
+                            'status'      => 'rejected',
+                            'book_reject' => 'Cancelled — superseded by manager priority booking #' . $this->roomPriorityBookingId . '.',
+                            'approved_by' => Auth::user()->user_id,
+                        ]);
+                }
+
+                $priority->update([
+                    'status'     => PriorityRoomBooking::STATUS_APPROVED,
+                    'handled_by' => Auth::user()->user_id,
+                ]);
+
+                if ($this->roomPriorityNotifId) {
+                    ManagerNotification::where('id', $this->roomPriorityNotifId)
+                        ->update(['action_taken' => 'approved', 'is_read' => true]);
+                }
+            });
+
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority room booking approved and conflicting booking cancelled.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
+        }
+
+        $this->closeRoomPriorityApprovalModal();
+        $this->resetPage('pendingPage');
+        $this->resetPage('ongoingPage');
+    }
+
+    /**
+     * Receptionist denies the cancellation: priority booking is conflict-denied.
+     */
+    public function denyRoomPriority(): void
+    {
+        if (!$this->roomPriorityBookingId) return;
+
+        $companyId = Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                PriorityRoomBooking::where('id', $this->roomPriorityBookingId)
+                    ->where('company_id', $companyId)
+                    ->update([
+                        'status'           => PriorityRoomBooking::STATUS_CONFLICT_DENIED,
+                        'handled_by'       => Auth::user()->user_id,
+                        'rejection_reason' => 'Cancellation request denied by receptionist.',
+                    ]);
+
+                if ($this->roomPriorityNotifId) {
+                    ManagerNotification::where('id', $this->roomPriorityNotifId)
+                        ->update(['action_taken' => 'denied', 'is_read' => true]);
+                }
+            });
+
+            $this->dispatch('toast', type: 'info', title: 'Denied', message: 'Cancellation request denied. Original booking kept.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
+        }
+
+        $this->closeRoomPriorityApprovalModal();
+    }
+
+    public function getRoomNotifCountProperty(): int
+    {
+        $user = Auth::user();
+        if (!$user) return 0;
+        return ManagerNotification::where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id ?? 0)
+            ->where('type', ManagerNotification::TYPE_ROOM_CANCEL_REQUEST)
+            ->where('is_read', false)
+            ->count();
+    }
+
+    public function getRoomNotifsProperty()
+    {
+        $user = Auth::user();
+        if (!$user) return collect();
+        return ManagerNotification::where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id ?? 0)
+            ->whereIn('type', [
+                ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
+                ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+            ])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
     }
 }

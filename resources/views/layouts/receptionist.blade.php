@@ -263,8 +263,9 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                         @include('components.breadcrumbs')
                     </div>
 
-                    {{-- Right side: language toggle + date badge --}}
+                    {{-- Right side: notification bell + language toggle + date badge --}}
                     <div class="flex items-center gap-3">
+                        @livewire('components.ui.notification-bell')
                         {{-- Language Toggle --}}
                         <div class="relative" x-data="{ open: false }">
                             @php $isEn = app()->getLocale() === 'en'; @endphp

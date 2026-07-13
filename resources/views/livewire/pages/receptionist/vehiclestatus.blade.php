@@ -462,6 +462,48 @@
                         </div>
                     </div>
                 @endif
+
+                {{-- ── MANAGER PRIORITY VEHICLE BOOKINGS ── --}}
+                @if(isset($priorityVehicleBookings) && $priorityVehicleBookings->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-3 border-t-2 border-blue-200 bg-blue-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Manager Priority Vehicle Bookings</span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white">{{ $priorityVehicleBookings->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        @foreach($priorityVehicleBookings as $pvb)
+                        @php
+                            $pvbBadge = match($pvb->status) {
+                                'approved'   => 'bg-emerald-100 text-emerald-700',
+                                'pending_receipt','pending_cancellation' => 'bg-amber-100 text-amber-700',
+                                default => 'bg-gray-100 text-gray-600',
+                            };
+                        @endphp
+                        <div wire:key="priority-veh-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pvb->borrower_name }} &bull;
+                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
+                                </p>
+                                <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
+                                <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                @if($pvb->status === 'pending_cancellation')
+                                    <p class="text-[11px] text-orange-600">Awaiting cancellation approval for booking #{{ $pvb->cancels_booking_id }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvbBadge }}">
+                                {{ $pvb->statusLabel() }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </section>
 
             {{-- SIDEBAR: vehicle filter --}}
@@ -870,4 +912,132 @@
             </form>
         </div>
     </div>
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     Priority Vehicle Booking — Notification Bell & Approval Modals
+     (inside root div — Livewire requires exactly one root element)
+     ═══════════════════════════════════════════════════════════════════════ --}}
+
+{{-- Floating bell button (shows only when there are unread vehicle notifications) --}}
+@if($vehicleNotifCount > 0)
+<div class="fixed top-20 right-6 z-[80]"
+     x-data="{ open: @entangle('showNotifPanel').live }">
+    <button wire:click="toggleNotifPanel"
+        class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-amber-500 text-white shadow-xl hover:bg-amber-600 transition focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+        title="Priority Booking Notifications">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+        </svg>
+        <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold shadow">
+            {{ $vehicleNotifCount }}
+        </span>
+    </button>
 </div>
+@endif
+
+{{-- Notification Panel --}}
+@if($showNotifPanel)
+<div class="fixed inset-0 z-[90]" wire:click.self="closeNotifPanel">
+    <div class="absolute top-20 right-6 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+            <p class="text-sm font-semibold text-foreground">Priority Vehicle Notifications</p>
+            <button wire:click="closeNotifPanel" class="text-muted-foreground hover:text-foreground transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="max-h-72 overflow-y-auto divide-y divide-border/60">
+            @forelse($vehicleNotifs as $n)
+            <div class="px-4 py-3 hover:bg-muted/30 transition {{ !$n->is_read ? 'bg-primary/5' : '' }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-semibold text-foreground">{{ $n->title }}</p>
+                        <p class="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{{ $n->message }}</p>
+                        <p class="text-[10px] text-muted-foreground/60 mt-1">{{ $n->created_at->diffForHumans() }}</p>
+                    </div>
+                    @if($n->isPendingAction())
+                    <button wire:click="openPriorityApprovalModal({{ $n->id }})"
+                        class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
+                        Review
+                    </button>
+                    @elseif($n->action_taken)
+                    <span class="shrink-0 text-[11px] font-semibold {{ $n->action_taken === 'approved' ? 'text-emerald-600' : 'text-red-500' }}">
+                        {{ ucfirst($n->action_taken) }}
+                    </span>
+                    @endif
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-8 text-center text-muted-foreground text-xs">No notifications.</div>
+            @endforelse
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Priority Vehicle Approval Modal --}}
+@if($showPriorityApprovalModal && $priorityApprovalBookingId)
+@php
+    $pvb = \App\Models\PriorityVehicleBooking::with(['vehicle','department','manager','cancelledBooking'])->find($priorityApprovalBookingId);
+@endphp
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            </div>
+            <div>
+                <p class="font-semibold text-foreground">Priority Vehicle Booking — Action Required</p>
+                <p class="text-xs text-muted-foreground mt-0.5">A manager has requested cancellation of a pending booking.</p>
+            </div>
+        </div>
+
+        @if($pvb)
+        <div class="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Vehicle:</span>
+                <span class="font-semibold">{{ $pvb->vehicle?->name ?? '—' }} {{ $pvb->vehicle?->plate_number ? '('.$pvb->vehicle->plate_number.')' : '' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Borrower:</span>
+                <span class="font-semibold">{{ $pvb->borrower_name }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Schedule:</span>
+                <span class="font-semibold">{{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Requested by:</span>
+                <span class="font-semibold">{{ $pvb->manager?->full_name ?? '—' }}</span>
+            </div>
+            @if($pvb->cancelledBooking)
+            <div class="mt-2 pt-2 border-t border-border space-y-1">
+                <p class="text-xs font-semibold text-orange-600">Booking to cancel (currently pending):</p>
+                <p class="text-xs text-muted-foreground">#{{ $pvb->cancelledBooking->vehiclebooking_id }} — {{ $pvb->cancelledBooking->borrower_name }} · {{ $pvb->cancelledBooking->start_at?->format('d M H:i') }} – {{ $pvb->cancelledBooking->end_at?->format('H:i') }}</p>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        <p class="text-sm text-foreground">
+            <strong>Approve</strong> to cancel the conflicting pending booking and grant priority, or
+            <strong>Deny</strong> to keep the original booking.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+            <button wire:click="approvePriorityVehicle"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                Approve &amp; Cancel Conflict
+            </button>
+            <button wire:click="denyPriorityVehicle"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition">
+                Deny Request
+            </button>
+            <button wire:click="closePriorityApprovalModal"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
+                Later
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+</div>{{-- end root Livewire div --}}

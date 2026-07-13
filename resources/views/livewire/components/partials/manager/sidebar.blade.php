@@ -181,6 +181,91 @@
                     </div>
                 </div>
 
+                {{-- Priority Operations --}}
+                @php $priorityGroupActive = request()->routeIs('manager.priority-room','manager.priority-vehicle','manager.guestbook-form','manager.docpack-form','manager.docpack-status'); @endphp
+                <div class="sidebar-unified-group" x-data="{ expanded: {{ $priorityGroupActive ? 'true' : 'false' }} }">
+                    <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                        <span class="group-label">Priority &amp; Operations</span>
+                        <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
+
+                        @php $prRoomActive = request()->routeIs('manager.priority-room'); @endphp
+                        <a href="{{ route('manager.priority-room') }}" class="sidebar-unified-item {{ $prRoomActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($prRoomActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                    <path d="M10 21V11.5a1.5 1.5 0 013 0V21"/>
+                                    <path d="M17 8l-5-5-5 5"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">Priority Room</span>
+                            <div class="tooltip">Priority Room Booking</div>
+                        </a>
+
+                        @php $prVehActive = request()->routeIs('manager.priority-vehicle'); @endphp
+                        <a href="{{ route('manager.priority-vehicle') }}" class="sidebar-unified-item {{ $prVehActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($prVehActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/>
+                                    <circle cx="7" cy="17" r="2"/>
+                                    <circle cx="17" cy="17" r="2"/>
+                                    <path d="M17 8l-5-5-5 5"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">Priority Vehicle</span>
+                            <div class="tooltip">Priority Vehicle Booking</div>
+                        </a>
+
+                        @php $gbFormActive = request()->routeIs('manager.guestbook-form'); @endphp
+                        <a href="{{ route('manager.guestbook-form') }}" class="sidebar-unified-item {{ $gbFormActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($gbFormActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <line x1="19" y1="8" x2="19" y2="14"/>
+                                    <line x1="22" y1="11" x2="16" y2="11"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">Schedule Visitor</span>
+                            <div class="tooltip">Schedule Future Visitor</div>
+                        </a>
+
+                        @php $dpFormActive = request()->routeIs('manager.docpack-form'); @endphp
+                        <a href="{{ route('manager.docpack-form') }}" class="sidebar-unified-item {{ $dpFormActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($dpFormActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">DocPack Form</span>
+                            <div class="tooltip">Doc/Pack Form</div>
+                        </a>
+
+                        @php $dpStatActive = request()->routeIs('manager.docpack-status'); @endphp
+                        <a href="{{ route('manager.docpack-status') }}" class="sidebar-unified-item {{ $dpStatActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($dpStatActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                                    <circle cx="12" cy="7" r="2"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">DocPack Status</span>
+                            <div class="tooltip">Doc/Pack Status</div>
+                        </a>
+
+                    </div>
+                </div>
+
                 {{-- AI Security --}}
                 @php $aiGroupActive = request()->routeIs('manager.lstm-predictions', 'manager.occupancy', 'manager.ai-security'); @endphp
                 <div class="sidebar-unified-group" x-data="{ expanded: true }">

@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use App\Models\VehicleBooking;
 use App\Models\Vehicle;
+use App\Models\PriorityVehicleBooking;
+use App\Models\ManagerNotification;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -129,7 +131,26 @@ class Vehiclestatus extends Component
             ->paginate($this->perPage);
 
         return view('livewire.pages.receptionist.vehiclestatus', [
-            'bookings' => $bookings,
+            'bookings'               => $bookings,
+            'vehicleNotifCount'      => $this->vehicleNotifCount,
+            'vehicleNotifs'          => $this->vehicleNotifs,
+            // Manager priority vehicle bookings for the current status tab
+            'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
+                ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
+                ->when($this->statusTab === 'pending', fn($q) => $q->whereIn('status', [
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                ]))
+                ->when($this->statusTab === 'approved', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+                ->when($this->q !== '', fn($q) => $q->where(function($qq) {
+                    $like = '%' . $this->q . '%';
+                    $qq->where('purpose', 'like', $like)
+                       ->orWhere('borrower_name', 'like', $like)
+                       ->orWhere('destination', 'like', $like);
+                }))
+                ->orderByDesc('created_at')
+                ->get(),
         ]);
     }
 
@@ -397,5 +418,173 @@ class Vehiclestatus extends Component
         $this->vehicleFilter = null;
         $this->resetPage();
         $this->showFilterModal = false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Priority Vehicle Booking — Notification handling
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** Notification bell panel */
+    public bool $showNotifPanel = false;
+
+    /** Approval modal for a cancellation request */
+    public bool  $showPriorityApprovalModal = false;
+    public ?int  $priorityApprovalNotifId   = null;
+    public ?int  $priorityApprovalBookingId = null; // PriorityVehicleBooking id
+
+    public function toggleNotifPanel(): void
+    {
+        $this->showNotifPanel = !$this->showNotifPanel;
+    }
+
+    public function closeNotifPanel(): void
+    {
+        $this->showNotifPanel = false;
+    }
+
+    public function openPriorityApprovalModal(int $notifId): void
+    {
+        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+
+        $notif = ManagerNotification::where('id', $notifId)
+            ->where('company_id', $companyId)
+            ->where('action_required', true)
+            ->whereNull('action_taken')
+            ->first();
+
+        if (!$notif) {
+            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Notification not found or already actioned.');
+            return;
+        }
+
+        $this->priorityApprovalNotifId   = $notifId;
+        $this->priorityApprovalBookingId = $notif->notifiable_id;
+        $this->showPriorityApprovalModal = true;
+        $this->showNotifPanel            = false;
+        $notif->markRead();
+    }
+
+    public function closePriorityApprovalModal(): void
+    {
+        $this->showPriorityApprovalModal = false;
+        $this->priorityApprovalNotifId   = null;
+        $this->priorityApprovalBookingId = null;
+    }
+
+    /**
+     * Receptionist approves the cancellation:
+     * 1. Cancel the conflicting pending vehicle booking.
+     * 2. Mark the priority booking as approved.
+     * 3. Mark the notification as actioned.
+     */
+    public function approvePriorityVehicle(): void
+    {
+        if (!$this->priorityApprovalBookingId) {
+            return;
+        }
+
+        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                $priority = PriorityVehicleBooking::where('id', $this->priorityApprovalBookingId)
+                    ->where('company_id', $companyId)
+                    ->firstOrFail();
+
+                // Cancel the conflicting booking if it's still pending
+                if ($priority->cancels_booking_id) {
+                    VehicleBooking::where('vehiclebooking_id', $priority->cancels_booking_id)
+                        ->where('status', 'pending')
+                        ->update([
+                            'status' => 'rejected',
+                            'notes'  => DB::raw("TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Cancelled — superseded by manager priority booking #" . $this->priorityApprovalBookingId . "]'))"),
+                        ]);
+                }
+
+                $priority->update([
+                    'status'     => PriorityVehicleBooking::STATUS_APPROVED,
+                    'handled_by' => \Illuminate\Support\Facades\Auth::user()->user_id,
+                ]);
+
+                // Update notification
+                if ($this->priorityApprovalNotifId) {
+                    ManagerNotification::where('id', $this->priorityApprovalNotifId)
+                        ->update(['action_taken' => 'approved', 'is_read' => true]);
+                }
+            });
+
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking approved and conflicting booking cancelled.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
+        }
+
+        $this->closePriorityApprovalModal();
+        $this->resetPage();
+    }
+
+    /**
+     * Receptionist denies the cancellation request.
+     * The priority booking is marked as conflict-denied.
+     */
+    public function denyPriorityVehicle(): void
+    {
+        if (!$this->priorityApprovalBookingId) {
+            return;
+        }
+
+        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                PriorityVehicleBooking::where('id', $this->priorityApprovalBookingId)
+                    ->where('company_id', $companyId)
+                    ->update([
+                        'status'           => PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
+                        'handled_by'       => \Illuminate\Support\Facades\Auth::user()->user_id,
+                        'rejection_reason' => 'Cancellation request denied by receptionist.',
+                    ]);
+
+                if ($this->priorityApprovalNotifId) {
+                    ManagerNotification::where('id', $this->priorityApprovalNotifId)
+                        ->update(['action_taken' => 'denied', 'is_read' => true]);
+                }
+            });
+
+            $this->dispatch('toast', type: 'info', title: 'Denied', message: 'Cancellation request denied. Original booking kept.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
+        }
+
+        $this->closePriorityApprovalModal();
+    }
+
+    /** Count of unread vehicle-related notifications for the bell badge. */
+    public function getVehicleNotifCountProperty(): int
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) return 0;
+        return ManagerNotification::where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id)
+            ->where('type', ManagerNotification::TYPE_VEHICLE_CANCEL_REQUEST)
+            ->where('is_read', false)
+            ->count();
+    }
+
+    /** Recent vehicle notifications for the panel dropdown. */
+    public function getVehicleNotifsProperty()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) return collect();
+        return ManagerNotification::where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id)
+            ->whereIn('type', [
+                ManagerNotification::TYPE_VEHICLE_CANCEL_REQUEST,
+                ManagerNotification::TYPE_PRIORITY_VEHICLE_DIRECT,
+            ])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
     }
 }

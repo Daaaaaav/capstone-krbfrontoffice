@@ -423,6 +423,14 @@
                                         if (!val) { search = ''; }
                                         else { search = selectedLabel; }
                                     });
+                                    $watch('$wire.vehiclesForCombobox', () => {
+                                        // When the vehicle list is rebuilt (odd/even changed),
+                                        // clear search and selection so the new list shows fully
+                                        if (!$wire.vehicle_id) {
+                                            search = '';
+                                            selectedId = null;
+                                        }
+                                    });
                                 "
                                 class="relative"
                                 @click.outside="open = false"

@@ -36,6 +36,11 @@ use App\Livewire\Pages\Manager\Documentsmanagement as Documentsmanagement;
 use App\Livewire\Pages\Manager\Guestbookmanagement as Guestbookmanagement;
 use App\Livewire\Pages\Manager\Bookingvehicle as ManagerBookingvehicle;
 use App\Livewire\Pages\Manager\WifiManagement as ManagerWifiManagement;
+use App\Livewire\Pages\Manager\PriorityRoomBooking as ManagerPriorityRoomBooking;
+use App\Livewire\Pages\Manager\PriorityVehicleBooking as ManagerPriorityVehicleBooking;
+use App\Livewire\Pages\Manager\GuestbookForm as ManagerGuestbookForm;
+use App\Livewire\Pages\Manager\DocPackForm as ManagerDocPackForm;
+use App\Livewire\Pages\Manager\DocPackStatus as ManagerDocPackStatus;
 
 // ========== Livewire Pages (Receptionist) ==========
 use App\Livewire\Pages\Receptionist\Dashboard as ReceptionistDashboard;
@@ -209,6 +214,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/manage-storages', StoragePage::class)->name('manager.managestorage');
         Route::get('/manager-settings', ManagerSettings::class)->name('manager.settings');
         Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
+        // Priority bookings & operational forms
+        Route::get('/manager-priority-room', ManagerPriorityRoomBooking::class)->name('manager.priority-room');
+        Route::get('/manager-priority-vehicle', ManagerPriorityVehicleBooking::class)->name('manager.priority-vehicle');
+        Route::get('/manager-guestbook-form', ManagerGuestbookForm::class)->name('manager.guestbook-form');
+        Route::get('/manager-docpack-form', ManagerDocPackForm::class)->name('manager.docpack-form');
+        Route::get('/manager-docpack-status', ManagerDocPackStatus::class)->name('manager.docpack-status');
     });
 
     // ---------- Receptionist routes ----------

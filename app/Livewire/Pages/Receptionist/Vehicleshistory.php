@@ -9,6 +9,7 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use App\Models\VehicleBooking;
 use App\Models\Vehicle;
+use App\Models\PriorityVehicleBooking;
 use Carbon\Carbon;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
@@ -332,10 +333,30 @@ class Vehicleshistory extends Component
             return [$v->vehicle_id => $label];
         })->toArray();
 
+        // Manager priority vehicle bookings — approved = done, rejected = rejected
+        $priorityVehicleHistory = PriorityVehicleBooking::with(['vehicle', 'manager'])
+            ->forCompany($companyId)
+            ->when($this->statusTab === 'done', fn($q) => $q->where('status', PriorityVehicleBooking::STATUS_APPROVED))
+            ->when($this->statusTab === 'rejected', fn($q) => $q->whereIn('status', [
+                PriorityVehicleBooking::STATUS_REJECTED,
+                PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
+            ]))
+            ->when(strlen(trim($this->q)) > 0, function($q) {
+                $like = '%' . trim($this->q) . '%';
+                $q->where(fn($qq) => $qq->where('purpose', 'like', $like)
+                    ->orWhere('borrower_name', 'like', $like)
+                    ->orWhere('destination', 'like', $like));
+            })
+            ->when($this->vehicleFilter, fn($q) => $q->where('vehicle_id', $this->vehicleFilter))
+            ->when(!empty($this->selectedDate), fn($q) => $q->whereDate('start_at', $this->selectedDate))
+            ->orderByDesc('updated_at')
+            ->get();
+
         return view('livewire.pages.receptionist.vehicleshistory', [
-            'bookings'   => $bookings,
-            'vehicleMap' => $vehicleMap,
-            'vehicles'   => $vehicles,
+            'bookings'               => $bookings,
+            'vehicleMap'             => $vehicleMap,
+            'vehicles'               => $vehicles,
+            'priorityVehicleHistory' => $priorityVehicleHistory,
         ]);
     }
 }

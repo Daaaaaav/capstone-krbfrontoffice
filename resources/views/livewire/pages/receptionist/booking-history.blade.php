@@ -783,6 +783,51 @@
                     @endif
                 @endif
 
+                {{-- ── MANAGER PRIORITY ROOM BOOKINGS SECTION ── --}}
+                @php
+                    $priorityHistoryList = $activeTab === 'done' ? $priorityRoomHistory : $priorityRoomRejected;
+                @endphp
+                @if($priorityHistoryList->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-3 border-t border-amber-200 bg-amber-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700">
+                            Manager Priority Bookings — {{ $activeTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
+                        </span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $priorityHistoryList->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        @foreach($priorityHistoryList as $pb)
+                        @php
+                            $pbBadge = $activeTab === 'done'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700';
+                        @endphp
+                        <div wire:key="priority-hist-{{ $pb->id }}" class="bg-white border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $pb->meeting_title }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pb->room?->room_name ?? '—' }} &bull;
+                                    {{ \Carbon\Carbon::parse($pb->date)->format('d M Y') }} &bull;
+                                    {{ $pb->start_time }} – {{ $pb->end_time }}
+                                </p>
+                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pb->manager?->full_name ?? '—' }}</p>
+                                @if($pb->rejection_reason)
+                                    <p class="text-[11px] text-rose-500 italic">{{ $pb->rejection_reason }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pbBadge }}">
+                                {{ $pb->statusLabel() }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 {{-- PAGINATION --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50 border-t border-gray-200">
                     <div class="w-full">

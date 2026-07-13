@@ -726,6 +726,51 @@
                     @endif
                 @endif
 
+                {{-- ── MANAGER PRIORITY ROOM BOOKINGS SECTION ── --}}
+                @php
+                    $priorityList = $activeTab === 'pending' ? $priorityRoomPending : $priorityRoomApproved;
+                @endphp
+                @if($priorityList->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-2 border-t border-amber-200 bg-amber-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Manager Priority Bookings</span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $priorityList->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        @foreach($priorityList as $pb)
+                        @php
+                            $pbColor = match($pb->status) {
+                                'approved'   => 'bg-emerald-100 text-emerald-700',
+                                'pending_receipt','pending_cancellation' => 'bg-amber-100 text-amber-700',
+                                default => 'bg-gray-100 text-gray-600',
+                            };
+                        @endphp
+                        <div wire:key="priority-room-{{ $pb->id }}" class="bg-white border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $pb->meeting_title }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pb->room?->room_name ?? '—' }} &bull;
+                                    {{ \Carbon\Carbon::parse($pb->date)->format('d M Y') }} &bull;
+                                    {{ $pb->start_time }} – {{ $pb->end_time }}
+                                </p>
+                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pb->manager?->full_name ?? '—' }}</p>
+                                @if($pb->status === 'pending_cancellation')
+                                    <p class="text-[11px] text-orange-600">Awaiting cancellation approval for booking #{{ $pb->cancels_booking_id }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pbColor }}">
+                                {{ $pb->statusLabel() }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 {{-- PAGINATION --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50 border-top border-gray-200">
                     <div class="w-full">
@@ -1267,4 +1312,129 @@
         </div>
         @endif
     </main>
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     Priority Room Booking — Notification Bell & Approval Modals
+     (kept inside the root div so Livewire sees only one root element)
+     ═══════════════════════════════════════════════════════════════════════ --}}
+
+@if($roomNotifCount > 0)
+<div class="fixed top-20 right-20 z-[80]">
+    <button wire:click="toggleRoomNotifPanel"
+        class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-amber-500 text-white shadow-xl hover:bg-amber-600 transition focus:outline-none"
+        title="Priority Room Notifications">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/>
+        </svg>
+        <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold shadow">
+            {{ $roomNotifCount }}
+        </span>
+    </button>
 </div>
+@endif
+
+@if($showRoomNotifPanel)
+<div class="fixed inset-0 z-[90]" wire:click.self="closeRoomNotifPanel">
+    <div class="absolute top-20 right-20 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+            <p class="text-sm font-semibold text-foreground">Priority Room Notifications</p>
+            <button wire:click="closeRoomNotifPanel" class="text-muted-foreground hover:text-foreground">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="max-h-72 overflow-y-auto divide-y divide-border/60">
+            @forelse($roomNotifs as $n)
+            <div class="px-4 py-3 hover:bg-muted/30 transition {{ !$n->is_read ? 'bg-primary/5' : '' }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-semibold text-foreground">{{ $n->title }}</p>
+                        <p class="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{{ $n->message }}</p>
+                        <p class="text-[10px] text-muted-foreground/60 mt-1">{{ $n->created_at->diffForHumans() }}</p>
+                    </div>
+                    @if($n->isPendingAction())
+                    <button wire:click="openRoomPriorityApprovalModal({{ $n->id }})"
+                        class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
+                        Review
+                    </button>
+                    @elseif($n->action_taken)
+                    <span class="shrink-0 text-[11px] font-semibold {{ $n->action_taken === 'approved' ? 'text-emerald-600' : 'text-red-500' }}">
+                        {{ ucfirst($n->action_taken) }}
+                    </span>
+                    @endif
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-8 text-center text-muted-foreground text-xs">No notifications.</div>
+            @endforelse
+        </div>
+    </div>
+</div>
+@endif
+
+@if($showRoomPriorityApprovalModal && $roomPriorityBookingId)
+@php
+    $prb = \App\Models\PriorityRoomBooking::with(['room','manager','cancelledBooking'])->find($roomPriorityBookingId);
+@endphp
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            </div>
+            <div>
+                <p class="font-semibold text-foreground">Priority Room Booking — Action Required</p>
+                <p class="text-xs text-muted-foreground mt-0.5">A manager has requested cancellation of an existing offline booking.</p>
+            </div>
+        </div>
+
+        @if($prb)
+        <div class="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Meeting:</span>
+                <span class="font-semibold">{{ $prb->meeting_title }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Room:</span>
+                <span class="font-semibold">{{ $prb->room?->room_name ?? '—' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Schedule:</span>
+                <span class="font-semibold">{{ \Carbon\Carbon::parse($prb->date)->format('d M Y') }} · {{ $prb->start_time }} – {{ $prb->end_time }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Requested by:</span>
+                <span class="font-semibold">{{ $prb->manager?->full_name ?? '—' }}</span>
+            </div>
+            @if($prb->cancelledBooking)
+            <div class="mt-2 pt-2 border-t border-border space-y-1">
+                <p class="text-xs font-semibold text-orange-600">Booking to cancel (offline, approved):</p>
+                <p class="text-xs text-muted-foreground">#{{ $prb->cancelledBooking->bookingroom_id }} — "{{ $prb->cancelledBooking->meeting_title }}" · {{ \Carbon\Carbon::parse($prb->cancelledBooking->date)->format('d M Y') }} {{ $prb->cancelledBooking->start_time }}–{{ $prb->cancelledBooking->end_time }}</p>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        <p class="text-sm text-foreground">
+            <strong>Approve</strong> to cancel the conflicting offline booking and grant priority, or <strong>Deny</strong> to keep it.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+            <button wire:click="approveRoomPriority"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                Approve &amp; Cancel Conflict
+            </button>
+            <button wire:click="denyRoomPriority"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition">
+                Deny Request
+            </button>
+            <button wire:click="closeRoomPriorityApprovalModal"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
+                Later
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+</div>{{-- end root Livewire div --}}

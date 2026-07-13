@@ -109,14 +109,17 @@ class GuestbookStatus extends Component
     // -----------------------------------------------------------------------
 
     /**
-     * All active entries (jam_out is null).
+     * All active entries (jam_out is null, arrival date is today or past).
+     * Manager-scheduled future visitors are stored with a future date and will
+     * naturally appear here once their scheduled date arrives.
      */
     public function getActiveEntriesProperty()
     {
         $q = GuestbookModel::query()
             ->where('company_id', $this->companyId())
             ->whereNull('jam_out')
-            ->whereNull('deleted_at');
+            ->whereNull('deleted_at')
+            ->whereDate('date', '<=', now('Asia/Jakarta')->toDateString());
 
         if ($this->petugasFilter) {
             $q->where('petugas_penjaga', $this->petugasFilter);
@@ -154,6 +157,7 @@ class GuestbookStatus extends Component
         return GuestbookModel::where('company_id', $this->companyId())
             ->whereNull('jam_out')
             ->whereNull('deleted_at')
+            ->whereDate('date', '<=', now('Asia/Jakarta')->toDateString())
             ->count();
     }
 

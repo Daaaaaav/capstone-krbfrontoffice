@@ -15,6 +15,8 @@ use Carbon\Carbon;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
+use App\Models\PriorityRoomBooking;
+
 #[Layout('layouts.receptionist')]
 #[Title('Booking History')]
 class BookingHistory extends Component
@@ -669,14 +671,41 @@ class BookingHistory extends Component
     {
         $this->autoProgressToDone();
 
+        $companyId = Auth::user()->company_id ?? null;
+
+        // Approved priority room bookings from manager — shown in history
+        $priorityRoomHistory = PriorityRoomBooking::with(['room', 'manager'])
+            ->forCompany($companyId)
+            ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+            ->when($this->q !== '', fn($q) => $q->where('meeting_title', 'like', '%' . $this->q . '%'))
+            ->when($this->selectedDate, fn($q) => $q->whereDate('date', $this->selectedDate))
+            ->orderByDesc('updated_at')
+            ->limit(50)
+            ->get();
+
+        // Denied/conflict-denied priority room bookings — shown in rejected tab
+        $priorityRoomRejected = PriorityRoomBooking::with(['room', 'manager'])
+            ->forCompany($companyId)
+            ->whereIn('status', [
+                PriorityRoomBooking::STATUS_REJECTED,
+                PriorityRoomBooking::STATUS_CONFLICT_DENIED,
+            ])
+            ->when($this->q !== '', fn($q) => $q->where('meeting_title', 'like', '%' . $this->q . '%'))
+            ->when($this->selectedDate, fn($q) => $q->whereDate('date', $this->selectedDate))
+            ->orderByDesc('updated_at')
+            ->limit(30)
+            ->get();
+
         return view('livewire.pages.receptionist.booking-history', [
-            'doneRows'        => $this->doneRows,
-            'rejectedRows'    => $this->rejectedRows,
-            'rooms'           => $this->rooms,
-            'roomsOptions'    => $this->roomsOptions,
-            'recentCompleted' => $this->recentCompleted,
-            'roomFilterId'    => $this->roomFilterId,
-            'showFilterModal' => $this->showFilterModal,
+            'doneRows'             => $this->doneRows,
+            'rejectedRows'         => $this->rejectedRows,
+            'rooms'                => $this->rooms,
+            'roomsOptions'         => $this->roomsOptions,
+            'recentCompleted'      => $this->recentCompleted,
+            'roomFilterId'         => $this->roomFilterId,
+            'showFilterModal'      => $this->showFilterModal,
+            'priorityRoomHistory'  => $priorityRoomHistory,
+            'priorityRoomRejected' => $priorityRoomRejected,
         ]);
     }
 }
