@@ -297,6 +297,67 @@ class PriorityVehicleBooking extends Component
         $this->dispatch('toast', type: 'info', title: 'Cancelled', message: 'Priority booking cancelled.', duration: 3000);
     }
 
+    // ── Sidebar detail modal ───────────────────────────────────────────────
+    public bool   $showVehicleSidebarDetail   = false;
+    public ?int   $vehicleSidebarDetailId     = null;
+    public bool   $showVehicleSidebarReject   = false;
+    public string $vehicleSidebarRejectReason = '';
+
+    public function openVehicleSidebarDetail(int $vehicleBookingId): void
+    {
+        $this->vehicleSidebarDetailId   = $vehicleBookingId;
+        $this->vehicleSidebarRejectReason = '';
+        $this->showVehicleSidebarReject   = false;
+        $this->showVehicleSidebarDetail   = true;
+    }
+
+    public function closeVehicleSidebarDetail(): void
+    {
+        $this->showVehicleSidebarDetail   = false;
+        $this->showVehicleSidebarReject   = false;
+        $this->vehicleSidebarDetailId     = null;
+        $this->vehicleSidebarRejectReason = '';
+    }
+
+    public function openVehicleSidebarReject(): void
+    {
+        $this->showVehicleSidebarReject = true;
+    }
+
+    public function submitVehicleSidebarReject(): void
+    {
+        $this->validate([
+            'vehicleSidebarRejectReason' => 'required|string|min:5|max:2000',
+        ]);
+
+        $companyId = Auth::user()->company_id ?? null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($companyId) {
+            $b = VehicleBooking::where('vehiclebooking_id', $this->vehicleSidebarDetailId)
+                ->where('company_id', $companyId)
+                ->where('status', 'pending')
+                ->firstOrFail();
+
+            $b->update([
+                'status' => 'rejected',
+                'notes'  => \Illuminate\Support\Facades\DB::raw(
+                    "TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Rejected] " .
+                    addslashes($this->vehicleSidebarRejectReason) . "'))"
+                ),
+            ]);
+        });
+
+        $this->closeVehicleSidebarDetail();
+        $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Vehicle booking rejected.', duration: 3000);
+    }
+
+    public function getVehicleSidebarBookingProperty(): ?\App\Models\VehicleBooking
+    {
+        if (!$this->vehicleSidebarDetailId) return null;
+        return VehicleBooking::with(['vehicle', 'user.department', 'department'])
+            ->find($this->vehicleSidebarDetailId);
+    }
+
     // ── Render ─────────────────────────────────────────────────────────────
     public function render()
     {
@@ -326,9 +387,19 @@ class PriorityVehicleBooking extends Component
             ? VehicleBooking::with('vehicle')->find($this->conflicting_vehicle_booking_id)
             : null;
 
+        // Sidebar: recent pending/approved vehicle bookings for the company
+        $sidebarVehicles = VehicleBooking::with('vehicle')
+            ->where('company_id', $companyId)
+            ->whereIn('status', ['pending', 'approved', 'on_progress'])
+            ->orderByDesc('created_at')
+            ->limit(15)
+            ->get();
+
         return view('livewire.pages.manager.priority-vehicle-booking', [
             'myBookings'               => $myBookings,
             'conflictingVehicleBooking' => $conflictingVehicleBooking,
+            'sidebarVehicles'          => $sidebarVehicles,
+            'vehicleSidebarBooking'    => $this->vehicleSidebarBooking,
         ]);
     }
 }

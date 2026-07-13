@@ -219,7 +219,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/manager-priority-vehicle', ManagerPriorityVehicleBooking::class)->name('manager.priority-vehicle');
         Route::get('/manager-guestbook-form', ManagerGuestbookForm::class)->name('manager.guestbook-form');
         Route::get('/manager-docpack-form', ManagerDocPackForm::class)->name('manager.docpack-form');
-        Route::get('/manager-docpack-status', ManagerDocPackStatus::class)->name('manager.docpack-status');
+        Route::get('/manager-docpack-status', fn() => redirect()->route('manager.docpack-form'))->name('manager.docpack-status');
     });
 
     // ---------- Receptionist routes ----------

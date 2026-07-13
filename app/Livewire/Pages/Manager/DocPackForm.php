@@ -155,10 +155,27 @@ class DocPackForm extends Component
 
     public function render()
     {
+        $companyId = Auth::user()->company_id;
+
+        // Sidebar: recent pending & stored deliveries
+        $sidebarPending = Delivery::byCompany($companyId)
+            ->where('status', 'pending')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $sidebarStored = Delivery::byCompany($companyId)
+            ->where('status', 'stored')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
         return view('livewire.pages.manager.docpack-form', [
-            'departments' => $this->departments,
-            'storages'    => $this->storages,
-            'users'       => $this->users,
+            'departments'    => $this->departments,
+            'storages'       => $this->storages,
+            'users'          => $this->users,
+            'sidebarPending' => $sidebarPending,
+            'sidebarStored'  => $sidebarStored,
         ]);
     }
 }

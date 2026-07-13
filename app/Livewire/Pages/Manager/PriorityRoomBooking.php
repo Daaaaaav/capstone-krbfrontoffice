@@ -270,7 +270,64 @@ class PriorityRoomBooking extends Component
         $this->dispatch('toast', type: 'info', title: 'Cancelled', message: 'Priority booking cancelled.', duration: 3000);
     }
 
-    // ── Render ─────────────────────────────────────────────────────────────
+    // ── Sidebar detail modal ───────────────────────────────────────────────
+    public bool   $showSidebarDetail  = false;
+    public ?int   $sidebarDetailId    = null;
+    public bool   $showSidebarReject  = false;
+    public string $sidebarRejectReason = '';
+
+    public function openSidebarDetail(int $bookingRoomId): void
+    {
+        $this->sidebarDetailId   = $bookingRoomId;
+        $this->sidebarRejectReason = '';
+        $this->showSidebarDetail = true;
+    }
+
+    public function closeSidebarDetail(): void
+    {
+        $this->showSidebarDetail  = false;
+        $this->showSidebarReject  = false;
+        $this->sidebarDetailId    = null;
+        $this->sidebarRejectReason = '';
+    }
+
+    public function openSidebarReject(): void
+    {
+        $this->showSidebarReject = true;
+    }
+
+    public function submitSidebarReject(): void
+    {
+        $this->validate([
+            'sidebarRejectReason' => 'required|string|min:3|max:500',
+        ]);
+
+        $companyId = Auth::user()->company_id ?? null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($companyId) {
+            $b = BookingRoom::where('bookingroom_id', $this->sidebarDetailId)
+                ->where('company_id', $companyId)
+                ->whereIn('status', ['pending', 'approved'])
+                ->firstOrFail();
+
+            $b->update([
+                'status'      => 'rejected',
+                'book_reject' => $this->sidebarRejectReason,
+                'approved_by' => Auth::user()->user_id,
+            ]);
+        });
+
+        $this->closeSidebarDetail();
+        $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Booking rejected successfully.', duration: 3000);
+    }
+
+    /** Computed: the BookingRoom being viewed in the sidebar modal */
+    public function getSidebarBookingProperty(): ?BookingRoom
+    {
+        if (!$this->sidebarDetailId) return null;
+        return BookingRoom::with(['room', 'user.department', 'department'])
+            ->find($this->sidebarDetailId);
+    }
     public function render()
     {
         $companyId = Auth::user()->company_id ?? null;
@@ -300,9 +357,20 @@ class PriorityRoomBooking extends Component
             ? BookingRoom::with('room')->find($this->conflicting_booking_id)
             : null;
 
+        // Sidebar: recent approved/ongoing offline room bookings for the company
+        $sidebarOngoing = BookingRoom::with('room')
+            ->where('company_id', $companyId)
+            ->whereIn('status', ['approved', 'pending'])
+            ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
+            ->orderByDesc('created_at')
+            ->limit(15)
+            ->get();
+
         return view('livewire.pages.manager.priority-room-booking', [
             'myBookings'         => $myBookings,
             'conflictingBooking' => $conflictingBooking,
+            'sidebarOngoing'     => $sidebarOngoing,
+            'sidebarBooking'     => $this->sidebarBooking,
         ]);
     }
 }

@@ -25,7 +25,9 @@
 
         {{-- ── FORM TAB ── --}}
         @if($activeTab === 'form')
-        <div class="{{ $card }}">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div class="lg:col-span-2">
+            <div class="{{ $card }}">
             <div class="px-6 py-4 border-b border-border bg-muted/10 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
                     <svg class="w-4.5 h-4.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
@@ -160,6 +162,58 @@
                 </div>
             </form>
         </div>
+        </div>{{-- end lg:col-span-2 --}}
+
+        {{-- ── RIGHT SIDEBAR: Vehicle Booking Status ── --}}
+        <aside class="lg:col-span-1">
+            <div class="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                <div class="px-4 py-3 border-b border-border bg-muted/30">
+                    <p class="text-xs font-bold uppercase tracking-wider text-foreground">Vehicle Booking Status</p>
+                    <p class="text-[11px] text-muted-foreground mt-0.5">Pending &amp; ongoing vehicle requests</p>
+                </div>
+                <div class="divide-y divide-border/50 max-h-[70vh] overflow-y-auto">
+                    @forelse($sidebarVehicles as $b)
+                    @php
+                        $isPending = $b->status === 'pending';
+                        $isOnRoad  = $b->status === 'on_progress';
+                        $statusBg  = $isPending ? 'bg-amber-500/10 text-amber-600'
+                            : ($isOnRoad ? 'bg-blue-500/10 text-blue-600' : 'bg-emerald-500/10 text-emerald-600');
+                        $statusDot = $isPending ? 'bg-amber-400'
+                            : ($isOnRoad ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500 animate-pulse');
+                        $label = $isPending ? 'Pending' : ($isOnRoad ? 'On Road' : 'Approved');
+                    @endphp
+                    <div class="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition cursor-pointer"
+                         wire:click="openVehicleSidebarDetail({{ $b->vehiclebooking_id }})">
+                        <div class="w-8 h-8 rounded-lg {{ $statusBg }} flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/>
+                                <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $statusDot }}"></span>
+                                <p class="text-xs font-semibold text-foreground truncate">{{ $b->vehicle?->name ?? '—' }}</p>
+                            </div>
+                            <p class="text-[11px] text-muted-foreground mt-0.5 truncate">{{ $b->borrower_name }}</p>
+                            <p class="text-[11px] text-muted-foreground">
+                                {{ $b->start_at?->format('d M H:i') }}–{{ $b->end_at?->format('H:i') }}
+                            </p>
+                        </div>
+                        <span class="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $statusBg }}">
+                            {{ $label }}
+                        </span>
+                    </div>
+                    @empty
+                    <div class="px-4 py-8 text-center text-muted-foreground">
+                        <svg class="w-8 h-8 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                        <p class="text-xs">No active vehicle bookings.</p>
+                    </div>
+                    @endforelse
+                </div>
+            </div>
+        </aside>
+        </div>{{-- end grid --}}
         @endif
 
         {{-- ── STATUS TAB ── --}}
@@ -266,4 +320,68 @@
     </div>
     @endif
 
+
+
+{{-- ── SIDEBAR VEHICLE DETAIL MODAL ── --}}
+@if($showVehicleSidebarDetail && $vehicleSidebarBooking)
+<div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/20">
+            <div>
+                <p class="font-semibold text-foreground">{{ $vehicleSidebarBooking->vehicle?->name ?? 'Vehicle Booking' }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Vehicle Booking Detail</p>
+            </div>
+            <button wire:click="closeVehicleSidebarDetail" class="text-muted-foreground hover:text-foreground">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-3 text-sm">
+            @php
+                $vbIsPending = $vehicleSidebarBooking->status === 'pending';
+                $vbIsOnRoad  = $vehicleSidebarBooking->status === 'on_progress';
+                $vbStatusLabel = $vbIsPending ? 'Pending' : ($vbIsOnRoad ? 'On Road' : 'Approved');
+                $vbStatusClass = $vbIsPending ? 'bg-amber-100 text-amber-700' : ($vbIsOnRoad ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700');
+            @endphp
+            <div class="grid grid-cols-2 gap-3">
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Vehicle</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->vehicle?->name ?? '—' }}{{ $vehicleSidebarBooking->vehicle?->plate_number ? ' ('.$vehicleSidebarBooking->vehicle->plate_number.')' : '' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Status</p>
+                    <span class="inline-flex mt-0.5 px-2 py-0.5 text-[11px] font-bold rounded-full {{ $vbStatusClass }}">{{ $vbStatusLabel }}</span>
+                </div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Borrower</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->borrower_name ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Department</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->department?->department_name ?? $vehicleSidebarBooking->user?->department?->department_name ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Start</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->start_at?->format('d M Y H:i') ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">End</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->end_at?->format('d M Y H:i') ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Purpose</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->purpose ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Destination</p><p class="text-foreground font-medium mt-0.5">{{ $vehicleSidebarBooking->destination ?? '—' }}</p></div>
+            </div>
+            @if($vehicleSidebarBooking->notes)<div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Notes</p><p class="text-foreground mt-0.5 text-xs">{{ $vehicleSidebarBooking->notes }}</p></div>@endif
+            @if($showVehicleSidebarReject)
+            <div class="pt-2 border-t border-border">
+                <label class="block text-xs font-semibold text-destructive mb-1.5">Rejection Reason *</label>
+                <textarea wire:model.defer="vehicleSidebarRejectReason" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-destructive/20 resize-none" placeholder="Reason for rejection..."></textarea>
+                @error('vehicleSidebarRejectReason') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
+            </div>
+            @endif
+        </div>
+        <div class="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/10">
+            <button wire:click="closeVehicleSidebarDetail" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">Close</button>
+            <div class="flex gap-2">
+                @if($vbIsPending)
+                    @if(!$showVehicleSidebarReject)
+                    <button wire:click="openVehicleSidebarReject" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject
+                    </button>
+                    @else
+                    <button wire:click="$set('showVehicleSidebarReject', false)" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:bg-muted transition">Cancel</button>
+                    <button wire:click="submitVehicleSidebarReject" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive text-white hover:bg-destructive/90 transition disabled:opacity-60">
+                        <svg wire:loading wire:target="submitVehicleSidebarReject" class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        Confirm Reject
+                    </button>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 </div>

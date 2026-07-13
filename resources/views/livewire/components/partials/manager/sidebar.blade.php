@@ -244,23 +244,8 @@
                                     <line x1="12" y1="22.08" x2="12" y2="12"/>
                                 </svg>
                             </div>
-                            <span class="item-label">DocPack Form</span>
-                            <div class="tooltip">Doc/Pack Form</div>
-                        </a>
-
-                        @php $dpStatActive = request()->routeIs('manager.docpack-status'); @endphp
-                        <a href="{{ route('manager.docpack-status') }}" class="sidebar-unified-item {{ $dpStatActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($dpStatActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                    <line x1="12" y1="22.08" x2="12" y2="12"/>
-                                    <circle cx="12" cy="7" r="2"/>
-                                </svg>
-                            </div>
-                            <span class="item-label">DocPack Status</span>
-                            <div class="tooltip">Doc/Pack Status</div>
+                            <span class="item-label">DocPack</span>
+                            <div class="tooltip">Doc/Pack Form &amp; Status</div>
                         </a>
 
                     </div>

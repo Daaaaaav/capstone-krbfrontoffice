@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\BookingRoom;
 use App\Models\VehicleBooking;
 use App\Models\Delivery;
+use App\Models\PriorityRoomBooking;
+use App\Models\PriorityVehicleBooking;
 
 #[Layout('layouts.manager')]
 #[Title('Dashboard')]
@@ -156,13 +158,62 @@ class Dashboard extends Component
             // Dispatch chart data as a browser event so JS can update without re-rendering the canvas
             $this->dispatch('chart-data-updated', labels: $labels, datasets: $datasets);
 
+            // Auto-expire priority bookings whose time has passed
+            PriorityRoomBooking::autoExpirePending($companyId);
+            PriorityVehicleBooking::autoExpirePending($companyId);
+
+            // Status sidebar data
+            $pendingRoomBookings    = BookingRoom::with('room')
+                ->where('company_id', $companyId)
+                ->where('status', 'pending')
+                ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
+                ->orderBy('date')->orderBy('start_time')
+                ->limit(10)->get();
+
+            $ongoingRoomBookings    = BookingRoom::with('room')
+                ->where('company_id', $companyId)
+                ->where('status', 'approved')
+                ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
+                ->orderBy('date')->orderBy('start_time')
+                ->limit(10)->get();
+
+            $pendingVehicleBookings = VehicleBooking::with('vehicle')
+                ->where('company_id', $companyId)
+                ->where('status', 'pending')
+                ->orderBy('start_at')
+                ->limit(10)->get();
+
+            $ongoingVehicleBookings = VehicleBooking::with('vehicle')
+                ->where('company_id', $companyId)
+                ->whereIn('status', ['approved', 'on_progress'])
+                ->orderBy('start_at')
+                ->limit(10)->get();
+
+            $pendingPriorityRoom    = PriorityRoomBooking::with('room')
+                ->forCompany($companyId)
+                ->whereIn('status', [PriorityRoomBooking::STATUS_PENDING_RECEIPT, PriorityRoomBooking::STATUS_PENDING_CANCELLATION])
+                ->orderBy('date')->orderBy('start_time')
+                ->limit(5)->get();
+
+            $pendingPriorityVehicle = PriorityVehicleBooking::with('vehicle')
+                ->forCompany($companyId)
+                ->whereIn('status', [PriorityVehicleBooking::STATUS_PENDING_RECEIPT, PriorityVehicleBooking::STATUS_PENDING_CANCELLATION])
+                ->orderBy('start_at')
+                ->limit(5)->get();
+
             return view('livewire.pages.manager.dashboard', [
-                'stats'          => $stats,
-                'labels'         => $labels,
-                'datasets'       => $datasets,
-                'activeFilter'   => $this->activeFilter,
-                'selectedYear'   => $this->selectedYear,
-                'availableYears' => $availableYears,
+                'stats'                  => $stats,
+                'labels'                 => $labels,
+                'datasets'               => $datasets,
+                'activeFilter'           => $this->activeFilter,
+                'selectedYear'           => $this->selectedYear,
+                'availableYears'         => $availableYears,
+                'pendingRoomBookings'    => $pendingRoomBookings,
+                'ongoingRoomBookings'    => $ongoingRoomBookings,
+                'pendingVehicleBookings' => $pendingVehicleBookings,
+                'ongoingVehicleBookings' => $ongoingVehicleBookings,
+                'pendingPriorityRoom'    => $pendingPriorityRoom,
+                'pendingPriorityVehicle' => $pendingPriorityVehicle,
             ]);
 
             // Dispatch chart data as a browser event so JS can update without re-rendering

@@ -28,7 +28,9 @@
 
         {{-- ── FORM TAB ── --}}
         @if($activeTab === 'form')
-        <div class="{{ $card }}">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div class="lg:col-span-2">
+            <div class="{{ $card }}">
             <div class="px-6 py-4 border-b border-border bg-muted/10 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
                     <svg class="w-4.5 h-4.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
@@ -118,6 +120,55 @@
                 </div>
             </form>
         </div>
+        </div>{{-- end lg:col-span-2 --}}
+
+        {{-- ── RIGHT SIDEBAR: Room Booking Status ── --}}
+        <aside class="lg:col-span-1">
+            <div class="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                <div class="px-4 py-3 border-b border-border bg-muted/30">
+                    <p class="text-xs font-bold uppercase tracking-wider text-foreground">Room Booking Status</p>
+                    <p class="text-[11px] text-muted-foreground mt-0.5">Current pending &amp; ongoing bookings</p>
+                </div>
+                <div class="divide-y divide-border/50 max-h-[70vh] overflow-y-auto">
+                    @forelse($sidebarOngoing as $b)
+                    @php
+                        $isPending = $b->status === 'pending' || $b->status === '0';
+                        $statusBg  = $isPending ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600';
+                        $statusDot = $isPending ? 'bg-amber-400' : 'bg-emerald-500';
+                    @endphp
+                    <div class="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition cursor-pointer"
+                         wire:click="openSidebarDetail({{ $b->bookingroom_id }})">
+                        <div class="w-8 h-8 rounded-lg {{ $statusBg }} flex items-center justify-center shrink-0 mt-0.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $statusDot }} {{ !$isPending ? 'animate-pulse' : '' }}"></span>
+                                <p class="text-xs font-semibold text-foreground truncate">{{ $b->meeting_title }}</p>
+                            </div>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">{{ $b->room?->room_name ?? '—' }}</p>
+                            <p class="text-[11px] text-muted-foreground">
+                                {{ \Carbon\Carbon::parse($b->date)->format('d M') }}
+                                &bull; {{ is_string($b->start_time) ? substr($b->start_time,0,5) : '' }}–{{ is_string($b->end_time) ? substr($b->end_time,0,5) : '' }}
+                            </p>
+                        </div>
+                        <span class="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full {{ $statusBg }}">
+                            {{ $isPending ? 'Pending' : 'Ongoing' }}
+                        </span>
+                    </div>
+                    @empty
+                    <div class="px-4 py-8 text-center text-muted-foreground">
+                        <svg class="w-8 h-8 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5"/></svg>
+                        <p class="text-xs">No active room bookings.</p>
+                    </div>
+                    @endforelse
+                </div>
+            </div>
+        </aside>
+        </div>{{-- end grid --}}
         @endif
 
         {{-- ── STATUS TAB ── --}}
@@ -227,4 +278,58 @@
     </div>
     @endif
 
+
+{{-- ── SIDEBAR BOOKING DETAIL MODAL ── --}}
+@if($showSidebarDetail && $sidebarBooking)
+<div class="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/20">
+            <div>
+                <p class="font-semibold text-foreground">{{ $sidebarBooking->meeting_title }}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">Room Booking Detail</p>
+            </div>
+            <button wire:click="closeSidebarDetail" class="text-muted-foreground hover:text-foreground">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-3 text-sm">
+            @php $isPendingDetail = in_array($sidebarBooking->status, ['pending','0']); @endphp
+            <div class="grid grid-cols-2 gap-3">
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Room</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->room?->room_name ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Status</p>
+                    <span class="inline-flex mt-0.5 px-2 py-0.5 text-[11px] font-bold rounded-full {{ $isPendingDetail ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700' }}">{{ $isPendingDetail ? 'Pending' : 'Approved' }}</span>
+                </div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Date</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->date ? \Carbon\Carbon::parse($sidebarBooking->date)->format('d M Y') : '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Time</p><p class="text-foreground font-medium mt-0.5">{{ is_string($sidebarBooking->start_time) ? substr($sidebarBooking->start_time,0,5) : '—' }} – {{ is_string($sidebarBooking->end_time) ? substr($sidebarBooking->end_time,0,5) : '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Requested By</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->user?->full_name ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Department</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->department?->department_name ?? $sidebarBooking->user?->department?->department_name ?? '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Attendees</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->number_of_attendees ?? '—' }}</p></div>
+            </div>
+            @if($sidebarBooking->special_notes)<div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Notes</p><p class="text-foreground mt-0.5 text-xs">{{ $sidebarBooking->special_notes }}</p></div>@endif
+            @if($showSidebarReject)
+            <div class="pt-2 border-t border-border">
+                <label class="block text-xs font-semibold text-destructive mb-1.5">Rejection Reason *</label>
+                <textarea wire:model.defer="sidebarRejectReason" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-destructive/20 resize-none" placeholder="Reason for rejection..."></textarea>
+                @error('sidebarRejectReason') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
+            </div>
+            @endif
+        </div>
+        <div class="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/10">
+            <button wire:click="closeSidebarDetail" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">Close</button>
+            <div class="flex gap-2">
+                @if($isPendingDetail)
+                    @if(!$showSidebarReject)
+                    <button wire:click="openSidebarReject" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject
+                    </button>
+                    @else
+                    <button wire:click="$set('showSidebarReject', false)" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:bg-muted transition">Cancel</button>
+                    <button wire:click="submitSidebarReject" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive text-white hover:bg-destructive/90 transition disabled:opacity-60">Confirm Reject</button>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 </div>

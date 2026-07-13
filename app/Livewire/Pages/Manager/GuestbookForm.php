@@ -192,7 +192,7 @@ class GuestbookForm extends Component
         $companyId = Auth::user()->company_id ?? null;
         $today = now($this->tz)->toDateString();
 
-        // Show upcoming entries (future date) created with manager as petugas_penjaga
+        // Upcoming scheduled visitors (future dates, not yet checked out)
         $upcoming = GuestbookModel::query()
             ->where('company_id', $companyId)
             ->whereNull('jam_out')
@@ -207,8 +207,29 @@ class GuestbookForm extends Component
             ->orderBy('jam_in')
             ->paginate($this->perPage);
 
+        // Sidebar: currently active visitors (checked in today, not yet checked out)
+        $activeToday = GuestbookModel::query()
+            ->where('company_id', $companyId)
+            ->whereNull('jam_out')
+            ->whereDate('date', $today)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        // Sidebar: upcoming scheduled (next 7 days) - compact list
+        $sidebarUpcoming = GuestbookModel::query()
+            ->where('company_id', $companyId)
+            ->whereNull('jam_out')
+            ->where('date', '>', $today)
+            ->orderBy('date')
+            ->orderBy('jam_in')
+            ->limit(15)
+            ->get();
+
         return view('livewire.pages.manager.guestbook-form', [
-            'upcoming' => $upcoming,
+            'upcoming'        => $upcoming,
+            'activeToday'     => $activeToday,
+            'sidebarUpcoming' => $sidebarUpcoming,
         ]);
     }
 }

@@ -211,6 +211,50 @@
                 </div>
 
                 {{-- LIST BODY – 2 column bento style --}}
+                {{-- ── MANAGER PRIORITY VEHICLE HISTORY ── --}}
+                @if(isset($priorityVehicleHistory) && $priorityVehicleHistory->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-3 border-b-2 border-blue-200 bg-blue-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                            Manager Priority Bookings — {{ $statusTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
+                        </span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white">{{ $priorityVehicleHistory->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4">
+                        @foreach($priorityVehicleHistory as $pvb)
+                        @php
+                            $pvhBadge = $statusTab === 'done'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700';
+                        @endphp
+                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">
+                                    {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pvb->borrower_name }} &bull;
+                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
+                                </p>
+                                <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
+                                <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                @if($pvb->rejection_reason)
+                                    <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
+                                {{ $pvb->statusLabel() }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 @if($bookings->isEmpty())
                     <div class="px-4 sm:px-6 py-14 text-center text-gray-500 text-sm">
                         {{ __('app.no_history_filter') }}
@@ -430,50 +474,6 @@
                             {{ $bookings->links() }}
                         </div>
                     </div>
-                @endif
-
-                {{-- ── MANAGER PRIORITY VEHICLE HISTORY ── --}}
-                @if(isset($priorityVehicleHistory) && $priorityVehicleHistory->isNotEmpty())
-                <div class="px-4 sm:px-6 pt-4 pb-3 border-t-2 border-blue-200 bg-blue-50/40">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">
-                            Manager Priority Bookings — {{ $statusTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
-                        </span>
-                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white">{{ $priorityVehicleHistory->count() }}</span>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        @foreach($priorityVehicleHistory as $pvb)
-                        @php
-                            $pvhBadge = $statusTab === 'done'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-rose-100 text-rose-700';
-                        @endphp
-                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-                            <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
-                                <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0 space-y-0.5">
-                                <p class="text-sm font-semibold text-gray-900 truncate">
-                                    {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
-                                </p>
-                                <p class="text-xs text-gray-500">
-                                    {{ $pvb->borrower_name }} &bull;
-                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
-                                </p>
-                                <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
-                                <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
-                                @if($pvb->rejection_reason)
-                                    <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
-                                @endif
-                            </div>
-                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
-                                {{ $pvb->statusLabel() }}
-                            </span>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
                 @endif
             </section>
 
