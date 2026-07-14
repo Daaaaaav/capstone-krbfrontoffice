@@ -203,20 +203,7 @@ class BookingsApproval extends Component
     {
         $dir = $this->sortingDirection();
 
-        $invalidFirstExpr = "CASE
-            WHEN (date IS NULL OR start_time IS NULL) THEN 1
-            ELSE 0
-        END";
-
-        $dtExpr = "COALESCE(
-            CASE WHEN start_time REGEXP '^[0-9]{4}-' THEN start_time END,
-            CASE WHEN date       REGEXP '^[0-9]{4}-' THEN date END,
-            CONCAT(date, ' ', start_time)
-        )";
-
-        return $query->orderByRaw("$invalidFirstExpr ASC")
-            ->orderByRaw("$dtExpr $dir")
-            ->orderByDesc('created_at');
+        return $query->orderBy('created_at', $dir);
     }
 
     // ───────── Livewire: reset pagination saat filter berubah ─────────

@@ -612,10 +612,9 @@ class BookingHistory extends Component
             // Other filters
             ->when($this->q !== '',               fn ($qq) => $qq->where('meeting_title', 'like', '%' . $this->q . '%'))
             ->when($this->selectedDate,           fn ($qq) => $qq->whereDate('date', $this->selectedDate))
-            ->when($this->dateMode === 'terbaru', fn ($qq) => $qq->orderByDesc('date')->orderByDesc('start_time'))
-            ->when($this->dateMode === 'terlama', fn ($qq) => $qq->orderBy('date')->orderBy('start_time'))
-            ->when($this->dateMode === 'semua',   fn ($qq) => $qq->orderByRaw("COALESCE(`date`, '0000-01-01') DESC")
-                                                                 ->orderByRaw("COALESCE(`start_time`, '00:00:00') DESC"));
+            ->when($this->dateMode === 'terbaru', fn ($qq) => $qq->orderByDesc('created_at'))
+            ->when($this->dateMode === 'terlama', fn ($qq) => $qq->orderBy('created_at'))
+            ->when($this->dateMode === 'semua',   fn ($qq) => $qq->orderByDesc('created_at'));
 
         return $q->paginate($this->perDone, ['*'], 'pageDone');
     }
@@ -646,9 +645,9 @@ class BookingHistory extends Component
             // Other filters
             ->when($this->q !== '',               fn ($qq) => $qq->where('meeting_title', 'like', '%' . $this->q . '%'))
             ->when($this->selectedDate,           fn ($qq) => $qq->whereDate('date', $this->selectedDate))
-            ->when($this->dateMode === 'terbaru', fn ($qq) => $qq->orderByDesc('date')->orderByDesc('start_time'))
-            ->when($this->dateMode === 'terlama', fn ($qq) => $qq->orderBy('date')->orderBy('start_time'))
-            ->when($this->dateMode === 'semua',   fn ($qq) => $qq->orderByDesc('date')->orderByDesc('start_time'));
+            ->when($this->dateMode === 'terbaru', fn ($qq) => $qq->orderByDesc('created_at'))
+            ->when($this->dateMode === 'terlama', fn ($qq) => $qq->orderBy('created_at'))
+            ->when($this->dateMode === 'semua',   fn ($qq) => $qq->orderByDesc('created_at'));
 
         return $q->paginate($this->perRejected, ['*'], 'pageRejected');
     }

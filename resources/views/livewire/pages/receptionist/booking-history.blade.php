@@ -372,11 +372,17 @@
                                                         @if($requesterName)
                                                             <p>{{ __('app.requested_by') }} <span class="font-medium text-gray-800">{{ $requesterName }}</span></p>
                                                         @endif
-                                                        @if($requesterDept)
-                                                            <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200">
-                                                                {{ $requesterDept }}
+                                                        <div class="flex items-center gap-2 flex-wrap">
+                                                            @if($requesterDept)
+                                                                <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200">
+                                                                    {{ $requesterDept }}
+                                                                </span>
+                                                            @endif
+                                                            <span class="text-[11px] text-gray-400 flex items-center gap-1" title="Created At">
+                                                                <x-heroicon-o-clock class="w-3 h-3"/>
+                                                                {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
                                                             </span>
-                                                        @endif
+                                                        </div>
                                                         @if($row->notes)
                                                             <div class="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg p-2">
                                                                 <span class="font-medium">{{ __('app.notes') }}:</span> {{ $row->notes }}
@@ -483,6 +489,10 @@
                                                         @if($requesterDept)
                                                             <div class="text-xs text-gray-500">{{ $requesterDept }}</div>
                                                         @endif
+                                                        <div class="text-[10px] text-gray-400 mt-1 flex items-center gap-1" title="Created At">
+                                                            <x-heroicon-o-clock class="w-3 h-3"/>
+                                                            {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
+                                                        </div>
                                                     </td>
                                                     <td class="h-12 px-6 py-4">
                                                         <div class="flex items-center justify-end gap-2">
@@ -646,11 +656,17 @@
                                                         @if($requesterName)
                                                             <p>{{ __('app.requested_by') }} <span class="font-medium text-gray-800">{{ $requesterName }}</span></p>
                                                         @endif
-                                                        @if($requesterDept)
-                                                            <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200">
-                                                                {{ $requesterDept }}
+                                                        <div class="flex items-center gap-2 flex-wrap">
+                                                            @if($requesterDept)
+                                                                <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200">
+                                                                    {{ $requesterDept }}
+                                                                </span>
+                                                            @endif
+                                                            <span class="text-[11px] text-gray-400 flex items-center gap-1" title="Created At">
+                                                                <x-heroicon-o-clock class="w-3 h-3"/>
+                                                                {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
                                                             </span>
-                                                        @endif
+                                                        </div>
                                                         @if($row->book_reject)
                                                             <div class="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg p-2">
                                                                 <span class="font-medium">{{ __('app.rejection_reason_label') }}:</span> {{ $row->book_reject }}
@@ -724,6 +740,10 @@
                                                     <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
                                                     <td class="h-12 px-6 py-0 ">
                                                         <div class="font-semibold text-gray-900">{{ $row->meeting_title ?? '—' }}</div>
+                                                        <div class="text-[10px] text-gray-400 mt-1 flex items-center gap-1" title="Created At">
+                                                            <x-heroicon-o-clock class="w-3 h-3"/>
+                                                            {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
+                                                        </div>
                                                         @if($row->deleted_at)
                                                             <span class="inline-flex items-center text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded font-medium mt-1">{{ __('app.deleted') }}</span>
                                                         @endif
