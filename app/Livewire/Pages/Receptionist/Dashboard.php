@@ -6,7 +6,6 @@ use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 use App\Models\BookingRoom;
@@ -19,26 +18,6 @@ use App\Models\Delivery;
 class Dashboard extends Component
 {
     protected string $tz = 'Asia/Jakarta';
-
-    // ── Detail Modal (Room Booking) ───────────────────────────────────────
-    public bool $showDetailModal = false;
-    public ?int $selectedBookingId = null;
-    public ?BookingRoom $selectedBookingDetail = null;
-
-    // ── Reject Modal (Room Booking) ───────────────────────────────────────
-    public bool $showRejectModal = false;
-    public ?int $rejectId = null;
-    public string $rejectReason = '';
-
-    // ── Vehicle Detail Modal ──────────────────────────────────────────────
-    public bool $showVehicleDetailModal = false;
-    public ?int $selectedVehicleBookingId = null;
-    public ?VehicleBooking $selectedVehicleBookingDetail = null;
-
-    // ── Vehicle Reject Modal ──────────────────────────────────────────────
-    public bool $showVehicleRejectModal = false;
-    public ?int $vehicleRejectId = null;
-    public string $vehicleRejectReason = '';
 
     private function asCarbon(null|Carbon|\DateTimeInterface|string $v): ?Carbon
     {
@@ -67,167 +46,6 @@ class Dashboard extends Component
         $c = $this->asCarbon($v);
         return $c ? $c->format($fmt) : '—';
     }
-
-    // ─────────────────── Detail Modal ────────────────────────────────────
-
-    public function openDetailModal(int $id): void
-    {
-        $this->selectedBookingId     = $id;
-        $this->selectedBookingDetail = BookingRoom::with(['room', 'requirements', 'user.department', 'department'])
-            ->find($id);
-
-        if ($this->selectedBookingDetail) {
-            $this->showDetailModal = true;
-        } else {
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Booking #' . $id . ' not found.', duration: 4000);
-        }
-    }
-
-    public function closeDetailModal(): void
-    {
-        $this->showDetailModal       = false;
-        $this->selectedBookingId     = null;
-        $this->selectedBookingDetail = null;
-    }
-
-    // ─────────────────── Reject ──────────────────────────────────────────
-
-    public function openReject(int $id): void
-    {
-        $this->rejectId        = $id;
-        $this->rejectReason    = '';
-        $this->showRejectModal = true;
-        $this->showDetailModal = false; // close detail modal when reject opens
-    }
-
-    public function closeReject(): void
-    {
-        $this->showRejectModal = false;
-        $this->rejectId        = null;
-        $this->rejectReason    = '';
-    }
-
-    public function confirmReject(): void
-    {
-        $this->validate([
-            'rejectId'     => 'required|integer|exists:booking_rooms,bookingroom_id',
-            'rejectReason' => 'required|string|min:3|max:500',
-        ]);
-
-        try {
-            DB::transaction(function () {
-                /** @var BookingRoom $b */
-                $b = BookingRoom::lockForUpdate()->findOrFail($this->rejectId);
-
-                $b->status      = 'rejected';
-                $b->is_approve  = 0;
-                $b->approved_by = Auth::id();
-                $b->book_reject = $this->rejectReason;
-                $b->save();
-            });
-
-            $this->showRejectModal = false;
-            $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Booking has been rejected.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Could not reject: ' . $e->getMessage());
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // ── Vehicle Detail Modal + Approve/Reject ─────────────────────────────
-
-    public function openVehicleDetailModal(int $id): void
-    {
-        $this->selectedVehicleBookingId     = $id;
-        $this->selectedVehicleBookingDetail = VehicleBooking::with(['vehicle', 'user', 'department'])
-            ->find($id);
-
-        if ($this->selectedVehicleBookingDetail) {
-            $this->showVehicleDetailModal = true;
-        } else {
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Vehicle booking #' . $id . ' not found.', duration: 4000);
-        }
-    }
-
-    public function closeVehicleDetailModal(): void
-    {
-        $this->showVehicleDetailModal       = false;
-        $this->selectedVehicleBookingId     = null;
-        $this->selectedVehicleBookingDetail = null;
-    }
-
-    public function approveVehicleBooking(int $id): void
-    {
-        try {
-            DB::transaction(function () use ($id) {
-                $b = VehicleBooking::lockForUpdate()->findOrFail($id);
-                if ($b->status !== 'pending') {
-                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not pending.");
-                }
-                $b->status = 'approved';
-                $b->save();
-            });
-
-            $this->closeVehicleDetailModal();
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Vehicle booking has been approved.');
-        } catch (\RuntimeException $e) {
-            $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
-        }
-    }
-
-    public function openVehicleReject(int $id): void
-    {
-        $this->vehicleRejectId        = $id;
-        $this->vehicleRejectReason    = '';
-        $this->showVehicleRejectModal = true;
-        $this->showVehicleDetailModal = false;
-    }
-
-    public function closeVehicleReject(): void
-    {
-        $this->showVehicleRejectModal = false;
-        $this->vehicleRejectId        = null;
-        $this->vehicleRejectReason    = '';
-    }
-
-    public function confirmVehicleReject(): void
-    {
-        $this->validate([
-            'vehicleRejectId'     => 'required|integer|exists:vehicle_bookings,vehiclebooking_id',
-            'vehicleRejectReason' => 'required|string|min:3|max:500',
-        ]);
-
-        try {
-            $reason = '[Rejected] ' . trim($this->vehicleRejectReason);
-
-            $affected = DB::table('vehicle_bookings')
-                ->where('vehiclebooking_id', $this->vehicleRejectId)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'rejected',
-                    'notes'  => DB::raw(
-                        "TRIM(CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', '\n'), " .
-                        DB::getPdo()->quote($reason) . "))"
-                    ),
-                ]);
-
-            if ($affected === 0) {
-                throw new \RuntimeException('Booking could not be rejected — it may no longer be pending.');
-            }
-
-            $this->showVehicleRejectModal = false;
-            $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Vehicle booking has been rejected.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Could not reject: ' . $e->getMessage());
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
 
     public function render()
     {
@@ -264,40 +82,35 @@ class Dashboard extends Component
          * Newest Booking Room (limit 5)
          */
         $latestBookingRooms = BookingRoom::query()
-            ->with(['room', 'user', 'department'])
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')
             ->take(5)
             ->get()
             ->map(fn($br) => [
-                'id'           => $br->bookingroom_id,
-                'title'        => $br->meeting_title ?? '—',
-                'room_id'      => $br->room_id,
-                'room_name'    => $br->room?->room_name ?? '—',
-                'time'         => $this->fmtTime($br->start_time) . ' - ' . $this->fmtTime($br->end_time),
-                'date'         => $this->fmtDate($br->date),
-                'status'       => strtolower($br->status ?? 'unknown'),
-                'status_label' => ucfirst($br->status ?? '—'),
+                'id' => $br->bookingroom_id,
+                'title' => $br->meeting_title ?? '—',
+                'room_id' => $br->room_id,
+                'time' => $this->fmtTime($br->start_time) . ' - ' . $this->fmtTime($br->end_time),
+                'date' => $this->fmtDate($br->date),
+                'status' => ucfirst($br->status ?? '—'),
             ]);
 
         /**
          * Newest Vehicle Bookings (limit 5)
          */
         $latestVehicleBookings = VehicleBooking::query()
-            ->with(['vehicle', 'user', 'department'])
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')
             ->take(5)
             ->get()
             ->map(fn($vb) => [
-                'id'           => $vb->vehiclebooking_id,
-                'borrower'     => $vb->borrower_name ?? $vb->user?->full_name ?? '—',
-                'vehicle_name' => $vb->vehicle?->name ?? '—',
-                'purpose'      => $vb->purpose ?? '—',
-                'destination'  => $vb->destination ?? '—',
-                'time'         => $this->fmtTime($vb->start_at) . ' - ' . $this->fmtTime($vb->end_at),
-                'status'       => strtolower($vb->status ?? 'unknown'),
-                'status_label' => ucfirst($vb->status ?? '—'),
+                'id' => $vb->vehiclebooking_id,
+                'borrower' => $vb->borrower_name ?? '—',
+                'purpose' => $vb->purpose ?? '—',
+                'destination' => $vb->destination ?? '—',
+                'date' => $this->fmtDate($vb->start_at),
+                'time' => $this->fmtTime($vb->start_at) . ' - ' . $this->fmtTime($vb->end_at),
+                'status' => ucfirst($vb->status ?? '—'),
             ]);
 
         /**
