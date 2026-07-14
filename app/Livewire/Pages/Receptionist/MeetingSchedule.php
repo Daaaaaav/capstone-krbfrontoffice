@@ -417,7 +417,7 @@ class MeetingSchedule extends Component
 
         // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
         $startCarbon = Carbon::parse($startAt, $this->tz);
-        $minAdvanceDate = now($this->tz)->addHour();
+        $minAdvanceDate = now($this->tz)->startOfMinute()->addHour();
         if ($startCarbon->lessThan($minAdvanceDate)) {
             $this->dispatch(
                 'toast',
@@ -510,7 +510,6 @@ class MeetingSchedule extends Component
         $this->resetOfflineForm();
 
         $this->dispatch('toast', type: 'success', title: 'Sukses', message: 'Meeting offline disimpan.', duration: 3000);
-        $this->js('window.location.reload();');
     }
 
     public function saveOnline(): void
@@ -546,19 +545,7 @@ class MeetingSchedule extends Component
             return;
         }
 
-        // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
         $startCarbon = Carbon::parse($startAt, $this->tz);
-        $minAdvanceDate = now($this->tz)->addHour();
-        if ($startCarbon->lessThan($minAdvanceDate)) {
-            $this->dispatch(
-                'toast',
-                type: 'error',
-                title: 'Minimum Booking Limit',
-                message: 'Bookings must be made at least 1 hour in advance.',
-                duration: 7000
-            );
-            return;
-        }
 
         // ── 1-Month Advance Booking Constraint ─────────────────────────────
         $maxAdvanceDate = now($this->tz)->addMonths(1);
@@ -668,7 +655,6 @@ class MeetingSchedule extends Component
         $this->resetOnlineForm();
 
         $this->dispatch('toast', type: 'success', title: 'Sukses', message: 'Meeting online disimpan dengan link meeting.', duration: 3000);
-        $this->js('window.location.reload()');
     }
 
     /* ===================== Room Directory Approve / Reject ===================== */
