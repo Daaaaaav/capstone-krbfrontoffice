@@ -293,6 +293,12 @@
                                                     <span class="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 {{ $statusStyle['bg'] }} {{ $statusStyle['text'] }}">
                                                         {{ $statusStyle['label'] }}
                                                     </span>
+                                                    @if(str_contains($b->notes ?? '', '[Late Return]'))
+                                                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full flex-shrink-0 shadow-sm">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                                                            Late Return
+                                                        </span>
+                                                    @endif
                                                     @if($isTrashed)
                                                         <span class="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-800 border border-gray-300 flex-shrink-0">
                                                             {{ __('app.deleted') }}
@@ -426,6 +432,11 @@
                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $statusStyle['bg'] }} {{ $statusStyle['text'] }}">
                                                         {{ $statusStyle['label'] }}
                                                     </span>
+                                                    @if(str_contains($b->notes ?? '', '[Late Return]'))
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 shadow-sm">
+                                                            Late Return
+                                                        </span>
+                                                    @endif
                                                     @if($isTrashed)
                                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
                                                             {{ __('app.deleted') }}

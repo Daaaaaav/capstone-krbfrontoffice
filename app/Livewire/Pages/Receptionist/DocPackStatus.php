@@ -3,14 +3,12 @@
 namespace App\Livewire\Pages\Receptionist;
 
 use App\Models\Delivery;
+use App\Models\Department;
 use App\Models\User as UserModel;
-use App\Services\ImageHelper;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
@@ -21,7 +19,6 @@ class DocPackStatus extends Component
 {
     use WithPagination;
     use HasViewMode;
-    use WithFileUploads;
 
     protected string $paginationTheme = 'tailwind';
 
@@ -30,9 +27,9 @@ class DocPackStatus extends Component
     public ?string $selectedDate = null;
     public string $dateMode = 'semua';
     public string $type = 'all';
-    public string $filterSender = '';
-    public string $filterReceiver = '';
+    public ?int $departmentId = null;
     public ?int $userId = null;
+    public string $departmentQ = '';
     public string $userQ = '';
 
     // Tabs
@@ -40,7 +37,6 @@ class DocPackStatus extends Component
 
     // Pagination per box
     public int $perPending = 6;
-    public int $perStored = 6;
 
     // Mobile filter modal
     public bool $showFilterModal = false;
@@ -53,33 +49,32 @@ class DocPackStatus extends Component
         'nama_pengirim' => null,
         'nama_penerima' => null,
     ];
-    public $editPhoto = null;
-    public ?string $editCurrentImage = null;
 
     protected $rules = [
         'edit.item_name' => 'nullable|string|max:255',
         'edit.nama_pengirim' => 'nullable|string|max:255',
         'edit.nama_penerima' => 'nullable|string|max:255',
-        'editPhoto' => 'nullable|image|max:2048',
     ];
 
     public function updated($name): void
     {
-        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'filterSender', 'filterReceiver', 'userId', 'userQ'], true)) {
+        if ($name === 'departmentId') {
+            $this->userId = null;
+        }
+
+        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'departmentId', 'userId', 'departmentQ', 'userQ'], true)) {
             $this->resetPage('pendingPage');
-            $this->resetPage('storedPage');
         }
     }
 
     // ───────── Tabs ─────────
     public function setTab(string $tab): void
     {
-        if (!in_array($tab, ['pending', 'stored'], true)) {
+        if (!in_array($tab, ['pending'], true)) {
             return;
         }
         $this->activeTab = $tab;
         $this->resetPage('pendingPage');
-        $this->resetPage('storedPage');
     }
 
     // ───────── Mobile Filter Modal ─────────
@@ -108,31 +103,29 @@ class DocPackStatus extends Component
             $q->whereDate('created_at', $this->selectedDate);
         }
 
-        if (trim($this->filterSender) !== '') {
-            $q->where('nama_pengirim', 'like', '%' . trim($this->filterSender) . '%');
+        if ($this->departmentId) {
+            $q->where('department_id', $this->departmentId);
         }
 
-        if (trim($this->filterReceiver) !== '') {
-            $q->where('nama_penerima', 'like', '%' . trim($this->filterReceiver) . '%');
+        if (trim($this->departmentQ) !== '') {
+            $deptIds = Department::query()
+                ->where('company_id', Auth::user()->company_id ?? null)
+                ->whereNull('deleted_at')
+                ->where('department_name', 'like', '%' . trim($this->departmentQ) . '%')
+                ->pluck('department_id');
+
+            $deptIds->isNotEmpty() ? $q->whereIn('department_id', $deptIds) : $q->whereRaw('0=1');
         }
 
         if ($this->userId) {
-            $selectedUser = UserModel::find($this->userId);
-            $selectedName = $selectedUser ? $selectedUser->full_name : null;
-
-            $q->where(function ($qq) use ($selectedName) {
-                $qq->where('receptionist_id', $this->userId);
-                if ($selectedName) {
-                    $qq->orWhere('nama_pengirim', $selectedName)
-                       ->orWhere('nama_penerima', $selectedName);
-                }
-            });
+            $q->where('receptionist_id', $this->userId);
         }
 
         if (trim($this->userQ) !== '') {
             $userIds = UserModel::query()
                 ->where('company_id', Auth::user()->company_id ?? null)
                 ->whereNull('deleted_at')
+                ->when($this->departmentId, fn($qq) => $qq->where('department_id', $this->departmentId))
                 ->where('full_name', 'like', '%' . trim($this->userQ) . '%')
                 ->pluck('user_id');
 
@@ -167,14 +160,6 @@ class DocPackStatus extends Component
         return $q->with('receptionist')->paginate($this->perPending, pageName: 'pendingPage');
     }
 
-    public function getStoredProperty()
-    {
-        $q = $this->base()->where('status', 'stored');
-        $this->applySharedFilters($q)->latest('created_at');
-
-        return $q->with('receptionist')->paginate($this->perStored, pageName: 'storedPage');
-    }
-
     public function openEdit(int $id): void
     {
         $row = $this->base()->findOrFail($id);
@@ -184,8 +169,6 @@ class DocPackStatus extends Component
             'nama_pengirim' => $row->nama_pengirim,
             'nama_penerima' => $row->nama_penerima,
         ];
-        $this->editCurrentImage = $row->image;
-        $this->editPhoto = null;
         $this->showEdit = true;
     }
 
@@ -197,46 +180,19 @@ class DocPackStatus extends Component
         $this->validate();
 
         $row = $this->base()->findOrFail($this->editId);
-
-        $data = [
+        $row->fill([
             'item_name' => $this->edit['item_name'],
             'nama_pengirim' => $this->edit['nama_pengirim'],
             'nama_penerima' => $this->edit['nama_penerima'],
-        ];
-
-        if ($this->editPhoto) {
-            // Delete old image if exists
-            if ($row->image && Storage::disk('public')->exists($row->image)) {
-                Storage::disk('public')->delete($row->image);
-            }
-            $data['image'] = ImageHelper::storeAsWebp(
-                $this->editPhoto,
-                'images/deliveries',
-                'delivery',
-                'public'
-            );
-        }
-
-        $row->fill($data)->save();
+        ])->save();
 
         $this->showEdit = false;
         $this->editId = null;
-        $this->editPhoto = null;
-        $this->editCurrentImage = null;
         $this->resetPage('pendingPage');
         $this->dispatch('toast', type: 'success', title: 'Saved', message: 'Information successfully saved.', duration: 3000);
     }
 
-    public function storeItem(int $id): void
-    {
-        $row = $this->base()->where('status', 'pending')->findOrFail($id);
-        $row->status = 'stored';
-        $row->save();
 
-        $this->resetPage('pendingPage');
-        $this->resetPage('storedPage');
-        $this->dispatch('toast', type: 'success', title: 'Stored', message: 'Item successfully stored.', duration: 3000);
-    }
 
     private function getDirectionFor(Delivery $row): string
     {
@@ -278,9 +234,9 @@ class DocPackStatus extends Component
         return ($row->type === 'document') ? 'deliver' : 'taken';
     }
 
-    public function finalizeItem(int $id): void
+    public function markDone(int $id): void
     {
-        $row = $this->base()->where('status', 'stored')->findOrFail($id);
+        $row = $this->base()->where('status', 'pending')->findOrFail($id);
         $dir = $this->getDirectionFor($row);
 
         $when = now();
@@ -295,32 +251,31 @@ class DocPackStatus extends Component
 
         $row->save();
 
-        $this->resetPage('storedPage');
-        $this->dispatch('toast', type: 'success', title: 'Done', message: 'Item successfully finalized.', duration: 3000);
+        $this->resetPage('pendingPage');
+        $this->dispatch('toast', type: 'success', title: 'Done', message: 'Item successfully marked as done.', duration: 3000);
     }
 
     public function render()
     {
         $companyId = Auth::user()->company_id ?? null;
 
+        $departments = Department::query()
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->orderBy('department_name')
+            ->get(['department_id', 'department_name']);
+
         $users = UserModel::query()
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
             ->orderBy('full_name')
-            ->get(['user_id', 'full_name']);
-
-        $storedDirections = collect($this->stored->items())
-            ->mapWithKeys(function ($row) {
-                $dir = $this->getDirectionFor($row);
-                return [($row->delivery_id ?? $row->id) => $dir];
-            })
-            ->toArray();
+            ->get(['user_id', 'full_name', 'department_id'])
+            ->unique('user_id');
 
         return view('livewire.pages.receptionist.docpackstatus', [
             'pending' => $this->pending,
-            'stored' => $this->stored,
-            'storedDirections' => $storedDirections,
-            'users' => $users,
+            'departments' => $departments,
+            'users' => $users
         ]);
     }
 }

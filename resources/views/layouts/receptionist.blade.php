@@ -30,90 +30,6 @@ $invertStyle = 'filter: brightness(0) invert(1);';
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
     @livewireStyles
-
-    <style>
-        /* Responsive Tables for Receptionist Module - Mobile Only */
-        @media (max-width: 767px) {
-            table {
-                display: block !important;
-                width: 100% !important;
-            }
-            table thead {
-                display: none !important;
-            }
-            table tbody {
-                display: block !important;
-                width: 100% !important;
-            }
-            table tr {
-                display: flex !important;
-                flex-direction: column !important;
-                margin-bottom: 1rem !important;
-                border: 1px solid #e5e7eb !important;
-                border-radius: 0.75rem !important;
-                background-color: white !important;
-                overflow: hidden !important;
-            }
-            table td {
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                position: relative !important;
-                padding: 1rem !important;
-                padding-left: 40% !important;
-                text-align: left !important;
-                border-bottom: 1px solid #f3f4f6 !important;
-                min-height: 3.5rem !important;
-            }
-            table td:last-child {
-                border-bottom: none !important;
-            }
-            table td::before {
-                content: attr(data-label) !important;
-                position: absolute !important;
-                left: 1rem !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
-                font-size: 11px !important;
-                font-weight: 700 !important;
-                text-transform: uppercase !important;
-                color: #6b7280 !important;
-                text-align: left !important;
-                max-width: 35% !important;
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-            }
-        }
-    </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            function applyDataLabels() {
-                document.querySelectorAll('table').forEach(table => {
-                    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.trim());
-                    table.querySelectorAll('tbody tr').forEach(tr => {
-                        Array.from(tr.children).forEach((td, index) => {
-                            if (headers[index] && !td.hasAttribute('data-label')) {
-                                td.setAttribute('data-label', headers[index]);
-                            }
-                        });
-                    });
-                });
-            }
-            
-            applyDataLabels();
-
-            if (typeof document.addEventListener !== 'undefined') {
-                document.addEventListener('livewire:navigated', applyDataLabels);
-                document.addEventListener('livewire:initialized', () => {
-                    Livewire.hook('morph.updated', ({ el, component }) => {
-                        applyDataLabels();
-                    });
-                });
-            }
-        });
-    </script>
-    @stack('styles')
 </head>
 
 <body class="h-screen bg-background text-foreground font-sans overflow-hidden"
@@ -139,7 +55,6 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             };
             window.addEventListener('resize', handler);
             this.$cleanup = () => window.removeEventListener('resize', handler);
-            // Watch lock changes and persist
             this.$watch('sidebarLocked', (val) => {
                 localStorage.setItem('receptionist-sidebar-locked', val ? 'true' : 'false');
                 if (val) this.sidebarCollapsed = false;
@@ -165,8 +80,6 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     });
                 }
             });
-
-
         },
         sidebarEnter() {
             if (!this.sidebarLocked && !this.isMobile) {
@@ -181,16 +94,16 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     this.sidebarCollapsed = true;
                 }, 150);
             }
-        }
-                }"
+        },
+    }"
 >
-    {{-- Form logout tersembunyi --}}
+    {{-- Form logout tersembunyi (di luar dropdown) --}}
     <form id="logout-form" method="POST" action="{{ route('logout') }}" class="hidden">
         @csrf
     </form>
 
     <div class="flex h-screen w-full overflow-hidden">
-        {{-- Sidebar Component --}}
+        {{-- Sidebar (always full height) --}}
         @include('livewire.components.partials.receptionist.sidebar')
 
         {{-- Main Content Wrapper --}}
@@ -205,6 +118,14 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                 </div>
 
                 <div class="flex items-center gap-3 shrink-0">
+                    <a href="{{ route('notifications.index') }}" class="relative flex items-center justify-center w-8 h-8 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent border border-sidebar-border/50 transition-all focus:outline-none">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-[#2a1f1a]"></span>
+                    </a>
+
                     {{-- Language Toggle (Mobile Header) --}}
                     @php $isEnHeader = app()->getLocale() === 'en'; @endphp
                     <div x-data="{ open: false }" class="relative">
@@ -297,17 +218,15 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     </div>
                 </header>
 
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
 
             </div>
         </main>
         </div> {{-- End Main Content Wrapper --}}
     </div> {{-- End Flex Wrapper --}}
 
-
     @livewire('components.ui.chat-modal')
-    @livewire('booking.quick-book-modal')
-    @livewire('booking.quick-vehicle-book-modal')
 
     {{-- Floating chat button --}}
     <div class="fixed bottom-6 right-6 z-[70]">
@@ -355,32 +274,6 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             setInterval(refreshCsrf, 30 * 60 * 1000);
         })();
     </script>
-
-    {{-- Scroll lock: prevent background scrolling when any modal overlay is visible --}}
-    <script>
-        (function(){
-            var raf;
-            function checkScrollLock() {
-                cancelAnimationFrame(raf);
-                raf = requestAnimationFrame(function() {
-                    var modals = document.querySelectorAll('.fixed.inset-0');
-                    var shouldLock = false;
-                    for (var i = 0; i < modals.length; i++) {
-                        if (window.getComputedStyle(modals[i]).display !== 'none') {
-                            shouldLock = true;
-                            break;
-                        }
-                    }
-                    document.body.style.overflow = shouldLock ? 'hidden' : '';
-                });
-            }
-            new MutationObserver(checkScrollLock).observe(document.body, {
-                childList: true, subtree: true, attributes: true, attributeFilter: ['style']
-            });
-            checkScrollLock();
-        })();
-    </script>
-    @stack('scripts')
 </body>
 
 </html>

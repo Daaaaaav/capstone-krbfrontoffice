@@ -14,8 +14,6 @@ class GuestbookQrMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public string $scanUrl;
-
     /**
      * Each item: [visitor_number => int, png => string (binary), token => string]
      * @var array
@@ -27,7 +25,6 @@ class GuestbookQrMail extends Mailable
 
     public function __construct(public Guestbook $entry)
     {
-        $this->scanUrl = route('guestbook.scan', ['token' => $entry->qr_token]);
 
         // Load qrCodes if not already loaded
         if (!$entry->relationLoaded('qrCodes')) {

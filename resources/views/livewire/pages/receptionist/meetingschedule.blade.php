@@ -17,17 +17,19 @@
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
 
-    <main class="px-4 sm:px-6 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {{-- LEFT / MAIN CONTENT --}}
-            <div class="lg:col-span-3 space-y-6">
+    <main class="px-4 sm:px-6 py-6 space-y-6">
         {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.meeting_schedule_title') }}"
             subtitle="{{ __('app.meeting_schedule_sub') }}" />
 
-        {{-- FORM: BOOKING ROOM (OFFLINE) --}}
-        <section class="{{ $card }}">
+        {{-- MAIN LAYOUT: LEFT (FORM) + RIGHT (SIDEBAR) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            {{-- LEFT: FORM CARDS --}}
+            <div class="lg:col-span-3 space-y-6">
+
+                {{-- FORM: BOOKING ROOM (OFFLINE) --}}
+                <section class="{{ $card }}">
             <button type="button" wire:click="$toggle('showOfflineForm')"
                 class="w-full flex items-center justify-between px-6 py-5 border-b border-border bg-muted/10 hover:bg-muted/20 transition text-left focus:outline-none">
                 <div class="flex items-center gap-3">
@@ -47,6 +49,19 @@
 
             @if($showOfflineForm)
                 <form class="p-6 space-y-6" wire:submit.prevent="saveOffline">
+                    {{-- Rules & Notes Alert --}}
+                    <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <x-heroicon-o-information-circle class="w-5 h-5 shrink-0" />
+                            <h4 class="text-sm font-bold tracking-wide">Rules & Notes</h4>
+                        </div>
+                        <ul class="list-disc list-outside text-xs space-y-1.5 ml-5 text-blue-600/90 dark:text-blue-300/90 leading-relaxed">
+                            <li><strong>Minimum Booking Limit:</strong> Bookings must be made at least 1 hour in advance.</li>
+                            <li><strong>Maximum Booking Limit:</strong> You can only book a room up to 1 month in advance from today's date.</li>
+                            <li><strong>Auto-Approval System:</strong> Bookings will be automatically approved once the scheduled time arrives.</li>
+                            <li><strong>Auto-Archive System:</strong> Completed meetings will be automatically moved to the history logs immediately after the scheduled duration ends.</li>
+                        </ul>
+                    </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div class="md:col-span-3">
                         <label class="{{ $label }}">{{ __('app.title_col') }}</label>
@@ -425,6 +440,19 @@
 
             @if($showOnlineForm)
                 <form class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6" wire:submit.prevent="saveOnline">
+                    {{-- Rules & Notes Alert --}}
+                    <div class="lg:col-span-2 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 shadow-sm">
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <x-heroicon-o-information-circle class="w-5 h-5 shrink-0" />
+                            <h4 class="text-sm font-bold tracking-wide">Rules & Notes</h4>
+                        </div>
+                        <ul class="list-disc list-outside text-xs space-y-1.5 ml-5 text-blue-600/90 dark:text-blue-300/90 leading-relaxed">
+                            <li><strong>Minimum Booking Limit:</strong> Bookings must be made at least 1 hour in advance.</li>
+                            <li><strong>Maximum Booking Limit:</strong> You can only book a room up to 1 month in advance from today's date.</li>
+                            <li><strong>Auto-Approval System:</strong> Bookings will be automatically approved once the scheduled time arrives.</li>
+                            <li><strong>Auto-Archive System:</strong> Completed meetings will be automatically moved to the history logs immediately after the scheduled duration ends.</li>
+                        </ul>
+                    </div>
                 <div class="space-y-4">
                     <div>
                         <label class="{{ $label }}">{{ __('app.title_col') }}</label>
@@ -712,40 +740,41 @@
                 </div>
             </form>
             @endif
-        </section>
-        </div>{{-- end lg:col-span-3 --}}
+            </section>
+            </div>
 
-        {{-- RIGHT: SIDEBAR (DESKTOP) --}}
-        <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
-            {{-- Room Directory Widget --}}
-            <div class="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-                <div class="px-4 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
-                    <div>
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">Room Directory</h3>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">Available meeting rooms</p>
+            {{-- RIGHT: SIDEBAR (DESKTOP) --}}
+            <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
+                {{-- Available Rooms Widget --}}
+                <div class="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">Room Directory</h3>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">Available meeting rooms</p>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        @forelse(array_slice($rooms ?? [], 0, 5) as $room)
+                            <div wire:click="openScheduleModal({{ $room['id'] }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+                                    <x-heroicon-o-building-office-2 class="w-4 h-4" />
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-foreground truncate">{{ $room['name'] }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">Meeting Room</p>
+                                </div>
+                            </div>
+
+                        @empty
+                            <div class="text-center py-6">
+                                <x-heroicon-o-building-office-2 class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2"/>
+                                <p class="text-xs text-muted-foreground">No rooms available.</p>
+                            </div>
+                        @endforelse
                     </div>
                 </div>
-                <div class="p-4 space-y-4">
-                    @forelse(array_slice($rooms ?? [], 0, 5) as $room)
-                        <div wire:click="openScheduleModal({{ $room['id'] }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
-                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-                                <x-heroicon-o-building-office-2 class="w-4 h-4" />
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-foreground truncate">{{ $room['name'] }}</p>
-                                <p class="text-[11px] text-muted-foreground truncate">Meeting Room</p>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="text-center py-6">
-                            <x-heroicon-o-building-office-2 class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2"/>
-                            <p class="text-xs text-muted-foreground">No rooms available.</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </aside>
-        </div>{{-- end grid --}}
+            </aside>
+        </div>
     </main>
 
     {{-- Room Schedule Modal --}}
@@ -808,7 +837,6 @@
         </div>
     @endif
 
-    {{-- Booking Detail Modal --}}
     @if($showBookingDetailModal && !empty($selectedBookingDetail))
         <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" x-data="{ showDetail: @entangle('showBookingDetailModal') }" x-show="showDetail" x-cloak>
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="showDetail = false"></div>
@@ -819,6 +847,7 @@
                 x-transition:leave="ease-in duration-200"
                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                
                 <div class="px-6 py-4 border-b border-border bg-muted/5 flex items-start justify-between">
                     <div>
                         <h3 class="text-lg font-bold text-foreground leading-tight">{{ $selectedBookingDetail['room_name'] }}</h3>
@@ -828,6 +857,7 @@
                         ✕
                     </button>
                 </div>
+
                 <div class="p-6 overflow-y-auto">
                     <div class="grid grid-cols-2 gap-6">
                         <div>
@@ -866,69 +896,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="px-5 py-4 border-t border-border flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        @if(strtolower($selectedBookingDetail['status'] ?? '') === 'pending')
-                        <button wire:click="approveRoomBooking({{ $selectedBookingDetail['id'] }})" type="button"
-                            class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm inline-flex items-center gap-1.5"
-                            wire:loading.attr="disabled" wire:target="approveRoomBooking">
-                            <x-heroicon-o-check-circle class="w-4 h-4" />
-                            Approve
-                        </button>
-                        <button wire:click="openRoomReject({{ $selectedBookingDetail['id'] }})" type="button"
-                            class="px-4 py-2 rounded-xl text-sm font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition shadow-sm inline-flex items-center gap-1.5">
-                            <x-heroicon-o-x-circle class="w-4 h-4" />
-                            {{ __('app.reject') }}
-                        </button>
-                        @endif
-                    </div>
+
+                <div class="px-5 py-4 border-t border-border flex justify-start">
                     <button @click="showDetail = false" class="px-5 py-2 rounded-xl text-sm font-bold border border-border bg-card text-foreground hover:bg-muted transition shadow-sm">Close</button>
                 </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Room Booking Reject Modal (from directory) --}}
-    @if($showRoomRejectModal)
-        <div class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4"
-            role="dialog" aria-modal="true"
-            wire:key="room-dir-reject-modal"
-            wire:keydown.escape.window="closeRoomReject">
-            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeRoomReject"></div>
-            <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden" tabindex="-1">
-                <form wire:submit.prevent="confirmRoomReject">
-                    <div class="px-6 py-5 border-b border-border bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
-                                <x-heroicon-o-x-circle class="w-4 h-4 text-[#CDDEA7]" />
-                            </div>
-                            <h3 class="font-bold tracking-tight text-base">{{ __('app.reject_booking_title') }}</h3>
-                        </div>
-                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeRoomReject">✕</button>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <p class="text-xs text-muted-foreground">{{ __('app.reject_reason_required') }}</p>
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.reject_reason_ph') }} <span class="text-destructive">*</span></label>
-                            <textarea wire:model.live="roomRejectReason" rows="4"
-                                class="w-full px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                                placeholder="Contoh: Jadwal bentrok / Ruangan tidak tersedia"
-                                required></textarea>
-                            @error('roomRejectReason') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                    <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
-                        <button type="button" class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5" wire:click="closeRoomReject">
-                            <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5" />
-                            <span>{{ __('app.cancel') }}</span>
-                        </button>
-                        <button type="submit" class="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/95 transition shadow-sm inline-flex items-center gap-1.5"
-                            wire:loading.attr="disabled" wire:target="confirmRoomReject">
-                            <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
-                            <span>{{ __('app.reject') }}</span>
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     @endif

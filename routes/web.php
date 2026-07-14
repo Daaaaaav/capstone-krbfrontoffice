@@ -196,6 +196,11 @@ Route::middleware(['auth'])->group(function () {
             ->name('attachments.finalize');
     });
 
+    // ---------- Notifications UI (Static View) ----------
+    Route::get('/notifications', function () {
+        return view('pages.notifications');
+    })->name('notifications.index');
+
     // ---------- Manager routes ----------
     Route::middleware('is.manager')->group(function () {
         Route::get('/manager-dashboard', ManagerDashboard::class)->name('manager.dashboard');

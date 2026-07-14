@@ -47,13 +47,13 @@
 
                 {{-- Desktop Menu --}}
                 <div class="hidden md:flex items-center space-x-0.5 lg:space-x-1 flex-wrap justify-center">
-                    <a href="{{ route('create-ticket') }}" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('create-ticket') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
+                    <a href="#" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('create-ticket') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
                         {{ __('app.create_ticket') }}
                     </a>
-                    <a href="{{ route('book-room') }}" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-room') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
+                    <a href="#" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-room') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
                         {{ __('app.book_room') }}
                     </a>
-                    <a href="{{ route('book-vehicle') }}" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-vehicle') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
+                    <a href="#" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-vehicle') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
                         {{ __('app.book_vehicle') }}
                     </a>
 
@@ -68,23 +68,23 @@
                             <x-heroicon-o-chevron-down class="w-3 lg:w-4 h-3 lg:h-4 transition-transform duration-300 flex-shrink-0" data-dropdown-arrow />
                         </button>
                         <div data-dropdown-menu class="dropdown-menu absolute right-0 mt-2 w-44 lg:w-52 bg-sidebar/95 backdrop-blur-md rounded-xl lg:rounded-2xl shadow-2xl border border-sidebar-border/60 py-2 z-50">
-                            <a href="{{ route('ticketstatus') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors truncate">
+                            <a href="#" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors truncate">
                                 <x-heroicon-o-ticket class="w-3.5 lg:w-4 h-3.5 lg:h-4 flex-shrink-0" />
                                 <span class="truncate">{{ __('app.ticket_status') }}</span>
                                 <span class="ml-auto px-1 lg:px-1.5 py-0.5 text-xs font-bold text-white bg-accent rounded-full leading-none shadow-sm whitespace-nowrap flex-shrink-0" data-count="{{ $totalUnreadCount }}">{{ $totalUnreadCount }}</span>
                             </a>
-                            <a href="{{ route('bookingstatus') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors truncate">
+                            <a href="#" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors truncate">
                                 <x-heroicon-o-calendar class="w-3.5 lg:w-4 h-3.5 lg:h-4 flex-shrink-0" />
                                 <span class="truncate">{{ __('app.meeting_status') }}</span>
                             </a>
-                            <a href="{{ route('vehiclestatus') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors truncate">
+                            <a href="#" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors truncate">
                                 <x-heroicon-o-truck class="w-3.5 lg:w-4 h-3.5 lg:h-4 flex-shrink-0" />
                                 <span class="truncate">{{ __('app.vehicle_status') }}</span>
                             </a>
                         </div>
                     </div>
                     @else
-                    <a href="{{ route('ticketstatus') }}" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('ticketstatus') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
+                    <a href="#" class="px-2 lg:px-3.5 py-2 text-xs lg:text-sm font-medium rounded-lg lg:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('ticketstatus') ? 'bg-primary text-white shadow-lg shadow-primary/15' : '' }} truncate">
                         Status
                     </a>
                     @endif
@@ -96,6 +96,14 @@
                         <span class="sm:hidden text-xs">Log</span>
                     </a>
                     @endguest
+
+                    {{-- Notification Bell (Desktop) --}}
+                    @auth
+                    <a href="{{ route('notifications.index') }}" class="relative ml-1 lg:ml-2 flex items-center justify-center w-8 h-8 lg:w-9 lg:h-9 rounded-full text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300">
+                        <x-heroicon-o-bell class="w-4.5 h-4.5 lg:w-5 lg:h-5" />
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-sidebar"></span>
+                    </a>
+                    @endauth
 
                     {{-- Language Toggle (Desktop) --}}
                     <div class="relative ml-1 lg:ml-2" x-data="{ open: false }">
@@ -138,7 +146,7 @@
                                 <p class="text-xs lg:text-sm font-semibold text-white truncate font-sans">{{ auth()->user()->full_name ?? auth()->user()->name ?? 'User' }}</p>
                                 <p class="text-xs text-sidebar-foreground/75 mt-0.5 truncate font-mono text-xs">{{ auth()->user()->email }}</p>
                             </div>
-                            <a href="{{ route('profile') }}" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors mt-2">
+                            <a href="#" class="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors mt-2">
                                 <x-heroicon-o-user-circle class="w-4 lg:w-5 h-4 lg:h-5 flex-shrink-0" /> {{ __('app.my_profile') }}
                             </a>
 
@@ -196,13 +204,13 @@
                 @endauth
 
                 {{-- Mobile Nav Links --}}
-                <a href="{{ route('create-ticket') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('create-ticket') ? 'bg-primary text-white' : '' }}">
+                <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('create-ticket') ? 'bg-primary text-white' : '' }}">
                     <x-heroicon-o-ticket class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.create_ticket') }}
                 </a>
-                <a href="{{ route('book-room') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-room') ? 'bg-primary text-white' : '' }}">
+                <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-room') ? 'bg-primary text-white' : '' }}">
                     <x-heroicon-o-building-office class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.book_room') }}
                 </a>
-                <a href="{{ route('book-vehicle') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-vehicle') ? 'bg-primary text-white' : '' }}">
+                <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-all duration-300 {{ request()->routeIs('book-vehicle') ? 'bg-primary text-white' : '' }}">
                     <x-heroicon-o-truck class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.book_vehicle') }}
                 </a>
 
@@ -217,25 +225,30 @@
                         <x-heroicon-o-chevron-down data-mobile-arrow class="w-4 sm:w-5 h-4 sm:h-5 transition-transform duration-300 flex-shrink-0" />
                     </button>
                     <div data-mobile-content class="mobile-dropdown-content pl-3 sm:pl-4">
-                        <a href="{{ route('ticketstatus') }}" class="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-sidebar-foreground/80 hover:text-white hover:bg-primary/10 rounded-lg sm:rounded-xl transition-colors mt-1">
+                        <a href="#" class="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-sidebar-foreground/80 hover:text-white hover:bg-primary/10 rounded-lg sm:rounded-xl transition-colors mt-1">
                             <span class="flex items-center gap-2 sm:gap-3"><x-heroicon-o-ticket class="w-3.5 sm:w-4 h-3.5 sm:h-4 flex-shrink-0" /> {{ __('app.ticket_status') }}</span>
                             <span class="px-1 py-0.5 text-xs font-bold text-white bg-accent rounded-full leading-none shadow-sm whitespace-nowrap flex-shrink-0" data-count="{{ $totalUnreadCount }}">{{ $totalUnreadCount }}</span>
                         </a>
-                        <a href="{{ route('bookingstatus') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-sidebar-foreground/80 hover:text-white hover:bg-primary/10 rounded-lg sm:rounded-xl transition-colors mt-1">
+                        <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-sidebar-foreground/80 hover:text-white hover:bg-primary/10 rounded-lg sm:rounded-xl transition-colors mt-1">
                             <x-heroicon-o-calendar class="w-3.5 sm:w-4 h-3.5 sm:h-4 flex-shrink-0" /> {{ __('app.meeting_status') }}
                         </a>
-                        <a href="{{ route('vehiclestatus') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-sidebar-foreground/80 hover:text-white hover:bg-primary/10 rounded-lg sm:rounded-xl transition-colors mt-1">
+                        <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-sidebar-foreground/80 hover:text-white hover:bg-primary/10 rounded-lg sm:rounded-xl transition-colors mt-1">
                             <x-heroicon-o-truck class="w-3.5 sm:w-4 h-3.5 sm:h-4 flex-shrink-0" /> {{ __('app.vehicle_status') }}
                         </a>
                     </div>
                 </div>
                 @else
-                <a href="{{ route('ticketstatus') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10"><x-heroicon-o-chart-bar class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> Status</a>
+                <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10"><x-heroicon-o-chart-bar class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> Status</a>
                 @endif
 
                 @auth
                 <div class="border-t border-sidebar-border/40 pt-3 mt-3 space-y-1">
-                    <a href="{{ route('profile') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors"><x-heroicon-o-user-circle class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.my_profile') }}</a>
+                    <a href="{{ route('notifications.index') }}" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors">
+                        <x-heroicon-o-bell class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" />
+                        <span>{{ __('app.notifications', ['default' => 'Notifications']) }}</span>
+                        <span class="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">New</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base font-medium rounded-lg sm:rounded-xl text-sidebar-foreground hover:text-white hover:bg-primary/10 transition-colors"><x-heroicon-o-user-circle class="w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" /> {{ __('app.my_profile') }}</a>
 
                     @php $role = auth()->user()->role->name; @endphp
 

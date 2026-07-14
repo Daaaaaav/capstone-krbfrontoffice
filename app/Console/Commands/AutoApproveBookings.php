@@ -129,7 +129,7 @@ class AutoApproveBookings extends Command
             ->whereNull('deleted_at')
             ->whereIn('status', ['approved', 'on_progress'])
             ->whereNotNull('end_at')
-            ->where('end_at', '<', $nowStr);
+            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr]);
 
         $lateCount = $lateQuery->count();
 
@@ -141,7 +141,7 @@ class AutoApproveBookings extends Command
                     ->whereNull('deleted_at')
                     ->whereIn('status', ['approved', 'on_progress'])
                     ->whereNotNull('end_at')
-                    ->where('end_at', '<', $nowStr)
+                    ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr])
                     ->update([
                         'status'     => 'late_return',
                         'updated_at' => $nowStr,

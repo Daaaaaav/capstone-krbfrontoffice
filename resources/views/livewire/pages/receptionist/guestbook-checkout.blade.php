@@ -46,7 +46,7 @@
         {{-- Scanner Area --}}
         <div
             wire:ignore
-            x-data="checkoutScanner()"
+            x-data="checkoutScanner(@this)"
             x-init="init()"
             class="space-y-5"
         >
@@ -314,7 +314,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     <script>
-        function checkoutScanner() {
+        function checkoutScanner($wire) {
             return {
                 scanning: false,
                 scannedCount: {{ $scannedCount }},
@@ -547,20 +547,7 @@
                     this._lastScanTime = Date.now();
 
                     try {
-                        const response = await fetch('{{ route("guestbook.checkout.scan") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                qr_content: decodedText,
-                                guestbook_id: this.guestbookId,
-                            }),
-                        });
-
-                        const data = await response.json();
+                        const data = await $wire.processScan(decodedText);
 
                         if (data.success) {
                             this.scannedCount = data.scanned_count;

@@ -34,6 +34,7 @@ class DocPackHistory extends Component
     public string $filterSender = '';
     public string $filterReceiver = '';
     public ?int $userId = null;
+    public ?int $departmentId = null;
     public string $userQ = '';
 
     // Pagination
@@ -68,7 +69,11 @@ class DocPackHistory extends Component
 
     public function updated($name): void
     {
-        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'filterSender', 'filterReceiver', 'userId', 'userQ', 'withTrashed'], true)) {
+        if ($name === 'departmentId') {
+            $this->userId = null;
+        }
+
+        if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'filterSender', 'filterReceiver', 'userId', 'departmentId', 'userQ', 'withTrashed'], true)) {
             $this->resetPage('donePage');
         }
     }
@@ -108,6 +113,10 @@ class DocPackHistory extends Component
 
         if (trim($this->filterReceiver) !== '') {
             $q->where('nama_penerima', 'like', '%' . trim($this->filterReceiver) . '%');
+        }
+
+        if ($this->departmentId) {
+            $q->where('department_id', $this->departmentId);
         }
 
         if ($this->userId && Schema::hasColumn('deliveries', 'receptionist_id')) {
@@ -291,12 +300,19 @@ class DocPackHistory extends Component
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
             ->orderBy('full_name')
-            ->get(['user_id', 'full_name'])
+            ->get(['user_id', 'full_name', 'department_id'])
             ->unique('user_id');
+
+        $departments = \App\Models\Department::query()
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->orderBy('department_name')
+            ->get(['department_id', 'department_name']);
 
         return view('livewire.pages.receptionist.docpackhistory', [
             'done' => $this->done,
             'users' => $users,
+            'departments' => $departments,
         ]);
     }
 }

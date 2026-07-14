@@ -80,7 +80,7 @@ class Guestbook extends Component
         $this->user_id = null; 
         $this->loadUsers($value);
     }
-
+    
     // Autocomplete for Name
     public function updatedName($value)
     {
@@ -125,7 +125,7 @@ class Guestbook extends Component
             $this->historyGuests = [];
         }
     }
-    
+
     // Helper function to load users
     private function loadUsers(?string $departmentId = null): void
     {
@@ -242,6 +242,7 @@ class Guestbook extends Component
         $this->visitor_count = 1;
         // Reset user list 
         $this->users_list = []; 
+
         $this->dispatch('$refresh');
         
         if ($emailFailed) {

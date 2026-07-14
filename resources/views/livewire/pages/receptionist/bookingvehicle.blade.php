@@ -17,17 +17,16 @@
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
 
-    <main class="px-4 sm:px-6 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {{-- LEFT / MAIN CONTENT --}}
-            <div class="lg:col-span-3">
+    <main class="px-4 sm:px-6 py-6 space-y-6">
         {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.vehicle_booking_title') }}"
             subtitle="{{ __('app.vehicle_booking_subtitle') }}" />
 
-        {{-- FORM --}}
-        <div class="{{ $card }}">
+        {{-- MAIN LAYOUT: LEFT (FORM) + RIGHT (SIDEBAR) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            {{-- LEFT: FORM CARD --}}
+            <div class="{{ $card }} lg:col-span-3">
             <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                     <x-heroicon-o-truck class="w-4.5 h-4.5 text-primary" />
@@ -47,6 +46,20 @@
                         <span>{{ session('success') }}</span>
                     </div>
                 @endif
+
+                {{-- Rules & Notes Alert --}}
+                <div class="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 shadow-sm">
+                    <div class="flex items-center gap-2 mb-2.5">
+                        <x-heroicon-o-information-circle class="w-5 h-5 shrink-0" />
+                        <h4 class="text-sm font-bold tracking-wide">Rules & Notes</h4>
+                    </div>
+                    <ul class="list-disc list-outside text-xs space-y-1.5 ml-5 text-blue-600/90 dark:text-blue-300/90 leading-relaxed">
+                        <li><strong>Maximum Booking Limit:</strong> You can only book a vehicle up to 1 month in advance from today's date.</li>
+                        <li><strong>Late Return Label:</strong> Returns delayed by more than 1 hour will be automatically flagged as 'Late Return'.</li>
+                        <li><strong>Mandatory Reason:</strong> If the return is delayed by more than 3 hours, a mandatory explanation/reason must be provided before completing the task.</li>
+                        <li><strong>Grace Period:</strong> Delays under 1 hour are still considered on-time (Success).</li>
+                    </ul>
+                </div>
 
                 <form wire:submit.prevent="submit" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -392,17 +405,17 @@
                             <div
                                 x-data="{
                                     open: false,
-                                    search: $wire.vehicleSearch,
+                                    search: '',
                                     selectedId: null,
                                     get items() {
                                         const q = (this.search || '').toLowerCase().trim();
-                                        const list = ($wire.vehiclesForCombobox || []);
+                                        const list = @js(collect($vehicles)->map(fn($v) => ['id' => $v->vehicle_id, 'label' => ($v->name ?? __('app.vehicle')) . ($v->plate_number ? ' — ' . $v->plate_number : '')])->values()->toArray());
                                         if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
                                         return list.filter(i => !q || i.label.toLowerCase().includes(q));
                                     },
                                     get selectedLabel() {
                                         const id = $wire.vehicle_id;
-                                        const list = ($wire.vehiclesForCombobox || []);
+                                        const list = @js(collect($vehicles)->map(fn($v) => ['id' => $v->vehicle_id, 'label' => ($v->name ?? __('app.vehicle')) . ($v->plate_number ? ' — ' . $v->plate_number : '')])->values()->toArray());
                                         const found = list.find(i => i.id == id);
                                         return found ? found.label : '';
                                     },
@@ -416,23 +429,13 @@
                                         this.search = '';
                                         this.selectedId = null;
                                         $wire.set('vehicle_id', null);
-                                        $wire.set('vehicleSearch', '');
                                     }
                                 }"
                                 x-init="
-                                    $watch('search', val => $wire.set('vehicleSearch', val));
                                     $watch('$wire.vehicle_id', val => {
                                         this.selectedId = val || null;
                                         if (!val) { search = ''; }
                                         else { search = selectedLabel; }
-                                    });
-                                    $watch('$wire.vehiclesForCombobox', () => {
-                                        // When the vehicle list is rebuilt (odd/even changed),
-                                        // clear search and selection so the new list shows fully
-                                        if (!$wire.vehicle_id) {
-                                            search = '';
-                                            selectedId = null;
-                                        }
                                     });
                                 "
                                 class="relative"
@@ -692,40 +695,40 @@
                     </div>
                 </form>
             </div>
-        </div>
-        </div>{{-- end lg:col-span-3 --}}
+            </div>
 
-        {{-- RIGHT: SIDEBAR (DESKTOP) --}}
-        <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
-            {{-- Vehicle Directory Widget --}}
-            <div class="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-                <div class="px-4 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
-                    <div>
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">Vehicle Directory</h3>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">Click a vehicle to see its schedule</p>
+            {{-- RIGHT: SIDEBAR (DESKTOP) --}}
+            <aside class="hidden lg:flex lg:flex-col lg:col-span-1 gap-4">
+                {{-- Available Vehicles Widget --}}
+                <div class="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div class="px-4 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-foreground">Fleet Availability</h3>
+                            <p class="text-[11px] text-muted-foreground mt-0.5">Quick overview of available vehicles</p>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        @forelse(collect($vehicles)->take(5) as $vehicle)
+                            <div wire:click="openVehicleScheduleModal({{ $vehicle->vehicle_id }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+                                    <x-heroicon-o-truck class="w-4 h-4" />
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-foreground truncate">{{ $vehicle->name ?? __('app.vehicle') }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">{{ $vehicle->plate_number ?? 'No Plate' }}</p>
+                                </div>
+                            </div>
+
+                        @empty
+                            <div class="text-center py-6">
+                                <x-heroicon-o-truck class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2"/>
+                                <p class="text-xs text-muted-foreground">No vehicles available.</p>
+                            </div>
+                        @endforelse
                     </div>
                 </div>
-                <div class="p-4 space-y-4">
-                    @forelse(array_slice($vehiclesForCombobox ?? [], 0, 6) as $vehicle)
-                        <div wire:click="openVehicleScheduleModal({{ $vehicle['id'] }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
-                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
-                                <x-heroicon-o-truck class="w-4 h-4" />
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-sm font-semibold text-foreground truncate">{{ $vehicle['label'] }}</p>
-                                <p class="text-[11px] text-muted-foreground truncate">Company Vehicle</p>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="text-center py-6">
-                            <x-heroicon-o-truck class="w-8 h-8 mx-auto text-muted-foreground/30 mb-2"/>
-                            <p class="text-xs text-muted-foreground">No vehicles available.</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </aside>
-        </div>{{-- end grid --}}
+            </aside>
+        </div>
     </main>
 
     {{-- Vehicle Schedule Modal --}}
@@ -759,7 +762,7 @@
                     @else
                         <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                             @foreach($vehicleScheduleData as $booking)
-                                <div wire:click="openVehicleBookingDetail({{ $booking['id'] }})" class="cursor-pointer p-3 rounded-xl border border-border bg-muted/5 shadow-sm hover:border-primary/30 transition-colors">
+                                <div wire:click="openBookingDetail({{ $booking['id'] }})" class="cursor-pointer p-3 rounded-xl border border-border bg-muted/5 shadow-sm hover:border-primary/30 transition-colors">
                                     <div class="flex items-start justify-between gap-2 mb-2">
                                         <div class="font-bold text-foreground text-sm leading-tight break-words">{{ $booking['title'] }}</div>
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary whitespace-nowrap">
@@ -788,9 +791,8 @@
         </div>
     @endif
 
-    {{-- Vehicle Booking Detail Modal --}}
-    @if($showVehicleBookingDetailModal && !empty($selectedVehicleBookingDetail))
-        <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" x-data="{ showDetail: @entangle('showVehicleBookingDetailModal') }" x-show="showDetail" x-cloak>
+    @if($showBookingDetailModal && !empty($selectedBookingDetail))
+        <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6" x-data="{ showDetail: @entangle('showBookingDetailModal') }" x-show="showDetail" x-cloak>
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="showDetail = false"></div>
             <div class="relative w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden transform transition-all flex flex-col"
                 x-transition:enter="ease-out duration-300"
@@ -799,116 +801,59 @@
                 x-transition:leave="ease-in duration-200"
                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                
                 <div class="px-6 py-4 border-b border-border bg-muted/5 flex items-start justify-between">
                     <div>
-                        <h3 class="text-lg font-bold text-foreground leading-tight">{{ $selectedVehicleBookingDetail['vehicle_name'] }}</h3>
-                        <p class="text-sm text-muted-foreground mt-1">{{ $selectedVehicleBookingDetail['plate_number'] }} &mdash; Vehicle Booking Detail</p>
+                        <h3 class="text-lg font-bold text-foreground leading-tight">{{ $selectedBookingDetail['vehicle_name'] }}</h3>
+                        <p class="text-sm text-muted-foreground mt-1">Vehicle Booking Detail</p>
                     </div>
                     <button @click="showDetail = false" class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted/10">
                         ✕
                     </button>
                 </div>
+
                 <div class="p-6 overflow-y-auto">
                     <div class="grid grid-cols-2 gap-6">
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Vehicle</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['vehicle_name'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['vehicle_name'] }} ({{ $selectedBookingDetail['plate_number'] }})</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Status</p>
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary">
-                                {{ $selectedVehicleBookingDetail['status'] }}
+                                {{ $selectedBookingDetail['status'] }}
                             </span>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Borrower</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['borrower'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['borrower'] }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Department</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['department'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['department'] }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Start</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['start_at_full'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['start_at_full'] }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">End</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['end_at_full'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['end_at_full'] }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Purpose</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['purpose'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['purpose'] }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Destination</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedVehicleBookingDetail['destination'] }}</p>
+                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['destination'] }}</p>
                         </div>
                     </div>
                 </div>
-                <div class="px-5 py-4 border-t border-border flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        @if(strtolower($selectedVehicleBookingDetail['status'] ?? '') === 'pending')
-                        <button wire:click="approveVehicleBookingFromDirectory({{ $selectedVehicleBookingDetail['id'] }})" type="button"
-                            class="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm inline-flex items-center gap-1.5"
-                            wire:loading.attr="disabled" wire:target="approveVehicleBookingFromDirectory">
-                            <x-heroicon-o-check-circle class="w-4 h-4" />
-                            Approve
-                        </button>
-                        <button wire:click="openVehicleRejectFromDirectory({{ $selectedVehicleBookingDetail['id'] }})" type="button"
-                            class="px-4 py-2 rounded-xl text-sm font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition shadow-sm inline-flex items-center gap-1.5">
-                            <x-heroicon-o-x-circle class="w-4 h-4" />
-                            {{ __('app.reject') }}
-                        </button>
-                        @endif
-                    </div>
+
+                <div class="px-5 py-4 border-t border-border flex justify-start">
                     <button @click="showDetail = false" class="px-5 py-2 rounded-xl text-sm font-bold border border-border bg-card text-foreground hover:bg-muted transition shadow-sm">Close</button>
                 </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- Vehicle Booking Reject Modal (from directory) --}}
-    @if($showVehicleRejectModal)
-        <div class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4"
-            role="dialog" aria-modal="true"
-            wire:key="vehicle-dir-reject-modal"
-            wire:keydown.escape.window="closeVehicleReject">
-            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeVehicleReject"></div>
-            <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden" tabindex="-1">
-                <form wire:submit.prevent="confirmVehicleRejectFromDirectory">
-                    <div class="px-6 py-5 border-b border-border bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
-                                <x-heroicon-o-x-circle class="w-4 h-4 text-[#CDDEA7]" />
-                            </div>
-                            <h3 class="font-bold tracking-tight text-base">Reject Vehicle Booking</h3>
-                        </div>
-                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeVehicleReject">✕</button>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <p class="text-xs text-muted-foreground">{{ __('app.reject_reason_required') }}</p>
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.reject_reason_ph') }} <span class="text-destructive">*</span></label>
-                            <textarea wire:model.live="vehicleRejectNote" rows="4"
-                                class="w-full px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                                placeholder="Contoh: Kendaraan sedang dalam perawatan / Jadwal bentrok"
-                                required></textarea>
-                            @error('vehicleRejectNote') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                    <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
-                        <button type="button" class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5" wire:click="closeVehicleReject">
-                            <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5" />
-                            <span>{{ __('app.cancel') }}</span>
-                        </button>
-                        <button type="submit" class="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/95 transition shadow-sm inline-flex items-center gap-1.5"
-                            wire:loading.attr="disabled" wire:target="confirmVehicleRejectFromDirectory">
-                            <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
-                            <span>{{ __('app.reject') }}</span>
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     @endif

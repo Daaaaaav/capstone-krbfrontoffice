@@ -120,6 +120,14 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                 </div>
 
                 <div class="flex items-center gap-3 shrink-0">
+                    <a href="{{ route('notifications.index') }}" class="relative flex items-center justify-center w-8 h-8 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent border border-sidebar-border/50 transition-all focus:outline-none">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-[#2a1f1a]"></span>
+                    </a>
+
                     {{-- Language Toggle (Mobile Header) --}}
                     @php $isEnHeader = app()->getLocale() === 'en'; @endphp
                     <div x-data="{ open: false }" class="relative">
@@ -212,7 +220,8 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     </div>
                 </header>
 
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
 
             </div>
         </main>
