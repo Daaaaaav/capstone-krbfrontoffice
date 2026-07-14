@@ -334,6 +334,113 @@
                 </div>
                 @endif
 
+                {{-- Visitors Today --}}
+                <div class="bg-card border border-border rounded-lg overflow-hidden"
+                     x-data="{ visOpen: true }">
+                    <div class="px-4 py-3 border-b border-border bg-muted/30">
+                        <p class="text-xs font-bold uppercase tracking-wider text-foreground">Visitors Today</p>
+                        <p class="text-[11px] text-muted-foreground mt-0.5">Guestbook entries today</p>
+                    </div>
+                    <div>
+                        <button @click="visOpen = !visOpen"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-violet-700 bg-violet-50/60 hover:bg-violet-50 transition">
+                            <span class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                                Today
+                                <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">
+                                    {{ $todayVisitors->count() }}
+                                </span>
+                            </span>
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="visOpen ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="visOpen" x-collapse class="divide-y divide-border/40">
+                            @forelse($todayVisitors as $v)
+                            <div class="px-4 py-2.5 flex items-start gap-3 hover:bg-muted/30 transition">
+                                <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-semibold text-foreground truncate">{{ $v->name }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">
+                                        {{ $v->instansi ?? $v->keperluan ?? '—' }} &bull;
+                                        {{ $v->jam_in ?? \Carbon\Carbon::parse($v->created_at)->format('H:i') }}
+                                        @if($v->visitor_count > 1)
+                                        &bull; {{ $v->visitor_count }} visitors
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                            @empty
+                            <p class="px-4 py-3 text-xs text-muted-foreground italic">No visitors today.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
+                {{-- DocPack Status --}}
+                <div class="bg-card border border-border rounded-lg overflow-hidden"
+                     x-data="{ dpOpen: true }">
+                    <div class="px-4 py-3 border-b border-border bg-muted/30">
+                        <p class="text-xs font-bold uppercase tracking-wider text-foreground">Doc / Package Status</p>
+                        <p class="text-[11px] text-muted-foreground mt-0.5">Pending &amp; stored items</p>
+                    </div>
+                    <div>
+                        <button @click="dpOpen = !dpOpen"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-amber-700 bg-amber-50/60 hover:bg-amber-50 transition">
+                            <span class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                                Pending / Stored
+                                <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">
+                                    {{ $pendingDocpacks->count() }}
+                                </span>
+                            </span>
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="dpOpen ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="dpOpen" x-collapse class="divide-y divide-border/40">
+                            @forelse($pendingDocpacks as $d)
+                            <div class="px-4 py-2.5 flex items-start gap-3 hover:bg-muted/30 transition">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                    @if($d->type === 'document')
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    @else
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+                                    </svg>
+                                    @endif
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-semibold text-foreground truncate">{{ $d->item_name }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">
+                                        {{ ucfirst($d->type ?? 'item') }} &bull;
+                                        {{ $d->nama_pengirim ? 'From: '.$d->nama_pengirim : '' }}
+                                        @if($d->nama_pengirim && $d->nama_penerima) &rarr; @endif
+                                        {{ $d->nama_penerima ? $d->nama_penerima : '' }}
+                                    </p>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium
+                                        {{ $d->status === 'stored' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700' }}">
+                                        {{ ucfirst($d->status) }}
+                                    </span>
+                                </div>
+                            </div>
+                            @empty
+                            <p class="px-4 py-3 text-xs text-muted-foreground italic">No pending items.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
             </aside>
         </div>{{-- end two-column grid --}}
     </main>
@@ -345,6 +452,8 @@
     const CHART_COLORS = {
         'room':    { border: '#4E653D', bg: 'rgba(78, 101, 61, 0.1)' },
         'vehicle': { border: '#4A2F24', bg: 'rgba(74, 47, 36, 0.1)' },
+        'visitor': { border: '#7C3AED', bg: 'rgba(124, 58, 237, 0.1)' },
+        'docpack': { border: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
     };
     const FALLBACK_COLORS = ['#354C2B', '#CDDEA7'];
 

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\BookingRoom;
 use App\Models\VehicleBooking;
 use App\Models\Delivery;
+use App\Models\Guestbook;
 use App\Models\PriorityRoomBooking;
 use App\Models\PriorityVehicleBooking;
 
@@ -28,7 +29,6 @@ class Dashboard extends Component
         $roomYears    = BookingRoom::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
         $vehicleYears = VehicleBooking::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
         $latestYear   = $roomYears->merge($vehicleYears)->unique()->sort()->last();
-
         $this->selectedYear = $latestYear ? (int) $latestYear : (int) date('Y');
     }
 
@@ -107,14 +107,30 @@ class Dashboard extends Component
                 ->groupByRaw('MONTH(created_at)')
                 ->pluck('count', 'month');
 
-            $labels  = $months->map(fn($m) => date('M', mktime(0, 0, 0, $m, 1)))->toArray();
-            $room    = $months->map(fn($m) => (int) ($roomByMonth[$m] ?? 0))->toArray();
-            $vehicle = $months->map(fn($m) => (int) ($vehicleByMonth[$m] ?? 0))->toArray();
+            $guestbookByMonth = Guestbook::where('company_id', $companyId)
+                ->whereYear('created_at', $this->selectedYear)
+                ->selectRaw('MONTH(created_at) as month, COUNT(*) as count')
+                ->groupByRaw('MONTH(created_at)')
+                ->pluck('count', 'month');
+
+            $docpackByMonth = Delivery::where('company_id', $companyId)
+                ->whereYear('created_at', $this->selectedYear)
+                ->selectRaw('MONTH(created_at) as month, COUNT(*) as count')
+                ->groupByRaw('MONTH(created_at)')
+                ->pluck('count', 'month');
+
+            $labels   = $months->map(fn($m) => date('M', mktime(0, 0, 0, $m, 1)))->toArray();
+            $room     = $months->map(fn($m) => (int) ($roomByMonth[$m] ?? 0))->toArray();
+            $vehicle  = $months->map(fn($m) => (int) ($vehicleByMonth[$m] ?? 0))->toArray();
+            $visitor  = $months->map(fn($m) => (int) ($guestbookByMonth[$m] ?? 0))->toArray();
+            $docpack  = $months->map(fn($m) => (int) ($docpackByMonth[$m] ?? 0))->toArray();
 
             // Available years for selector
             $roomYears    = BookingRoom::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
             $vehicleYears = VehicleBooking::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
-            $availableYears = $roomYears->merge($vehicleYears)->unique()->sort()->values()->toArray();
+            $guestYears   = Guestbook::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
+            $delivYears   = Delivery::where('company_id', $companyId)->selectRaw('YEAR(created_at) as y')->groupByRaw('YEAR(created_at)')->pluck('y');
+            $availableYears = $roomYears->merge($vehicleYears)->merge($guestYears)->merge($delivYears)->unique()->sort()->values()->toArray();
             if (empty($availableYears)) {
                 $availableYears = [(int) date('Y')];
             }
@@ -122,36 +138,18 @@ class Dashboard extends Component
             // Filter logic
             if ($this->activeFilter === 'room') {
                 $datasets = [
-                    [
-                        'type'  => 'room',
-                        'label' => __('app.room_bookings_label'),
-                        'data'  => $room,
-                        'borderColor' => '#2563eb',
-                    ]
+                    ['type' => 'room',    'label' => __('app.room_bookings_label'),    'data' => $room],
                 ];
             } elseif ($this->activeFilter === 'vehicle') {
                 $datasets = [
-                    [
-                        'type'  => 'vehicle',
-                        'label' => __('app.vehicle_bookings_label'),
-                        'data'  => $vehicle,
-                        'borderColor' => '#059669',
-                    ]
+                    ['type' => 'vehicle', 'label' => __('app.vehicle_bookings_label'), 'data' => $vehicle],
                 ];
             } else {
                 $datasets = [
-                    [
-                        'type'  => 'room',
-                        'label' => __('app.room_bookings_label'),
-                        'data'  => $room,
-                        'borderColor' => '#2563eb',
-                    ],
-                    [
-                        'type'  => 'vehicle',
-                        'label' => __('app.vehicle_bookings_label'),
-                        'data'  => $vehicle,
-                        'borderColor' => '#059669',
-                    ]
+                    ['type' => 'room',    'label' => __('app.room_bookings_label'),    'data' => $room],
+                    ['type' => 'vehicle', 'label' => __('app.vehicle_bookings_label'), 'data' => $vehicle],
+                    ['type' => 'visitor', 'label' => 'Visitors',                       'data' => $visitor],
+                    ['type' => 'docpack', 'label' => 'Doc / Package',                  'data' => $docpack],
                 ];
             }
 
@@ -201,6 +199,18 @@ class Dashboard extends Component
                 ->orderBy('start_at')
                 ->limit(5)->get();
 
+            // Today's visitors
+            $todayVisitors = Guestbook::where('company_id', $companyId)
+                ->whereDate('created_at', today())
+                ->orderByDesc('created_at')
+                ->limit(10)->get();
+
+            // Recent stored/pending docpacks
+            $pendingDocpacks = Delivery::where('company_id', $companyId)
+                ->whereIn('status', ['pending', 'stored'])
+                ->orderByDesc('created_at')
+                ->limit(10)->get();
+
             return view('livewire.pages.manager.dashboard', [
                 'stats'                  => $stats,
                 'labels'                 => $labels,
@@ -214,6 +224,8 @@ class Dashboard extends Component
                 'ongoingVehicleBookings' => $ongoingVehicleBookings,
                 'pendingPriorityRoom'    => $pendingPriorityRoom,
                 'pendingPriorityVehicle' => $pendingPriorityVehicle,
+                'todayVisitors'          => $todayVisitors,
+                'pendingDocpacks'        => $pendingDocpacks,
             ]);
         } catch (\Exception $e) {
             $this->dispatch('toast', 
@@ -243,6 +255,8 @@ class Dashboard extends Component
                 'ongoingVehicleBookings' => $emptyCollection,
                 'pendingPriorityRoom'    => $emptyCollection,
                 'pendingPriorityVehicle' => $emptyCollection,
+                'todayVisitors'          => $emptyCollection,
+                'pendingDocpacks'        => $emptyCollection,
             ]);
         }
     }
