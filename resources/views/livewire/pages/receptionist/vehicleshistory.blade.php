@@ -27,59 +27,31 @@
     $icoAvatar = 'w-10 h-10 bg-[#4E653D] rounded-xl flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden relative';
 @endphp
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gray-50" x-data="{ showFilterModal: false }">
     <main class="px-4 sm:px-6 py-6 space-y-6">
 
-        {{-- Flash Messages --}}
-        @if (session('success') || session('error'))
-            <div class="max-w-3xl mx-auto">
-                @if (session('success'))
-                    <div class="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                        {{ session('success') }}
-                    </div>
-                @endif
-                @if (session('error'))
-                    <div class="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                        {{ session('error') }}
-                    </div>
-                @endif
-            </div>
-        @endif
+        {{-- Flash Messages (Replaced by Toast) --}}
 
-        {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.vehicle_history_title') }}</h2>
-                            <p class="text-sm text-[#CDDEA7]/80">
-                                {{ $statusTab === 'rejected'
-                                    ? __('app.vehicle_history_sub_rej')
-                                    : __('app.vehicle_history_sub_done') }}
-                            </p>
-                        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.vehicle_history_title') }}"
+            subtitle="{{ $statusTab === 'rejected' ? __('app.vehicle_history_sub_rej') : __('app.vehicle_history_sub_done') }}">
+            <x-slot:actions>
+                <button type="button" wire:click="$toggle('withTrashed')" class="flex items-center gap-2 group focus:outline-none">
+                    <div class="relative flex items-center">
+                        <div class="w-9 h-5 rounded-full transition-colors {{ $withTrashed ? 'bg-primary' : 'bg-border' }}"></div>
+                        <div class="absolute left-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-transform {{ $withTrashed ? 'translate-x-4' : '' }}"></div>
                     </div>
-
-                    {{-- Include Deleted --}}
-                    <label class="inline-flex items-center gap-2 text-sm text-[#CDDEA7]/90 cursor-pointer">
-                        <input type="checkbox" wire:model.live="includeDeleted"
-                            class="w-4 h-4 rounded border-[#CDDEA7]/30 bg-[#CDDEA7]/10 text-[#CDDEA7] focus:ring-2 focus:ring-[#CDDEA7]/20 cursor-pointer">
-                        <span>{{ __('app.include_deleted') }}</span>
-                    </label>
-                </div>
-            </div>
-        </div>
+                    <span class="text-sm font-medium transition-colors" style="color:#CDDEA7 !important">{{ __('app.show_deleted') }}</span>
+                </button>
+                <button type="button"
+                        class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                        @click="showFilterModal = true">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- MAIN GRID --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -142,10 +114,6 @@
                                 Vehicle: {{ $activeVehicle }}
                                 <button type="button" class="ml-1 hover:text-white" wire:click="$set('vehicleFilter', null)">×</button>
                             </span>
-                        @else
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-dashed border-gray-300">
-                                {{ __('app.no_vehicle_filter') }}
-                            </span>
                         @endif
                     </div>
                 </div>
@@ -173,16 +141,120 @@
 
                         <div>
                             <label class="{{ $label }}">{{ __('app.sort') }}</label>
-                            <select wire:model.live="sortFilter" class="{{ $input }}">
-                                <option value="recent">{{ __('app.sort_default') }}</option>
-                                <option value="oldest">{{ __('app.sort_oldest_first') }}</option>
-                                <option value="nearest">{{ __('app.sort_nearest') }}</option>
-                            </select>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: @entangle('sortFilter').live,
+                                    options: [
+                                        { id: 'recent', label: '{{ __('app.sort_default') }}' },
+                                        { id: 'oldest', label: '{{ __('app.sort_oldest_first') }}' },
+                                        { id: 'nearest', label: '{{ __('app.sort_nearest') }}' }
+                                    ],
+                                    get items() {
+                                        const q = this.search.toLowerCase().trim();
+                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const found = this.options.find(i => i.id === this.selectedId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id) {
+                                        this.selectedId = id;
+                                        this.open = false;
+                                    }
+                                }"
+                                x-init="
+                                    if (!selectedId) selectedId = 'recent';
+                                    $watch('selectedId', () => { search = ''; });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        x-model="search"
+                                        @focus="open = true"
+                                        @input="open = true"
+                                        @keydown.escape="open = false"
+                                        @keydown.enter.prevent="items.length === 1 && select(items[0].id)"
+                                        autocomplete="off"
+                                        :placeholder="selectedLabel || '{{ __('app.sort_default') }}'"
+                                        class="{{ $input }} pr-8 cursor-pointer"
+                                        :class="{ 'placeholder-gray-900': selectedId, 'placeholder-gray-400': !selectedId }"
+                                    >
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+                                <ul
+                                    x-show="open && items.length > 0"
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                    style="display:none"
+                                >
+                                    <template x-for="item in items" :key="item.id">
+                                        <li
+                                            @click="select(item.id)"
+                                            :class="selectedId === item.id ? 'bg-[#4E653D] text-white' : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                            class="px-3.5 py-2.5 transition-colors"
+                                            x-text="item.label"
+                                        ></li>
+                                    </template>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {{-- LIST BODY – 2 column bento style --}}
+                {{-- ── MANAGER PRIORITY VEHICLE HISTORY ── --}}
+                @if(isset($priorityVehicleHistory) && $priorityVehicleHistory->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-3 border-b-2 border-blue-200 bg-blue-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                            Manager Priority Bookings — {{ $statusTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
+                        </span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white">{{ $priorityVehicleHistory->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4">
+                        @foreach($priorityVehicleHistory as $pvb)
+                        @php
+                            $pvhBadge = $statusTab === 'done'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700';
+                        @endphp
+                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">
+                                    {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pvb->borrower_name }} &bull;
+                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
+                                </p>
+                                <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
+                                <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                @if($pvb->rejection_reason)
+                                    <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
+                                {{ $pvb->statusLabel() }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 @if($bookings->isEmpty())
                     <div class="px-4 sm:px-6 py-14 text-center text-gray-500 text-sm">
                         {{ __('app.no_history_filter') }}
@@ -204,7 +276,7 @@
                                 
                                 {{-- START: MODIFIED VEHICLE HISTORY CARD DESIGN --}}
                                 <div wire:key="history-{{ $b->vehiclebooking_id }}"
-                                    class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition">
+                                    class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
                                     
                                     <div class="flex items-start gap-4">
                                         {{-- 1. Avatar/Initial on the left --}}
@@ -226,10 +298,6 @@
                                                             {{ __('app.deleted') }}
                                                         </span>
                                                     @endif
-                                                    {{-- ID Chip --}}
-                                                    <span class="text-[11px] px-2 py-0.5 rounded-full border border-gray-300 text-gray-700 bg-gray-50 flex-shrink-0">
-                                                        #{{ $b->vehiclebooking_id }}
-                                                    </span>
                                                 </div>
                                             </div>
 
@@ -288,12 +356,18 @@
 
                                     {{-- 5. BOTTOM ACTIONS (Horizontally aligned and right justified) --}}
                                     <div class="pt-3 border-t border-gray-100 flex justify-end gap-3 items-center">
+                                        <span class="text-[11px] text-gray-500 mr-auto">No. {{ ($bookings->firstItem() ?? 1) + $loop->index }}</span>
                                         
                                         {{-- Actions based on Trashed Status --}}
                                         @if(!$isTrashed)
                                             <button type="button"
-                                                class="px-4 py-2 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition"
-                                                wire:click="softDelete({{ $b->vehiclebooking_id }})">
+                                                class="px-3 py-2 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 transition shadow-sm"
+                                                wire:click="openEdit({{ $b->vehiclebooking_id }})">
+                                                {{ __('app.edit') }}
+                                            </button>
+                                            <button type="button"
+                                                class="px-3 py-2 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 transition"
+                                                wire:click="confirmDelete({{ $b->vehiclebooking_id }}, '{{ str_replace('\'', '', $b->purpose ?? __('app.vehicle_book')) }}')">
                                                 {{ __('app.delete') }}
                                             </button>
                                         @else
@@ -319,7 +393,7 @@
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.purpose') }} / {{ __('app.destination') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.date') }} & {{ __('app.time') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.status') }}</th>
-                                        <th class="h-10 px-4 text-right text-xs font-semibold text-gray-500">{{ __('app.actions') }}</th>
+                                        <th class="h-10 px-4 text-xs font-semibold text-gray-500">{{ __('app.actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
@@ -333,22 +407,22 @@
                                                 : ['bg'=>'bg-emerald-100','text'=>'text-emerald-800','label'=>__('app.completed')];
                                         @endphp
                                         <tr wire:key="history-row-{{ $b->vehiclebooking_id }}" class="hover:bg-gray-50/50 transition {{ $isTrashed ? 'opacity-60' : '' }}">
-                                            <td class="h-12 px-4 text-gray-400 text-xs font-mono">#{{ $b->vehiclebooking_id }}</td>
-                                            <td class="h-12 px-4 font-medium">
+                                            <td class="h-12 px-4 py-0 text-gray-400 text-xs font-mono">{{ $loop->iteration }}</td>
+                                            <td class="h-12 px-4 py-0 font-medium">
                                                 <div class="font-medium text-gray-900">{{ $b->borrower_name ?? '—' }}</div>
                                             </td>
-                                            <td class="h-12 px-4 text-gray-600 font-medium">{{ $vehicleName }}</td>
-                                            <td class="h-12 px-4 text-gray-600">
-                                                <div class="max-w-[200px] truncate" title="{{ $b->purpose }}">
+                                            <td class="h-12 px-4 py-0 text-gray-600 font-medium">{{ $vehicleName }}</td>
+                                            <td class="h-12 px-4 py-0 text-gray-600">
+                                                <div class="md:max-w-[200px] truncate" title="{{ $b->purpose }}">
                                                     {{ $b->purpose ? ucfirst($b->purpose) : '—' }}
                                                 </div>
                                             </td>
-                                            <td class="h-12 px-4 whitespace-nowrap text-gray-600">
+                                            <td class="h-12 px-4 py-0 whitespace-nowrap text-gray-600">
                                                 <span class="font-medium text-gray-800">{{ fmtDate($b->start_at) }}</span>
                                                 <span class="text-xs text-gray-400 block">{{ fmtTime($b->start_at) }} – {{ fmtTime($b->end_at) }}</span>
                                             </td>
-                                            <td class="h-12 px-4">
-                                                <div class="flex items-center gap-1.5">
+                                            <td class="h-12 px-4 py-0 ">
+                                                <div class="flex items-center justify-end gap-1.5 flex-wrap">
                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ $statusStyle['bg'] }} {{ $statusStyle['text'] }}">
                                                         {{ $statusStyle['label'] }}
                                                     </span>
@@ -359,15 +433,20 @@
                                                     @endif
                                                 </div>
                                                 @if($isRejected && !empty($b->notes))
-                                                    <span class="block text-[11px] text-rose-600 max-w-[180px] truncate mt-0.5" title="{{ $b->notes }}">{{ __('app.reason') }}: {{ $b->notes }}</span>
+                                                    <span class="block text-[11px] text-rose-600 md:max-w-[180px] truncate mt-0.5" title="{{ $b->notes }}">{{ __('app.reason') }}: {{ $b->notes }}</span>
                                                 @endif
                                             </td>
-                                            <td class="h-12 px-4 text-right">
+                                            <td class="h-12 px-4 py-0">
                                                 <div class="flex items-center justify-end gap-2">
                                                     @if(!$isTrashed)
                                                         <button type="button"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm"
+                                                            wire:click="openEdit({{ $b->vehiclebooking_id }})">
+                                                            {{ __('app.edit') }}
+                                                        </button>
+                                                        <button type="button"
                                                             class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition"
-                                                            wire:click="softDelete({{ $b->vehiclebooking_id }})">
+                                                            wire:click="confirmDelete({{ $b->vehiclebooking_id }}, '{{ str_replace('\'', '', $b->purpose ?? __('app.vehicle_book')) }}')">
                                                             {{ __('app.delete') }}
                                                         </button>
                                                     @else
@@ -391,7 +470,7 @@
                 {{-- Pagination --}}
                 @if(method_exists($bookings, 'links'))
                     <div class="px-4 sm:px-6 py-5 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
-                        <div class="flex justify-center">
+                        <div class="w-full">
                             {{ $bookings->links() }}
                         </div>
                     </div>
@@ -401,61 +480,46 @@
             {{-- SIDEBAR --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 <section class="{{ $card }}">
-                    <div class="px-4 py-4 border-b border-gray-200">
-                        <h3 class="text-sm font-semibold text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
-                        <p class="text-xs text-gray-500 mt-1">{{ __('app.click_to_filter') }}</p>
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_vehicle') }}</p>
                     </div>
 
-                    <div class="px-4 py-3 max-h-64 overflow-y-auto">
-                        <button type="button" wire:click="$set('vehicleFilter', null)"
-                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
-                            <span class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">{{ __('app.all') }}</span>
-                                <span>{{ __('app.all_vehicles') }}</span>
-                            </span>
-                            @if(is_null($vehicleFilter))
-                                <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                            @endif
-                        </button>
-
-                        <div class="mt-2 space-y-1.5">
-                            @forelse($vehicles as $v)
-                                @php
-                                    $vLabel = $v->name ?? $v->plate_number ?? '#'.$v->vehicle_id;
-                                    $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
-                                @endphp
-
+                    <div class="p-4 space-y-4 bg-white">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.vehicle') }}</label>
+                            <div class="px-1 py-1 max-h-80 overflow-y-auto">
                                 <button type="button"
-                                    wire:click="$set('vehicleFilter', {{ $v->vehicle_id }})"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                                        wire:click="$set('vehicleFilter', null)"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
+                                            {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                                     <span class="flex items-center gap-2">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                            {{ substr($vLabel,0,2) }}
-                                        </span>
-                                        <span class="truncate">{{ $vLabel }}</span>
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
+                                        <span>{{ __('app.all_vehicles') }}</span>
                                     </span>
-                                    @if($active)
-                                        <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                                    @endif
                                 </button>
-                            @empty
-                                <p class="text-xs text-gray-500">{{ __('app.no_vehicle_data_filter') }}</p>
-                            @endforelse
-                        </div>
-                    </div>
 
-                    <div class="px-4 pt-3 pb-4 border-t border-gray-200 bg-gray-50">
-                        <h4 class="text-xs font-semibold text-gray-900 mb-2">{{ __('app.analytics') }}</h4>
-                        <div class="space-y-2 text-xs">
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-600">{{ __('app.total_vehicles') }}</span>
-                                <span class="font-semibold text-gray-900">{{ count($vehicles) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-gray-600">
-                                    {{ $statusTab === 'rejected' ? __('app.rejected_records') : __('app.completed_records') }}
-                                </span>
-                                <span class="font-semibold text-gray-900">{{ $bookings->total() }}</span>
+                                <div class="mt-2 space-y-1.5">
+                                    @forelse($vehicles as $v)
+                                        @php
+                                            $vLabel = $v->name ?? $v->plate_number ?? '#'.$v->vehicle_id;
+                                            $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
+                                        @endphp
+                                        <button type="button"
+                                                wire:click="$set('vehicleFilter', {{ $v->vehicle_id }})"
+                                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                            <span class="flex items-center gap-2">
+                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                                    {{ substr($vLabel, 0, 2) }}
+                                                </span>
+                                                <span class="truncate font-medium">{{ $vLabel }}</span>
+                                            </span>
+                                        </button>
+                                    @empty
+                                        <p class="text-xs text-gray-500">{{ __('app.no_vehicle_data_filter') }}</p>
+                                    @endforelse
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -463,4 +527,233 @@
             </aside>
         </div>
     </main>
+
+        {{-- MOBILE FILTER MODAL --}}
+        <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
+            <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
+            <div x-show="showFilterModal" 
+                 x-transition:enter="transform transition ease-out duration-300"
+                 x-transition:enter-start="translate-y-full"
+                 x-transition:enter-end="translate-y-0"
+                 x-transition:leave="transform transition ease-in duration-200"
+                 x-transition:leave-start="translate-y-0"
+                 x-transition:leave-end="translate-y-full"
+                 class="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-gray-200">
+                <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+                    <div>
+                        <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.click_to_filter') }}</p>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="showFilterModal = false">✕</button>
+                </div>
+
+                <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-white">
+                    <button type="button" wire:click="$set('vehicleFilter', null)" @click="showFilterModal = false"
+                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                        <span class="flex items-center gap-2">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">{{ __('app.all') }}</span>
+                            <span>{{ __('app.all_vehicles') }}</span>
+                        </span>
+                    </button>
+
+                    <div class="space-y-1.5">
+                        @forelse($vehicles as $v)
+                            @php
+                                $vLabel = $v->name ?? $v->plate_number ?? '#'.$v->vehicle_id;
+                                $active = !is_null($vehicleFilter) && (int)$vehicleFilter === (int)$v->vehicle_id;
+                            @endphp
+
+                            <button type="button"
+                                wire:click="$set('vehicleFilter', {{ $v->vehicle_id }})"
+                                @click="showFilterModal = false"
+                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                <span class="flex items-center gap-2">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
+                                        {{ substr($vLabel,0,2) }}
+                                    </span>
+                                    <span class="truncate">{{ $vLabel }}</span>
+                                </span>
+                            </button>
+                        @empty
+                            <p class="text-xs text-gray-500">{{ __('app.no_vehicle_data_filter') }}</p>
+                        @endforelse
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    {{-- ===== EDIT MODAL ===== --}}
+    @if($showEdit)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showEdit', false)"></div>
+            <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col transform transition-all duration-300 scale-100">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-pencil class="w-4 h-4 text-[#CDDEA7]" />
+                        </div>
+                        <h3 class="text-base font-bold tracking-tight">{{ __('app.edit') }}</h3>
+                    </div>
+                    <button wire:click="$set('showEdit', false)" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">
+                        <x-heroicon-o-x-mark class="w-4 h-4"/>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                    @php
+                        $mi = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
+                        $ml = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
+                    @endphp
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.borrower_label') ?? 'Borrower Name' }} <span class="text-rose-500">*</span></label>
+                        <input type="text" wire:model="edit.borrower_name" class="{{ $mi }}">
+                        @error('edit.borrower_name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="{{ $ml }}">{{ __('app.start') ?? 'Start' }} <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" wire:model="edit.start_at" class="{{ $mi }}">
+                            @error('edit.start_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="{{ $ml }}">{{ __('app.end') ?? 'End' }} <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" wire:model="edit.end_at" class="{{ $mi }}">
+                            @error('edit.end_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.purpose') }}</label>
+                        <input type="text" wire:model="edit.purpose" class="{{ $mi }}">
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.destination') }}</label>
+                        <input type="text" wire:model="edit.destination" class="{{ $mi }}">
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.reason') ?? 'Notes' }}</label>
+                        <textarea wire:model="edit.notes" class="{{ $mi }} py-2.5 h-20 resize-none"></textarea>
+                    </div>
+
+                    {{-- Vehicle Logs (Status Timeline) Section --}}
+                    @if(count($statusLogs) > 0)
+                        <div class="mt-6 border-t border-gray-100 pt-5">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-gray-500"/>
+                                Status Logs
+                            </h4>
+                            <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-gray-100 border-b border-gray-200 text-gray-600 uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-3 py-2">Step</th>
+                                            <th class="px-3 py-2">Status</th>
+                                            <th class="px-3 py-2">Logged At</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 text-gray-700">
+                                        @foreach($statusLogs as $index => $log)
+                                            @php
+                                                $bgClass = match($log['type']) {
+                                                    'success' => 'bg-emerald-100 text-emerald-800',
+                                                    'danger'  => 'bg-rose-100 text-rose-800',
+                                                    'warning' => 'bg-amber-100 text-amber-800',
+                                                    'primary' => 'bg-blue-100 text-blue-800',
+                                                    default   => 'bg-gray-200 text-gray-800',
+                                                };
+                                            @endphp
+                                            <tr class="hover:bg-white transition-colors">
+                                                <td class="px-3 py-2 font-medium">Log {{ $index + 1 }}</td>
+                                                <td class="px-3 py-2">
+                                                    <span class="inline-flex items-center gap-1 text-[10px] {{ $bgClass }} px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                        {{ $log['status'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-2 whitespace-nowrap">
+                                                    {{ \Carbon\Carbon::parse($log['time'])->format('d M Y, H:i') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="mt-6 border-t border-gray-100 pt-5">
+                            <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                <x-heroicon-o-clock class="w-4 h-4 text-gray-500"/>
+                                Status Logs
+                            </h4>
+                            <p class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">No timeline data available.</p>
+                        </div>
+                    @endif
+
+                    {{-- Footer actions --}}
+                    <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4 mt-6">
+                        <button type="button"
+                                class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition text-xs font-semibold"
+                                wire:click="$set('showEdit', false)">
+                            {{ __('app.cancel') }}
+                        </button>
+                        <button type="button"
+                                class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm flex items-center gap-1.5"
+                                wire:loading.attr="disabled" wire:target="saveEdit" wire:click="saveEdit">
+                            <span wire:loading.remove wire:target="saveEdit" class="flex items-center gap-1.5">
+                                <x-heroicon-o-check class="w-3.5 h-3.5" />
+                                {{ __('app.save') }}
+                            </span>
+                            <span wire:loading wire:target="saveEdit" class="flex items-center gap-1.5">
+                                <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>{{ __('app.saving') ?? 'Saving...' }}</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- DELETE MODAL --}}
+    @if($showDeleteModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
+            <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">
+                        {{ $isForceDelete ? __(`app.delete_permanent_confirm`) : __(`app.delete_vehicle_confirm`) ?? 'Hapus Data?' }}
+                    </h3>
+                    <p class="text-sm text-gray-500">{{ __('app.are_you_sure_delete') }}</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                        {{ $deletingSummary }}
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                    <button type="button" wire:click="$set('showDeleteModal', false)"
+                        class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        {{ __('app.cancel') }}
+                    </button>
+                    <button type="button" wire:click="executeDelete" wire:loading.attr="disabled"
+                        class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="executeDelete">{{ __('app.delete') }}</span>
+                        <span wire:loading wire:target="executeDelete" class="flex items-center gap-1.5">
+                            <svg class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            {{ __('app.delete') }}...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>

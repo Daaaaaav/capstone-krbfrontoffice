@@ -15,7 +15,7 @@ class IsReceptionist
         if ($user && $roleName === 'Receptionist') {
             return $next($request);
         }
-        else if ($user && $roleName === 'Superadmin') {
+        else if ($user && $roleName === 'Manager') {
             return $next($request);
         }
 

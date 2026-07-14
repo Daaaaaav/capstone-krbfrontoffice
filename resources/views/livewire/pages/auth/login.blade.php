@@ -201,23 +201,25 @@
     </div>
 </div>
 
-@script
+@if(config('services.system.captcha_enabled'))
 <script>
-    @if(config('services.system.captcha_enabled'))
+    // Must be global and defined before reCAPTCHA renders
     window.onCaptchaSuccess = function(token) {
-        // Token is read directly via grecaptcha.getResponse() on submit.
-        // Nothing to do here — kept as a named callback required by data-callback.
+        // Token is read via grecaptcha.getResponse() on submit.
     };
 
     window.onCaptchaExpired = function() {
-        $wire.set('captcha', '');
+        // Reset handled server-side on next submission attempt.
     };
+</script>
+@endif
 
+@script
+<script>
     Livewire.on('captcha-error', () => {
         if (typeof grecaptcha !== 'undefined') {
             grecaptcha.reset();
         }
     });
-    @endif
 </script>
 @endscript

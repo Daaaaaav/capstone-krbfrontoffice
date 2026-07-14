@@ -57,11 +57,13 @@ return [
     ],
 
     'google' => [
-        'credentials_path' => env('GOOGLE_APPLICATION_CREDENTIALS', 'storage/app/google/google-service-account.json'),
-        'client_secret_path' => env('GOOGLE_CLIENT_SECRET', 'storage/app/google/client_secret.json'),
-        'token_path'       => env('GOOGLE_TOKEN_PATH', 'storage/app/google/token.json'),
-        'calendar_id'      => env('GOOGLE_CALENDAR_ID', 'primary'),
-        'impersonate_email' => env('GOOGLE_IMPERSONATE_EMAIL'),
+        'client_id'          => env('GOOGLE_CLIENT_ID'),
+        'client_secret'      => env('GOOGLE_CLIENT_SECRET'),
+        'credentials_path'   => env('GOOGLE_APPLICATION_CREDENTIALS', 'storage/app/google/google-service-account.json'),
+        'client_secret_path' => env('GOOGLE_CLIENT_SECRET_PATH', 'storage/app/google/client_secret.json'),
+        'token_path'         => env('GOOGLE_TOKEN_PATH', 'storage/app/google/token.json'),
+        'calendar_id'        => env('GOOGLE_CALENDAR_ID', 'primary'),
+        'impersonate_email'  => env('GOOGLE_IMPERSONATE_EMAIL'),
     ],
 
 ];

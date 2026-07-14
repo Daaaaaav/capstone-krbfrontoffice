@@ -32,8 +32,8 @@ class OtpVerification extends Model
      */
     public function isValid(string $code): bool
     {
-        return !$this->is_verified 
-            && !$this->isExpired() 
+        return !$this->is_verified
+            && !$this->isExpired()
             && $this->otp_code === $code;
     }
 }

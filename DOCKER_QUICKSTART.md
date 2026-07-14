@@ -1,4 +1,4 @@
-# Docker Quick Start Guide
+﻿# Docker Quick Start Guide
 
 Get the KRB System running with Docker in 5 minutes.
 
@@ -53,8 +53,8 @@ After deployment completes (3-5 minutes):
 
 ## Default Login
 
-**Superadmin:**
-- Email: `superadmin@krbogor.id`
+**Manager:**
+- Email: `manager@krbogor.id`
 - Password: `superpassword`
 
 **Receptionist:**

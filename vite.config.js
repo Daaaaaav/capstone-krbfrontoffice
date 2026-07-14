@@ -10,10 +10,4 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
-    server: {
-        host: '0.0.0.0',   // listen on all interfaces, not just localhost
-        hmr: {
-            host: 'underwear-unmade-acclimate.ngrok-free.dev', // your ngrok domain
-        },
-    },
 });

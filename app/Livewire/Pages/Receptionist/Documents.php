@@ -37,6 +37,12 @@ class Documents extends Component
     public bool $showEdit = false;
     public $editId = null;
 
+    // Delete Modal State
+    public ?int $deletingId = null;
+    public string $deletingSummary = '';
+    public bool $showDeleteModal = false;
+    public bool $isForceDelete = false;
+
     public $edit = [
         'document_name'    => null,
         'nama_pengirim'    => null,
@@ -146,7 +152,7 @@ class Documents extends Component
             default     => 'Item disimpan ke kotak Pending.',
         };
 
-        $this->dispatch('notify', type: 'success', message: 'Item berhasil ditambahkan. ' . $msg);
+        $this->dispatch('toast', type: 'success', title: __('app.success'), message: 'Item berhasil ditambahkan. ' . $msg, duration: 3000);
     }
 
     public function openEdit(int $id): void
@@ -206,16 +212,36 @@ class Documents extends Component
         $this->showEdit = false;
 
         $msg = 'Perubahan disimpan. Posisi kartu diperbarui sesuai status.';
-        $this->dispatch('notify', type: 'success', message: 'Item berhasil diperbarui. ' . $msg);
+        $this->dispatch('toast', type: 'success', title: __('app.success'), message: 'Item berhasil diperbarui. ' . $msg, duration: 3000);
         $this->dispatch('$refresh');
     }
 
+    public function confirmDelete(int $id, string $summary, bool $force = false): void
+    {
+        $this->deletingId = $id;
+        $this->deletingSummary = $summary;
+        $this->isForceDelete = $force;
+        $this->showDeleteModal = true;
+    }
+
+    public function executeDelete(): void
+    {
+        if (!$this->deletingId) {
+            return;
+        }
+
+        $this->deleteAction($this->deletingId);
+
+        $this->showDeleteModal = false;
+        $this->deletingId = null;
+        $this->isForceDelete = false;
+    }
+
     /** Soft delete only */
-    public function delete(int $id): void
+    private function deleteAction(int $id): void
     {
         $this->findOwnedOrFail($id)->delete(); // soft delete
-        $this->dispatch('notify', type: 'success', message: 'Item dihapus (soft delete).');
-        $this->dispatch('toast', type: 'success', message: 'Item dihapus (soft delete).');
+        $this->dispatch('toast', type: 'success', title: __('app.success'), message: 'Item dihapus (soft delete).', duration: 3000);
         $this->dispatch('$refresh');
     }
 

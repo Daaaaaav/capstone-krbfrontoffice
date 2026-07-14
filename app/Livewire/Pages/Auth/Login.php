@@ -44,7 +44,14 @@ class Login extends Component
     public function mount()
     {
         if (Auth::check()) {
-            return redirect()->route('home');
+            $role = Auth::user()->role->name ?? Auth::user()->role ?? null;
+            if (in_array($role, ['Manager', 'Receptionist'])) {
+                return redirect()->route('home');
+            }
+            // Unknown role — log out so they can re-authenticate cleanly
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
         }
     }
 

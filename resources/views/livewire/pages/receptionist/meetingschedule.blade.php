@@ -18,24 +18,10 @@
     </style>
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- Header Card --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                        <x-heroicon-o-calendar-days class="w-6 h-6 text-[#CDDEA7]" />
-                    </div>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.meeting_schedule_title') }}</h2>
-                        <p class="text-xs text-[#CDDEA7]/80">{{ __('app.meeting_schedule_sub') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.meeting_schedule_title') }}"
+            subtitle="{{ __('app.meeting_schedule_sub') }}" />
 
         {{-- FORM: BOOKING ROOM (OFFLINE) --}}
         <section class="{{ $card }}">
@@ -75,10 +61,15 @@
                                 search: '',
                                 roomId: @entangle('form.room_id'),
                                 get items() {
-                                    const q = this.search.toLowerCase().trim();
-                                    return @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray()).filter(i =>
-                                        !q || i.label.toLowerCase().includes(q)
-                                    );
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    const list = @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray());
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
+                                    return list.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const list = @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray());
+                                    const found = list.find(i => i.id == this.roomId);
+                                    return found ? found.label : '';
                                 },
                                 select(id, label) {
                                     this.search = label;
@@ -91,17 +82,10 @@
                                 }
                             }"
                             x-init="
+                                search = selectedLabel;
                                 $watch('roomId', val => {
-                                    if (!val) { search = ''; }
-                                    else {
-                                        const found = @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray()).find(i => i.id == val);
-                                        if (found) search = found.label;
-                                    }
+                                    search = selectedLabel;
                                 });
-                                if (roomId) {
-                                    const found = @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray()).find(i => i.id == roomId);
-                                    if (found) search = found.label;
-                                }
                             "
                             class="relative"
                             @click.outside="open = false"
@@ -166,10 +150,15 @@
                                 search: '',
                                 deptId: @entangle('form.department_id').live,
                                 get items() {
-                                    const q = this.search.toLowerCase().trim();
-                                    return @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()).filter(i =>
-                                        !q || i.label.toLowerCase().includes(q)
-                                    );
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    const list = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray());
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
+                                    return list.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const list = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray());
+                                    const found = list.find(i => i.id == this.deptId);
+                                    return found ? found.label : '';
                                 },
                                 select(id, label) {
                                     this.search = label;
@@ -182,17 +171,10 @@
                                 }
                             }"
                             x-init="
+                                search = selectedLabel;
                                 $watch('deptId', val => {
-                                    if (!val) { search = ''; }
-                                    else {
-                                        const found = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()).find(i => i.id == val);
-                                        if (found) search = found.label;
-                                    }
+                                    search = selectedLabel;
                                 });
-                                if (deptId) {
-                                    const found = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()).find(i => i.id == deptId);
-                                    if (found) search = found.label;
-                                }
                             "
                             class="relative"
                             @click.outside="open = false"
@@ -259,9 +241,15 @@
                                 userId: @entangle('offline_user_id').live,
                                 users: @entangle('usersByDeptOffline').live,
                                 get items() {
-                                    const q = this.search.toLowerCase().trim();
+                                    const q = (this.search || '').toLowerCase().trim();
                                     const list = (this.users || []).map(u => ({ id: u.id, label: u.name }));
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
                                     return q ? list.filter(i => i.label.toLowerCase().includes(q)) : list;
+                                },
+                                get selectedLabel() {
+                                    const list = (this.users || []).map(u => ({ id: u.id, label: u.name }));
+                                    const found = list.find(i => i.id == this.userId);
+                                    return found ? found.label : '';
                                 },
                                 select(id, label) {
                                     this.search = label;
@@ -274,18 +262,11 @@
                                 }
                             }"
                             x-init="
+                                search = selectedLabel;
                                 $watch('deptId', () => { search = ''; userId = null; });
                                 $watch('userId', val => {
-                                    if (!val) { search = ''; }
-                                    else {
-                                        const found = (users || []).find(u => u.id == val);
-                                        if (found) search = found.name;
-                                    }
+                                    search = selectedLabel;
                                 });
-                                if (userId) {
-                                    const found = (users || []).find(u => u.id == userId);
-                                    if (found) search = found.name;
-                                }
                             "
                             class="relative"
                             @click.outside="open = false"
@@ -449,19 +430,63 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="{{ $label }}">Platform</label>
-                            <div class="relative">
-                                <select wire:model.live="online_platform" class="{{ $input }} appearance-none pr-8">
-                                    <option value="google_meet">Google Meet</option>
-                                    <option value="zoom">Zoom</option>
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            <div class="flex flex-col justify-end">
+                                <label class="{{ $label }}">Platform</label>
+                                <div
+                                    x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedId: $wire.entangle('online_platform').live,
+                                        options: [
+                                            { id: 'google_meet', label: 'Google Meet' },
+                                            { id: 'zoom', label: 'Zoom' }
+                                        ],
+                                        get items() {
+                                            const q = (this.search || '').toLowerCase().trim();
+                                            if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                            return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                        },
+                                        get selectedLabel() {
+                                            const found = this.options.find(i => i.id == this.selectedId);
+                                            return found ? found.label : '';
+                                        },
+                                        select(id, label) {
+                                            this.search = label;
+                                            this.selectedId = id;
+                                            this.open = false;
+                                        },
+                                        clear() {
+                                            this.search = '';
+                                            this.selectedId = 'google_meet';
+                                        }
+                                    }"
+                                    x-init="
+                                        search = selectedLabel;
+                                        $watch('selectedId', val => {
+                                            search = selectedLabel;
+                                        });
+                                    "
+                                    class="relative"
+                                    @click.outside="open = false"
+                                >
+                                    <div class="relative">
+                                        <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="Platform" class="{{ $input }} pr-8">
+                                        <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                            <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                            <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                    <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                        <template x-for="item in items" :key="item.id">
+                                            <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                        </template>
+                                    </ul>
+                                    <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
                                 </div>
+                                @error('online_platform') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                             </div>
-                            @error('online_platform') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
-                        </div>
                         <div class="flex items-end">
                             @if($online_platform === 'google_meet')
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold {{ $googleConnected ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500' : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-500' }}">
@@ -480,10 +505,15 @@
                                 search: '',
                                 deptId: @entangle('online_department_id').live,
                                 get items() {
-                                    const q = this.search.toLowerCase().trim();
-                                    return @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()).filter(i =>
-                                        !q || i.label.toLowerCase().includes(q)
-                                    );
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    const list = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray());
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
+                                    return list.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const list = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray());
+                                    const found = list.find(i => i.id == this.deptId);
+                                    return found ? found.label : '';
                                 },
                                 select(id, label) {
                                     this.search = label;
@@ -496,17 +526,10 @@
                                 }
                             }"
                             x-init="
+                                search = selectedLabel;
                                 $watch('deptId', val => {
-                                    if (!val) { search = ''; }
-                                    else {
-                                        const found = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()).find(i => i.id == val);
-                                        if (found) search = found.label;
-                                    }
+                                    search = selectedLabel;
                                 });
-                                if (deptId) {
-                                    const found = @js(collect($departments)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()).find(i => i.id == deptId);
-                                    if (found) search = found.label;
-                                }
                             "
                             class="relative"
                             @click.outside="open = false"
@@ -573,9 +596,15 @@
                                 userId: @entangle('online_user_id').live,
                                 users: @entangle('usersByDept').live,
                                 get items() {
-                                    const q = this.search.toLowerCase().trim();
+                                    const q = (this.search || '').toLowerCase().trim();
                                     const list = (this.users || []).map(u => ({ id: u.id, label: u.name }));
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
                                     return q ? list.filter(i => i.label.toLowerCase().includes(q)) : list;
+                                },
+                                get selectedLabel() {
+                                    const list = (this.users || []).map(u => ({ id: u.id, label: u.name }));
+                                    const found = list.find(i => i.id == this.userId);
+                                    return found ? found.label : '';
                                 },
                                 select(id, label) {
                                     this.search = label;
@@ -588,18 +617,11 @@
                                 }
                             }"
                             x-init="
+                                search = selectedLabel;
                                 $watch('deptId', () => { search = ''; userId = null; });
                                 $watch('userId', val => {
-                                    if (!val) { search = ''; }
-                                    else {
-                                        const found = (users || []).find(u => u.id == val);
-                                        if (found) search = found.name;
-                                    }
+                                    search = selectedLabel;
                                 });
-                                if (userId) {
-                                    const found = (users || []).find(u => u.id == userId);
-                                    if (found) search = found.name;
-                                }
                             "
                             class="relative"
                             @click.outside="open = false"

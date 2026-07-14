@@ -22,9 +22,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force HTTPS when the app URL is configured with https (e.g. behind ngrok or a reverse proxy)
+        // Force HTTPS scheme and root URL when behind a reverse proxy.
+        // This ensures Livewire temporary upload signatures are always
+        // generated and validated against the same canonical URL.
         if (str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');
+            URL::forceRootUrl(config('app.url'));
         }
 
         \Illuminate\Support\Facades\Event::listen(

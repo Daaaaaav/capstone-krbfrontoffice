@@ -15,6 +15,8 @@ use Carbon\Carbon;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
+use App\Models\PriorityRoomBooking;
+
 #[Layout('layouts.receptionist')]
 #[Title('Booking History')]
 class BookingHistory extends Component
@@ -42,6 +44,12 @@ class BookingHistory extends Component
     public string $modalMode = 'create';
     public ?int $editingId   = null;
 
+    // Delete modal state
+    public ?int $deletingId = null;
+    public string $deletingSummary = '';
+    public bool $showDeleteModal = false;
+    public bool $isForceDelete = false;
+
     /** @var array<int,array{id:int,name:string}> */
     public array $rooms = [];
 
@@ -66,6 +74,7 @@ class BookingHistory extends Component
         'status'          => 'completed',
         'book_reject'     => '',     // ⬅️ reason (required if rejected)
     ];
+    public array $statusLogs = [];
 
     // Tabs: done | rejected
     public string $activeTab = 'done';
@@ -229,6 +238,7 @@ class BookingHistory extends Component
         $this->editingId = null;
 
         $now = Carbon::now($this->tz);
+        $bookingType = $this->normalizeBookingType($bookingType);
 
         $this->form = [
             'booking_type'    => $bookingType,
@@ -237,7 +247,7 @@ class BookingHistory extends Component
             'start_time'      => $now->format('H:00'),
             'end_time'        => $now->copy()->addHour()->format('H:00'),
             'room_id'         => null,
-            'online_provider' => in_array($bookingType, ['online_meeting', 'onlinemeeting'], true)
+            'online_provider' => in_array($bookingType, ['online_meeting'], true)
                 ? 'zoom'
                 : null,
             'notes'           => '',
@@ -256,17 +266,51 @@ class BookingHistory extends Component
         $this->editingId = $row->getKey();
 
         $this->form = [
-            'booking_type'    => (string) ($row->booking_type ?? 'meeting'),
+            'booking_type'    => $this->normalizeBookingType($row->booking_type ?? 'meeting'),
             'meeting_title'   => (string) ($row->meeting_title ?? ''),
-            'date'            => (string) ($row->date ?? ''),
-            'start_time'      => (string) ($row->start_time ?? ''),
-            'end_time'        => (string) ($row->end_time ?? ''),
+            'date'            => $row->date ? \Carbon\Carbon::parse($row->date)->toDateString() : '',
+            'start_time'      => $this->parseTimeOnly($row->start_time),
+            'end_time'        => $this->parseTimeOnly($row->end_time),
             'room_id'         => $row->room_id,
             'online_provider' => (string) ($row->online_provider ?? ''),
             'notes'           => (string) ($row->notes ?? ''),
             'status'          => $this->normalizeDbStatus($row->status),
             'book_reject'     => (string) ($row->book_reject ?? ''), // ⬅️ NEW
         ];
+
+        // Generate pseudo-logs based on timestamps
+        $logs = [];
+        if ($row->created_at) {
+            $logs[] = ['status' => 'Created', 'time' => $row->created_at, 'type' => 'info'];
+        }
+        
+        $dbStart = $this->formatDateTimeForDb($row->date, $row->start_time);
+        if ($dbStart) {
+            $logs[] = ['status' => 'Scheduled Start', 'time' => $dbStart, 'type' => 'primary'];
+        }
+        
+        $dbEnd = $this->formatDateTimeForDb($row->date, $row->end_time);
+        if ($dbEnd) {
+            $logs[] = ['status' => 'Scheduled End', 'time' => $dbEnd, 'type' => 'primary'];
+        }
+        
+        $normStatus = $this->normalizeDbStatus($row->status);
+        if ($normStatus === 'completed' && $row->updated_at) {
+            $logs[] = ['status' => 'Completed', 'time' => $row->updated_at, 'type' => 'success'];
+        } elseif ($normStatus === 'rejected' && $row->updated_at) {
+            $logs[] = ['status' => 'Rejected', 'time' => $row->updated_at, 'type' => 'danger'];
+        }
+
+        if ($row->trashed() && $row->deleted_at) {
+            $logs[] = ['status' => 'Deleted', 'time' => $row->deleted_at, 'type' => 'danger'];
+        }
+
+        // Sort logs by time
+        usort($logs, function($a, $b) {
+            return Carbon::parse($a['time'])->timestamp <=> Carbon::parse($b['time'])->timestamp;
+        });
+
+        $this->statusLogs = $logs;
 
         $this->showModal = true;
     }
@@ -283,6 +327,7 @@ class BookingHistory extends Component
     {
         $data        = $this->validateForm();
         $statusForDb = $data['status'];
+        $bookingType = $this->normalizeBookingType($data['booking_type'] ?? null);
 
         // Normalize start_time/end_time into full datetimes if DB expects datetimes
         $dbStart = $this->formatDateTimeForDb($data['date'] ?? null, $data['start_time'] ?? null);
@@ -290,15 +335,15 @@ class BookingHistory extends Component
 
         if ($this->modalMode === 'create') {
             BookingRoom::create([
-                'booking_type'    => $data['booking_type'],
+                'booking_type'    => $bookingType,
                 'meeting_title'   => $data['meeting_title'],
                 'date'            => $data['date'],
                 'start_time'      => $dbStart,
                 'end_time'        => $dbEnd,
-                'room_id'         => in_array($data['booking_type'], ['meeting', 'bookingroom'], true)
+                'room_id'         => in_array($bookingType, ['meeting'], true)
                     ? $data['room_id']
                     : null,
-                'online_provider' => in_array($data['booking_type'], ['online_meeting', 'onlinemeeting'], true)
+                'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
                 'notes'           => $data['notes'],
@@ -310,15 +355,15 @@ class BookingHistory extends Component
             $row = $this->baseQuery()->withTrashed()->findOrFail($this->editingId);
 
             $row->update([
-                'booking_type'    => $data['booking_type'],
+                'booking_type'    => $bookingType,
                 'meeting_title'   => $data['meeting_title'],
                 'date'            => $data['date'],
                 'start_time'      => $dbStart,
                 'end_time'        => $dbEnd,
-                'room_id'         => in_array($data['booking_type'], ['meeting', 'bookingroom'], true)
+                'room_id'         => in_array($bookingType, ['meeting'], true)
                     ? $data['room_id']
                     : null,
-                'online_provider' => in_array($data['booking_type'], ['online_meeting', 'onlinemeeting'], true)
+                'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
                 'notes'           => $data['notes'],
@@ -338,7 +383,32 @@ class BookingHistory extends Component
         }
     }
 
-    public function destroy(int $id): void
+    public function confirmDelete(int $id, string $summary, bool $force = false): void
+    {
+        $this->deletingId = $id;
+        $this->deletingSummary = $summary;
+        $this->isForceDelete = $force;
+        $this->showDeleteModal = true;
+    }
+
+    public function executeDelete(): void
+    {
+        if (!$this->deletingId) {
+            return;
+        }
+
+        if ($this->isForceDelete) {
+            $this->forceDestroyAction($this->deletingId);
+        } else {
+            $this->destroyAction($this->deletingId);
+        }
+
+        $this->showDeleteModal = false;
+        $this->deletingId = null;
+        $this->isForceDelete = false;
+    }
+
+    private function destroyAction(int $id): void
     {
         $row = $this->baseQuery()->findOrFail($id);
         $row->delete();
@@ -356,7 +426,7 @@ class BookingHistory extends Component
         $this->fixEmptyPageAfterChange();
     }
 
-    public function forceDestroy(int $id): void
+    private function forceDestroyAction(int $id): void
     {
         $row = $this->baseQuery()->withTrashed()->findOrFail($id);
         $row->forceDelete();
@@ -395,6 +465,22 @@ class BookingHistory extends Component
         }
 
         return $s ?: 'completed';
+    }
+
+    /**
+     * Normalize booking_type to one of the two valid ENUM values:
+     * 'meeting' or 'online_meeting'.
+     * 'onlinemeeting' (legacy, no underscore) is treated as 'online_meeting'.
+     */
+    private function normalizeBookingType(?string $type): string
+    {
+        $t = strtolower(trim((string) $type));
+
+        if (in_array($t, ['online_meeting', 'onlinemeeting'], true)) {
+            return 'online_meeting';
+        }
+
+        return 'meeting';
     }
 
     private function validateForm(): array
@@ -460,6 +546,34 @@ class BookingHistory extends Component
 
         // Fallback: return as-is
         return $time;
+    }
+
+    /**
+     * Extract a time-only string (HH:MM) from a stored value that may be
+     * a full datetime ("YYYY-MM-DD HH:MM:SS"), a time-only string ("HH:MM:SS"),
+     * or a Carbon instance. Returns '' when the value is empty/null.
+     */
+    private function parseTimeOnly(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        $str = trim((string) $value);
+
+        // Full datetime: "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SS"
+        if (preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/', $str, $m)) {
+            // Grab everything from position 11 onwards: "HH:MM:SS" → "HH:MM"
+            $timePart = substr($str, 11, 5);
+            return $timePart ?: '';
+        }
+
+        // Already time-only "HH:MM:SS" or "HH:MM"
+        if (preg_match('/^\d{2}:\d{2}/', $str)) {
+            return substr($str, 0, 5);
+        }
+
+        return '';
     }
 
     // ───────── Query accessors used by Blade ─────────
@@ -557,14 +671,41 @@ class BookingHistory extends Component
     {
         $this->autoProgressToDone();
 
+        $companyId = Auth::user()->company_id ?? null;
+
+        // Approved priority room bookings from manager — shown in history
+        $priorityRoomHistory = PriorityRoomBooking::with(['room', 'manager'])
+            ->forCompany($companyId)
+            ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+            ->when($this->q !== '', fn($q) => $q->where('meeting_title', 'like', '%' . $this->q . '%'))
+            ->when($this->selectedDate, fn($q) => $q->whereDate('date', $this->selectedDate))
+            ->orderByDesc('updated_at')
+            ->limit(50)
+            ->get();
+
+        // Denied/conflict-denied priority room bookings — shown in rejected tab
+        $priorityRoomRejected = PriorityRoomBooking::with(['room', 'manager'])
+            ->forCompany($companyId)
+            ->whereIn('status', [
+                PriorityRoomBooking::STATUS_REJECTED,
+                PriorityRoomBooking::STATUS_CONFLICT_DENIED,
+            ])
+            ->when($this->q !== '', fn($q) => $q->where('meeting_title', 'like', '%' . $this->q . '%'))
+            ->when($this->selectedDate, fn($q) => $q->whereDate('date', $this->selectedDate))
+            ->orderByDesc('updated_at')
+            ->limit(30)
+            ->get();
+
         return view('livewire.pages.receptionist.booking-history', [
-            'doneRows'        => $this->doneRows,
-            'rejectedRows'    => $this->rejectedRows,
-            'rooms'           => $this->rooms,
-            'roomsOptions'    => $this->roomsOptions,
-            'recentCompleted' => $this->recentCompleted,
-            'roomFilterId'    => $this->roomFilterId,
-            'showFilterModal' => $this->showFilterModal,
+            'doneRows'             => $this->doneRows,
+            'rejectedRows'         => $this->rejectedRows,
+            'rooms'                => $this->rooms,
+            'roomsOptions'         => $this->roomsOptions,
+            'recentCompleted'      => $this->recentCompleted,
+            'roomFilterId'         => $this->roomFilterId,
+            'showFilterModal'      => $this->showFilterModal,
+            'priorityRoomHistory'  => $priorityRoomHistory,
+            'priorityRoomRejected' => $priorityRoomRejected,
         ]);
     }
 }

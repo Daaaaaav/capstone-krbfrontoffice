@@ -21,6 +21,12 @@ class Package extends Component
     public ?int $editId = null;             // delivery_id
     public ?string $createdAtDisplay = null;
 
+    // Delete Modal State
+    public ?int $deletingId = null;
+    public string $deletingSummary = '';
+    public bool $showDeleteModal = false;
+    public bool $isForceDelete = false;
+
     /**
      * form mapping:
      * - package_name  -> deliveries.item_name
@@ -128,8 +134,29 @@ class Package extends Component
         $this->resetPage();
     }
 
+    public function confirmDelete(int $id, string $summary, bool $force = false): void
+    {
+        $this->deletingId = $id;
+        $this->deletingSummary = $summary;
+        $this->isForceDelete = $force;
+        $this->showDeleteModal = true;
+    }
+
+    public function executeDelete(): void
+    {
+        if (!$this->deletingId) {
+            return;
+        }
+
+        $this->deleteAction($this->deletingId);
+
+        $this->showDeleteModal = false;
+        $this->deletingId = null;
+        $this->isForceDelete = false;
+    }
+
     /** Soft delete ONLY */
-    public function delete(int $id): void
+    private function deleteAction(int $id): void
     {
         $pkg = DeliveryModel::query()
             ->where('company_id', Auth::user()->company_id)

@@ -1,5 +1,5 @@
-<div class="min-h-screen bg-gray-50">
-    <main class="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+<div>
+    <main class="max-w-3xl mx-auto py-6 space-y-6">
 
         {{-- HERO BANNER --}}
         <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
@@ -92,7 +92,7 @@
                     {{ __('app.still_need_help_sub') }}
                 </p>
                 <div class="flex flex-wrap gap-3 text-sm">
-                    <a href="mailto:admin@kebunraya.id"
+                    <a href="mailto:davina.managerkrb@gmail.com"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-[#CDDEA7] text-[#4A2F24] rounded-lg font-semibold hover:bg-white hover:text-gray-900 transition shadow-sm">
                         <x-heroicon-o-envelope class="w-4 h-4 shrink-0" />
                         <span>{{ __('app.email_admin') }}</span>

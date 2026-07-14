@@ -194,6 +194,51 @@ class LSTMClient
     }
 
     /**
+     * Force a full model retrain regardless of the cached fingerprint.
+     * POSTs to the /retrain endpoint which sets force_retrain=true.
+     *
+     * @param  array $timeSeries
+     * @param  int   $forecastDays
+     * @return array|null
+     */
+    public function forceRetrain(array $timeSeries, int $forecastDays = 7): ?array
+    {
+        try {
+            $data = array_map(fn ($p) => [
+                'date'  => $p['date'],
+                'count' => (float) $p['count'],
+            ], $timeSeries);
+
+            $payload = [
+                'data'           => $data,
+                'forecast_days'  => $forecastDays,
+                'use_dummy_data' => false,
+                'force_retrain'  => true,
+                'lstm_config'    => AISettings::group('lstm'),
+            ];
+
+            $response = $this->http()
+                ->timeout(max($this->timeout, 120)) // retrain can take longer
+                ->post($this->baseUrl . '/retrain', $payload);
+
+            if (!$response->successful()) {
+                Log::warning('LSTM retrain returned unsuccessful response', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+                return null;
+            }
+
+            Log::info('LSTM model retrained successfully');
+            return $response->json();
+
+        } catch (\Exception $e) {
+            Log::error('LSTM force retrain failed', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
      * Try LSTM first; fall back to simple moving average if unavailable.
      */
     public function predictWithFallback(array $timeSeries, int $forecastDays = 7): array

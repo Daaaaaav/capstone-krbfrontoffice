@@ -5,36 +5,42 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 // ========== Controllers ==========
+use App\Http\Controllers\GuestbookScanController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\VehicleAttachmentController;
+use App\Http\Controllers\GoogleAuthController;
 
-// ========== Livewire Pages (Superadmin) ==========
-use App\Livewire\Pages\Superadmin\Dashboard as SuperadminDashboard;
-use App\Livewire\Pages\Superadmin\ReceptionistUsers as ReceptionistUsers;
-use App\Livewire\Pages\Superadmin\RoomBookingStatistics as RoomBookingStatistics;
-use App\Livewire\Pages\Superadmin\VehicleBookingStatistics as VehicleBookingStatistics;
-use App\Livewire\Pages\Superadmin\DeliveryStatistics as DeliveryStatistics;
-use App\Livewire\Pages\Superadmin\GuestbookStatistics as GuestbookStatistics;
-use App\Livewire\Pages\Superadmin\AISecurityReports as AISecurityReports;
-use App\Livewire\Pages\Superadmin\Settings as SuperadminSettings;
-use App\Livewire\Pages\Superadmin\Help as SuperadminHelp;
-use App\Livewire\Pages\Superadmin\Announcement;
-use App\Livewire\Pages\Superadmin\Information;
-use App\Livewire\Pages\Superadmin\Report;
-use App\Livewire\Pages\Superadmin\Account as UserManagement;
-use App\Livewire\Pages\Superadmin\Department as DepartmentPage;
-use App\Livewire\Pages\Superadmin\Bookingroom as SuperadminBookingroom;
-use App\Livewire\Pages\Superadmin\Ticketsupport as SuperadminTicketsupport;
-use App\Livewire\Pages\Superadmin\Manageroom as Manageroom;
-use App\Livewire\Pages\Superadmin\Managerequirement as Managerequirements;
-use App\Livewire\Pages\Superadmin\Storage as StoragePage;
-use App\Livewire\Pages\Superadmin\Vehicle as VehiclePage;
-use App\Livewire\Pages\Superadmin\Packagemanagement as Packagemanagement;
-use App\Livewire\Pages\Superadmin\Documentsmanagement as Documentsmanagement;
-use App\Livewire\Pages\Superadmin\Guestbookmanagement as Guestbookmanagement;
-use App\Livewire\Pages\Superadmin\Bookingvehicle as SuperadminBookingvehicle;
-use App\Livewire\Pages\Superadmin\Adminmanagement as AdminmanagementPage;
-use App\Livewire\Pages\Superadmin\WifiManagement as SuperadminWifiManagement;
+// ========== Livewire Pages (Manager) ==========
+use App\Livewire\Pages\Manager\Dashboard as ManagerDashboard;
+use App\Livewire\Pages\Manager\ReceptionistUsers as ReceptionistUsers;
+use App\Livewire\Pages\Manager\RoomBookingStatistics as RoomBookingStatistics;
+use App\Livewire\Pages\Manager\VehicleBookingStatistics as VehicleBookingStatistics;
+use App\Livewire\Pages\Manager\DeliveryStatistics as DeliveryStatistics;
+use App\Livewire\Pages\Manager\GuestbookStatistics as GuestbookStatistics;
+use App\Livewire\Pages\Manager\AISecurityReports as AISecurityReports;
+use App\Livewire\Pages\Manager\Settings as ManagerSettings;
+use App\Livewire\Pages\Manager\Help as ManagerHelp;
+use App\Livewire\Pages\Manager\Announcement;
+use App\Livewire\Pages\Manager\Information;
+use App\Livewire\Pages\Manager\Report;
+use App\Livewire\Pages\Manager\Account as UserManagement;
+use App\Livewire\Pages\Manager\Department as DepartmentPage;
+use App\Livewire\Pages\Manager\Bookingroom as ManagerBookingroom;
+use App\Livewire\Pages\Manager\Ticketsupport as ManagerTicketsupport;
+use App\Livewire\Pages\Manager\Manageroom as Manageroom;
+use App\Livewire\Pages\Manager\Managerequirement as Managerequirements;
+use App\Livewire\Pages\Manager\Storage as StoragePage;
+use App\Livewire\Pages\Manager\Vehicle as VehiclePage;
+use App\Livewire\Pages\Manager\Packagemanagement as Packagemanagement;
+use App\Livewire\Pages\Manager\Documentsmanagement as Documentsmanagement;
+use App\Livewire\Pages\Manager\Guestbookmanagement as Guestbookmanagement;
+use App\Livewire\Pages\Manager\Bookingvehicle as ManagerBookingvehicle;
+use App\Livewire\Pages\Manager\WifiManagement as ManagerWifiManagement;
+use App\Livewire\Pages\Manager\PriorityRoomBooking as ManagerPriorityRoomBooking;
+use App\Livewire\Pages\Manager\PriorityVehicleBooking as ManagerPriorityVehicleBooking;
+use App\Livewire\Pages\Manager\GuestbookForm as ManagerGuestbookForm;
+use App\Livewire\Pages\Manager\DocPackForm as ManagerDocPackForm;
+use App\Livewire\Pages\Manager\DocPackStatus as ManagerDocPackStatus;
 
 // ========== Livewire Pages (Receptionist) ==========
 use App\Livewire\Pages\Receptionist\Dashboard as ReceptionistDashboard;
@@ -46,6 +52,8 @@ use App\Livewire\Pages\Receptionist\BookingsApproval;
 use App\Livewire\Pages\Receptionist\RoomApproval;
 use App\Livewire\Pages\Receptionist\BookingHistory;
 use App\Livewire\Pages\Receptionist\GuestbookHistory;
+use App\Livewire\Pages\Receptionist\GuestbookStatus;
+use App\Livewire\Pages\Receptionist\GuestbookCheckout;
 use App\Livewire\Pages\Receptionist\DocPackHistory;
 use App\Livewire\Pages\Receptionist\DocPackStatus;
 use App\Livewire\Pages\Receptionist\DocPackForm;
@@ -79,6 +87,23 @@ Route::get('/lang/{locale}', function (string $locale) {
 
 /*
 |--------------------------------------------------------------------------
+| Guestbook QR scan (public – no auth required, token is the gate)
+|--------------------------------------------------------------------------
+*/
+Route::get('/guestbook/scan/{token}', [GuestbookScanController::class, 'show'])
+    ->name('guestbook.scan')
+    ->where('token', '[a-f0-9]{64}');
+
+Route::post('/guestbook/scan/{token}', [GuestbookScanController::class, 'submit'])
+    ->name('guestbook.scan.submit')
+    ->where('token', '[a-f0-9]{64}');
+
+Route::get('/guestbook/qr/{token}', [GuestbookScanController::class, 'qrImage'])
+    ->name('guestbook.qr.image')
+    ->where('token', '[a-f0-9]{64}');
+
+/*
+|--------------------------------------------------------------------------
 | Root: redirect to login
 |--------------------------------------------------------------------------
 */
@@ -96,7 +121,7 @@ Route::get('/csrf-token-refresh', function () {
 | Home: redirect authenticated users to their dashboard
 |--------------------------------------------------------------------------
 */
-Route::get('/home', function () {
+Route::get('/home', function (Request $request) {
     if (!Auth::check()) {
         return redirect()->route('login');
     }
@@ -105,8 +130,14 @@ Route::get('/home', function () {
     $roleName = $user->role->name ?? $user->role ?? null;
 
     return match ($roleName) {
-        'Superadmin'    => redirect()->route('superadmin.dashboard'),
+        'Manager'       => redirect()->route('manager.dashboard'),
         'Receptionist'  => redirect()->route('receptionist.dashboard'),
+        default         => (function () use ($request) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->withErrors(['email' => 'Your account role is not authorized. Please contact your administrator.']);
+        })(),
     };
 })->name('home');
 
@@ -140,6 +171,21 @@ Route::middleware('guest')->group(function () {
 */
 Route::middleware(['auth'])->group(function () {
 
+    // ---------- Delivery image serving (works without storage:link) ----------
+    Route::get('/delivery-image/{path}', function (string $path) {
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $fullPath = 'images/deliveries/' . $path;
+
+        if (!$disk->exists($fullPath)) {
+            abort(404);
+        }
+
+        return response()->file(
+            $disk->path($fullPath),
+            ['Cache-Control' => 'public, max-age=86400']
+        );
+    })->where('path', '.*')->name('delivery.image');
+
     // ---------- Attachments API (Local Storage) ----------
     Route::prefix('attachments')->group(function () {
         Route::post('/temp', [AttachmentController::class, 'tempUpload'])
@@ -150,20 +196,30 @@ Route::middleware(['auth'])->group(function () {
             ->name('attachments.finalize');
     });
 
-    // ---------- Superadmin routes ----------
-    Route::middleware('is.superadmin')->group(function () {
-        Route::get('/superadmin-dashboard', SuperadminDashboard::class)->name('superadmin.dashboard');
-        Route::get('/receptionists', ReceptionistUsers::class)->name('superadmin.receptionists');
-        Route::get('/room-bookings', RoomBookingStatistics::class)->name('superadmin.room');
-        Route::get('/vehicle-bookings', VehicleBookingStatistics::class)->name('superadmin.vehicle');
-        Route::get('/deliveries', DeliveryStatistics::class)->name('superadmin.delivery');
-        Route::get('/guestbook', GuestbookStatistics::class)->name('superadmin.guestbook');
-        Route::get('/lstm-predictions', \App\Livewire\Pages\Superadmin\LSTMPredictions::class)->name('superadmin.lstm-predictions');
-        Route::get('/ai-security', AISecurityReports::class)->name('superadmin.ai-security');
-        // Route::get('/weather', \App\Livewire\Pages\Superadmin\WeatherDashboard::class)->name('superadmin.weather');
-        Route::get('/occupancy-forecasting', \App\Livewire\Pages\Superadmin\OccupancyForecasting::class)->name('superadmin.occupancy');
-        Route::get('/superadmin-settings', SuperadminSettings::class)->name('superadmin.settings');
-        Route::get('/superadmin-help', SuperadminHelp::class)->name('superadmin.help');
+    // ---------- Manager routes ----------
+    Route::middleware('is.manager')->group(function () {
+        Route::get('/manager-dashboard', ManagerDashboard::class)->name('manager.dashboard');
+        Route::get('/receptionists', ReceptionistUsers::class)->name('manager.receptionists');
+        Route::get('/room-bookings', RoomBookingStatistics::class)->name('manager.room');
+        Route::get('/vehicle-bookings', VehicleBookingStatistics::class)->name('manager.vehicle');
+        Route::get('/deliveries', DeliveryStatistics::class)->name('manager.delivery');
+        Route::get('/guestbook', GuestbookStatistics::class)->name('manager.guestbook');
+        Route::get('/lstm-predictions', \App\Livewire\Pages\Manager\LSTMPredictions::class)->name('manager.lstm-predictions');
+        Route::get('/ai-security', AISecurityReports::class)->name('manager.ai-security');
+        // Route::get('/weather', \App\Livewire\Pages\Manager\WeatherDashboard::class)->name('manager.weather');
+        Route::get('/occupancy-forecasting', \App\Livewire\Pages\Manager\OccupancyForecasting::class)->name('manager.occupancy');
+        // Resource Management
+        Route::get('/manage-rooms', Manageroom::class)->name('manager.manageroom');
+        Route::get('/manage-vehicles', VehiclePage::class)->name('manager.managevehicle');
+        Route::get('/manage-storages', StoragePage::class)->name('manager.managestorage');
+        Route::get('/manager-settings', ManagerSettings::class)->name('manager.settings');
+        Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
+        // Priority bookings & operational forms
+        Route::get('/manager-priority-room', ManagerPriorityRoomBooking::class)->name('manager.priority-room');
+        Route::get('/manager-priority-vehicle', ManagerPriorityVehicleBooking::class)->name('manager.priority-vehicle');
+        Route::get('/manager-guestbook-form', ManagerGuestbookForm::class)->name('manager.guestbook-form');
+        Route::get('/manager-docpack-form', ManagerDocPackForm::class)->name('manager.docpack-form');
+        Route::get('/manager-docpack-status', fn() => redirect()->route('manager.docpack-form'))->name('manager.docpack-status');
     });
 
     // ---------- Receptionist routes ----------
@@ -177,6 +233,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/receptionist-roomapproval', RoomApproval::class)->name('receptionist.roomapproval');
         Route::get('/receptionist-bookinghistory', BookingHistory::class)->name('receptionist.bookinghistory');
         Route::get('/receptionist-guestbookhistory', GuestbookHistory::class)->name('receptionist.guestbookhistory');
+        Route::get('/receptionist-guestbookstatus', GuestbookStatus::class)->name('receptionist.guestbookstatus');
+        Route::get('/receptionist-guestbook-checkout/{guestbookId}', GuestbookCheckout::class)->name('receptionist.guestbook.checkout');
+        Route::post('/api/guestbook/checkout-scan', [GuestbookScanController::class, 'checkoutScan'])->name('guestbook.checkout.scan');
         Route::get('/receptionist-docpackhistory', DocPackHistory::class)->name('receptionist.docpackhistory');
         Route::get('/receptionist-docpackstatus', DocPackStatus::class)->name('receptionist.docpackstatus');
         Route::get('/receptionist-docpackform', DocPackForm::class)->name('receptionist.docpackform');

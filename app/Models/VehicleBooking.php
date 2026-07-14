@@ -67,4 +67,31 @@ class VehicleBooking extends Model
     {
         return $this->hasMany(\App\Models\VehicleBookingPhoto::class, 'vehiclebooking_id', 'vehiclebooking_id');
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * Check whether a vehicle is blocked by an unresolved late_return booking.
+     *
+     * A vehicle is blocked when it has at least one booking with status
+     * 'late_return'. The block applies regardless of the requested booking
+     * window — the receptionist must mark the overdue booking as returned
+     * first before the vehicle can be booked again.
+     *
+     * @param  int       $vehicleId
+     * @param  int|null  $excludeBookingId  Exclude this ID (useful when editing).
+     * @return static|null  The blocking booking, or null if none.
+     */
+    public static function findLateReturnBlocker(int $vehicleId, ?int $excludeBookingId = null): ?static
+    {
+        return static::query()
+            ->whereNull('deleted_at')
+            ->where('vehicle_id', $vehicleId)
+            ->where('status', 'late_return')
+            ->when($excludeBookingId, fn($q) => $q->where('vehiclebooking_id', '!=', $excludeBookingId))
+            ->orderBy('end_at')
+            ->first();
+    }
 }

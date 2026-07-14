@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50" wire:poll.1000ms.keep-alive>
+<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
     use App\Models\Requirement; // ADDED: Required for the temporary bug workaround
@@ -11,13 +11,44 @@
     }
     if (!function_exists('fmtTime')) {
         function fmtTime($v) {
-            try { return $v ? Carbon::parse($v)->format('H.i') : '—'; }
+            try { return $v ? Carbon::parse($v)->format('H:i') : '—'; }
             catch (\Throwable) {
                 if (is_string($v)) {
-                    if (preg_match('/^\d{2}:\d{2}/', $v)) return str_replace(':','.', substr($v,0,5));
-                    if (preg_match('/^\d{2}\.\d{2}/', $v)) return substr($v,0,5);
+                    if (preg_match('/^\d{2}:\d{2}/', $v)) return substr($v,0,5);
+                    if (preg_match('/^\d{2}\.\d{2}/', $v)) return str_replace('.',':', substr($v,0,5));
                 }
                 return '—';
+            }
+        }
+    }
+    if (!function_exists('canRejectBooking')) {
+        /**
+         * Check if a booking can still be rejected.
+         * Returns false if less than 30 minutes remain before meeting start.
+         */
+        function canRejectBooking($booking) {
+            try {
+                $tz = 'Asia/Jakarta';
+                $now = Carbon::now($tz);
+                $dateVal = $booking->date;
+                $timeVal = $booking->start_time;
+
+                // Build start datetime
+                if (is_string($timeVal) && preg_match('/^\d{4}-\d{2}-\d{2}/', $timeVal)) {
+                    $start = Carbon::parse($timeVal, $tz);
+                } elseif (is_string($dateVal) && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:/', $dateVal)) {
+                    $start = Carbon::parse($dateVal, $tz);
+                    if (is_string($timeVal) && preg_match('/^\d{2}:\d{2}/', $timeVal)) {
+                        $start = $start->setTimeFromTimeString($timeVal);
+                    }
+                } else {
+                    $start = Carbon::parse(trim($dateVal . ' ' . ($timeVal ?: '00:00:00')), $tz);
+                }
+
+                // If less than 30 minutes remain before start, cannot reject
+                return $now->diffInMinutes($start, false) >= 30;
+            } catch (\Throwable) {
+                return true; // Allow rejection if we can't parse the time
             }
         }
     }
@@ -43,33 +74,20 @@
     </style>
 
     <main class="px-4 sm:px-6 py-6 space-y-6">
-        {{-- HERO --}}
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:px-8">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="space-y-1">
-                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.bookings_approval_title') }}</h2>
-                        <p class="text-sm text-[#CDDEA7]/80">
-                            {{ __('app.bookings_approval_subtitle') }}
-                        </p>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        {{-- MOBILE FILTER BUTTON --}}
-                        <button type="button"
-                            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-[#CDDEA7]/10 text-xs font-medium border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/20 md:hidden"
-                            wire:click="openFilterModal">
-                            <x-heroicon-o-funnel class="w-4 h-4"/>
-                            <span>{{ __('app.filter') }}</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.bookings_approval_title') }}"
+            subtitle="{{ __('app.bookings_approval_subtitle') }}">
+            <x-slot:actions>
+                {{-- MOBILE FILTER BUTTON --}}
+                <button type="button"
+                    class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
+                    @click="showFilterModal = true">
+                    <x-heroicon-o-funnel class="w-4 h-4"/>
+                    <span>{{ __('app.filter') }}</span>
+                </button>
+            </x-slot:actions>
+        </x-page-header>
 
         {{-- MAIN LAYOUT --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -131,12 +149,7 @@
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#4A2F24] text-[#CDDEA7] border border-[#4A2F24]/30">
                                     <x-heroicon-o-building-office class="w-3.5 h-3.5"/>
                                     <span>{{ __('app.room') }}: {{ $activeRoom['label'] ?? __('app.no_data') }}</span>
-                                    <button type="button" class="ml-1 hover:text-white" wire:click="clearRoomFilter">×</button>
-                                </span>
-                            @else
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-dashed border-gray-300">
-                                    <x-heroicon-o-funnel class="w-3.5 h-3.5"/>
-                                    <span>{{ __('app.no_room_filter') }}</span>
+                                    <button type="button" class="ml-1 hover:text-white" wire:click="clearRoomFilter">&times;</button>
                                 </span>
                             @endif
                         </div>
@@ -189,13 +202,62 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div class="flex flex-col justify-end">
                             <label class="{{ $label }}">{{ __('app.sort') }}</label>
-                            <select wire:model.live="dateMode" class="{{ $input }}">
-                                <option value="semua">{{ __('app.sort_default') }}</option>
-                                <option value="terbaru">{{ __('app.sort_newest') }}</option>
-                                <option value="terlama">{{ __('app.sort_oldest') }}</option>
-                            </select>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: $wire.entangle('dateMode').live,
+                                    options: [
+                                        { id: 'semua', label: '{{ __('app.sort_default') }}' },
+                                        { id: 'terbaru', label: '{{ __('app.sort_newest') }}' },
+                                        { id: 'terlama', label: '{{ __('app.sort_oldest') }}' }
+                                    ],
+                                    get items() {
+                                        const q = (this.search || '').toLowerCase().trim();
+                                        if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const found = this.options.find(i => i.id == this.selectedId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id, label) {
+                                        this.search = label;
+                                        this.selectedId = id;
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        this.selectedId = 'semua';
+                                    }
+                                }"
+                                x-init="
+                                    search = selectedLabel;
+                                    $watch('selectedId', val => {
+                                        search = selectedLabel;
+                                    });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="{{ __('app.sort') }}" class="{{ $input }} pr-8">
+                                    <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                        <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-600">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                        <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
+                                </div>
+                                <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm" style="display:none">
+                                    <template x-for="item in items" :key="item.id">
+                                        <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-[#4E653D] text-white' : 'text-gray-700 hover:bg-gray-100 cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                    </template>
+                                </ul>
+                                <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">{{ __('app.no_data') }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -247,7 +309,7 @@
 
                                         {{-- START: MODIFIED CARD DESIGN TO MATCH IMAGE --}}
                                         <div wire:key="pending-{{ $b->bookingroom_id }}"
-                                            class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 hover:shadow-sm hover:border-gray-300 transition">
+                                            class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
 
                                             <div class="flex items-start gap-4">
                                                 {{-- 1. Avatar/Initial on the left --}}
@@ -280,7 +342,7 @@
                                                             </span>
                                                             <span class="flex items-center gap-1.5 font-medium text-gray-800">
                                                                 <x-heroicon-o-clock class="w-4 h-4 text-gray-500"/>
-                                                                {{ fmtTime($b->start_time) }}–{{ fmtTime($b->end_time) }}
+                                                                {{ fmtTime($b->start_time) }} &ndash; {{ fmtTime($b->end_time) }}
                                                             </span>
                                                         </div>
                                                         @if($isRoomType)
@@ -341,26 +403,24 @@
                                                     {{ __('app.detail') }}
                                                 </button>
 
-                                                {{-- APPROVE BUTTON (Green) --}}
-                                                <button type="button"
-                                                    wire:click="approve({{ $b->bookingroom_id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:target="approve"
-                                                    @if($needsGoogleConnect || $needsZoomConfig) disabled @endif
-                                                    class="px-4 py-2 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 transition shadow-sm inline-flex items-center justify-center @if($needsGoogleConnect || $needsZoomConfig) opacity-60 cursor-not-allowed @endif">
-                                                    <x-heroicon-o-check class="w-3.5 h-3.5 inline-block mr-0.5"/>
-                                                    {{ __('app.approve') }}
-                                                </button>
-
-                                                {{-- REJECT BUTTON (Red) --}}
+                                                {{-- REJECT BUTTON (Red) - disabled if < 30min before meeting --}}
+                                                @php $canReject = canRejectBooking($b); @endphp
                                                 <button type="button"
                                                     wire:click="openReject({{ $b->bookingroom_id }})"
                                                     wire:loading.attr="disabled"
                                                     wire:target="openReject"
-                                                    class="px-4 py-2 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-60 transition inline-flex items-center justify-center">
+                                                    @if(!$canReject) disabled @endif
+                                                    class="px-4 py-2 text-xs font-medium rounded-lg border inline-flex items-center justify-center transition
+                                                        {{ $canReject
+                                                            ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20'
+                                                            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' }}"
+                                                    @if(!$canReject) title="Cannot reject: less than 30 minutes before meeting starts" @endif>
                                                     <x-heroicon-o-x-mark class="w-3.5 h-3.5 inline-block mr-0.5"/>
                                                     {{ __('app.reject') }}
                                                 </button>
+                                                @if(!$canReject)
+                                                    <span class="text-[10px] text-gray-400 italic">Less than 30 min before start</span>
+                                                @endif
                                             </div>
                                         </div>
                                         {{-- END: MODIFIED CARD DESIGN TO MATCH IMAGE --}}
@@ -378,7 +438,7 @@
                                                 <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.requester') }}</th>
-                                                <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
+                                                <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-100">
@@ -402,11 +462,11 @@
                                                                         ?? null;
                                                 @endphp
                                                 <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                                    <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $b->bookingroom_id }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         <div class="font-semibold text-gray-900">{{ $b->meeting_title ?? 'Untitled meeting' }}</div>
                                                     </td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-0 ">
                                                         @if($isOnline)
                                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase border border-emerald-200">
                                                                 {{ $platform ?? 'ONLINE' }}
@@ -417,9 +477,9 @@
                                                             </span>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4 font-medium">{{ fmtDate($b->date) }}</td>
-                                                    <td class="px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_time) }}–{{ fmtTime($b->end_time) }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-medium">{{ fmtDate($b->date) }}</td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_time) }} &ndash; {{ fmtTime($b->end_time) }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         @if($requesterName)
                                                             <div class="font-semibold text-gray-800">{{ $requesterName }}</div>
                                                         @endif
@@ -427,10 +487,10 @@
                                                             <div class="text-xs text-gray-500">{{ $requesterDept }}</div>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4 text-right">
-                                                        <div class="flex flex-col items-end gap-2">
+                                                    <td class="h-12 px-6 py-4">
+                                                        <div class="flex flex-col md:items-end justify-end gap-2">
                                                             @if($needsGoogleConnect || $needsZoomConfig)
-                                                                <div class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2 max-w-sm text-right">
+                                                                <div class="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2 max-w-sm">
                                                                     {{ $needsGoogleConnect ? 'Google belum terhubung. Hubungkan akun Google terlebih dahulu sebelum menyetujui online meeting.' : 'Zoom belum dikonfigurasi. Hubungi admin untuk menyetel ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, dan ZOOM_CLIENT_SECRET.' }}
                                                                 </div>
                                                             @endif
@@ -440,17 +500,16 @@
                                                                     class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition">
                                                                     {{ __('app.detail') }}
                                                                 </button>
-                                                                <button type="button"
-                                                                    wire:click="approve({{ $b->bookingroom_id }})"
-                                                                    wire:loading.attr="disabled"
-                                                                    @if($needsGoogleConnect || $needsZoomConfig) disabled @endif
-                                                                    class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition @if($needsGoogleConnect || $needsZoomConfig) opacity-60 cursor-not-allowed @endif">
-                                                                    {{ __('app.approve') }}
-                                                                </button>
+                                                                @php $canRejectTbl = canRejectBooking($b); @endphp
                                                                 <button type="button"
                                                                     wire:click="openReject({{ $b->bookingroom_id }})"
                                                                     wire:loading.attr="disabled"
-                                                                    class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
+                                                                    @if(!$canRejectTbl) disabled @endif
+                                                                    class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition
+                                                                        {{ $canRejectTbl
+                                                                            ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 focus:outline-none'
+                                                                            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' }}"
+                                                                    @if(!$canRejectTbl) title="Cannot reject: less than 30 minutes before meeting starts" @endif>
                                                                     {{ __('app.reject') }}
                                                                 </button>
                                                             </div>
@@ -532,7 +591,7 @@
                                                             </span>
                                                             <span class="flex items-center gap-1.5 font-medium text-gray-800">
                                                                 <x-heroicon-o-clock class="w-4 h-4 text-gray-500"/>
-                                                                {{ fmtTime($b->start_time) }}–{{ fmtTime($b->end_time) }}
+                                                                {{ fmtTime($b->start_time) }} &ndash; {{ fmtTime($b->end_time) }}
                                                             </span>
                                                         </div>
                                                         @if($isRoomType)
@@ -580,21 +639,6 @@
                                                             <x-heroicon-o-eye class="w-3.5 h-3.5 inline-block mr-0.5"/>
                                                             {{ __('app.detail') }}
                                                         </button>
-
-                                                        {{-- CANCEL BUTTON (for ongoing) --}}
-                                                        <button type="button"
-                                                            x-data
-                                                            @click="
-                                                                if (confirm('{{ __('app.cancel_request_confirm') }}')) {
-                                                                    $wire.openReschedule({{ $b->bookingroom_id }});
-                                                                }
-                                                            "
-                                                            wire:loading.attr="disabled"
-                                                            wire:target="openReschedule"
-                                                            class="px-3 py-2 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-60 transition inline-flex items-center justify-center">
-                                                            <x-heroicon-o-x-mark class="w-3.5 h-3.5 inline-block mr-0.5"/>
-                                                            {{ __('app.cancel') }}
-                                                        </button>
                                                     </div>
 
                                                     <span class="inline-block text-[10px] px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500 border border-gray-200">
@@ -617,7 +661,7 @@
                                                 <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.requester') }}</th>
-                                                <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
+                                                <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-gray-100">
@@ -638,11 +682,11 @@
                                                                         ?? null;
                                                 @endphp
                                                 <tr class="hover:bg-gray-50/50 transition text-sm text-gray-700">
-                                                    <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $b->bookingroom_id }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         <div class="font-semibold text-gray-900">{{ $b->meeting_title ?? 'Untitled meeting' }}</div>
                                                     </td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-0 ">
                                                         @if($isOnline)
                                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase border border-emerald-200">
                                                                 {{ $platform ?? 'ONLINE' }}
@@ -653,9 +697,9 @@
                                                             </span>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4 font-medium">{{ fmtDate($b->date) }}</td>
-                                                    <td class="px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_time) }}–{{ fmtTime($b->end_time) }}</td>
-                                                    <td class="px-6 py-4">
+                                                    <td class="h-12 px-6 py-4 font-medium">{{ fmtDate($b->date) }}</td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_time) }} &ndash; {{ fmtTime($b->end_time) }}</td>
+                                                    <td class="h-12 px-6 py-0 ">
                                                         @if($requesterName)
                                                             <div class="font-semibold text-gray-800">{{ $requesterName }}</div>
                                                         @endif
@@ -663,19 +707,12 @@
                                                             <div class="text-xs text-gray-500">{{ $requesterDept }}</div>
                                                         @endif
                                                     </td>
-                                                    <td class="px-6 py-4 text-right">
+                                                    <td class="h-12 px-6 py-4">
                                                         <div class="flex items-center justify-end gap-2">
                                                             <button type="button"
                                                                 wire:click="openDetailModal({{ $b->bookingroom_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition">
                                                                 {{ __('app.detail') }}
-                                                            </button>
-                                                            <button type="button"
-                                                                x-data
-                                                                @click="if (confirm('{{ __('app.cancel_request_confirm') }}')) { $wire.openReschedule({{ $b->bookingroom_id }}); }"
-                                                                wire:loading.attr="disabled"
-                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
-                                                                {{ __('app.cancel') }}
                                                             </button>
                                                         </div>
                                                     </td>
@@ -689,9 +726,54 @@
                     @endif
                 @endif
 
+                {{-- ── MANAGER PRIORITY ROOM BOOKINGS SECTION ── --}}
+                @php
+                    $priorityList = $activeTab === 'pending' ? $priorityRoomPending : $priorityRoomApproved;
+                @endphp
+                @if($priorityList->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-2 border-t border-amber-200 bg-amber-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Manager Priority Bookings</span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $priorityList->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        @foreach($priorityList as $pb)
+                        @php
+                            $pbColor = match($pb->status) {
+                                'approved'   => 'bg-emerald-100 text-emerald-700',
+                                'pending_receipt','pending_cancellation' => 'bg-amber-100 text-amber-700',
+                                default => 'bg-gray-100 text-gray-600',
+                            };
+                        @endphp
+                        <div wire:key="priority-room-{{ $pb->id }}" class="bg-white border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                            <div class="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $pb->meeting_title }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pb->room?->room_name ?? '—' }} &bull;
+                                    {{ \Carbon\Carbon::parse($pb->date)->format('d M Y') }} &bull;
+                                    {{ $pb->start_time }} – {{ $pb->end_time }}
+                                </p>
+                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pb->manager?->full_name ?? '—' }}</p>
+                                @if($pb->status === 'pending_cancellation')
+                                    <p class="text-[11px] text-orange-600">Awaiting cancellation approval for booking #{{ $pb->cancels_booking_id }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pbColor }}">
+                                {{ $pb->statusLabel() }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 {{-- PAGINATION --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50 border-top border-gray-200">
-                    <div class="flex justify-center">
+                    <div class="w-full">
                         @if($activeTab === 'pending')
                             {{ $pending->onEachSide(1)->links() }}
                         @else
@@ -704,48 +786,46 @@
             {{-- RIGHT: SIDEBAR (Rooms) --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 <section class="{{ $card }}">
-                    <div class="px-4 py-4 border-b border-gray-200">
-                        <h3 class="text-sm font-semibold text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
-                        <p class="text-xs text-gray-500 mt-1">Klik salah satu ruangan untuk mem-filter daftar approval.</p>
+                    <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-900">{{ __('app.advanced_filters') }}</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_room_label') }}</p>
                     </div>
 
-                    <div class="px-4 py-3 max-h-64 overflow-y-auto">
-                        {{-- All rooms --}}
-                        <button type="button"
-                            wire:click="clearRoomFilter"
-                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium
-                                {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
-                            <span class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                    All
-                                </span>
-                                <span>{{ __('app.all') }}</span>
-                            </span>
-                            @if(is_null($roomFilterId))
-                                <span class="text[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                            @endif
-                        </button>
-
-                        <div class="mt-2 space-y-1.5">
-                            @forelse($roomsOptions as $r)
-                                @php $active = !is_null($roomFilterId) && (int)$roomFilterId === (int)$r['id']; @endphp
+                    <div class="p-4 space-y-4 bg-white">
+                        <div class="space-y-1">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">{{ __('app.room') }}</label>
+                            <div class="px-1 py-1 max-h-80 overflow-y-auto">
+                                {{-- All rooms --}}
                                 <button type="button"
-                                    wire:click="selectRoom({{ $r['id'] }})"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs
-                                        {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] shadow-sm' : 'text-gray-800 hover:bg-gray-100' }}">
+                                        wire:click="clearRoomFilter"
+                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors mb-1.5
+                                            {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                                     <span class="flex items-center gap-2">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
-                                            {{ substr($r['label'],0,2) }}
-                                        </span>
-                                        <span class="truncate">{{ $r['label'] }}</span>
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
+                                        <span>{{ __('app.all_rooms') }}</span>
                                     </span>
-                                    @if($active)
-                                        <span class="text-[10px] uppercase tracking-wide opacity-80">{{ __('app.active') }}</span>
-                                    @endif
                                 </button>
-                            @empty
-                                <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
-                            @endforelse
+
+                                {{-- Each room --}}
+                                <div class="mt-2 space-y-1.5">
+                                    @forelse($roomsOptions as $r)
+                                        @php $active = !is_null($roomFilterId) && (int)$roomFilterId === (int)$r['id']; @endphp
+                                        <button type="button"
+                                                wire:click="selectRoom({{ $r['id'] }})"
+                                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                            <span class="flex items-center gap-2">
+                                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                                    {{ substr($r['label'], 0, 2) }}
+                                                </span>
+                                                <span class="truncate font-medium">{{ $r['label'] }}</span>
+                                            </span>
+                                        </button>
+                                    @empty
+                                        <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
+                                    @endforelse
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -754,24 +834,24 @@
 
         {{-- REJECT MODAL (Alasan wajib) --}}
         @if($showRejectModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
             wire:key="reject-modal"
             wire:keydown.escape.window="closeReject">
             {{-- Backdrop --}}
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReject"></div>
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReject"></div>
 
             <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden focus:outline-none transform transition-all duration-300 scale-100" tabindex="-1">
                 <form wire:submit.prevent="confirmReject">
                     {{-- Modal Header --}}
-                    <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
+                    <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-                                <x-heroicon-o-x-circle class="w-4 h-4 text-destructive" />
+                            <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                                <x-heroicon-o-x-circle class="w-4 h-4 text-[#CDDEA7]" />
                             </div>
-                            <h3 class="text-base font-bold text-foreground tracking-tight">{{ __('app.reject_booking_title') }}</h3>
+                            <h3 class="font-bold tracking-tight text-base">{{ __('app.reject_booking_title') }}</h3>
                         </div>
-                        <button class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" type="button" wire:click="closeReject">✕</button>
+                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeReject">✕</button>
                     </div>
 
                     {{-- Modal Body --}}
@@ -810,19 +890,19 @@
 
         {{-- RESCHEDULE MODAL --}}
         @if($showRescheduleModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReschedule"></div>
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReschedule"></div>
 
             <div class="relative bg-card border border-border shadow-2xl rounded-2xl w-full max-w-lg overflow-hidden transform transition-all duration-300 scale-100">
                 <form wire:submit.prevent="submitReschedule">
-                    <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
+                    <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                         <div>
-                            <h3 class="text-base font-bold text-foreground tracking-tight">Reschedule Booking</h3>
-                            <p class="text-xs text-muted-foreground mt-0.5">
+                            <h3 class="font-bold tracking-tight text-base">Reschedule Booking</h3>
+                            <p class="text-[11px] text-[#CDDEA7]/80 mt-0.5">
                                 {{ __('app.reschedule_reason_required') }}
                             </p>
                         </div>
-                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" wire:click="closeReschedule">✕</button>
+                        <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeReschedule">✕</button>
                     </div>
 
                     <div class="p-6 space-y-4">
@@ -845,14 +925,59 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div class="flex flex-col justify-end">
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.room') }} ({{ __('app.optional') }})</label>
-                            <select class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" wire:model.live="rescheduleRoomId">
-                                <option value="">{{ __('app.select_room') }}…</option>
-                                @foreach($roomsOptions as $r)
-                                <option value="{{ $r['id'] }}">{{ $r['label'] }}</option>
-                                @endforeach
-                            </select>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    roomId: $wire.entangle('rescheduleRoomId').live,
+                                    get items() {
+                                        const q = (this.search || '').toLowerCase().trim();
+                                        const list = @js(collect($roomsOptions)->values()->toArray());
+                                        if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
+                                        return list.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const list = @js(collect($roomsOptions)->values()->toArray());
+                                        const found = list.find(i => i.id == this.roomId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id, label) {
+                                        this.search = label;
+                                        this.roomId = id;
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        this.roomId = null;
+                                    }
+                                }"
+                                x-init="
+                                    search = selectedLabel;
+                                    $watch('roomId', val => {
+                                        search = selectedLabel;
+                                    });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="{{ __('app.select_room') }}..." class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-8">
+                                    <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                        <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                        <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
+                                </div>
+                                <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                    <template x-for="item in items" :key="item.id">
+                                        <li @click="select(item.id, item.label)" :class="roomId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                    </template>
+                                </ul>
+                                <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
+                            </div>
                             @error('rescheduleRoomId') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
                         </div>
 
@@ -877,94 +1002,95 @@
         @endif
 
         {{-- MOBILE FILTER MODAL --}}
-        @if($showFilterModal)
-        <div class="fixed inset-0 z-40 md:hidden flex items-end">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeFilterModal"></div>
-            <div class="relative w-full bg-card rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-border">
-                <div class="px-5 py-4 border-b border-border flex items-center justify-between bg-muted/10">
-                    <div>
-                        <h3 class="text-sm font-semibold tracking-tight text-foreground">Filter & Recent</h3>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">{{ __('app.filter_by_room_recent') }}</p>
-                    </div>
-                    <button class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" type="button" wire:click="closeFilterModal">✕</button>
+    <div x-show="showFilterModal" class="fixed inset-0 z-40 md:hidden flex items-end" x-cloak style="display: none;">
+        <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
+        <div x-show="showFilterModal" 
+             x-transition:enter="transform transition ease-out duration-300"
+             x-transition:enter-start="translate-y-full"
+             x-transition:enter-end="translate-y-0"
+             x-transition:leave="transform transition ease-in duration-200"
+             x-transition:leave-start="translate-y-0"
+             x-transition:leave-end="translate-y-full"
+             class="relative w-full bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border-t border-gray-200">
+            <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                <div>
+                    <h3 class="text-sm font-semibold tracking-tight text-gray-900">Filter & Recent</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_room_recent') }}</p>
                 </div>
+                <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition" @click="showFilterModal = false">✕</button>
+            </div>
 
-                <div class="p-5 space-y-4 overflow-y-auto flex-1">
-                    <div>
-                        <h4 class="text-xs font-semibold text-foreground mb-2">{{ __('app.filter_by_room_label') }}</h4>
+            <div class="p-5 space-y-4 overflow-y-auto flex-1 bg-white">
+                <div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-2">{{ __('app.filter_by_room_label') }}</h4>
 
-                        <button type="button"
-                            wire:click="clearRoomFilter"
-                            class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border border-border bg-background hover:bg-muted transition-colors
-                                {{ is_null($roomFilterId) ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-foreground' }}">
-                            <span class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-border/60 text-[10px] font-bold">
-                                    All
-                                </span>
-                                <span>{{ __('app.all') }}</span>
-                            </span>
-                            @if(is_null($roomFilterId))
-                                <span class="text-[10px] uppercase font-bold tracking-wide">{{ __('app.active') }}</span>
-                            @endif
-                        </button>
-
-                        <div class="mt-2 space-y-1.5">
-                            @forelse($roomsOptions as $r)
-                                @php
-                                    $active = !is_null($roomFilterId) && (int) $roomFilterId === (int) $r['id'];
-                                @endphp
-                                <button type="button"
-                                    wire:click="selectRoom({{ $r['id'] }})"
-                                    class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border border-border bg-background hover:bg-muted transition-colors
-                                        {{ $active ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-foreground' }}">
-                                    <span class="flex items-center gap-2">
-                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-border/60 text-[10px] font-bold">
-                                            {{ substr($r['label'], 0, 2) }}
-                                        </span>
-                                        <span class="truncate font-medium">{{ $r['label'] }}</span>
-                                    </span>
-                                    @if($active)
-                                        <span class="text-[10px] uppercase font-bold tracking-wide">{{ __('app.active') }}</span>
-                                    @endif
-                                </button>
-                            @empty
-                                <p class="text-xs text-muted-foreground">{{ __('app.no_room_data') }}</p>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-
-                <div class="px-5 py-4 border-t border-border bg-muted/10">
                     <button type="button"
-                        class="w-full h-10 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/95 transition-colors shadow-sm"
-                        wire:click="closeFilterModal">
-                        {{ __('app.apply_close') }}
+                        wire:click="clearRoomFilter"
+                        @click="showFilterModal = false"
+                        class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                            {{ is_null($roomFilterId) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                        <span class="flex items-center gap-2">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                All
+                            </span>
+                            <span>{{ __('app.all') }}</span>
+                        </span>
                     </button>
+
+                    <div class="mt-2 space-y-1.5">
+                        @forelse($roomsOptions as $r)
+                            @php
+                                $active = !is_null($roomFilterId) && (int) $roomFilterId === (int) $r['id'];
+                            @endphp
+                            <button type="button"
+                                wire:click="selectRoom({{ $r['id'] }})"
+                                @click="showFilterModal = false"
+                                class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors
+                                    {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                <span class="flex items-center gap-2">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">
+                                        {{ substr($r['label'], 0, 2) }}
+                                    </span>
+                                    <span class="truncate font-medium">{{ $r['label'] }}</span>
+                                </span>
+                            </button>
+                        @empty
+                            <p class="text-xs text-gray-500">{{ __('app.no_room_data') }}</p>
+                        @endforelse
+                    </div>
                 </div>
             </div>
+
+            <div class="px-5 py-4 border-t border-gray-200 bg-gray-50">
+                <button type="button"
+                    class="w-full h-10 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition-colors shadow-sm"
+                    @click="showFilterModal = false">
+                    {{ __('app.apply_close') }}
+                </button>
+            </div>
         </div>
-        @endif
+    </div>
 
         {{-- BOOKING DETAIL MODAL --}}
         @if ($showDetailModal && $selectedBookingDetail)
         <div
-            class="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
             wire:key="detail-modal-{{ $selectedBookingDetail->bookingroom_id }}"
             wire:keydown.escape.window="closeDetailModal">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
 
             <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden focus:outline-none transform transition-all duration-300 scale-100 flex flex-col max-h-[85vh]" tabindex="-1">
 
                 {{-- Modal Header --}}
-                <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <x-heroicon-o-eye class="w-4 h-4 text-primary" />
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-eye class="w-4 h-4 text-[#CDDEA7]" />
                         </div>
-                        <h3 class="text-base font-bold text-foreground tracking-tight">{{ __('app.detail_booking') }}</h3>
+                        <h3 class="font-bold tracking-tight text-base">{{ __('app.detail_booking') }}</h3>
                     </div>
-                    <button class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" type="button" wire:click="closeDetailModal">✕</button>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeDetailModal">✕</button>
                 </div>
 
                 {{-- Modal Body --}}
@@ -1063,7 +1189,7 @@
                             <p class="text-sm font-semibold text-foreground">
                                 {{ \Illuminate\Support\Carbon::parse($detail->date)->format('d M Y') }}
                                 <span class="text-muted-foreground/40 mx-1.5">/</span>
-                                {{ \Illuminate\Support\Carbon::parse($detail->start_time)->format('H:i') }} – {{ \Illuminate\Support\Carbon::parse($detail->end_time)->format('H:i') }}
+                                {{ \Illuminate\Support\Carbon::parse($detail->start_time)->format('H:i') }} &ndash; {{ \Illuminate\Support\Carbon::parse($detail->end_time)->format('H:i') }}
                             </p>
                         </div>
 
@@ -1186,4 +1312,129 @@
         </div>
         @endif
     </main>
+
+{{-- ═══════════════════════════════════════════════════════════════════════
+     Priority Room Booking — Notification Bell & Approval Modals
+     (kept inside the root div so Livewire sees only one root element)
+     ═══════════════════════════════════════════════════════════════════════ --}}
+
+@if($roomNotifCount > 0)
+<div class="fixed top-20 right-20 z-[80]">
+    <button wire:click="toggleRoomNotifPanel"
+        class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-amber-500 text-white shadow-xl hover:bg-amber-600 transition focus:outline-none"
+        title="Priority Room Notifications">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/>
+        </svg>
+        <span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold shadow">
+            {{ $roomNotifCount }}
+        </span>
+    </button>
 </div>
+@endif
+
+@if($showRoomNotifPanel)
+<div class="fixed inset-0 z-[90]" wire:click.self="closeRoomNotifPanel">
+    <div class="absolute top-20 right-20 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+            <p class="text-sm font-semibold text-foreground">Priority Room Notifications</p>
+            <button wire:click="closeRoomNotifPanel" class="text-muted-foreground hover:text-foreground">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="max-h-72 overflow-y-auto divide-y divide-border/60">
+            @forelse($roomNotifs as $n)
+            <div class="px-4 py-3 hover:bg-muted/30 transition {{ !$n->is_read ? 'bg-primary/5' : '' }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-semibold text-foreground">{{ $n->title }}</p>
+                        <p class="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{{ $n->message }}</p>
+                        <p class="text-[10px] text-muted-foreground/60 mt-1">{{ $n->created_at->diffForHumans() }}</p>
+                    </div>
+                    @if($n->isPendingAction())
+                    <button wire:click="openRoomPriorityApprovalModal({{ $n->id }})"
+                        class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
+                        Review
+                    </button>
+                    @elseif($n->action_taken)
+                    <span class="shrink-0 text-[11px] font-semibold {{ $n->action_taken === 'approved' ? 'text-emerald-600' : 'text-red-500' }}">
+                        {{ ucfirst($n->action_taken) }}
+                    </span>
+                    @endif
+                </div>
+            </div>
+            @empty
+            <div class="px-4 py-8 text-center text-muted-foreground text-xs">No notifications.</div>
+            @endforelse
+        </div>
+    </div>
+</div>
+@endif
+
+@if($showRoomPriorityApprovalModal && $roomPriorityBookingId)
+@php
+    $prb = \App\Models\PriorityRoomBooking::with(['room','manager','cancelledBooking'])->find($roomPriorityBookingId);
+@endphp
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+            </div>
+            <div>
+                <p class="font-semibold text-foreground">Priority Room Booking — Action Required</p>
+                <p class="text-xs text-muted-foreground mt-0.5">A manager has requested cancellation of an existing offline booking.</p>
+            </div>
+        </div>
+
+        @if($prb)
+        <div class="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Meeting:</span>
+                <span class="font-semibold">{{ $prb->meeting_title }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Room:</span>
+                <span class="font-semibold">{{ $prb->room?->room_name ?? '—' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Schedule:</span>
+                <span class="font-semibold">{{ \Carbon\Carbon::parse($prb->date)->format('d M Y') }} · {{ $prb->start_time }} – {{ $prb->end_time }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted-foreground">Requested by:</span>
+                <span class="font-semibold">{{ $prb->manager?->full_name ?? '—' }}</span>
+            </div>
+            @if($prb->cancelledBooking)
+            <div class="mt-2 pt-2 border-t border-border space-y-1">
+                <p class="text-xs font-semibold text-orange-600">Booking to cancel (offline, approved):</p>
+                <p class="text-xs text-muted-foreground">#{{ $prb->cancelledBooking->bookingroom_id }} — "{{ $prb->cancelledBooking->meeting_title }}" · {{ \Carbon\Carbon::parse($prb->cancelledBooking->date)->format('d M Y') }} {{ $prb->cancelledBooking->start_time }}–{{ $prb->cancelledBooking->end_time }}</p>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        <p class="text-sm text-foreground">
+            <strong>Approve</strong> to cancel the conflicting offline booking and grant priority, or <strong>Deny</strong> to keep it.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+            <button wire:click="approveRoomPriority"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                Approve &amp; Cancel Conflict
+            </button>
+            <button wire:click="denyRoomPriority"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition">
+                Deny Request
+            </button>
+            <button wire:click="closeRoomPriorityApprovalModal"
+                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
+                Later
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+</div>{{-- end root Livewire div --}}

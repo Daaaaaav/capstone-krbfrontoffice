@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use App\Models\VehicleBooking;
 use App\Models\Vehicle;
-use App\Models\VehicleBookingPhoto;
+use App\Models\PriorityVehicleBooking;
+use App\Models\ManagerNotification;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -28,17 +29,14 @@ class Vehiclestatus extends Component
     public string $q = '';
     public ?int $vehicleFilter = null;
     public ?string $selectedDate = null;   // YYYY-MM-DD
-    public string $statusTab = 'pending';  // pending | approved | on_progress | returned
+    public string $statusTab = 'pending';  // pending | approved | on_progress
     public string $sortFilter = 'recent';  // recent | oldest | nearest
     public int $perPage = 10;
-    public bool $includeDeleted = false;
 
     /** cache */
     public $vehicles;
     /** @var array<int,string> */
     public array $vehicleMap = [];
-    /** @var array<int,array{before:int,after:int}> */
-    public array $photoCounts = [];
 
     // Reject modal state
     public bool $showRejectModal = false;
@@ -92,10 +90,6 @@ class Vehiclestatus extends Component
     {
         $this->resetPage();
     }
-    public function updatedIncludeDeleted()
-    {
-        $this->resetPage();
-    }
 
     public function mount(): void
     {
@@ -112,8 +106,6 @@ class Vehiclestatus extends Component
     public function render()
     {
         $bookings = VehicleBooking::query()
-            ->when(!$this->includeDeleted, fn(Builder $q) => $q->whereNull('deleted_at'))
-            ->when($this->includeDeleted, fn(Builder $q) => $q->withTrashed())
             ->when($this->vehicleFilter, fn(Builder $q) => $q->where('vehicle_id', $this->vehicleFilter))
             ->when($this->q !== '', function (Builder $q) {
                 $like = '%' . $this->q . '%';
@@ -124,42 +116,42 @@ class Vehiclestatus extends Component
                 });
             })
             ->when($this->selectedDate, fn(Builder $q) => $q->whereDate('start_at', $this->selectedDate))
-            ->when($this->statusTab, fn(Builder $q) => $q->where('status', $this->statusTab))
+            ->when($this->statusTab, function (Builder $q) {
+                // Sanitise: only allow valid active-workflow tabs
+                $tab = in_array($this->statusTab, ['pending', 'approved', 'on_progress'], true)
+                    ? $this->statusTab
+                    : 'pending';
+                return $tab === 'on_progress'
+                    ? $q->whereIn('status', ['on_progress', 'late_return'])
+                    : $q->where('status', $tab);
+            })
             ->when($this->sortFilter === 'recent', fn(Builder $q) => $q->orderByDesc('vehiclebooking_id'))
             ->when($this->sortFilter === 'oldest', fn(Builder $q) => $q->orderBy('vehiclebooking_id'))
             ->when($this->sortFilter === 'nearest', fn(Builder $q) => $q->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, NOW(), start_at))'))
             ->paginate($this->perPage);
 
-        $ids = $bookings->pluck('vehiclebooking_id')->all();
-        $this->photoCounts = $this->buildPhotoCounts($ids);
-
         return view('livewire.pages.receptionist.vehiclestatus', [
-            'bookings' => $bookings,
+            'bookings'               => $bookings,
+            'vehicleNotifCount'      => $this->vehicleNotifCount,
+            'vehicleNotifs'          => $this->vehicleNotifs,
+            // Manager priority vehicle bookings for the current status tab
+            'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
+                ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
+                ->when($this->statusTab === 'pending', fn($q) => $q->whereIn('status', [
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                ]))
+                ->when($this->statusTab === 'approved', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+                ->when($this->q !== '', fn($q) => $q->where(function($qq) {
+                    $like = '%' . $this->q . '%';
+                    $qq->where('purpose', 'like', $like)
+                       ->orWhere('borrower_name', 'like', $like)
+                       ->orWhere('destination', 'like', $like);
+                }))
+                ->orderByDesc('created_at')
+                ->get(),
         ]);
-    }
-
-    /**
-     * @param  array<int> $bookingIds
-     * @return array<int,array{before:int,after:int}>
-     */
-    protected function buildPhotoCounts(array $bookingIds): array
-    {
-        if (empty($bookingIds))
-            return [];
-        $rows = VehicleBookingPhoto::selectRaw('vehiclebooking_id, photo_type, COUNT(*) as c')
-            ->whereIn('vehiclebooking_id', $bookingIds)
-            ->groupBy('vehiclebooking_id', 'photo_type')
-            ->get();
-
-        $out = [];
-        foreach ($bookingIds as $id)
-            $out[$id] = ['before' => 0, 'after' => 0];
-        foreach ($rows as $r) {
-            $vb = (int) $r->vehiclebooking_id;
-            $type = $r->photo_type === 'after' ? 'after' : 'before';
-            $out[$vb][$type] = (int) $r->c;
-        }
-        return $out;
     }
 
     /* =========================
@@ -172,7 +164,6 @@ class Vehiclestatus extends Component
             DB::transaction(function () use ($id) {
                 /** @var VehicleBooking $b */
                 $b = VehicleBooking::lockForUpdate()
-                    ->when($this->includeDeleted, fn($q) => $q->withTrashed())
                     ->findOrFail($id);
 
                 if ($b->status !== 'pending') {
@@ -228,7 +219,6 @@ class Vehiclestatus extends Component
             $affected = DB::table('vehicle_bookings')
                 ->where('vehiclebooking_id', $bookingId)
                 ->where('status', 'pending')
-                ->when(!$this->includeDeleted, fn($q) => $q->whereNull('deleted_at'))
                 ->update([
                     'status' => 'rejected',
                     'notes'  => DB::raw(
@@ -286,16 +276,15 @@ class Vehiclestatus extends Component
         try {
             DB::transaction(function () use ($id) {
                 $b = VehicleBooking::lockForUpdate()
-                    ->when($this->includeDeleted, fn($q) => $q->withTrashed())
                     ->findOrFail($id);
-                if (!in_array($b->status, ['approved', 'on_progress'], true)) {
-                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not yet on progress.");
+                if (!in_array($b->status, ['approved', 'on_progress', 'late_return'], true)) {
+                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} cannot be completed from status '{$b->status}'.");
                 }
-                $b->status = 'returned';
+                $b->status = 'completed';
                 $b->save();
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Returned', message: 'Status updated to Returned.');
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed.');
             $this->resetPage();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Update', message: $e->getMessage());
@@ -305,21 +294,49 @@ class Vehiclestatus extends Component
         }
     }
 
+    /**
+     * Return a human-readable overdue duration string for a booking that is past its end_at.
+     * e.g. "2d 3h", "45m". Returns '' if the booking is not overdue.
+     */
+    public function overdueDuration(VehicleBooking $booking): string
+    {
+        if (!$booking->end_at) {
+            return '';
+        }
+
+        $end = \Carbon\Carbon::parse($booking->end_at, $this->tz);
+        $now = \Carbon\Carbon::now($this->tz);
+
+        if (!$now->greaterThan($end)) {
+            return '';
+        }
+
+        $diff = $now->diff($end);
+
+        $days    = (int) $diff->days;
+        $hours   = (int) $diff->h;
+        $minutes = (int) $diff->i;
+
+        if ($days >= 1) {
+            return $days . 'd' . ($hours > 0 ? ' ' . $hours . 'h' : '');
+        }
+
+        if ($hours >= 1) {
+            return $hours . 'h' . ($minutes > 0 ? ' ' . $minutes . 'm' : '');
+        }
+
+        return max(1, $minutes) . 'm';
+    }
+
     public function markDone(int $id): void
     {
+        // Kept for backward compatibility: any existing 'returned' records can still be completed.
         try {
             DB::transaction(function () use ($id) {
                 $b = VehicleBooking::lockForUpdate()
-                    ->when($this->includeDeleted, fn($q) => $q->withTrashed())
                     ->findOrFail($id);
                 if ($b->status !== 'returned') {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} has not been returned yet.");
-                }
-                $afterCount = VehicleBookingPhoto::where('vehiclebooking_id', $b->vehiclebooking_id)
-                    ->where('photo_type', 'after')
-                    ->count();
-                if ($afterCount < 1) {
-                    throw new \RuntimeException('Please upload at least 1 AFTER photo first.');
                 }
                 $b->status = 'completed';
                 $b->save();
@@ -339,27 +356,26 @@ class Vehiclestatus extends Component
     public function showDetails(int $id): void
     {
         try {
-            $booking = VehicleBooking::when($this->includeDeleted, fn($q) => $q->withTrashed())
-                ->findOrFail($id);
+            $booking = VehicleBooking::findOrFail($id);
 
-            $photos = VehicleBookingPhoto::where('vehiclebooking_id', $id)
-                ->with('user') // Pastikan relasi user ada di model VehicleBookingPhoto
-                ->orderBy('created_at')
-                ->get();
+            // $photos = VehicleBookingPhoto::where('vehiclebooking_id', $id)
+            //     ->with('user') // Pastikan relasi user ada di model VehicleBookingPhoto
+            //     ->orderBy('created_at')
+            //     ->get();
 
-            $this->selectedBooking = $booking;
+            // $this->selectedBooking = $booking;
 
-            // Sort photos
-            $before = [];
-            $after = [];
-            foreach ($photos as $photo) {
-                if ($photo->photo_type === 'after') {
-                    $after[] = $photo;
-                } else {
-                    $before[] = $photo;
-                }
-            }
-            $this->selectedPhotos = ['before' => $before, 'after' => $after];
+            // // Sort photos
+            // $before = [];
+            // $after = [];
+            // foreach ($photos as $photo) {
+            //     if ($photo->photo_type === 'after') {
+            //         $after[] = $photo;
+            //     } else {
+            //         $before[] = $photo;
+            //     }
+            // }
+            // $this->selectedPhotos = ['before' => $before, 'after' => $after];
 
             $this->showDetailModal = true;
             $this->resetErrorBag();
@@ -402,5 +418,173 @@ class Vehiclestatus extends Component
         $this->vehicleFilter = null;
         $this->resetPage();
         $this->showFilterModal = false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Priority Vehicle Booking — Notification handling
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /** Notification bell panel */
+    public bool $showNotifPanel = false;
+
+    /** Approval modal for a cancellation request */
+    public bool  $showPriorityApprovalModal = false;
+    public ?int  $priorityApprovalNotifId   = null;
+    public ?int  $priorityApprovalBookingId = null; // PriorityVehicleBooking id
+
+    public function toggleNotifPanel(): void
+    {
+        $this->showNotifPanel = !$this->showNotifPanel;
+    }
+
+    public function closeNotifPanel(): void
+    {
+        $this->showNotifPanel = false;
+    }
+
+    public function openPriorityApprovalModal(int $notifId): void
+    {
+        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+
+        $notif = ManagerNotification::where('id', $notifId)
+            ->where('company_id', $companyId)
+            ->where('action_required', true)
+            ->whereNull('action_taken')
+            ->first();
+
+        if (!$notif) {
+            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Notification not found or already actioned.');
+            return;
+        }
+
+        $this->priorityApprovalNotifId   = $notifId;
+        $this->priorityApprovalBookingId = $notif->notifiable_id;
+        $this->showPriorityApprovalModal = true;
+        $this->showNotifPanel            = false;
+        $notif->markRead();
+    }
+
+    public function closePriorityApprovalModal(): void
+    {
+        $this->showPriorityApprovalModal = false;
+        $this->priorityApprovalNotifId   = null;
+        $this->priorityApprovalBookingId = null;
+    }
+
+    /**
+     * Receptionist approves the cancellation:
+     * 1. Cancel the conflicting pending vehicle booking.
+     * 2. Mark the priority booking as approved.
+     * 3. Mark the notification as actioned.
+     */
+    public function approvePriorityVehicle(): void
+    {
+        if (!$this->priorityApprovalBookingId) {
+            return;
+        }
+
+        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                $priority = PriorityVehicleBooking::where('id', $this->priorityApprovalBookingId)
+                    ->where('company_id', $companyId)
+                    ->firstOrFail();
+
+                // Cancel the conflicting booking if it's still pending
+                if ($priority->cancels_booking_id) {
+                    VehicleBooking::where('vehiclebooking_id', $priority->cancels_booking_id)
+                        ->where('status', 'pending')
+                        ->update([
+                            'status' => 'rejected',
+                            'notes'  => DB::raw("TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Cancelled — superseded by manager priority booking #" . $this->priorityApprovalBookingId . "]'))"),
+                        ]);
+                }
+
+                $priority->update([
+                    'status'     => PriorityVehicleBooking::STATUS_APPROVED,
+                    'handled_by' => \Illuminate\Support\Facades\Auth::user()->user_id,
+                ]);
+
+                // Update notification
+                if ($this->priorityApprovalNotifId) {
+                    ManagerNotification::where('id', $this->priorityApprovalNotifId)
+                        ->update(['action_taken' => 'approved', 'is_read' => true]);
+                }
+            });
+
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking approved and conflicting booking cancelled.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
+        }
+
+        $this->closePriorityApprovalModal();
+        $this->resetPage();
+    }
+
+    /**
+     * Receptionist denies the cancellation request.
+     * The priority booking is marked as conflict-denied.
+     */
+    public function denyPriorityVehicle(): void
+    {
+        if (!$this->priorityApprovalBookingId) {
+            return;
+        }
+
+        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                PriorityVehicleBooking::where('id', $this->priorityApprovalBookingId)
+                    ->where('company_id', $companyId)
+                    ->update([
+                        'status'           => PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
+                        'handled_by'       => \Illuminate\Support\Facades\Auth::user()->user_id,
+                        'rejection_reason' => 'Cancellation request denied by receptionist.',
+                    ]);
+
+                if ($this->priorityApprovalNotifId) {
+                    ManagerNotification::where('id', $this->priorityApprovalNotifId)
+                        ->update(['action_taken' => 'denied', 'is_read' => true]);
+                }
+            });
+
+            $this->dispatch('toast', type: 'info', title: 'Denied', message: 'Cancellation request denied. Original booking kept.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
+        }
+
+        $this->closePriorityApprovalModal();
+    }
+
+    /** Count of unread vehicle-related notifications for the bell badge. */
+    public function getVehicleNotifCountProperty(): int
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) return 0;
+        return ManagerNotification::where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id)
+            ->where('type', ManagerNotification::TYPE_VEHICLE_CANCEL_REQUEST)
+            ->where('is_read', false)
+            ->count();
+    }
+
+    /** Recent vehicle notifications for the panel dropdown. */
+    public function getVehicleNotifsProperty()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if (!$user) return collect();
+        return ManagerNotification::where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id)
+            ->whereIn('type', [
+                ManagerNotification::TYPE_VEHICLE_CANCEL_REQUEST,
+                ManagerNotification::TYPE_PRIORITY_VEHICLE_DIRECT,
+            ])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
     }
 }

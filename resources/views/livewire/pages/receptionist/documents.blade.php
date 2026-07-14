@@ -25,35 +25,11 @@
       option:checked { background: var(--muted) !important; color: var(--foreground) !important; }
     </style>
 
-    <div class="px-4 sm:px-6 py-6 space-y-6">
-        @if (session('saved'))
-            <div class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold shadow-sm w-full">
-                <svg class="w-4 h-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{{ __('app.doc_saved') }}</span>
-            </div>
-        @endif
-
-        <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
-            <div class="pointer-events-none absolute inset-0 opacity-10">
-                <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
-                <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
-            </div>
-            <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                        <svg class="w-6 h-6 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m-4-4h8M4 6h16v12H4z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.docpac_form_title') }}</h2>
-                        <p class="text-xs text-[#CDDEA7]/80">{{ __('app.complete_doc_data') }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <main class="px-4 sm:px-6 py-6 space-y-6">
+        {{-- HEADER --}}
+        <x-page-header
+            title="{{ __('app.docpac_form_title') }}"
+            subtitle="{{ __('app.complete_doc_data') }}" />
 
         <div class="{{ $card }}">
             <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center gap-3">
@@ -73,17 +49,61 @@
                         <input type="text" wire:model.defer="document_name" class="{{ $input }}" placeholder="{{ __('app.document_name_ph') }}">
                         @error('document_name') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                     </div>
-                    <div>
+                    <div class="flex flex-col justify-end">
                         <label class="{{ $label }}">Type</label>
-                        <div class="relative">
-                            <select wire:model.defer="type" class="{{ $input }} appearance-none pr-8">
-                                <option value="document">Document</option>
-                                <option value="invoice">Invoice</option>
-                                <option value="etc">Etc</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: $wire.entangle('type'),
+                                options: [
+                                    { id: 'document', label: 'Document' },
+                                    { id: 'invoice', label: 'Invoice' },
+                                    { id: 'etc', label: 'Etc' }
+                                ],
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.selectedId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.selectedId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.selectedId = '';
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('selectedId', val => {
+                                    search = selectedLabel;
+                                });
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="Type" class="{{ $input }} pr-8">
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
+                            <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                <template x-for="item in items" :key="item.id">
+                                    <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
                         </div>
                         @error('type') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                     </div>
@@ -101,18 +121,61 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
+                    <div class="flex flex-col justify-end">
                         <label class="{{ $label }}">{{ __('app.storage') }}</label>
-                        <div class="relative">
-                            <select wire:model.defer="penyimpanan" class="{{ $input }} appearance-none pr-8">
-                                <option value="">-</option>
-                                <option value="rak1">Rak 1</option>
-                                <option value="rak2">Rak 2</option>
-                                <option value="rak3">Rak 3</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: $wire.entangle('penyimpanan'),
+                                options: [
+                                    { id: 'rak1', label: 'Rak 1' },
+                                    { id: 'rak2', label: 'Rak 2' },
+                                    { id: 'rak3', label: 'Rak 3' }
+                                ],
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.selectedId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.selectedId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.selectedId = '';
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('selectedId', val => {
+                                    search = selectedLabel;
+                                });
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="-" class="{{ $input }} pr-8">
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
+                            <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                <template x-for="item in items" :key="item.id">
+                                    <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
                         </div>
                     </div>
 
@@ -128,17 +191,61 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
+                    <div class="flex flex-col justify-end">
                         <label class="{{ $label }}">Status</label>
-                        <div class="relative">
-                            <select wire:model.defer="status" class="{{ $input }} appearance-none pr-8">
-                                <option value="pending">Pending</option>
-                                <option value="taken">Taken</option>
-                                <option value="delivered">Delivered</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: $wire.entangle('status'),
+                                options: [
+                                    { id: 'pending', label: 'Pending' },
+                                    { id: 'taken', label: 'Taken' },
+                                    { id: 'delivered', label: 'Delivered' }
+                                ],
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.selectedId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.selectedId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.selectedId = '';
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('selectedId', val => {
+                                    search = selectedLabel;
+                                });
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="Status" class="{{ $input }} pr-8">
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
+                            <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                <template x-for="item in items" :key="item.id">
+                                    <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
                         </div>
                         @error('status') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                         <p class="text-[11px] text-muted-foreground mt-1.5 font-semibold">
@@ -323,12 +430,10 @@
                                         <span wire:loading.remove wire:target="openEdit({{ $e->document_id }})">{{ __('app.edit') }}</span>
                                         <span wire:loading wire:target="openEdit({{ $e->document_id }})">{{ __('app.loading_label') }}</span>
                                     </button>
-                                    <button wire:click="delete({{ $e->document_id }})"
-                                        onclick="return confirm('{{ __('app.delete_document_confirm') }}')" wire:loading.attr="disabled"
-                                        wire:target="delete({{ $e->document_id }})"
+                                    <button wire:click="confirmDelete({{ $e->document_id }}, '{{ str_replace('\'', '', $e->document_name ?? '') }}')"
+                                        wire:loading.attr="disabled"
                                         class="inline-flex items-center justify-center gap-1.5 px-3.5 h-8 text-xs font-semibold rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition shadow-sm">
-                                        <span wire:loading.remove wire:target="delete({{ $e->document_id }})">{{ __('app.delete') }}</span>
-                                        <span wire:loading wire:target="delete({{ $e->document_id }})">{{ __('app.deleting_label') }}</span>
+                                        <span>{{ __('app.delete') }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -339,14 +444,14 @@
                 @endforelse
             </div>
 
-            <div class="px-6 py-4 bg-muted/10 border-t border-border flex justify-end">
+            <div class="px-6 py-4 bg-muted/10 border-t border-border w-full">
                 {{ $entries->onEachSide(1)->links() }}
             </div>
         </div>
     </div>
 
     @if ($showEdit)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" wire:poll.1000ms>
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" wire:poll.1000ms>
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-all duration-300" wire:click="closeEdit"></div>
             
             <div class="relative w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border overflow-hidden transform transition-all duration-300 scale-100 max-h-[90vh] flex flex-col">
@@ -380,15 +485,59 @@
                     <div class="grid grid-cols-2 gap-3.5">
                         <div class="space-y-1.5">
                             <label class="{{ $label }}">Type</label>
-                            <div class="relative">
-                                <select wire:model="edit.type" class="{{ $editIn }} appearance-none pr-8">
-                                    <option value="document">Document</option>
-                                    <option value="invoice">Invoice</option>
-                                    <option value="etc">Etc</option>
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: $wire.entangle('edit.type'),
+                                    options: [
+                                        { id: 'document', label: 'Document' },
+                                        { id: 'invoice', label: 'Invoice' },
+                                        { id: 'etc', label: 'Etc' }
+                                    ],
+                                    get items() {
+                                        const q = (this.search || '').toLowerCase().trim();
+                                        if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const found = this.options.find(i => i.id == this.selectedId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id, label) {
+                                        this.search = label;
+                                        this.selectedId = id;
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        this.selectedId = '';
+                                    }
+                                }"
+                                x-init="
+                                    search = selectedLabel;
+                                    $watch('selectedId', val => {
+                                        search = selectedLabel;
+                                    });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="Type" class="{{ $editIn }} pr-8">
+                                    <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                        <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                        <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
                                 </div>
+                                <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                    <template x-for="item in items" :key="item.id">
+                                        <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                    </template>
+                                </ul>
+                                <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
                             </div>
                             @error('edit.type') <p class="text-[11px] text-destructive font-medium">{{ $message }}</p> @enderror
                         </div>
@@ -432,15 +581,59 @@
                         </div>
                         <div class="space-y-1.5">
                             <label class="{{ $label }}">Status</label>
-                            <div class="relative">
-                                <select wire:model="edit.status" class="{{ $editIn }} appearance-none pr-8">
-                                    <option value="pending">Pending</option>
-                                    <option value="taken">Taken</option>
-                                    <option value="delivered">Delivered</option>
-                                </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground/60">
-                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                            <div
+                                x-data="{
+                                    open: false,
+                                    search: '',
+                                    selectedId: $wire.entangle('edit.status'),
+                                    options: [
+                                        { id: 'pending', label: 'Pending' },
+                                        { id: 'taken', label: 'Taken' },
+                                        { id: 'delivered', label: 'Delivered' }
+                                    ],
+                                    get items() {
+                                        const q = (this.search || '').toLowerCase().trim();
+                                        if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                        return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    },
+                                    get selectedLabel() {
+                                        const found = this.options.find(i => i.id == this.selectedId);
+                                        return found ? found.label : '';
+                                    },
+                                    select(id, label) {
+                                        this.search = label;
+                                        this.selectedId = id;
+                                        this.open = false;
+                                    },
+                                    clear() {
+                                        this.search = '';
+                                        this.selectedId = '';
+                                    }
+                                }"
+                                x-init="
+                                    search = selectedLabel;
+                                    $watch('selectedId', val => {
+                                        search = selectedLabel;
+                                    });
+                                "
+                                class="relative"
+                                @click.outside="open = false"
+                            >
+                                <div class="relative">
+                                    <input type="text" x-model="search" @focus="open = true" @input="open = true" @keydown.escape="open = false" @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)" autocomplete="off" placeholder="Status" class="{{ $editIn }} pr-8">
+                                    <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                        <button x-show="search" type="button" @click.stop="clear()" class="text-muted-foreground hover:text-foreground">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                        <svg class="fill-current h-4 w-4 text-muted-foreground/60 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                    </div>
                                 </div>
+                                <ul x-show="open && items.length > 0" class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-card shadow-lg text-sm" style="display:none">
+                                    <template x-for="item in items" :key="item.id">
+                                        <li @click="select(item.id, item.label)" :class="selectedId == item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted cursor-pointer'" class="px-3.5 py-2.5 cursor-pointer transition-colors" x-text="item.label"></li>
+                                    </template>
+                                </ul>
+                                <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">{{ __('app.no_data') }}</p>
                             </div>
                             @error('edit.status') <p class="text-[11px] text-destructive font-medium">{{ $message }}</p> @enderror
                             <p class="text-[11px] text-muted-foreground mt-1.5 font-semibold">
@@ -462,6 +655,47 @@
                         <span wire:loading wire:target="saveEdit" class="flex items-center gap-2">
                             <x-heroicon-o-arrow-path class="animate-spin h-4 w-4 text-white" />
                             <span>{{ __('app.saving') }}</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- DELETE MODAL --}}
+    @if($showDeleteModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
+            <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Alert</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">
+                        {{ $isForceDelete ? __(`app.delete_permanent_confirm`) : __(`app.delete_document_confirm`) }}
+                    </h3>
+                    <p class="text-sm text-gray-500">{{ __('app.are_you_sure_delete') }}</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                        {{ $deletingSummary }}
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                    <button type="button" wire:click="$set('showDeleteModal', false)"
+                        class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        {{ __('app.cancel') }}
+                    </button>
+                    <button type="button" wire:click="executeDelete" wire:loading.attr="disabled"
+                        class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="executeDelete">{{ __('app.delete') }}</span>
+                        <span wire:loading wire:target="executeDelete" class="flex items-center gap-1.5">
+                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                            {{ __('app.delete') }}...
                         </span>
                     </button>
                 </div>

@@ -6,10 +6,14 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Models\Guestbook as GuestbookModel;
-use App\Models\Department; 
+use App\Models\GuestbookQrCode;
+use App\Models\Department;
 use App\Models\User;
+use App\Mail\GuestbookQrMail;
 use App\Services\SecurityMonitoringService;
 
 #[Layout('layouts.receptionist')]
@@ -18,9 +22,12 @@ class Guestbook extends Component
 {
     // Form fields yang diisi user
     public $name;
+    public $email;
     public $phone_number;
     public $instansi;
     public $keperluan;
+    public $visitor_count = 1;
+    public $storage_place;
     
     // Field baru (Nullable / Optional)
     public $department_id;
@@ -67,6 +74,8 @@ class Guestbook extends Component
         // Reset user yang dipilih sebelumnya
         $this->user_id = null; 
         $this->loadUsers($value);
+        // Push updated list to Alpine (needed because the dropdown uses wire:ignore)
+        $this->dispatch('users-list-updated', users: $this->users_list);
     }
     
     // Helper function to load users
@@ -91,9 +100,12 @@ class Guestbook extends Component
     {
         return [
             'name'          => ['required', 'string', 'max:255'],
+            'email'         => ['required', 'email', 'max:255'],
             'phone_number'  => ['nullable', 'string', 'max:50'],
             'instansi'      => ['nullable', 'string', 'max:255'],
             'keperluan'     => ['nullable', 'string', 'max:255'],
+            'visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
+            'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
             // Ensures department_id and user_id are nullable
             'department_id' => ['nullable', 'exists:departments,department_id'],
             'user_id'       => ['nullable', 'exists:users,user_id'],
@@ -125,25 +137,69 @@ class Guestbook extends Component
 
         SecurityMonitoringService::logFormSubmit('guestbook', $validatedData);
 
+        // Generate master QR token for backward compat
+        $qrToken = GuestbookModel::generateQrToken();
+        $visitorCount = (int) $validatedData['visitor_count'];
+
         // Prepare data including auto-filled fields
         $entryData = array_merge($validatedData, [
             'date'              => $this->date,
             'jam_in'            => $this->jam_in,
             'petugas_penjaga'   => $this->petugas_penjaga,
-            'company_id'        => $companyId, 
-            'jam_out'           => null, 
+            'company_id'        => $companyId,
+            'jam_out'           => null,
+            'qr_token'          => $qrToken,
+            'qr_status'         => 'pending',
+            'visitor_count'     => $visitorCount,
         ]);
 
         // Saves data to the database
-        GuestbookModel::create($entryData); 
+        $entry = GuestbookModel::create($entryData);
+
+        // Generate individual QR codes for each visitor
+        $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
+        foreach ($qrTokens as $index => $token) {
+            GuestbookQrCode::create([
+                'guestbook_id'   => $entry->guestbook_id,
+                'qr_token'       => $token,
+                'visitor_number' => $index + 1,
+            ]);
+        }
+
+        // Send QR code email if an email address was provided
+        if (!empty($validatedData['email'])) {
+            try {
+                // Reload with qrCodes for the email
+                $entry->load('qrCodes');
+                Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry));
+            } catch (\Throwable $e) {
+                Log::error('GuestbookQrMail failed: ' . $e->getMessage(), ['exception' => $e]);
+                // Non-fatal — entry is already saved, just warn the receptionist
+                $this->dispatch(
+                    'toast',
+                    type: 'warning',
+                    title: 'Email Gagal Terkirim',
+                    message: 'Data tamu disimpan, namun QR code gagal dikirim ke email. Periksa konfigurasi mail.',
+                    duration: 6000
+                );
+            }
+        }
 
         // Reset form
-        $this->reset(['name', 'phone_number', 'instansi', 'keperluan', 'department_id', 'user_id']);
+        $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place']);
+        $this->visitor_count = 1;
         // Reset user list 
-        $this->users_list = []; 
+        $this->users_list = [];
 
         $this->dispatch('$refresh');
-        $this->dispatch('toast', type: 'success', title: 'Ditambah', message: 'Guest ditambah.', duration: 3000);
+        // Tell Alpine dropdowns to clear (needed because they use wire:ignore)
+        $this->dispatch('guestbook-form-reset');
+
+        $toastMessage = !empty($validatedData['email'])
+            ? 'Guest ditambah (' . $visitorCount . ' pengunjung). QR code dikirim ke ' . $validatedData['email'] . '.'
+            : 'Guest ditambah (' . $visitorCount . ' pengunjung). (Tidak ada email – QR tidak dikirim)';
+
+        $this->dispatch('toast', type: 'success', title: 'Ditambah', message: $toastMessage, duration: 4000);
         session()->flash('saved', true);
     }
 

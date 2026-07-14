@@ -1,4 +1,4 @@
-# Security Testing Documentation
+﻿# Security Testing Documentation
 
 ## 📚 Overview
 
@@ -225,7 +225,7 @@ admin`id`
    ↓
 10. AISecurityReports fetches via WazuhAlertService
    ↓
-11. Superadmin sees attack in real-time
+11. Manager sees attack in real-time
 ```
 
 ---
@@ -336,7 +336,7 @@ admin`id`
 1. Check `WazuhAlertService` configuration
 2. Verify API endpoints in service
 3. Check browser console for errors (F12)
-4. Verify superadmin role/permissions
+4. Verify manager role/permissions
 5. Check Livewire component mounting
 
 ---
