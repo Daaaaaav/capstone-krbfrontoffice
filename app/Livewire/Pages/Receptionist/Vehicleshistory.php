@@ -57,6 +57,14 @@ class Vehicleshistory extends Component
     public string $deletingSummary = '';
     public bool $showDeleteModal = false;
     public bool $isForceDelete = false;
+
+    // *** BARU: Detail modal state ***
+    public bool $showDetailModal = false;
+    public ?VehicleBooking $selectedBooking = null;
+    /** @var array{before: array, after: array} */
+    public array $selectedPhotos = ['before' => [], 'after' => []];
+    // *** END BARU ***
+
     public array $edit = [
         'borrower_name' => '',
         'purpose'       => '',
@@ -267,6 +275,32 @@ class Vehicleshistory extends Component
         $this->showEdit = false;
         $this->reset('editId', 'edit', 'editLastEdited', 'editCreatedAt');
     }
+
+    // *** BARU: Metode untuk Detail Modal ***
+    public function showDetails(int $id): void
+    {
+        try {
+            $booking = VehicleBooking::withTrashed()->findOrFail($id);
+
+            $this->selectedBooking = $booking;
+
+            $this->showDetailModal = true;
+            $this->resetErrorBag();
+
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to load details: ' . $e->getMessage());
+        }
+    }
+
+    public function closeDetailModal(): void
+    {
+        $this->showDetailModal = false;
+        $this->selectedBooking = null;
+        $this->selectedPhotos = ['before' => [], 'after' => []];
+        $this->resetErrorBag();
+    }
+    // *** END BARU ***
 
     public function render()
     {

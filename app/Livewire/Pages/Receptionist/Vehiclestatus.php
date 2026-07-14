@@ -363,7 +363,7 @@ class Vehiclestatus extends Component
             //     ->orderBy('created_at')
             //     ->get();
 
-            // $this->selectedBooking = $booking;
+            $this->selectedBooking = $booking;
 
             // // Sort photos
             // $before = [];

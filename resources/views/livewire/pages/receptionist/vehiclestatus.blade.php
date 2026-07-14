@@ -332,15 +332,17 @@
                                                     </div>
 
                                                     {{-- Dates and Times --}}
-                                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                                        <span class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                    <div class="flex flex-col gap-y-1.5 mt-1">
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-calendar class="w-4 h-4 text-gray-500 shrink-0"/>
-                                                            <span>{{ fmtDate($b->start_at) }}</span>
-                                                        </span>
-                                                        <span class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <span class="text-gray-500 text-xs w-9">Start</span>
+                                                            <span>{{ strtolower(\Carbon\Carbon::parse($b->start_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->start_at)->format('H.i') }}</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-clock class="w-4 h-4 text-gray-500 shrink-0"/>
-                                                            <span>{{ fmtTime($b->start_at) }}–{{ fmtTime($b->end_at) }}</span>
-                                                        </span>
+                                                            <span class="text-gray-500 text-xs w-9">End</span>
+                                                            <span>{{ strtolower(\Carbon\Carbon::parse($b->end_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->end_at)->format('H.i') }}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -364,6 +366,12 @@
                                     {{-- 5. BOTTOM ACTIONS (Horizontally aligned and right justified) --}}
                                     <div class="pt-3 border-t border-gray-100 flex justify-end gap-3 items-center">
                                         <span class="text-[11px] text-gray-500 mr-auto">No. {{ ($bookings->firstItem() ?? 1) + $loop->index }}</span>
+
+                                        <button type="button"
+                                                wire:click.stop="showDetails({{ $b->vehiclebooking_id }})"
+                                                class="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition shadow-sm">
+                                            Detail
+                                        </button>
 
                                         {{-- Actions based on Status --}}
                                         @if($b->status === 'pending')
@@ -421,8 +429,8 @@
                                             <th class="px-6 py-3.5">{{ __('app.vehicle') }}</th>
                                             <th class="px-6 py-3.5">{{ __('app.borrower') }}</th>
                                             <th class="px-6 py-3.5">{{ __('app.purpose') }}</th>
-                                            <th class="px-6 py-3.5">{{ __('app.date') }}</th>
-                                            <th class="px-6 py-3.5">{{ __('app.time') }}</th>
+                                            <th class="px-6 py-3.5">Start Time</th>
+                                            <th class="px-6 py-3.5">End Time</th>
                                             <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                         </tr>
                                     </thead>
@@ -453,10 +461,14 @@
                                                 </td>
                                                 <td class="h-12 px-6 py-0 ">{{ $b->borrower_name ?? '—' }}</td>
                                                 <td class="h-12 px-6 py-4 max-w-xs truncate font-medium text-gray-950" title="{{ $b->purpose }}">{{ $b->purpose ?? '—' }}</td>
-                                                <td class="h-12 px-6 py-4 font-medium">{{ fmtDate($b->start_at) }}</td>
-                                                <td class="h-12 px-6 py-4 font-mono text-xs">{{ fmtTime($b->start_at) }}–{{ fmtTime($b->end_at) }}</td>
+                                                <td class="h-12 px-6 py-4 font-medium whitespace-nowrap text-xs">{{ strtolower(\Carbon\Carbon::parse($b->start_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->start_at)->format('H.i') }}</td>
+                                                <td class="h-12 px-6 py-4 font-medium whitespace-nowrap text-xs">{{ strtolower(\Carbon\Carbon::parse($b->end_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->end_at)->format('H.i') }}</td>
                                                 <td class="h-12 px-6 py-4">
                                                     <div class="flex items-center justify-end gap-2 font-medium">
+                                                        <button type="button" wire:click.stop="showDetails({{ $b->vehiclebooking_id }})"
+                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
+                                                            Detail
+                                                        </button>
                                                         @if($b->status === 'pending')
                                                             <button type="button" wire:click.stop="confirmReject({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
@@ -688,53 +700,7 @@
                         </div>
                     </div>
 
-                    <div class="border-t border-border"></div>
 
-                    {{-- Photos Before --}}
-                    <div>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-foreground mb-3 flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span>{{ __('app.photo_before') }}</span>
-                        </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            @forelse($selectedPhotos['before'] as $photo)
-                                <div class="group relative rounded-xl border border-border bg-muted/20 overflow-hidden shadow-sm hover:border-primary/30 transition-colors p-2">
-                                    <a href="{{ asset('storage/' . $photo->photo_path) }}" target="_blank" class="block rounded-lg overflow-hidden border border-border">
-                                        <img src="{{ asset('storage/' . $photo->photo_path) }}" alt="Photo Before" class="w-full h-40 object-cover group-hover:scale-[1.02] transition-transform duration-300">
-                                    </a>
-                                    <span class="text-[11px] text-muted-foreground mt-2 block pl-1 font-medium">
-                                        {{ __('app.uploaded_by') }}: {{ $photo->user->full_name ?? 'N/A' }}
-                                    </span>
-                                </div>
-                            @empty
-                                <p class="text-xs text-muted-foreground col-span-full italic">{{ __('app.no_before_photos') }}</p>
-                            @endforelse
-                        </div>
-                    </div>
-
-                    <div class="border-t border-border"></div>
-
-                    {{-- Photos After --}}
-                    <div>
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-foreground mb-3 flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                            <span>{{ __('app.photo_after') }}</span>
-                        </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            @forelse($selectedPhotos['after'] as $photo)
-                                <div class="group relative rounded-xl border border-border bg-muted/20 overflow-hidden shadow-sm hover:border-primary/30 transition-colors p-2">
-                                    <a href="{{ asset('storage/' . $photo->photo_path) }}" target="_blank" class="block rounded-lg overflow-hidden border border-border">
-                                        <img src="{{ asset('storage/' . $photo->photo_path) }}" alt="Photo After" class="w-full h-40 object-cover group-hover:scale-[1.02] transition-transform duration-300">
-                                    </a>
-                                    <span class="text-[11px] text-muted-foreground mt-2 block pl-1 font-medium">
-                                        {{ __('app.uploaded_by') }}: {{ $photo->user->full_name ?? 'N/A' }}
-                                    </span>
-                                </div>
-                            @empty
-                                <p class="text-xs text-muted-foreground col-span-full italic">{{ __('app.no_after_photos') }}</p>
-                            @endforelse
-                        </div>
-                    </div>
                 </div>
 
                 {{-- Footer --}}

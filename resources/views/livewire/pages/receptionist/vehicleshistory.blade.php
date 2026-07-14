@@ -336,21 +336,17 @@
                                                 </div>
 
                                                 {{-- Dates and Times --}}
-                                                <div class="flex flex-wrap items-center gap-4">
-                                                    <span class="flex items-center gap-1.5 font-medium text-gray-800">
-                                                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                        {{ fmtDate($b->start_at) }}
-                                                    </span>
-                                                    <span class="flex items-center gap-1.5 font-medium text-gray-800">
-                                                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        {{ fmtTime($b->start_at) }}–{{ fmtTime($b->end_at) }}
-                                                    </span>
+                                                <div class="flex flex-col gap-y-1.5 mt-1">
+                                                    <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                        <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                        <span class="text-gray-500 text-xs w-9">Start</span>
+                                                        <span>{{ strtolower(\Carbon\Carbon::parse($b->start_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->start_at)->format('H.i') }}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                        <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                        <span class="text-gray-500 text-xs w-9">End</span>
+                                                        <span>{{ strtolower(\Carbon\Carbon::parse($b->end_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->end_at)->format('H.i') }}</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -422,7 +418,8 @@
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.borrower') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.vehicle') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.purpose') }} / {{ __('app.destination') }}</th>
-                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.date') }} & {{ __('app.time') }}</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">Start Time</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">End Time</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.status') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">Created Time</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">Last Edited</th>
@@ -451,8 +448,10 @@
                                                 </div>
                                             </td>
                                             <td class="h-12 px-4 py-0 whitespace-nowrap text-gray-600">
-                                                <span class="font-medium text-gray-800">{{ fmtDate($b->start_at) }}</span>
-                                                <span class="text-xs text-gray-400 block">{{ fmtTime($b->start_at) }} – {{ fmtTime($b->end_at) }}</span>
+                                                <span class="font-medium text-gray-800 text-xs">{{ strtolower(\Carbon\Carbon::parse($b->start_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->start_at)->format('H.i') }}</span>
+                                            </td>
+                                            <td class="h-12 px-4 py-0 whitespace-nowrap text-gray-600">
+                                                <span class="font-medium text-gray-800 text-xs">{{ strtolower(\Carbon\Carbon::parse($b->end_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->end_at)->format('H.i') }}</span>
                                             </td>
                                             <td class="h-12 px-4 py-0 ">
                                                 <div class="flex items-center justify-end gap-1.5 flex-wrap">
@@ -626,6 +625,98 @@
                 </div>
             </div>
         </div>
+
+    {{-- ===== EDIT MODAL ===== --}}
+    @if($showDetailModal && $selectedBooking)
+        <div x-data="{ show: @entangle('showDetailModal') }"
+             x-show="show"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+             style="display: none;">
+
+            {{-- Backdrop --}}
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
+
+            {{-- Modal Content --}}
+            <div x-show="show"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="relative z-10 w-full max-w-3xl bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+
+                {{-- Header --}}
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <svg class="w-4 h-4 text-[#CDDEA7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold tracking-tight">
+                                {{ __('app.detail') }} Booking #{{ $selectedBooking->vehiclebooking_id }}
+                            </h3>
+                            <p class="text-xs text-[#CDDEA7]/80 mt-0.5">
+                                {{ $selectedBooking->purpose }}
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" wire:click="closeDetailModal" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">✕</button>
+                </div>
+
+                {{-- Body --}}
+                <div class="p-6 space-y-6 overflow-y-auto flex-1">
+                    {{-- Detail Grid --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                        <div class="space-y-1">
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('app.borrower') }}</span>
+                            <span class="text-sm font-semibold text-foreground">{{ $selectedBooking->borrower_name }}</span>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('app.vehicle') }}</span>
+                            <span class="text-sm font-semibold text-foreground">{{ $vehicleMap[$selectedBooking->vehicle_id] ?? 'N/A' }}</span>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('app.destination_col') }}</span>
+                            <span class="text-sm font-semibold text-foreground">{{ $selectedBooking->destination ?? 'N/A' }}</span>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('app.purpose_type_col') }}</span>
+                            <span class="text-sm font-semibold text-foreground">{{ ucfirst($selectedBooking->purpose_type) }}</span>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('app.start_col') }}</span>
+                            <span class="text-sm font-semibold text-foreground">{{ fmtDate($selectedBooking->start_at) }}, {{ fmtTime($selectedBooking->start_at) }}</span>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{{ __('app.end_col') }}</span>
+                            <span class="text-sm font-semibold text-foreground">{{ fmtDate($selectedBooking->end_at) }}, {{ fmtTime($selectedBooking->end_at) }}</span>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                {{-- Footer --}}
+                <div class="border-t border-border px-6 py-4 flex justify-end bg-muted/10">
+                    <button type="button"
+                            wire:click="closeDetailModal"
+                            class="h-9 px-4 rounded-lg bg-[#4A2F24]/10 text-[#4A2F24] border border-[#4A2F24]/20 hover:bg-[#4A2F24]/20 transition inline-flex items-center gap-1.5">
+                        <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
+                        <span>{{ __('app.close') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- ===== EDIT MODAL ===== --}}
     @if($showEdit)
