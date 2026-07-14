@@ -52,7 +52,7 @@
                     @else
                         <div class="divide-y divide-border">
                             @foreach($latestBookingRooms as $br)
-                                <div class="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                                <div wire:click="openDetailModal({{ $br['id'] }})" class="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
                                     <div class="flex items-center gap-3 min-w-0">
                                         <div class="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
                                             <x-heroicon-o-calendar-days class="w-4 h-4 text-muted-foreground" />
@@ -62,7 +62,7 @@
                                             <p class="text-xs text-muted-foreground">{{ $br['date'] }} · {{ $br['time'] }}</p>
                                         </div>
                                     </div>
-                                    <x-status-badge :status="$br['status']" />
+                                    <x-status-badge :status="$br['status_label']" />
                                 </div>
                             @endforeach
                         </div>
@@ -176,4 +176,227 @@
         </div>
 
     </main>
+
+    {{-- ═══ BOOKING DETAIL MODAL ═══ --}}
+    @if($showDetailModal && $selectedBookingDetail)
+    @php
+        $detail = $selectedBookingDetail;
+        $isPending = strtolower($detail->status ?? '') === 'pending';
+        $isOnline  = in_array($detail->booking_type, ['online_meeting', 'onlinemeeting']);
+        $statusClass = [
+            'approved'  => 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+            'pending'   => 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+            'rejected'  => 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+            'completed' => 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+            'cancelled' => 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+        ];
+        $requesterName  = $detail->user?->full_name ?? $detail->user?->name ?? '—';
+        $departmentName = $detail->department?->department_name ?? $detail->user?->department?->department_name ?? '—';
+    @endphp
+    <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+        role="dialog" aria-modal="true"
+        wire:key="dash-detail-modal-{{ $detail->bookingroom_id }}"
+        wire:keydown.escape.window="closeDetailModal">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
+
+        <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden transform transition-all duration-300 flex flex-col max-h-[85vh]" tabindex="-1">
+
+            {{-- Header --}}
+            <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                        <x-heroicon-o-eye class="w-4 h-4 text-[#CDDEA7]" />
+                    </div>
+                    <h3 class="font-bold tracking-tight text-base">{{ __('app.detail_booking') }}</h3>
+                </div>
+                <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeDetailModal">✕</button>
+            </div>
+
+            {{-- Body --}}
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                {{-- Title + Status --}}
+                <div class="pb-3 border-b border-border">
+                    <h4 class="text-base font-bold text-foreground mb-2 leading-tight">
+                        {{ $detail->meeting_title ?? 'Untitled Meeting' }}
+                    </h4>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border {{ $statusClass[strtolower($detail->status ?? 'cancelled')] ?? 'bg-muted text-muted-foreground border-border' }}">
+                            {{ ucfirst(strtolower($detail->status ?? 'unknown')) }}
+                        </span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border {{ $isOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200' }}">
+                            {{ $isOnline ? 'Online' : 'Offline' }}
+                        </span>
+                        <span class="text-[10px] font-semibold text-muted-foreground/60 bg-muted/50 border border-border/40 px-2 py-0.5 rounded font-mono uppercase tracking-wider">ID: {{ $detail->bookingroom_id }}</span>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    {{-- Requester & Department --}}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-user class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>{{ __('app.requester') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ $requesterName }}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-building-office class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>{{ __('app.department') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ $departmentName }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Date & Time --}}
+                    <div class="space-y-1 border-t border-border/40 pt-3">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <x-heroicon-o-calendar class="w-3.5 h-3.5 text-muted-foreground/60" />
+                            <span>{{ __('app.booking_time_label') }}</span>
+                        </div>
+                        <p class="text-sm font-semibold text-foreground">
+                            {{ \Carbon\Carbon::parse($detail->date)->format('d M Y') }}
+                            <span class="text-muted-foreground/40 mx-1.5">/</span>
+                            {{ \Carbon\Carbon::parse($detail->start_time)->format('H:i') }} &ndash; {{ \Carbon\Carbon::parse($detail->end_time)->format('H:i') }}
+                        </p>
+                    </div>
+
+                    {{-- Attendees + Room/Provider --}}
+                    <div class="grid grid-cols-2 gap-4 border-t border-border/40 pt-3">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-user-group class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>{{ __('app.attendees_count') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ $detail->number_of_attendees > 0 ? $detail->number_of_attendees : '—' }}</p>
+                        </div>
+                        @if(!$isOnline)
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-building-office-2 class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>{{ __('app.meeting_room_label') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ $detail->room?->room_name ?? '—' }}</p>
+                        </div>
+                        @else
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-swatch class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>{{ __('app.online_provider_label') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground capitalize">{{ str_replace('_', ' ', $detail->online_provider ?? '—') }}</p>
+                        </div>
+                        @endif
+                    </div>
+
+                    {{-- Requirements --}}
+                    @if($detail->requirements->isNotEmpty())
+                    <div class="p-3 bg-muted/20 border border-border/60 rounded-xl space-y-2 border-t border-border/40 pt-3">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Requirements</div>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach($detail->requirements->pluck('name') as $req)
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">{{ $req }}</span>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Reject Reason (if rejected) --}}
+                    @if($detail->book_reject)
+                    <div class="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-1 border-t border-border/40 pt-3">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                            <x-heroicon-o-exclamation-triangle class="w-3.5 h-3.5" />
+                            <span>{{ __('app.reject_reason') }}</span>
+                        </div>
+                        <p class="text-xs text-amber-800 leading-relaxed whitespace-pre-wrap">{{ $detail->book_reject }}</p>
+                    </div>
+                    @endif
+
+                    {{-- Special Notes --}}
+                    @if(trim((string)($detail->special_notes ?? '')) !== '')
+                    <div class="space-y-1 border-t border-border/40 pt-3">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <x-heroicon-o-document-text class="w-3.5 h-3.5 text-muted-foreground/60" />
+                            <span>{{ __('app.special_notes_label') }}</span>
+                        </div>
+                        <p class="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">{{ $detail->special_notes }}</p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Footer: Reject only if pending --}}
+            <div class="border-t border-border px-6 py-4 flex items-center justify-between bg-muted/10">
+                <div>
+                    @if($isPending)
+                    <button wire:click="openReject({{ $detail->bookingroom_id }})" type="button"
+                        class="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/90 transition inline-flex items-center gap-1.5 shadow-sm">
+                        <x-heroicon-o-x-circle class="w-3.5 h-3.5" />
+                        <span>{{ __('app.reject') }}</span>
+                    </button>
+                    @endif
+                </div>
+                <button wire:click="closeDetailModal" type="button"
+                    class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5">
+                    <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
+                    <span>{{ __('app.close') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══ REJECT MODAL ═══ --}}
+    @if($showRejectModal)
+    <div class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4"
+        role="dialog" aria-modal="true"
+        wire:key="dash-reject-modal"
+        wire:keydown.escape.window="closeReject">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReject"></div>
+
+        <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden transform transition-all duration-300" tabindex="-1">
+            <form wire:submit.prevent="confirmReject">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-x-circle class="w-4 h-4 text-[#CDDEA7]" />
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">{{ __('app.reject_booking_title') }}</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeReject">✕</button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <p class="text-xs text-muted-foreground">{{ __('app.reject_reason_required') }}</p>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.reject_reason_ph') }} <span class="text-destructive">*</span></label>
+                        <textarea wire:model.live="rejectReason"
+                            rows="4"
+                            class="w-full px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                            placeholder="Contoh: Jadwal bentrok dengan rapat lain / Ruangan tidak tersedia"
+                            required></textarea>
+                        @error('rejectReason')
+                        <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
+                    <button type="button" class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5" wire:click="closeReject" wire:loading.attr="disabled" wire:target="confirmReject">
+                        <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5" />
+                        <span>{{ __('app.cancel') }}</span>
+                    </button>
+                    <button type="submit"
+                        class="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/95 transition shadow-sm inline-flex items-center gap-1.5"
+                        wire:loading.attr="disabled" wire:target="confirmReject">
+                        <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
+                        <span>{{ __('app.reject') }}</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
 </div>
