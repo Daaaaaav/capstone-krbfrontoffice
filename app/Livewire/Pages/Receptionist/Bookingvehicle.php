@@ -340,44 +340,6 @@ class Bookingvehicle extends Component
         }
     }
 
-    public function openVehicleScheduleModal($vehicleId): void
-    {
-        $this->selectedVehicleForSchedule = (int) $vehicleId;
-        $now = now($this->tz);
-        $endDate = $now->copy()->addDays(30);
-
-        $this->vehicleScheduleData = VehicleBooking::with(['vehicle', 'user', 'department'])
-            ->where('vehicle_id', $vehicleId)
-            ->whereBetween('start_at', [$now->startOfDay()->toDateTimeString(), $endDate->endOfDay()->toDateTimeString()])
-            ->whereIn('status', ['pending', 'approved', 'on_progress'])
-            ->orderBy('start_at')
-            ->get()
-            ->map(function ($b) {
-                return [
-                    'id' => $b->vehiclebooking_id,
-                    'title' => $b->purpose ?? 'Booking',
-                    'vehicle_name' => $b->vehicle->name ?? 'Vehicle',
-                    'plate_number' => $b->vehicle->plate_number ?? '',
-                    'borrower' => $b->borrower_name ?? ($b->user->full_name ?? 'Unknown'),
-                    'department' => $b->department->department_name ?? 'Unknown',
-                    'purpose' => $b->purpose ?? '-',
-                    'destination' => $b->destination ?? '-',
-                    'date' => Carbon::parse($b->start_at)->format('Y-m-d'),
-                    'start' => Carbon::parse($b->start_at)->format('H:i'),
-                    'end' => Carbon::parse($b->end_at)->format('H:i'),
-                    'start_date' => Carbon::parse($b->start_at)->format('l, d M Y'),
-                    'end_date' => Carbon::parse($b->end_at)->format('l, d M Y'),
-                    'start_time' => Carbon::parse($b->start_at)->format('H:i'),
-                    'end_time' => Carbon::parse($b->end_at)->format('H:i'),
-                    'start_at_full' => Carbon::parse($b->start_at)->format('d M Y H:i'),
-                    'end_at_full' => Carbon::parse($b->end_at)->format('d M Y H:i'),
-                    'status' => $b->status,
-                ];
-            })
-            ->toArray();
-        $this->showVehicleScheduleModal = true;
-    }
-
     public function openBookingDetail($bookingId): void
     {
         $booking = collect($this->vehicleScheduleData)->firstWhere('id', $bookingId);
