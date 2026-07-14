@@ -122,8 +122,8 @@ return [
     'home'                  => 'Home',
     'room_management'       => 'Room Management',
     'booking_room'          => 'Booking Room',
-    'room_book_approval'    => 'Room Book Approval',
-    'booking_history'       => 'Booking History',
+    'room_book_approval'    => 'Room Status',
+    'booking_history'       => 'Room History',
     'vehicle_management'    => 'Vehicle Management',
     'vehicle_book'          => 'Book Vehicle',
     'vehicle_status_menu'   => 'Vehicle Status',
@@ -176,8 +176,8 @@ return [
     'no_docs_recorded'          => 'No documents or packages recorded.',
 
     // ── Booking History ───────────────────────────────────────────────────────
-    'booking_history_title'     => 'Booking History',
-    'booking_history_subtitle'  => 'View and manage completed or rejected booking history.',
+    'booking_history_title'     => 'Room History',
+    'booking_history_subtitle'  => 'View and manage completed or rejected room booking history.',
     'history'                   => 'History',
     'history_subtitle'          => 'Booking history by status.',
     'card_view'                 => 'Card View',

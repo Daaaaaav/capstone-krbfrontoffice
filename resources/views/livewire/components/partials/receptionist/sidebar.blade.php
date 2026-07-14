@@ -42,6 +42,58 @@
                     <div class="tooltip">{{ __('app.home') }}</div>
                 </a>
 
+                {{-- Guests --}}
+                @php $guestActiveGroup = request()->routeIs('receptionist.guestbook', 'receptionist.guestbookstatus', 'receptionist.guestbookhistory'); @endphp
+                <div class="sidebar-unified-group" x-data="{ expanded: true }" >
+                    <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                        <span class="group-label">{{ __('app.guest_management') }}</span>
+                        <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
+                        @php $gbookActive = request()->routeIs('receptionist.guestbook'); @endphp
+                        <a href="{{ route('receptionist.guestbook') }}" class="sidebar-unified-item {{ $gbookActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($gbookActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.guestbook') }}</span>
+                            <div class="tooltip">{{ __('app.guestbook') }}</div>
+                        </a>
+                        
+                        @php $gstatActive = request()->routeIs('receptionist.guestbookstatus'); @endphp
+                        <a href="{{ route('receptionist.guestbookstatus') }}" class="sidebar-unified-item {{ $gstatActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($gstatActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                    <path d="M14 14h3v3m0 4v-4h4"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.guestbook_status') }}</span>
+                            <div class="tooltip">{{ __('app.guestbook_status') }}</div>
+                        </a>
+                        
+                        @php $ghistActive = request()->routeIs('receptionist.guestbookhistory'); @endphp
+                        <a href="{{ route('receptionist.guestbookhistory') }}" class="sidebar-unified-item {{ $ghistActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($ghistActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                    <path d="M12 6v4l2.5 2.5"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.guestbook_history') }}</span>
+                            <div class="tooltip">{{ __('app.guestbook_history') }}</div>
+                        </a>
+                    </div>
+                </div>
+
                 {{-- Rooms --}}
                 @php $roomActiveGroup = request()->routeIs('receptionist.schedule', 'receptionist.bookings', 'receptionist.bookinghistory'); @endphp
                 <div class="sidebar-unified-group" x-data="{ expanded: true }" >
@@ -144,58 +196,6 @@
                             </div>
                             <span class="item-label">{{ __('app.vehicle_history') }}</span>
                             <div class="tooltip">{{ __('app.vehicle_history') }}</div>
-                        </a>
-                    </div>
-                </div>
-
-                {{-- Guests --}}
-                @php $guestActiveGroup = request()->routeIs('receptionist.guestbook', 'receptionist.guestbookstatus', 'receptionist.guestbookhistory'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: true }" >
-                    <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                        <span class="group-label">{{ __('app.guest_management') }}</span>
-                        <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
-                        @php $gbookActive = request()->routeIs('receptionist.guestbook'); @endphp
-                        <a href="{{ route('receptionist.guestbook') }}" class="sidebar-unified-item {{ $gbookActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($gbookActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                                </svg>
-                            </div>
-                            <span class="item-label">{{ __('app.guestbook') }}</span>
-                            <div class="tooltip">{{ __('app.guestbook') }}</div>
-                        </a>
-                        
-                        @php $gstatActive = request()->routeIs('receptionist.guestbookstatus'); @endphp
-                        <a href="{{ route('receptionist.guestbookstatus') }}" class="sidebar-unified-item {{ $gstatActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($gstatActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                    <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                    <rect x="3" y="14" width="7" height="7" rx="1"/>
-                                    <path d="M14 14h3v3m0 4v-4h4"/>
-                                </svg>
-                            </div>
-                            <span class="item-label">{{ __('app.guestbook_status') }}</span>
-                            <div class="tooltip">{{ __('app.guestbook_status') }}</div>
-                        </a>
-                        
-                        @php $ghistActive = request()->routeIs('receptionist.guestbookhistory'); @endphp
-                        <a href="{{ route('receptionist.guestbookhistory') }}" class="sidebar-unified-item {{ $ghistActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($ghistActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                                    <path d="M12 6v4l2.5 2.5"/>
-                                </svg>
-                            </div>
-                            <span class="item-label">{{ __('app.guestbook_history') }}</span>
-                            <div class="tooltip">{{ __('app.guestbook_history') }}</div>
                         </a>
                     </div>
                 </div>

@@ -109,8 +109,8 @@ return [
     'home'                  => 'Beranda',
     'room_management'       => 'Manajemen Ruangan',
     'booking_room'          => 'Pesan Ruangan',
-    'room_book_approval'    => 'Persetujuan Pemesanan',
-    'booking_history'       => 'Riwayat Pemesanan',
+    'room_book_approval'    => 'Status Ruangan',
+    'booking_history'       => 'Riwayat Ruangan',
     'vehicle_management'    => 'Manajemen Kendaraan',
     'vehicle_book'          => 'Pesan Kendaraan',
     'vehicle_status_menu'   => 'Status Kendaraan',
@@ -163,8 +163,8 @@ return [
     'no_docs_recorded'          => 'Tidak ada dokumen atau paket yang tercatat.',
 
     // ── Booking History ───────────────────────────────────────────────────────
-    'booking_history_title'     => 'Riwayat Pemesanan',
-    'booking_history_subtitle'  => 'Lihat dan kelola riwayat booking yang sudah selesai atau ditolak.',
+    'booking_history_title'     => 'Riwayat Ruangan',
+    'booking_history_subtitle'  => 'Lihat dan kelola riwayat pemesanan ruangan yang sudah selesai atau ditolak.',
     'history'                   => 'Riwayat',
     'history_subtitle'          => 'Riwayat booking berdasarkan status.',
     'card_view'                 => 'Tampilan Kartu',
