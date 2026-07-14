@@ -69,13 +69,21 @@
             <aside class="xl:col-span-1 space-y-4">
 
                 {{-- Room Bookings Status --}}
-                <div class="bg-card border border-border rounded-lg overflow-hidden"
-                     x-data="{ pendingOpen: false, ongoingOpen: false }">
-                    <div class="px-4 py-3 border-b border-border bg-muted/30">
-                        <p class="text-xs font-bold uppercase tracking-wider text-foreground">Room Bookings Status</p>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">Offline bookings today</p>
-                    </div>
+                <div class="bg-card border border-[#4E653D]/40 rounded-lg overflow-hidden"
+                     x-data="{ cardOpen: false, pendingOpen: false, ongoingOpen: false }">
+                    <button @click="cardOpen = !cardOpen"
+                        class="w-full px-4 py-3 border-b border-[#4E653D]/30 bg-[#4E653D]/10 hover:bg-[#4E653D]/20 transition flex items-center justify-between">
+                        <div class="text-left">
+                            <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">Room Bookings Status</p>
+                            <p class="text-[11px] text-[#4E653D]/70 mt-0.5">Offline bookings today</p>
+                        </div>
+                        <svg class="w-4 h-4 text-[#4E653D] transition-transform shrink-0" :class="cardOpen ? 'rotate-180' : ''"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
 
+                    <div x-show="cardOpen" x-collapse>
                     {{-- Pending --}}
                     <div class="border-b border-border/60">
                         <button @click="pendingOpen = !pendingOpen"
@@ -155,16 +163,25 @@
                             @endforelse
                         </div>
                     </div>
+                    </div>{{-- end cardOpen --}}
                 </div>
 
                 {{-- Vehicle Bookings Status --}}
-                <div class="bg-card border border-border rounded-lg overflow-hidden"
-                     x-data="{ pendingOpen: false, ongoingOpen: false }">
-                    <div class="px-4 py-3 border-b border-border bg-muted/30">
-                        <p class="text-xs font-bold uppercase tracking-wider text-foreground">Vehicle Bookings Status</p>
-                        <p class="text-[11px] text-muted-foreground mt-0.5">Active vehicle requests</p>
-                    </div>
+                <div class="bg-card border border-[#4A2F24]/40 rounded-lg overflow-hidden"
+                     x-data="{ cardOpen: false, pendingOpen: false, ongoingOpen: false }">
+                    <button @click="cardOpen = !cardOpen"
+                        class="w-full px-4 py-3 border-b border-[#4A2F24]/30 bg-[#4A2F24]/10 hover:bg-[#4A2F24]/20 transition flex items-center justify-between">
+                        <div class="text-left">
+                            <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">Vehicle Bookings Status</p>
+                            <p class="text-[11px] text-[#4A2F24]/70 mt-0.5">Active vehicle requests</p>
+                        </div>
+                        <svg class="w-4 h-4 text-[#4A2F24] transition-transform shrink-0" :class="cardOpen ? 'rotate-180' : ''"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
 
+                    <div x-show="cardOpen" x-collapse>
                     {{-- Pending --}}
                     <div class="border-b border-border/60">
                         <button @click="pendingOpen = !pendingOpen"
@@ -242,6 +259,7 @@
                             @endforelse
                         </div>
                     </div>
+                    </div>{{-- end cardOpen --}}
                 </div>
 
                 {{-- Priority Bookings Status --}}
@@ -347,110 +365,128 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {{-- Visitors Today --}}
-            <div class="bg-card border border-border rounded-lg overflow-hidden"
-                 x-data="{ visOpen: false }">
-                <div class="px-4 py-3 border-b border-border bg-muted/30">
-                    <p class="text-xs font-bold uppercase tracking-wider text-foreground">Visitors Today</p>
-                    <p class="text-[11px] text-muted-foreground mt-0.5">Guestbook entries today</p>
-                </div>
-                <div>
-                    <button @click="visOpen = !visOpen"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-violet-700 bg-violet-50/60 hover:bg-violet-50 transition">
-                        <span class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-violet-500"></span>
-                            Today
-                            <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">
-                                {{ $todayVisitors->count() }}
+            <div class="bg-card border border-violet-400/40 rounded-lg overflow-hidden"
+                 x-data="{ cardOpen: false, visOpen: false }">
+                <button @click="cardOpen = !cardOpen"
+                    class="w-full px-4 py-3 border-b border-violet-400/30 bg-violet-500/10 hover:bg-violet-500/20 transition flex items-center justify-between">
+                    <div class="text-left">
+                        <p class="text-xs font-bold uppercase tracking-wider text-violet-800">Visitors Today</p>
+                        <p class="text-[11px] text-violet-600/70 mt-0.5">Guestbook entries today</p>
+                    </div>
+                    <svg class="w-4 h-4 text-violet-600 transition-transform shrink-0" :class="cardOpen ? 'rotate-180' : ''"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div x-show="cardOpen" x-collapse>
+                    <div>
+                        <button @click="visOpen = !visOpen"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-violet-700 bg-violet-50/60 hover:bg-violet-50 transition">
+                            <span class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                                Today
+                                <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-violet-500 text-white">
+                                    {{ $todayVisitors->count() }}
+                                </span>
                             </span>
-                        </span>
-                        <svg class="w-3.5 h-3.5 transition-transform" :class="visOpen ? 'rotate-180' : ''"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div x-show="visOpen" x-collapse class="divide-y divide-border/40">
-                        @forelse($todayVisitors as $v)
-                        <div class="px-4 py-2.5 flex items-start gap-3 hover:bg-muted/30 transition">
-                            <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                                <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                                    <circle cx="9" cy="7" r="4" stroke-width="2"/>
-                                </svg>
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="visOpen ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="visOpen" x-collapse class="divide-y divide-border/40">
+                            @forelse($todayVisitors as $v)
+                            <div class="px-4 py-2.5 flex items-start gap-3 hover:bg-muted/30 transition">
+                                <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                    <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4" stroke-width="2"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-semibold text-foreground truncate">{{ $v->name }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">
+                                        {{ $v->instansi ?? $v->keperluan ?? '—' }} &bull;
+                                        {{ $v->jam_in ?? \Carbon\Carbon::parse($v->created_at)->format('H:i') }}
+                                        @if($v->visitor_count > 1)
+                                        &bull; {{ $v->visitor_count }} visitors
+                                        @endif
+                                    </p>
+                                </div>
                             </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-xs font-semibold text-foreground truncate">{{ $v->name }}</p>
-                                <p class="text-[11px] text-muted-foreground truncate">
-                                    {{ $v->instansi ?? $v->keperluan ?? '—' }} &bull;
-                                    {{ $v->jam_in ?? \Carbon\Carbon::parse($v->created_at)->format('H:i') }}
-                                    @if($v->visitor_count > 1)
-                                    &bull; {{ $v->visitor_count }} visitors
-                                    @endif
-                                </p>
-                            </div>
+                            @empty
+                            <p class="px-4 py-3 text-xs text-muted-foreground italic">No visitors today.</p>
+                            @endforelse
                         </div>
-                        @empty
-                        <p class="px-4 py-3 text-xs text-muted-foreground italic">No visitors today.</p>
-                        @endforelse
                     </div>
                 </div>
             </div>
 
             {{-- DocPack Status --}}
-            <div class="bg-card border border-border rounded-lg overflow-hidden"
-                 x-data="{ dpOpen: false }">
-                <div class="px-4 py-3 border-b border-border bg-muted/30">
-                    <p class="text-xs font-bold uppercase tracking-wider text-foreground">Doc / Package Status</p>
-                    <p class="text-[11px] text-muted-foreground mt-0.5">Pending &amp; stored items</p>
-                </div>
-                <div>
-                    <button @click="dpOpen = !dpOpen"
-                        class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-amber-700 bg-amber-50/60 hover:bg-amber-50 transition">
-                        <span class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                            Pending / Stored
-                            <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">
-                                {{ $pendingDocpacks->count() }}
-                            </span>
-                        </span>
-                        <svg class="w-3.5 h-3.5 transition-transform" :class="dpOpen ? 'rotate-180' : ''"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    </button>
-                    <div x-show="dpOpen" x-collapse class="divide-y divide-border/40">
-                        @forelse($pendingDocpacks as $d)
-                        <div class="px-4 py-2.5 flex items-start gap-3 hover:bg-muted/30 transition">
-                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                                @if($d->type === 'document')
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                </svg>
-                                @else
-                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
-                                </svg>
-                                @endif
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-xs font-semibold text-foreground truncate">{{ $d->item_name }}</p>
-                                <p class="text-[11px] text-muted-foreground truncate">
-                                    {{ ucfirst($d->type ?? 'item') }} &bull;
-                                    {{ $d->nama_pengirim ? 'From: '.$d->nama_pengirim : '' }}
-                                    @if($d->nama_pengirim && $d->nama_penerima) &rarr; @endif
-                                    {{ $d->nama_penerima ? $d->nama_penerima : '' }}
-                                </p>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded font-medium
-                                    {{ $d->status === 'stored' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {{ ucfirst($d->status) }}
-                                </span>
-                            </div>
-                        </div>
-                        @empty
-                        <p class="px-4 py-3 text-xs text-muted-foreground italic">No pending items.</p>
-                        @endforelse
+            <div class="bg-card border border-amber-400/40 rounded-lg overflow-hidden"
+                 x-data="{ cardOpen: false, dpOpen: false }">
+                <button @click="cardOpen = !cardOpen"
+                    class="w-full px-4 py-3 border-b border-amber-400/30 bg-amber-500/10 hover:bg-amber-500/20 transition flex items-center justify-between">
+                    <div class="text-left">
+                        <p class="text-xs font-bold uppercase tracking-wider text-amber-800">Doc / Package Status</p>
+                        <p class="text-[11px] text-amber-600/70 mt-0.5">Pending &amp; stored items</p>
                     </div>
-                </div>
+                    <svg class="w-4 h-4 text-amber-600 transition-transform shrink-0" :class="cardOpen ? 'rotate-180' : ''"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div x-show="cardOpen" x-collapse>
+                    <div>
+                        <button @click="dpOpen = !dpOpen"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-amber-700 bg-amber-50/60 hover:bg-amber-50 transition">
+                            <span class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                                Pending / Stored
+                                <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">
+                                    {{ $pendingDocpacks->count() }}
+                                </span>
+                            </span>
+                            <svg class="w-3.5 h-3.5 transition-transform" :class="dpOpen ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="dpOpen" x-collapse class="divide-y divide-border/40">
+                            @forelse($pendingDocpacks as $d)
+                            <div class="px-4 py-2.5 flex items-start gap-3 hover:bg-muted/30 transition">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                    @if($d->type === 'document')
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    @else
+                                    <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7H4a1 1 0 00-1 1v10a1 1 0 001 1h16a1 1 0 001-1V8a1 1 0 00-1-1z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+                                    </svg>
+                                    @endif
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-semibold text-foreground truncate">{{ $d->item_name }}</p>
+                                    <p class="text-[11px] text-muted-foreground truncate">
+                                        {{ ucfirst($d->type ?? 'item') }} &bull;
+                                        {{ $d->nama_pengirim ? 'From: '.$d->nama_pengirim : '' }}
+                                        @if($d->nama_pengirim && $d->nama_penerima) &rarr; @endif
+                                        {{ $d->nama_penerima ? $d->nama_penerima : '' }}
+                                    </p>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium
+                                        {{ $d->status === 'stored' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700' }}">
+                                        {{ ucfirst($d->status) }}
+                                    </span>
+                                </div>
+                            </div>
+                            @empty
+                            <p class="px-4 py-3 text-xs text-muted-foreground italic">No pending items.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>{{-- end cardOpen --}}
             </div>
 
         </div>{{-- end visitors+docpack row --}}
