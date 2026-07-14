@@ -70,7 +70,7 @@
 
                 {{-- Room Bookings Status --}}
                 <div class="bg-card border border-border rounded-lg overflow-hidden"
-                     x-data="{ pendingOpen: true, ongoingOpen: true }">
+                     x-data="{ pendingOpen: false, ongoingOpen: false }">
                     <div class="px-4 py-3 border-b border-border bg-muted/30">
                         <p class="text-xs font-bold uppercase tracking-wider text-foreground">Room Bookings Status</p>
                         <p class="text-[11px] text-muted-foreground mt-0.5">Offline bookings today</p>
@@ -159,7 +159,7 @@
 
                 {{-- Vehicle Bookings Status --}}
                 <div class="bg-card border border-border rounded-lg overflow-hidden"
-                     x-data="{ pendingOpen: true, ongoingOpen: true }">
+                     x-data="{ pendingOpen: false, ongoingOpen: false }">
                     <div class="px-4 py-3 border-b border-border bg-muted/30">
                         <p class="text-xs font-bold uppercase tracking-wider text-foreground">Vehicle Bookings Status</p>
                         <p class="text-[11px] text-muted-foreground mt-0.5">Active vehicle requests</p>
@@ -247,7 +247,7 @@
                 {{-- Priority Bookings Status --}}
                 @if($pendingPriorityRoom->isNotEmpty() || $pendingPriorityVehicle->isNotEmpty())
                 <div class="bg-card border border-amber-300 rounded-lg overflow-hidden"
-                     x-data="{ roomOpen: true, vehOpen: true }">
+                     x-data="{ roomOpen: false, vehOpen: false }">
                     <div class="px-4 py-3 border-b border-amber-200 bg-amber-50/80">
                         <div class="flex items-center gap-2">
                             <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -348,7 +348,7 @@
 
             {{-- Visitors Today --}}
             <div class="bg-card border border-border rounded-lg overflow-hidden"
-                 x-data="{ visOpen: true }">
+                 x-data="{ visOpen: false }">
                 <div class="px-4 py-3 border-b border-border bg-muted/30">
                     <p class="text-xs font-bold uppercase tracking-wider text-foreground">Visitors Today</p>
                     <p class="text-[11px] text-muted-foreground mt-0.5">Guestbook entries today</p>
@@ -397,7 +397,7 @@
 
             {{-- DocPack Status --}}
             <div class="bg-card border border-border rounded-lg overflow-hidden"
-                 x-data="{ dpOpen: true }">
+                 x-data="{ dpOpen: false }">
                 <div class="px-4 py-3 border-b border-border bg-muted/30">
                     <p class="text-xs font-bold uppercase tracking-wider text-foreground">Doc / Package Status</p>
                     <p class="text-[11px] text-muted-foreground mt-0.5">Pending &amp; stored items</p>
