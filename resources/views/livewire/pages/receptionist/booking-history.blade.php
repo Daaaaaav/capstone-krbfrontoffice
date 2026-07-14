@@ -942,9 +942,8 @@
                                         search: '',
                                         selectedId: $wire.entangle('form.booking_type').live,
                                         options: [
-                                            { id: 'bookingroom', label: '{{ __('app.booking_room_option') }}' },
                                             { id: 'meeting', label: '{{ __('app.meeting_option') }}' },
-                                            { id: 'onlinemeeting', label: '{{ __('app.online_meeting_option') }}' }
+                                            { id: 'online_meeting', label: '{{ __('app.online_meeting_option') }}' }
                                         ],
                                         get items() {
                                             const q = (this.search || '').toLowerCase().trim();
@@ -962,7 +961,7 @@
                                         },
                                         clear() {
                                             this.search = '';
-                                            this.selectedId = 'bookingroom';
+                                            this.selectedId = 'meeting';
                                         }
                                     }"
                                     x-init="
