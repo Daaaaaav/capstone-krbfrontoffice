@@ -673,10 +673,15 @@ class BookingHistory extends Component
 
         $companyId = Auth::user()->company_id ?? null;
 
-        // Approved priority room bookings from manager — shown in history
+        // Auto-complete approved priority room bookings whose end time has passed
+        PriorityRoomBooking::autoCompleteApproved($companyId);
+
+        // Completed priority room bookings from manager — shown in history (done tab)
+        // Only STATUS_COMPLETED is shown here; approved bookings that are still ongoing
+        // remain in the Bookings Approval page until their end time passes.
         $priorityRoomHistory = PriorityRoomBooking::with(['room', 'manager'])
             ->forCompany($companyId)
-            ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+            ->where('status', PriorityRoomBooking::STATUS_COMPLETED)
             ->when($this->q !== '', fn($q) => $q->where('meeting_title', 'like', '%' . $this->q . '%'))
             ->when($this->selectedDate, fn($q) => $q->whereDate('date', $this->selectedDate))
             ->orderByDesc('updated_at')

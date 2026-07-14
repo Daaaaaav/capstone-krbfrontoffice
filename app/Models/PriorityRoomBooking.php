@@ -35,6 +35,7 @@ class PriorityRoomBooking extends Model
     const STATUS_PENDING_RECEIPT           = 'pending_receipt';           // Created, no conflict
     const STATUS_PENDING_CANCELLATION      = 'pending_cancellation';      // Waiting receptionist approval to cancel conflict
     const STATUS_APPROVED                  = 'approved';                  // Receptionist approved (incl. cancellation)
+    const STATUS_COMPLETED                 = 'completed';                 // Schedule has ended — moved to history automatically
     const STATUS_REJECTED                  = 'rejected';                  // Receptionist rejected
     const STATUS_CONFLICT_DENIED           = 'cancelled_conflict_denied'; // Receptionist denied the cancellation request
 
@@ -90,6 +91,25 @@ class PriorityRoomBooking extends Model
             ]);
     }
 
+    /**
+     * Auto-complete any approved priority room bookings whose scheduled end time has passed.
+     * Transitions approved → completed so they leave the active/ongoing view and appear in history.
+     */
+    public static function autoCompleteApproved(?int $companyId): void
+    {
+        static::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', self::STATUS_APPROVED)
+            ->where(function ($q) {
+                $q->where('date', '<', now()->toDateString())
+                  ->orWhere(function ($q2) {
+                      $q2->where('date', now()->toDateString())
+                         ->where('end_time', '<=', now()->format('H:i:s'));
+                  });
+            })
+            ->update(['status' => self::STATUS_COMPLETED]);
+    }
+
     public function isActionable(): bool
     {
         return in_array($this->status, [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION], true);
@@ -101,6 +121,7 @@ class PriorityRoomBooking extends Model
             self::STATUS_PENDING_RECEIPT      => 'Pending',
             self::STATUS_PENDING_CANCELLATION => 'Awaiting Cancellation Approval',
             self::STATUS_APPROVED             => 'Approved',
+            self::STATUS_COMPLETED            => 'Completed',
             self::STATUS_REJECTED             => 'Rejected',
             self::STATUS_CONFLICT_DENIED      => 'Conflict Denied',
             default                           => ucfirst((string) $this->status),
@@ -113,6 +134,7 @@ class PriorityRoomBooking extends Model
             self::STATUS_PENDING_RECEIPT      => 'yellow',
             self::STATUS_PENDING_CANCELLATION => 'orange',
             self::STATUS_APPROVED             => 'green',
+            self::STATUS_COMPLETED            => 'blue',
             self::STATUS_REJECTED             => 'red',
             self::STATUS_CONFLICT_DENIED      => 'red',
             default                           => 'gray',

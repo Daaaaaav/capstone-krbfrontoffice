@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\BookingRoom;
+use App\Models\PriorityRoomBooking;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 class AutoCompleteBookings extends Command
 {
     protected $signature = 'bookings:auto-complete';
-    protected $description = 'Auto-complete approved bookings whose end time has passed (with 1 minute tolerance)';
+    protected $description = 'Auto-complete approved bookings (room & priority) whose end time has passed (with 1 minute tolerance)';
 
     private string $tz = 'Asia/Jakarta';
 
@@ -28,7 +29,8 @@ class AutoCompleteBookings extends Command
             CONCAT(date, ' ', end_time)
         )";
 
-        $updated = DB::transaction(function () use ($threshold, $endExpr) {
+        // ── Regular room bookings ────────────────────────────────────────────
+        $updatedRooms = DB::transaction(function () use ($threshold, $endExpr) {
             return BookingRoom::query()
                 ->whereNotNull('date')
                 ->whereNotNull('end_time')
@@ -43,7 +45,22 @@ class AutoCompleteBookings extends Command
                 ]);
         });
 
-        $this->info("Auto-completed {$updated} booking(s).");
+        // ── Priority room bookings ────────────────────────────────────────────
+        // Uses simple DATE + TIME columns (no COALESCE needed — they are always
+        // stored as separate DATE and TIME fields in priority_room_bookings).
+        $updatedPriority = DB::transaction(function () use ($threshold) {
+            return PriorityRoomBooking::query()
+                ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("CONCAT(date, ' ', end_time) <= ?", [$threshold])
+                ->update([
+                    'status'     => PriorityRoomBooking::STATUS_COMPLETED,
+                    'updated_at' => Carbon::now($this->tz)->toDateTimeString(),
+                ]);
+        });
+
+        $this->info("Auto-completed {$updatedRooms} regular booking(s) and {$updatedPriority} priority booking(s).");
         return self::SUCCESS;
     }
 }
