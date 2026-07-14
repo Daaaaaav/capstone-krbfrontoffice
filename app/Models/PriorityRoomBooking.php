@@ -68,6 +68,28 @@ class PriorityRoomBooking extends Model
         return $query->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION]);
     }
 
+    /**
+     * Auto-expire any pending priority room bookings whose scheduled time has already passed.
+     * Marks them as rejected so they don't clog the queue.
+     */
+    public static function autoExpirePending(?int $companyId): void
+    {
+        static::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION])
+            ->where(function ($q) {
+                $q->where('date', '<', now()->toDateString())
+                  ->orWhere(function ($q2) {
+                      $q2->where('date', now()->toDateString())
+                         ->where('end_time', '<', now()->format('H:i:s'));
+                  });
+            })
+            ->update([
+                'status'           => self::STATUS_REJECTED,
+                'rejection_reason' => 'Auto-expired: meeting time has passed.',
+            ]);
+    }
+
     public function isActionable(): bool
     {
         return in_array($this->status, [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION], true);

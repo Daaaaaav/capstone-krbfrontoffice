@@ -340,7 +340,7 @@
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{-- Chart.js is bundled via resources/js/app.js (chart.js npm package) and exposed as window.Chart --}}
 <script>
     const CHART_COLORS = {
         'room':    { border: '#4E653D', bg: 'rgba(78, 101, 61, 0.1)' },
