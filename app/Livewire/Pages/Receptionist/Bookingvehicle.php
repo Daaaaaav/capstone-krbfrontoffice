@@ -21,8 +21,8 @@ class Bookingvehicle extends Component
     public bool $showVehicleScheduleModal = false;
     public ?int $selectedVehicleForSchedule = null;
     public array $vehicleScheduleData = [];
-    public bool $showVehicleBookingDetailModal = false;
-    public array $selectedVehicleBookingDetail = [];
+    public bool $showBookingDetailModal = false;
+    public array $selectedBookingDetail = [];
 
     // Vehicle booking approve/reject (from directory modal)
     public bool $showVehicleRejectModal = false;
@@ -53,16 +53,8 @@ class Bookingvehicle extends Component
     public $vehicles;
     public bool $hasVehicles = false;
 
-    public bool $showVehicleScheduleModal = false;
-    public ?int $selectedVehicleForSchedule = null;
-    public array $vehicleScheduleData = [];
-
-    public bool $showBookingDetailModal = false;
-    public array $selectedBookingDetail = [];
-
     /** Plain array for the Alpine combobox — updated whenever department changes */
     public array $usersForCombobox = [];
-
     // search box seperti di MeetingSchedule
     public string $departmentSearch = '';
     public string $userSearch = '';
@@ -413,7 +405,7 @@ class Bookingvehicle extends Component
             if ($this->selectedVehicleForSchedule) {
                 $this->openVehicleScheduleModal($this->selectedVehicleForSchedule);
             }
-            $this->showVehicleBookingDetailModal = false;
+            $this->showBookingDetailModal = false;
             $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Vehicle booking has been approved.');
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
@@ -428,7 +420,7 @@ class Bookingvehicle extends Component
         $this->vehicleRejectId        = $id;
         $this->vehicleRejectNote      = '';
         $this->showVehicleRejectModal = true;
-        $this->showVehicleBookingDetailModal = false;
+        $this->showBookingDetailModal = false;
     }
 
     public function closeVehicleReject(): void
@@ -515,14 +507,6 @@ class Bookingvehicle extends Component
         $this->showVehicleScheduleModal = true;
     }
 
-    public function openVehicleBookingDetail($bookingId): void
-    {
-        $booking = collect($this->vehicleScheduleData)->firstWhere('id', $bookingId);
-        if ($booking) {
-            $this->selectedVehicleBookingDetail = $booking;
-            $this->showVehicleBookingDetailModal = true;
-        }
-    }
 
     public function render()
 
