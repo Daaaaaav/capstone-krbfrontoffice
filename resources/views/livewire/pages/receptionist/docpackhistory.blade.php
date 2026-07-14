@@ -236,6 +236,20 @@
                                                 <span class="truncate font-medium text-gray-700">{{ $row->receptionist->full_name }}</span>
                                             </div>
                                         @endif
+                                        <div class="col-span-2 flex flex-col gap-1 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
+                                            @if($row->created_at)
+                                                <div class="flex items-center gap-1.5">
+                                                    <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                    <span class="truncate font-medium text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($row->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                </div>
+                                            @endif
+                                            @if($row->updated_at)
+                                                <div class="flex items-center gap-1.5">
+                                                    <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                    <span class="truncate font-medium text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($row->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
 
@@ -279,6 +293,8 @@
                                         <th class="px-6 py-3.5">{{ __('app.receiver') }}</th>
                                         <th class="px-6 py-3.5">{{ __('app.completed_at') }}</th>
                                         <th class="px-6 py-3.5">{{ __('app.officer') }}</th>
+                                        <th class="px-6 py-3.5">Created Time</th>
+                                        <th class="px-6 py-3.5">Last Edited</th>
                                         <th class="px-6 py-3.5 text-right">{{ __('app.actions') }}</th>
                                     </tr>
                                 </thead>
@@ -314,6 +330,12 @@
                                             <td class="px-6 py-4">{{ $row->nama_penerima ?? '—' }}</td>
                                             <td class="px-6 py-4 font-medium">{{ fmtDate($completionDate) }} · {{ fmtTime($completionDate) }}</td>
                                             <td class="px-6 py-4 text-xs text-gray-500 font-medium">{{ $row->receptionist?->full_name ?? '—' }}</td>
+                                            <td class="px-6 py-4 font-mono text-[11px] text-gray-500">
+                                                @if($row->created_at) {{ optional($row->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }} @else — @endif
+                                            </td>
+                                            <td class="px-6 py-4 font-mono text-[11px] text-gray-500">
+                                                @if($row->updated_at) {{ optional($row->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }} @else — @endif
+                                            </td>
                                             <td class="px-6 py-4 text-right">
                                                 <div class="flex items-center justify-end gap-2 font-medium">
                                                     <button type="button" wire:click="openEdit({{ $row->delivery_id }})"
@@ -715,6 +737,12 @@
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showEdit', false)">✕</button>
                 </div>
                 <div class="p-6 space-y-4 bg-white">
+                    @if($editLastEdited)
+                        <div class="text-[13px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
+                            <x-heroicon-o-information-circle class="w-4 h-4 text-gray-400" />
+                            <span>Created: <strong class="text-gray-700">{{ $editCreatedAt ?? '—' }}</strong> | Last Edited: <strong class="text-gray-700">{{ $editLastEdited }}</strong></span>
+                        </div>
+                    @endif
                     <div class="space-y-1.5">
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">{{ __('app.item_name') }}</label>
                         <input type="text" class="w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition" wire:model.defer="edit.item_name">

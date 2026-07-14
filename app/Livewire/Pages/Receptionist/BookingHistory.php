@@ -43,6 +43,8 @@ class BookingHistory extends Component
     public bool $showModal   = false;
     public string $modalMode = 'create';
     public ?int $editingId   = null;
+    public ?string $editLastEdited = null;
+    public ?string $editCreatedAt = null;
 
     // Delete modal state
     public ?int $deletingId = null;
@@ -236,6 +238,8 @@ class BookingHistory extends Component
     {
         $this->modalMode = 'create';
         $this->editingId = null;
+        $this->editLastEdited = null;
+        $this->editCreatedAt = null;
 
         $now = Carbon::now($this->tz);
         $bookingType = $this->normalizeBookingType($bookingType);
@@ -264,6 +268,8 @@ class BookingHistory extends Component
 
         $this->modalMode = 'edit';
         $this->editingId = $row->getKey();
+        $this->editLastEdited = $row->updated_at ? \Carbon\Carbon::parse($row->updated_at)->format('d M Y, H:i') : null;
+        $this->editCreatedAt = $row->created_at ? \Carbon\Carbon::parse($row->created_at)->format('d M Y, H:i') : null;
 
         $this->form = [
             'booking_type'    => $this->normalizeBookingType($row->booking_type ?? 'meeting'),
@@ -273,7 +279,7 @@ class BookingHistory extends Component
             'end_time'        => $this->parseTimeOnly($row->end_time),
             'room_id'         => $row->room_id,
             'online_provider' => (string) ($row->online_provider ?? ''),
-            'notes'           => (string) ($row->notes ?? ''),
+            'notes'           => (string) ($row->special_notes ?? ''),
             'status'          => $this->normalizeDbStatus($row->status),
             'book_reject'     => (string) ($row->book_reject ?? ''), // ⬅️ NEW
         ];
@@ -346,7 +352,7 @@ class BookingHistory extends Component
                 'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
-                'notes'           => $data['notes'],
+                'special_notes'   => $data['notes'],
                 'status'          => $statusForDb,
                 'book_reject'     => $statusForDb === 'rejected' ? ($data['book_reject'] ?? null) : null, // ⬅️ NEW
                 'user_id'         => Auth::id(),
@@ -366,7 +372,7 @@ class BookingHistory extends Component
                 'online_provider' => in_array($bookingType, ['online_meeting'], true)
                     ? $data['online_provider']
                     : null,
-                'notes'           => $data['notes'],
+                'special_notes'   => $data['notes'],
                 'status'          => $statusForDb,
                 'book_reject'     => $statusForDb === 'rejected' ? ($data['book_reject'] ?? null) : null, // ⬅️ NEW
             ]);

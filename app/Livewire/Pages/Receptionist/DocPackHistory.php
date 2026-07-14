@@ -58,6 +58,8 @@ class DocPackHistory extends Component
     ];
     public $editPhoto = null;
     public ?string $editCurrentImage = null;
+    public ?string $editLastEdited = null;
+    public ?string $editCreatedAt = null;
     public array $statusLogs = [];
 
     protected $rules = [
@@ -192,6 +194,8 @@ class DocPackHistory extends Component
     {
         $row = $this->base()->findOrFail($id);
         $this->editId = $row->delivery_id ?? $row->id ?? $id;
+        $this->editLastEdited = $row->updated_at ? \Carbon\Carbon::parse($row->updated_at)->format('d M Y, H:i') : null;
+        $this->editCreatedAt = $row->created_at ? \Carbon\Carbon::parse($row->created_at)->format('d M Y, H:i') : null;
         $this->edit = [
             'item_name' => $row->item_name,
             'nama_pengirim' => $row->nama_pengirim,
@@ -257,9 +261,7 @@ class DocPackHistory extends Component
         $row->fill($data)->save();
 
         $this->showEdit = false;
-        $this->editId = null;
-        $this->editPhoto = null;
-        $this->editCurrentImage = null;
+        $this->reset('editId', 'edit', 'editPhoto', 'editCurrentImage', 'statusLogs', 'editLastEdited', 'editCreatedAt');
         $this->resetPage('donePage');
         $this->dispatch('toast', type: 'success', title: 'Saved', message: 'Information successfully saved.', duration: 3000);
     }

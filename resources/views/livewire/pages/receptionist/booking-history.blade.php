@@ -372,20 +372,32 @@
                                                         @if($requesterName)
                                                             <p>{{ __('app.requested_by') }} <span class="font-medium text-gray-800">{{ $requesterName }}</span></p>
                                                         @endif
-                                                        <div class="flex items-center gap-2 flex-wrap">
+                                                        <div class="flex flex-col gap-1 mt-2">
                                                             @if($requesterDept)
-                                                                <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200">
-                                                                    {{ $requesterDept }}
-                                                                </span>
+                                                                <div>
+                                                                    <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200 inline-block">
+                                                                        {{ $requesterDept }}
+                                                                    </span>
+                                                                </div>
                                                             @endif
-                                                            <span class="text-[11px] text-gray-400 flex items-center gap-1" title="Created At">
-                                                                <x-heroicon-o-clock class="w-3 h-3"/>
-                                                                {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
-                                                            </span>
+                                                            <div class="flex flex-col gap-1 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
+                                                                @if($row->created_at)
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                        <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($row->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                                    </div>
+                                                                @endif
+                                                                @if($row->updated_at)
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                        <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($row->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
                                                         </div>
-                                                        @if($row->notes)
+                                                        @if($row->special_notes)
                                                             <div class="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg p-2">
-                                                                <span class="font-medium">{{ __('app.notes') }}:</span> {{ $row->notes }}
+                                                                <span class="font-medium">{{ __('app.notes') }}:</span> {{ $row->special_notes }}
                                                             </div>
                                                         @endif
                                                     </div>
@@ -438,6 +450,8 @@
                                                 <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.requester') }}</th>
+                                                <th class="px-6 py-3.5">Created Time</th>
+                                                <th class="px-6 py-3.5">Last Edited</th>
                                                 <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
@@ -489,10 +503,12 @@
                                                         @if($requesterDept)
                                                             <div class="text-xs text-gray-500">{{ $requesterDept }}</div>
                                                         @endif
-                                                        <div class="text-[10px] text-gray-400 mt-1 flex items-center gap-1" title="Created At">
-                                                            <x-heroicon-o-clock class="w-3 h-3"/>
-                                                            {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
-                                                        </div>
+                                                    </td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-[11px] text-gray-500">
+                                                        @if($row->created_at) {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }} @else — @endif
+                                                    </td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-[11px] text-gray-500">
+                                                        @if($row->updated_at) {{ fmtDate($row->updated_at) }} {{ fmtTime($row->updated_at) }} @else — @endif
                                                     </td>
                                                     <td class="h-12 px-6 py-4">
                                                         <div class="flex items-center justify-end gap-2">
@@ -656,16 +672,28 @@
                                                         @if($requesterName)
                                                             <p>{{ __('app.requested_by') }} <span class="font-medium text-gray-800">{{ $requesterName }}</span></p>
                                                         @endif
-                                                        <div class="flex items-center gap-2 flex-wrap">
+                                                        <div class="flex flex-col gap-1 mt-2">
                                                             @if($requesterDept)
-                                                                <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200">
-                                                                    {{ $requesterDept }}
-                                                                </span>
+                                                                <div>
+                                                                    <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-[11px] border border-gray-200 inline-block">
+                                                                        {{ $requesterDept }}
+                                                                    </span>
+                                                                </div>
                                                             @endif
-                                                            <span class="text-[11px] text-gray-400 flex items-center gap-1" title="Created At">
-                                                                <x-heroicon-o-clock class="w-3 h-3"/>
-                                                                {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
-                                                            </span>
+                                                            <div class="flex flex-col gap-1 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
+                                                                @if($row->created_at)
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                        <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($row->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                                    </div>
+                                                                @endif
+                                                                @if($row->updated_at)
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                        <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($row->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                                    </div>
+                                                                @endif
+                                                            </div>
                                                         </div>
                                                         @if($row->book_reject)
                                                             <div class="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg p-2">
@@ -722,6 +750,8 @@
                                                 <th class="px-6 py-3.5">{{ __('app.date') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.time') }}</th>
                                                 <th class="px-6 py-3.5">{{ __('app.reason') }}</th>
+                                                <th class="px-6 py-3.5">Created Time</th>
+                                                <th class="px-6 py-3.5">Last Edited</th>
                                                 <th class="px-6 py-3.5">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
@@ -740,10 +770,6 @@
                                                     <td class="h-12 px-6 py-4 font-mono text-xs font-semibold text-gray-400">{{ $loop->iteration }}</td>
                                                     <td class="h-12 px-6 py-0 ">
                                                         <div class="font-semibold text-gray-900">{{ $row->meeting_title ?? '—' }}</div>
-                                                        <div class="text-[10px] text-gray-400 mt-1 flex items-center gap-1" title="Created At">
-                                                            <x-heroicon-o-clock class="w-3 h-3"/>
-                                                            {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }}
-                                                        </div>
                                                         @if($row->deleted_at)
                                                             <span class="inline-flex items-center text-[10px] text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded font-medium mt-1">{{ __('app.deleted') }}</span>
                                                         @endif
@@ -767,6 +793,12 @@
                                                         <div class="text-xs text-rose-600 font-medium italic md:truncate md:max-w-xs" title="{{ $row->book_reject }}">
                                                             {{ $row->book_reject ?? __('app.no_reason_provided') }}
                                                         </div>
+                                                    </td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-[11px] text-gray-500">
+                                                        @if($row->created_at) {{ fmtDate($row->created_at) }} {{ fmtTime($row->created_at) }} @else — @endif
+                                                    </td>
+                                                    <td class="h-12 px-6 py-4 font-mono text-[11px] text-gray-500">
+                                                        @if($row->updated_at) {{ fmtDate($row->updated_at) }} {{ fmtTime($row->updated_at) }} @else — @endif
                                                     </td>
                                                     <td class="h-12 px-6 py-4">
                                                         <div class="flex items-center justify-end gap-2">
@@ -933,6 +965,12 @@
 
                     {{-- Body --}}
                     <div class="p-6 space-y-4">
+                        @if($modalMode === 'edit' && $editLastEdited)
+                            <div class="text-[13px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 mb-2 shadow-sm">
+                                <x-heroicon-o-information-circle class="w-4 h-4 text-gray-400" />
+                                <span>Created: <strong class="text-gray-700">{{ $editCreatedAt ?? '—' }}</strong> | Last Edited: <strong class="text-gray-700">{{ $editLastEdited }}</strong></span>
+                            </div>
+                        @endif
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col justify-end">
                                 <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.type') }}</label>

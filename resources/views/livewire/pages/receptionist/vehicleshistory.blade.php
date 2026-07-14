@@ -242,6 +242,20 @@
                                 </p>
                                 <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
                                 <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2 mb-1">
+                                    @if($pvb->created_at)
+                                        <div class="flex items-center gap-1.5">
+                                            <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                            <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($pvb->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                        </div>
+                                    @endif
+                                    @if($pvb->updated_at)
+                                        <div class="flex items-center gap-1.5">
+                                            <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                            <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($pvb->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                        </div>
+                                    @endif
+                                </div>
                                 @if($pvb->rejection_reason)
                                     <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
                                 @endif
@@ -345,9 +359,20 @@
                                                 @if(!empty($b->borrower_name))
                                                     <p>{{ __('app.borrower_label') }}: <span class="font-medium text-gray-800">{{ $b->borrower_name }}</span></p>
                                                 @endif
-                                                <span class="inline-block text-[10px] text-gray-500 mt-1">
-                                                    {{ __('app.created_label') }}: {{ optional($b->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}
-                                                </span>
+                                                <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2">
+                                                    @if($b->created_at)
+                                                        <div class="flex items-center gap-1.5">
+                                                            <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                            <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($b->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                        </div>
+                                                    @endif
+                                                    @if($b->updated_at)
+                                                        <div class="flex items-center gap-1.5">
+                                                            <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                            <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($b->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             </div>
 
                                             {{-- Rejected Note --}}
@@ -399,6 +424,8 @@
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.purpose') }} / {{ __('app.destination') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.date') }} & {{ __('app.time') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">{{ __('app.status') }}</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">Created Time</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500">Last Edited</th>
                                         <th class="h-10 px-4 text-xs font-semibold text-gray-500">{{ __('app.actions') }}</th>
                                     </tr>
                                 </thead>
@@ -446,6 +473,12 @@
                                                 @if($isRejected && !empty($b->notes))
                                                     <span class="block text-[11px] text-rose-600 md:max-w-[180px] truncate mt-0.5" title="{{ $b->notes }}">{{ __('app.reason') }}: {{ $b->notes }}</span>
                                                 @endif
+                                            </td>
+                                            <td class="h-12 px-4 py-0 font-mono text-[11px] text-gray-500">
+                                                @if($b->created_at) {{ optional($b->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }} @else — @endif
+                                            </td>
+                                            <td class="h-12 px-4 py-0 font-mono text-[11px] text-gray-500">
+                                                @if($b->updated_at) {{ optional($b->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }} @else — @endif
                                             </td>
                                             <td class="h-12 px-4 py-0">
                                                 <div class="flex items-center justify-end gap-2">
@@ -611,6 +644,12 @@
                     </button>
                 </div>
                 <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                    @if($editLastEdited)
+                        <div class="text-[13px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
+                            <x-heroicon-o-information-circle class="w-4 h-4 text-gray-400" />
+                            <span>Created: <strong class="text-gray-700">{{ $editCreatedAt ?? '—' }}</strong> | Last Edited: <strong class="text-gray-700">{{ $editLastEdited }}</strong></span>
+                        </div>
+                    @endif
                     @php
                         $mi = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
                         $ml = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';

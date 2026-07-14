@@ -324,6 +324,20 @@
                                                                 <span class="truncate font-medium text-gray-600">{{ __('app.officer') }}: <span class="text-gray-900 font-semibold">{{ $e->petugas_penjaga }}</span></span>
                                                             </div>
                                                         @endif
+                                                        <div class="col-span-2 flex flex-col gap-1 min-w-0 pt-1 border-t border-gray-200/50 mt-1">
+                                                            @if($e->created_at)
+                                                                <div class="flex items-center gap-1.5">
+                                                                    <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                    <span class="truncate font-medium text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($e->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                                </div>
+                                                            @endif
+                                                            @if($e->updated_at)
+                                                                <div class="flex items-center gap-1.5">
+                                                                    <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                                    <span class="truncate font-medium text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($e->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                                                </div>
+                                                            @endif
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -378,6 +392,8 @@
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Durasi</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.officer_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.status') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created Time</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last Edited</th>
                                                 <th class="h-10 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.actions') }}</th>
                                             </tr>
                                         </thead>
@@ -469,6 +485,14 @@
                                                         </div>
                                                     </td>
                                                     
+                                                    <td class="h-12 px-4 py-0 font-mono text-[11px] text-gray-500">
+                                                        @if($e->created_at) {{ optional($e->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }} @else — @endif
+                                                    </td>
+
+                                                    <td class="h-12 px-4 py-0 font-mono text-[11px] text-gray-500">
+                                                        @if($e->updated_at) {{ optional($e->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }} @else — @endif
+                                                    </td>
+
                                                     <td class="h-12 px-4 py-0">
                                                         <div class="flex items-center justify-end gap-1">
                                                             <button wire:click="openEdit({{ $e->guestbook_id }})"
@@ -594,6 +618,12 @@
 
                     {{-- Body --}}
                     <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                        @if($editLastEdited)
+                            <div class="text-[13px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
+                                <x-heroicon-o-information-circle class="w-4 h-4 text-gray-400" />
+                                <span>Created: <strong class="text-gray-700">{{ $editCreatedAt ?? '—' }}</strong> | Last Edited: <strong class="text-gray-700">{{ $editLastEdited }}</strong></span>
+                            </div>
+                        @endif
                         <form wire:submit.prevent="saveEdit" class="space-y-4">
                             {{-- Nama --}}
                             <div>

@@ -47,6 +47,8 @@ class GuestbookHistory extends Component
     // Edit modal state
     public bool $showEdit = false;
     public ?int $editId = null;
+    public ?string $editLastEdited = null;
+    public ?string $editCreatedAt = null;
 
     // Delete modal state
     public bool $showDeleteModal = false;
@@ -280,6 +282,8 @@ class GuestbookHistory extends Component
     {
         $row = $this->findOwnedOrFail($id);
 
+        $this->editLastEdited = $row->updated_at ? \Carbon\Carbon::parse($row->updated_at)->format('d M Y, H:i') : null;
+        $this->editCreatedAt = $row->created_at ? \Carbon\Carbon::parse($row->created_at)->format('d M Y, H:i') : null;
         $this->editId = $row->getKey();
         $this->edit = [
             'date' => $row->date ? Carbon::parse($row->date)->format('Y-m-d') : null,
@@ -468,6 +472,7 @@ class GuestbookHistory extends Component
     public function closeEdit(): void
     {
         $this->showEdit = false;
+        $this->reset('editId', 'edit', 'scanLogs', 'qrLogs', 'editLastEdited', 'editCreatedAt');
         $this->resetValidation();
     }
 

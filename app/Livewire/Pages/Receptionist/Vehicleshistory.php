@@ -49,6 +49,8 @@ class Vehicleshistory extends Component
     // Edit Modal State
     public bool $showEdit = false;
     public ?int $editId = null;
+    public ?string $editLastEdited = null;
+    public ?string $editCreatedAt = null;
     
     // Delete Modal State
     public ?int $deletingId = null;
@@ -188,6 +190,8 @@ class Vehicleshistory extends Component
         if (!$booking) return;
 
         $this->editId = $id;
+        $this->editLastEdited = $booking->updated_at ? \Carbon\Carbon::parse($booking->updated_at)->format('d M Y, H:i') : null;
+        $this->editCreatedAt = $booking->created_at ? \Carbon\Carbon::parse($booking->created_at)->format('d M Y, H:i') : null;
         $this->edit = [
             'borrower_name' => (string) $booking->borrower_name,
             'purpose'       => (string) $booking->purpose,
@@ -261,7 +265,7 @@ class Vehicleshistory extends Component
         }
 
         $this->showEdit = false;
-        $this->reset('editId', 'edit');
+        $this->reset('editId', 'edit', 'editLastEdited', 'editCreatedAt');
     }
 
     public function render()
