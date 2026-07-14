@@ -410,8 +410,16 @@
 
 
                 <div class="pt-5 border-t border-border bg-muted/5 -mx-6 -mb-6 p-6 flex items-center justify-end">
-                    <button type="submit" class="inline-flex items-center gap-2 {{ $btnBlk }}" wire:loading.attr="disabled">
-                        <x-heroicon-o-check class="w-4 h-4" />
+                    <button type="submit" class="inline-flex items-center gap-2 {{ $btnBlk }}" wire:loading.attr="disabled" wire:target="saveOffline">
+                        <div wire:loading.remove wire:target="saveOffline">
+                            <x-heroicon-o-check class="w-4 h-4" />
+                        </div>
+                        <div wire:loading wire:target="saveOffline">
+                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
                         <span>{{ __('app.save_booking') }}</span>
                     </button>
                 </div>
@@ -440,19 +448,6 @@
 
             @if($showOnlineForm)
                 <form class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6" wire:submit.prevent="saveOnline">
-                    {{-- Rules & Notes Alert --}}
-                    <div class="lg:col-span-2 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 shadow-sm">
-                        <div class="flex items-center gap-2 mb-2.5">
-                            <x-heroicon-o-information-circle class="w-5 h-5 shrink-0" />
-                            <h4 class="text-sm font-bold tracking-wide">Rules & Notes</h4>
-                        </div>
-                        <ul class="list-disc list-outside text-xs space-y-1.5 ml-5 text-blue-600/90 dark:text-blue-300/90 leading-relaxed">
-                            <li><strong>Minimum Booking Limit:</strong> Bookings must be made at least 1 hour in advance.</li>
-                            <li><strong>Maximum Booking Limit:</strong> You can only book a room up to 1 month in advance from today's date.</li>
-                            <li><strong>Auto-Approval System:</strong> Bookings will be automatically approved once the scheduled time arrives.</li>
-                            <li><strong>Auto-Archive System:</strong> Completed meetings will be automatically moved to the history logs immediately after the scheduled duration ends.</li>
-                        </ul>
-                    </div>
                 <div class="space-y-4">
                     <div>
                         <label class="{{ $label }}">{{ __('app.title_col') }}</label>
@@ -732,8 +727,16 @@
 
 
                     <div class="pt-5 flex items-center justify-end">
-                        <button type="submit" class="inline-flex items-center gap-2 {{ $btnBlk }}" wire:loading.attr="disabled">
-                            <x-heroicon-o-link class="w-4 h-4" />
+                        <button type="submit" class="inline-flex items-center gap-2 {{ $btnBlk }}" wire:loading.attr="disabled" wire:target="saveOnline">
+                            <div wire:loading.remove wire:target="saveOnline">
+                                <x-heroicon-o-link class="w-4 h-4" />
+                            </div>
+                            <div wire:loading wire:target="saveOnline">
+                                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
                             <span>{{ __('app.submit_online') }}</span>
                         </button>
                     </div>
