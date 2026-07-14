@@ -205,6 +205,130 @@ class NotificationBell extends Component
         }
     }
 
+    // ── Detail modal ───────────────────────────────────────────────────────
+
+    public bool   $showDetail       = false;
+    public ?int   $detailNotifId    = null;
+    public bool   $showDenyForm     = false;
+    public string $denyReason       = '';
+
+    public function openDetail(int $notifId): void
+    {
+        $user  = Auth::user();
+        $notif = ManagerNotification::where('id', $notifId)
+            ->where('company_id', $user->company_id ?? 0)
+            ->where('recipient_id', $user->user_id)
+            ->first();
+
+        if (!$notif) return;
+
+        $this->detailNotifId = $notifId;
+        $this->showDenyForm  = false;
+        $this->denyReason    = '';
+        $this->showDetail    = true;
+
+        // Mark as read when opened
+        if (!$notif->is_read) {
+            $notif->update(['is_read' => true]);
+        }
+    }
+
+    public function closeDetail(): void
+    {
+        $this->showDetail    = false;
+        $this->detailNotifId = null;
+        $this->showDenyForm  = false;
+        $this->denyReason    = '';
+    }
+
+    public function openDenyForm(): void
+    {
+        $this->showDenyForm = true;
+    }
+
+    public function submitDeny(): void
+    {
+        $this->validate(['denyReason' => 'required|string|min:3|max:500']);
+
+        if (!$this->detailNotifId) return;
+
+        $user  = Auth::user();
+        $notif = ManagerNotification::where('id', $this->detailNotifId)
+            ->where('company_id', $user->company_id ?? 0)
+            ->where('action_required', true)
+            ->whereNull('action_taken')
+            ->first();
+
+        if (!$notif) {
+            $this->dispatch('toast', type: 'warning', title: 'Not Found',
+                message: 'Notification not found or already actioned.', duration: 3000);
+            $this->closeDetail();
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($notif, $user) {
+                if (str_contains($notif->type, 'room')) {
+                    PriorityRoomBooking::where('id', $notif->notifiable_id)
+                        ->where('company_id', $user->company_id ?? 0)
+                        ->update([
+                            'status'           => PriorityRoomBooking::STATUS_CONFLICT_DENIED,
+                            'handled_by'       => $user->user_id,
+                            'rejection_reason' => $this->denyReason,
+                        ]);
+                } else {
+                    PriorityVehicleBooking::where('id', $notif->notifiable_id)
+                        ->where('company_id', $user->company_id ?? 0)
+                        ->update([
+                            'status'           => PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
+                            'handled_by'       => $user->user_id,
+                            'rejection_reason' => $this->denyReason,
+                        ]);
+                }
+
+                $notif->update(['action_taken' => 'denied', 'is_read' => true]);
+            });
+
+            $this->dispatch('toast', type: 'info', title: 'Denied',
+                message: 'Priority booking request denied. Original booking kept.', duration: 4000);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error',
+                message: 'Failed: ' . $e->getMessage(), duration: 5000);
+        }
+
+        $this->closeDetail();
+    }
+
+    public function approveFromDetail(): void
+    {
+        if (!$this->detailNotifId) return;
+        $this->approveDirectly($this->detailNotifId);
+        $this->closeDetail();
+    }
+
+    /** Computed: the notification being viewed in the detail modal */
+    public function getDetailNotifProperty(): ?ManagerNotification
+    {
+        if (!$this->detailNotifId) return null;
+        return ManagerNotification::find($this->detailNotifId);
+    }
+
+    /** Computed: the priority booking model linked to the detail notification */
+    public function getDetailBookingProperty(): mixed
+    {
+        $notif = $this->detailNotif;
+        if (!$notif || !$notif->notifiable_id) return null;
+
+        if (str_contains($notif->type, 'room')) {
+            return PriorityRoomBooking::with(['room', 'cancelledBooking.room', 'manager'])
+                ->find($notif->notifiable_id);
+        }
+
+        return PriorityVehicleBooking::with(['vehicle', 'cancelledBooking', 'manager', 'department'])
+            ->find($notif->notifiable_id);
+    }
+
     public function denyDirectly(int $notifId): void
     {
         $user = Auth::user();
@@ -258,8 +382,10 @@ class NotificationBell extends Component
     public function render()
     {
         return view('livewire.components.ui.notification-bell', [
-            'unreadCount' => $this->unreadCount,
-            'notifs'      => $this->notifs,
+            'unreadCount'   => $this->unreadCount,
+            'notifs'        => $this->notifs,
+            'detailNotif'   => $this->detailNotif,
+            'detailBooking' => $this->detailBooking,
         ]);
     }
 }

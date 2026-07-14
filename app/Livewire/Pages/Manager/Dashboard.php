@@ -215,9 +215,6 @@ class Dashboard extends Component
                 'pendingPriorityRoom'    => $pendingPriorityRoom,
                 'pendingPriorityVehicle' => $pendingPriorityVehicle,
             ]);
-
-            // Dispatch chart data as a browser event so JS can update without re-rendering
-            $this->dispatch('chart-data-updated', labels: $labels, datasets: $datasets);
         } catch (\Exception $e) {
             $this->dispatch('toast', 
                 type: 'error',
@@ -226,6 +223,8 @@ class Dashboard extends Component
                 duration: 4000
             );
 
+            $emptyCollection = collect();
+
             return view('livewire.pages.manager.dashboard', [
                 'stats' => [
                     ['key' => 'all', 'label' => 'All Activity', 'value' => 0, 'trend' => 0, 'direction' => 'up'],
@@ -233,11 +232,17 @@ class Dashboard extends Component
                     ['key' => 'vehicle', 'label' => 'Vehicle Bookings', 'value' => 0, 'trend' => 0, 'direction' => 'up'],
                     ['key' => 'users', 'label' => 'Receptionists', 'value' => 0, 'trend' => 0, 'direction' => 'up'],
                 ],
-                'labels'         => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-                'datasets'       => [],
-                'activeFilter'   => $this->activeFilter,
-                'selectedYear'   => $this->selectedYear,
-                'availableYears' => [(int) date('Y')],
+                'labels'                 => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+                'datasets'               => [],
+                'activeFilter'           => $this->activeFilter,
+                'selectedYear'           => $this->selectedYear,
+                'availableYears'         => [(int) date('Y')],
+                'pendingRoomBookings'    => $emptyCollection,
+                'ongoingRoomBookings'    => $emptyCollection,
+                'pendingVehicleBookings' => $emptyCollection,
+                'ongoingVehicleBookings' => $emptyCollection,
+                'pendingPriorityRoom'    => $emptyCollection,
+                'pendingPriorityVehicle' => $emptyCollection,
             ]);
         }
     }
