@@ -35,6 +35,11 @@ class MeetingSchedule extends Component
     public bool $showBookingDetailModal = false;
     public array $selectedBookingDetail = [];
 
+    // Room booking approve/reject (from directory modal)
+    public bool $showRoomRejectModal = false;
+    public ?int $roomRejectId = null;
+    public string $roomRejectReason = '';
+
     /** OFFLINE form state */
     public array $form = [
         'meeting_title' => null,
@@ -609,6 +614,79 @@ class MeetingSchedule extends Component
 
         $this->dispatch('toast', type: 'success', title: 'Sukses', message: 'Meeting online disimpan dengan link meeting.', duration: 3000);
         $this->js('window.location.reload()');
+    }
+
+    /* ===================== Room Directory Approve / Reject ===================== */
+
+    public function approveRoomBooking(int $id): void
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $b = \App\Models\BookingRoom::lockForUpdate()->findOrFail($id);
+                if ($b->status !== 'pending') {
+                    throw new \RuntimeException("Booking #{$b->bookingroom_id} is not pending.");
+                }
+                $b->status     = 'approved';
+                $b->is_approve = 1;
+                $b->approved_by = \Illuminate\Support\Facades\Auth::id();
+                $b->save();
+            });
+
+            // Refresh schedule data so the card updates inline
+            if ($this->selectedRoomForSchedule) {
+                $this->openScheduleModal($this->selectedRoomForSchedule);
+            }
+            $this->showBookingDetailModal = false;
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Room booking has been approved.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
+        }
+    }
+
+    public function openRoomReject(int $id): void
+    {
+        $this->roomRejectId        = $id;
+        $this->roomRejectReason    = '';
+        $this->showRoomRejectModal = true;
+        $this->showBookingDetailModal = false;
+    }
+
+    public function closeRoomReject(): void
+    {
+        $this->showRoomRejectModal = false;
+        $this->roomRejectId        = null;
+        $this->roomRejectReason    = '';
+    }
+
+    public function confirmRoomReject(): void
+    {
+        $this->validate([
+            'roomRejectId'     => 'required|integer|exists:booking_rooms,bookingroom_id',
+            'roomRejectReason' => 'required|string|min:3|max:500',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $b = \App\Models\BookingRoom::lockForUpdate()->findOrFail($this->roomRejectId);
+                $b->status      = 'rejected';
+                $b->is_approve  = 0;
+                $b->approved_by = \Illuminate\Support\Facades\Auth::id();
+                $b->book_reject = $this->roomRejectReason;
+                $b->save();
+            });
+
+            $this->showRoomRejectModal = false;
+            if ($this->selectedRoomForSchedule) {
+                $this->openScheduleModal($this->selectedRoomForSchedule);
+            }
+            $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Room booking has been rejected.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Could not reject: ' . $e->getMessage());
+        }
     }
 
     /* ===================== Room Directory Schedule Modal ===================== */

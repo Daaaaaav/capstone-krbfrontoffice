@@ -24,6 +24,11 @@ class Bookingvehicle extends Component
     public bool $showVehicleBookingDetailModal = false;
     public array $selectedVehicleBookingDetail = [];
 
+    // Vehicle booking approve/reject (from directory modal)
+    public bool $showVehicleRejectModal = false;
+    public ?int $vehicleRejectId = null;
+    public string $vehicleRejectNote = '';
+
     // form fields
     public ?int $department_id = null;
     public ?int $borrower_user_id = null;
@@ -309,6 +314,86 @@ class Bookingvehicle extends Component
         $this->date_from     = $today;
         $this->date_to       = $today;
         $this->odd_even_area = 'tidak';
+    }
+
+    /* ===================== Vehicle Directory Approve / Reject ===================== */
+
+    public function approveVehicleBookingFromDirectory(int $id): void
+    {
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($id);
+                if ($b->status !== 'pending') {
+                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not pending.");
+                }
+                $b->status = 'approved';
+                $b->save();
+            });
+
+            // Refresh schedule data so card updates inline
+            if ($this->selectedVehicleForSchedule) {
+                $this->openVehicleScheduleModal($this->selectedVehicleForSchedule);
+            }
+            $this->showVehicleBookingDetailModal = false;
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Vehicle booking has been approved.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
+        }
+    }
+
+    public function openVehicleRejectFromDirectory(int $id): void
+    {
+        $this->vehicleRejectId        = $id;
+        $this->vehicleRejectNote      = '';
+        $this->showVehicleRejectModal = true;
+        $this->showVehicleBookingDetailModal = false;
+    }
+
+    public function closeVehicleReject(): void
+    {
+        $this->showVehicleRejectModal = false;
+        $this->vehicleRejectId        = null;
+        $this->vehicleRejectNote      = '';
+    }
+
+    public function confirmVehicleRejectFromDirectory(): void
+    {
+        $this->validate([
+            'vehicleRejectNote' => 'required|string|min:5|max:2000',
+            'vehicleRejectId'   => 'required|integer',
+        ]);
+
+        $bookingId = (int) $this->vehicleRejectId;
+        $reason    = '[Rejected] ' . trim($this->vehicleRejectNote);
+
+        try {
+            $affected = \Illuminate\Support\Facades\DB::table('vehicle_bookings')
+                ->where('vehiclebooking_id', $bookingId)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'rejected',
+                    'notes'  => \Illuminate\Support\Facades\DB::raw(
+                        "TRIM(CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', '\n'), " .
+                        \Illuminate\Support\Facades\DB::getPdo()->quote($reason) . "))"
+                    ),
+                ]);
+
+            if ($affected === 0) {
+                throw new \RuntimeException("Booking #{$bookingId} could not be rejected — it may no longer be pending.");
+            }
+
+            $this->showVehicleRejectModal = false;
+            if ($this->selectedVehicleForSchedule) {
+                $this->openVehicleScheduleModal($this->selectedVehicleForSchedule);
+            }
+            $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Vehicle booking has been rejected.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Could not reject: ' . $e->getMessage());
+        }
     }
 
     /* ===================== Vehicle Directory Schedule Modal ===================== */
