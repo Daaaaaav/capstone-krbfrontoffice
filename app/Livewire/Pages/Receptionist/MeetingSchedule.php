@@ -32,6 +32,9 @@ class MeetingSchedule extends Component
     public ?int $selectedRoomForSchedule = null;
     public array $roomScheduleData = [];
 
+    public bool $showBookingDetailModal = false;
+    public array $selectedBookingDetail = [];
+
     /** OFFLINE form state */
     public array $form = [
         'meeting_title' => null,
@@ -672,7 +675,7 @@ class MeetingSchedule extends Component
         $now = now($this->tz);
         $endDate = $now->copy()->addDays(30);
 
-        $this->roomScheduleData = DB::table('booking_rooms')
+        $this->roomScheduleData = \App\Models\BookingRoom::with(['room', 'user', 'department'])
             ->where('room_id', $roomId)
             ->whereBetween('date', [$now->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->whereIn('status', ['pending', 'approved', '0', '1', 'PENDING', 'APPROVED'])
@@ -681,15 +684,36 @@ class MeetingSchedule extends Component
             ->get()
             ->map(function ($b) {
                 return [
+                    'id' => $b->bookingroom_id,
                     'title' => $b->meeting_title ?? 'Meeting',
-                    'date' => $b->date,
+                    'room_name' => $b->room->room_name ?? 'Room',
+                    'borrower' => $b->user->full_name ?? 'Unknown',
+                    'department' => $b->department->department_name ?? 'Unknown',
+                    'purpose' => $b->meeting_title ?? '-',
+                    'destination' => $b->room->room_name ?? '-',
+                    'date' => $b->date->format('Y-m-d'),
                     'start' => Carbon::parse($b->start_time)->format('H:i'),
                     'end' => Carbon::parse($b->end_time)->format('H:i'),
+                    'start_date' => $b->date->format('l, d M Y'),
+                    'end_date' => $b->date->format('l, d M Y'),
+                    'start_time' => Carbon::parse($b->start_time)->format('H:i'),
+                    'end_time' => Carbon::parse($b->end_time)->format('H:i'),
+                    'start_at_full' => $b->date->format('d M Y') . ' ' . Carbon::parse($b->start_time)->format('H:i'),
+                    'end_at_full' => $b->date->format('d M Y') . ' ' . Carbon::parse($b->end_time)->format('H:i'),
                     'status' => $b->status,
                 ];
             })
             ->toArray();
         $this->showScheduleModal = true;
+    }
+
+    public function openBookingDetail($bookingId): void
+    {
+        $booking = collect($this->roomScheduleData)->firstWhere('id', $bookingId);
+        if ($booking) {
+            $this->selectedBookingDetail = $booking;
+            $this->showBookingDetailModal = true;
+        }
     }
 
 
