@@ -17,6 +17,13 @@ use App\Services\SecurityMonitoringService;
 #[Title('Vehicle Booking')]
 class Bookingvehicle extends Component
 {
+    // Vehicle Directory schedule modal
+    public bool $showVehicleScheduleModal = false;
+    public ?int $selectedVehicleForSchedule = null;
+    public array $vehicleScheduleData = [];
+    public bool $showVehicleBookingDetailModal = false;
+    public array $selectedVehicleBookingDetail = [];
+
     // form fields
     public ?int $department_id = null;
     public ?int $borrower_user_id = null;
@@ -302,6 +309,55 @@ class Bookingvehicle extends Component
         $this->date_from     = $today;
         $this->date_to       = $today;
         $this->odd_even_area = 'tidak';
+    }
+
+    /* ===================== Vehicle Directory Schedule Modal ===================== */
+
+    public function openVehicleScheduleModal($vehicleId): void
+    {
+        $this->selectedVehicleForSchedule = (int) $vehicleId;
+        $now     = now($this->tz);
+        $endDate = $now->copy()->addDays(30);
+
+        $this->vehicleScheduleData = VehicleBooking::with(['vehicle', 'user', 'department'])
+            ->where('vehicle_id', $vehicleId)
+            ->whereBetween('start_at', [$now->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', ['pending', 'approved', 'ongoing', 'PENDING', 'APPROVED', 'ONGOING'])
+            ->orderBy('start_at')
+            ->get()
+            ->map(function ($b) {
+                $startAt = Carbon::parse($b->start_at, $this->tz);
+                $endAt   = Carbon::parse($b->end_at,   $this->tz);
+                return [
+                    'id'           => $b->vehiclebooking_id,
+                    'title'        => $b->purpose ?? 'Vehicle Booking',
+                    'vehicle_name' => $b->vehicle->name ?? 'Vehicle',
+                    'plate_number' => $b->vehicle->plate_number ?? '-',
+                    'borrower'     => $b->user->full_name ?? $b->borrower_name ?? 'Unknown',
+                    'department'   => $b->department->department_name ?? 'Unknown',
+                    'purpose'      => $b->purpose ?? '-',
+                    'destination'  => $b->destination ?? '-',
+                    'start_date'   => $startAt->format('l, d M Y'),
+                    'end_date'     => $endAt->format('l, d M Y'),
+                    'start_time'   => $startAt->format('H:i'),
+                    'end_time'     => $endAt->format('H:i'),
+                    'start_at_full' => $startAt->format('d M Y H:i'),
+                    'end_at_full'   => $endAt->format('d M Y H:i'),
+                    'status'       => $b->status,
+                ];
+            })
+            ->toArray();
+
+        $this->showVehicleScheduleModal = true;
+    }
+
+    public function openVehicleBookingDetail($bookingId): void
+    {
+        $booking = collect($this->vehicleScheduleData)->firstWhere('id', $bookingId);
+        if ($booking) {
+            $this->selectedVehicleBookingDetail = $booking;
+            $this->showVehicleBookingDetailModal = true;
+        }
     }
 
     public function render()
