@@ -69,6 +69,34 @@
                     @endif
                 </div>
 
+                {{-- Latest Vehicle Bookings --}}
+                <div class="bg-card border border-border rounded-lg">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+                        <h3 class="text-sm font-semibold text-card-foreground">{{ __('app.vehicle_bookings_label') }}</h3>
+                        <a href="{{ route('receptionist.vehiclestatus') }}" class="text-xs text-muted-foreground hover:text-foreground transition-colors">{{ __('app.view_all') }}</a>
+                    </div>
+                    @if($latestVehicleBookings->isEmpty())
+                        <x-empty-state icon="heroicon-o-truck" title="{{ __('app.no_vehicle_bookings') ?? 'No vehicle bookings' }}" description="{{ __('app.no_bookings_7days') }}" />
+                    @else
+                        <div class="divide-y divide-border">
+                            @foreach($latestVehicleBookings as $vb)
+                                <div wire:click="openVehicleDetailModal({{ $vb['id'] }})" class="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="w-8 h-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                            <x-heroicon-o-truck class="w-4 h-4 text-muted-foreground" />
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-foreground truncate">{{ $vb['borrower'] }}</p>
+                                            <p class="text-xs text-muted-foreground truncate">{{ $vb['vehicle_name'] }} · {{ $vb['time'] }}</p>
+                                        </div>
+                                    </div>
+                                    <x-status-badge :status="$vb['status_label']" />
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
                 {{-- Latest Guest Entries --}}
                 <div class="bg-card border border-border rounded-lg">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -347,49 +375,199 @@
     </div>
     @endif
 
-    {{-- ═══ REJECT MODAL ═══ --}}
-    @if($showRejectModal)
+    {{-- ═══ VEHICLE DETAIL MODAL ═══ --}}
+    @if($showVehicleDetailModal && $selectedVehicleBookingDetail)
+    @php
+        $vd = $selectedVehicleBookingDetail;
+        $vIsPending = strtolower($vd->status ?? '') === 'pending';
+        $vStatusClass = [
+            'approved'  => 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+            'pending'   => 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+            'rejected'  => 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+            'ongoing'   => 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+            'completed' => 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+            'cancelled' => 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+        ];
+        $vBorrower   = $vd->user?->full_name ?? $vd->borrower_name ?? '—';
+        $vDepartment = $vd->department?->department_name ?? $vd->user?->department?->department_name ?? '—';
+    @endphp
+    <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+        role="dialog" aria-modal="true"
+        wire:key="dash-vehicle-detail-{{ $vd->vehiclebooking_id }}"
+        wire:keydown.escape.window="closeVehicleDetailModal">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeVehicleDetailModal"></div>
+
+        <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden transform transition-all duration-300 flex flex-col max-h-[85vh]" tabindex="-1">
+
+            {{-- Header --}}
+            <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                        <x-heroicon-o-truck class="w-4 h-4 text-[#CDDEA7]" />
+                    </div>
+                    <h3 class="font-bold tracking-tight text-base">Vehicle Booking Detail</h3>
+                </div>
+                <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeVehicleDetailModal">✕</button>
+            </div>
+
+            {{-- Body --}}
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                {{-- Vehicle + Status --}}
+                <div class="pb-3 border-b border-border">
+                    <h4 class="text-base font-bold text-foreground mb-2 leading-tight">
+                        {{ $vd->vehicle?->name ?? '—' }}
+                        @if($vd->vehicle?->plate_number)
+                        <span class="text-sm font-normal text-muted-foreground ml-1">({{ $vd->vehicle->plate_number }})</span>
+                        @endif
+                    </h4>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border {{ $vStatusClass[strtolower($vd->status ?? 'cancelled')] ?? 'bg-muted text-muted-foreground border-border' }}">
+                            {{ ucfirst(strtolower($vd->status ?? 'unknown')) }}
+                        </span>
+                        <span class="text-[10px] font-semibold text-muted-foreground/60 bg-muted/50 border border-border/40 px-2 py-0.5 rounded font-mono uppercase tracking-wider">ID: {{ $vd->vehiclebooking_id }}</span>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    {{-- Borrower & Department --}}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-user class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>Borrower</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ $vBorrower }}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-building-office class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>{{ __('app.department') }}</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ $vDepartment }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Start / End --}}
+                    <div class="grid grid-cols-2 gap-4 border-t border-border/40 pt-3">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-calendar class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>Start</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ \Carbon\Carbon::parse($vd->start_at)->format('d M Y H:i') }}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <x-heroicon-o-calendar class="w-3.5 h-3.5 text-muted-foreground/60" />
+                                <span>End</span>
+                            </div>
+                            <p class="text-sm font-semibold text-foreground">{{ \Carbon\Carbon::parse($vd->end_at)->format('d M Y H:i') }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Purpose & Destination --}}
+                    <div class="grid grid-cols-2 gap-4 border-t border-border/40 pt-3">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Purpose</div>
+                            <p class="text-sm font-semibold text-foreground">{{ $vd->purpose ?? '—' }}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Destination</div>
+                            <p class="text-sm font-semibold text-foreground">{{ $vd->destination ?? '—' }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Odd/Even + Purpose Type --}}
+                    @if($vd->odd_even_area && $vd->odd_even_area !== 'tidak')
+                    <div class="border-t border-border/40 pt-3 space-y-1">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Plate Restriction</div>
+                        <p class="text-sm font-semibold text-foreground capitalize">{{ $vd->odd_even_area }}</p>
+                    </div>
+                    @endif
+
+                    {{-- Notes (rejection reason) --}}
+                    @if(trim((string)($vd->notes ?? '')) !== '')
+                    <div class="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-1 border-t border-border/40 pt-3">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+                            <x-heroicon-o-exclamation-triangle class="w-3.5 h-3.5" />
+                            <span>Notes / Rejection Reason</span>
+                        </div>
+                        <p class="text-xs text-amber-800 leading-relaxed whitespace-pre-wrap">{{ $vd->notes }}</p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Footer: Approve + Reject for pending --}}
+            <div class="border-t border-border px-6 py-4 flex items-center justify-between bg-muted/10">
+                <div class="flex items-center gap-2">
+                    @if($vIsPending)
+                    <button wire:click="approveVehicleBooking({{ $vd->vehiclebooking_id }})" type="button"
+                        class="h-9 px-4 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition inline-flex items-center gap-1.5 shadow-sm"
+                        wire:loading.attr="disabled" wire:target="approveVehicleBooking">
+                        <x-heroicon-o-check-circle class="w-3.5 h-3.5" />
+                        <span>Approve</span>
+                    </button>
+                    <button wire:click="openVehicleReject({{ $vd->vehiclebooking_id }})" type="button"
+                        class="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/90 transition inline-flex items-center gap-1.5 shadow-sm">
+                        <x-heroicon-o-x-circle class="w-3.5 h-3.5" />
+                        <span>{{ __('app.reject') }}</span>
+                    </button>
+                    @endif
+                </div>
+                <button wire:click="closeVehicleDetailModal" type="button"
+                    class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5">
+                    <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
+                    <span>{{ __('app.close') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ═══ VEHICLE REJECT MODAL ═══ --}}
+    @if($showVehicleRejectModal)
     <div class="fixed inset-0 z-[70] overflow-y-auto flex items-center justify-center p-4"
         role="dialog" aria-modal="true"
-        wire:key="dash-reject-modal"
-        wire:keydown.escape.window="closeReject">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeReject"></div>
+        wire:key="dash-vehicle-reject-modal"
+        wire:keydown.escape.window="closeVehicleReject">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeVehicleReject"></div>
 
         <div class="relative w-full max-w-lg bg-card rounded-2xl border border-border shadow-2xl overflow-hidden transform transition-all duration-300" tabindex="-1">
-            <form wire:submit.prevent="confirmReject">
+            <form wire:submit.prevent="confirmVehicleReject">
                 <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
                             <x-heroicon-o-x-circle class="w-4 h-4 text-[#CDDEA7]" />
                         </div>
-                        <h3 class="font-bold tracking-tight text-base">{{ __('app.reject_booking_title') }}</h3>
+                        <h3 class="font-bold tracking-tight text-base">Reject Vehicle Booking</h3>
                     </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeReject">✕</button>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="closeVehicleReject">✕</button>
                 </div>
 
                 <div class="p-6 space-y-4">
                     <p class="text-xs text-muted-foreground">{{ __('app.reject_reason_required') }}</p>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.reject_reason_ph') }} <span class="text-destructive">*</span></label>
-                        <textarea wire:model.live="rejectReason"
+                        <textarea wire:model.live="vehicleRejectReason"
                             rows="4"
                             class="w-full px-3.5 py-2.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                            placeholder="Contoh: Jadwal bentrok dengan rapat lain / Ruangan tidak tersedia"
+                            placeholder="Contoh: Kendaraan sedang dalam perawatan / Jadwal bentrok"
                             required></textarea>
-                        @error('rejectReason')
+                        @error('vehicleRejectReason')
                         <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p>
                         @enderror
                     </div>
                 </div>
 
                 <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
-                    <button type="button" class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5" wire:click="closeReject" wire:loading.attr="disabled" wire:target="confirmReject">
+                    <button type="button" class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5" wire:click="closeVehicleReject" wire:loading.attr="disabled" wire:target="confirmVehicleReject">
                         <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5" />
                         <span>{{ __('app.cancel') }}</span>
                     </button>
                     <button type="submit"
                         class="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/95 transition shadow-sm inline-flex items-center gap-1.5"
-                        wire:loading.attr="disabled" wire:target="confirmReject">
+                        wire:loading.attr="disabled" wire:target="confirmVehicleReject">
                         <x-heroicon-o-x-mark class="w-3.5 h-3.5" />
                         <span>{{ __('app.reject') }}</span>
                     </button>
