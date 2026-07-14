@@ -42,7 +42,7 @@
 
                 {{-- User Management --}}
                 @php $userGroupActiveState = request()->routeIs('manager.receptionists'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: true }">
+                <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_user') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_user', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">{{ __('app.user_management') }}</span>
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -66,7 +66,7 @@
 
                 {{-- Analytics --}}
                 @php $analyticsGroupActive = request()->routeIs('manager.room', 'manager.vehicle', 'manager.delivery', 'manager.guestbook'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: true }">
+                <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_analytics') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_analytics', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">{{ __('app.analytics') }}</span>
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -131,7 +131,7 @@
 
                 {{-- Resource Management --}}
                 @php $resourceGroupActive = request()->routeIs('manager.manageroom', 'manager.managevehicle', 'manager.managestorage'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: true }">
+                <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_resource') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_resource', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">Resource Management</span>
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -183,7 +183,7 @@
 
                 {{-- Priority Operations --}}
                 @php $priorityGroupActive = request()->routeIs('manager.priority-room','manager.priority-vehicle','manager.guestbook-form','manager.docpack-form','manager.docpack-status'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: {{ $priorityGroupActive ? 'true' : 'false' }} }">
+                <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_priority') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_priority', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">Priority &amp; Operations</span>
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -253,7 +253,7 @@
 
                 {{-- AI Security --}}
                 @php $aiGroupActive = request()->routeIs('manager.lstm-predictions', 'manager.occupancy', 'manager.ai-security'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: true }">
+                <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_ai') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_ai', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">{!! __('app.ai_security') !!}</span>
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
