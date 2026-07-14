@@ -34,7 +34,6 @@
     $label = 'block text-sm font-medium text-gray-700 mb-2';
     $input = 'w-full h-10 px-3 rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition';
     $chip  = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-100 text-xs';
-    $icoAvatar = 'w-10 h-10 bg-[#4E653D] rounded-xl flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden relative';
 @endphp
 
 <div class="min-h-screen bg-gray-50" wire:poll.1000ms.keep-alive>
@@ -205,7 +204,6 @@
                             @if($activeTab === 'pending')
                                 @forelse($pending as $row)
                                     @php
-                                        $avatarChar = strtoupper(substr($row->item_name ?? 'P', 0, 1));
                                         $rowNo = ($pending->firstItem() ?? 1) + $loop->index;
                                     @endphp
 
@@ -214,16 +212,9 @@
                                         
                                         <div class="space-y-3">
                                             <div class="flex items-start gap-4">
-                                                {{-- Image on the left --}}
-                                                <div class="{{ $icoAvatar }} mt-0.5 border border-gray-200 shrink-0">
-                                                    @if($row->image)
-                                                        <img src="{{ Storage::disk('public')->url($row->image) }}" alt="Bukti foto"
-                                                            class="w-full h-full object-cover">
-                                                    @else
-                                                        <span class="text-white font-semibold text-sm">{{ $avatarChar }}</span>
-                                                    @endif
+                                                <div class="w-10 h-10 bg-[#4E653D] rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden mt-0.5">
+                                                    {{ strtoupper(substr($row->item_name ?? 'P', 0, 1)) }}
                                                 </div>
-
                                                 <div class="min-w-0 flex-1 space-y-1">
                                                     {{-- TOP ROW: Title, Type, Status --}}
                                                     <div class="flex items-center justify-between gap-3 min-w-0 mb-2">
@@ -326,12 +317,8 @@
                                                 <td class="px-6 py-4 font-mono text-xs font-semibold text-gray-400">#{{ $rowNo }}</td>
                                                 <td class="px-6 py-4">
                                                     <div class="flex items-center gap-3">
-                                                        <div class="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-gray-200 bg-[#4E653D] flex items-center justify-center text-white text-xs font-semibold">
-                                                            @if($row->image)
-                                                                <img src="{{ Storage::disk('public')->url($row->image) }}" class="w-full h-full object-cover">
-                                                            @else
-                                                                {{ strtoupper(substr($row->item_name ?? 'P', 0, 1)) }}
-                                                            @endif
+                                                        <div class="w-8 h-8 rounded-full bg-[#4E653D] flex items-center justify-center text-white font-semibold text-xs shrink-0 overflow-hidden">
+                                                            {{ strtoupper(substr($row->item_name ?? 'P', 0, 1)) }}
                                                         </div>
                                                         <div class="font-semibold text-gray-900">{{ $row->item_name }}</div>
                                                     </div>
@@ -765,6 +752,38 @@
                             <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.receiver_name') }}</label>
                             <input type="text" class="w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition" wire:model.defer="edit.nama_penerima">
                             @error('edit.nama_penerima') <p class="text-xs text-rose-600 mt-1.5 font-medium">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2 border-t border-gray-100">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Document Photo</label>
+                        <div class="flex gap-4">
+                            <div class="w-32 h-40 shrink-0 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden relative flex items-center justify-center">
+                                @if($editPhoto)
+                                    <img src="{{ $editPhoto->temporaryUrl() }}" class="w-full h-full object-cover">
+                                @elseif($editImageUrl && Storage::disk('public')->exists($editImageUrl))
+                                    <img src="{{ asset('storage/' . $editImageUrl) }}" class="w-full h-full object-cover">
+                                @else
+                                    <x-heroicon-o-document-text class="w-10 h-10 text-gray-300" />
+                                @endif
+                                <div class="absolute inset-0 border border-black/5 rounded-lg pointer-events-none"></div>
+                            </div>
+                            <div class="flex-1 space-y-3 flex flex-col justify-center">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Replace Document Photo</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">Upload a new image to replace the current one. Max size 2MB.</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+                                    wire:model="editPhoto"
+                                    accept="image/*"
+                                >
+                                <div wire:loading wire:target="editPhoto" class="text-xs text-[#4E653D] font-medium animate-pulse">
+                                    Uploading...
+                                </div>
+                                @error('editPhoto') <p class="text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
                         </div>
                     </div>
                 </div>

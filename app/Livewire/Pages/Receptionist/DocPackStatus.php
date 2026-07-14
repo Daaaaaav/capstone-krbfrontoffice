@@ -10,6 +10,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
+use App\Services\ImageHelper;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -18,6 +20,7 @@ use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 class DocPackStatus extends Component
 {
     use WithPagination;
+    use WithFileUploads;
     use HasViewMode;
 
     protected string $paginationTheme = 'tailwind';
@@ -44,6 +47,8 @@ class DocPackStatus extends Component
     // Edit modal
     public bool $showEdit = false;
     public ?int $editId = null;
+    public ?string $editImageUrl = null;
+    public $editPhoto = null;
     public array $edit = [
         'item_name' => null,
         'nama_pengirim' => null,
@@ -54,6 +59,7 @@ class DocPackStatus extends Component
         'edit.item_name' => 'nullable|string|max:255',
         'edit.nama_pengirim' => 'nullable|string|max:255',
         'edit.nama_penerima' => 'nullable|string|max:255',
+        'editPhoto' => 'nullable|image|max:2048',
     ];
 
     public function updated($name): void
@@ -164,6 +170,8 @@ class DocPackStatus extends Component
     {
         $row = $this->base()->findOrFail($id);
         $this->editId = $row->delivery_id ?? $row->id ?? $id;
+        $this->editImageUrl = $row->image;
+        $this->editPhoto = null;
         $this->edit = [
             'item_name' => $row->item_name,
             'nama_pengirim' => $row->nama_pengirim,
@@ -180,14 +188,28 @@ class DocPackStatus extends Component
         $this->validate();
 
         $row = $this->base()->findOrFail($this->editId);
-        $row->fill([
+        
+        $dataToUpdate = [
             'item_name' => $this->edit['item_name'],
             'nama_pengirim' => $this->edit['nama_pengirim'],
             'nama_penerima' => $this->edit['nama_penerima'],
-        ])->save();
+        ];
+
+        if ($this->editPhoto) {
+            $imagePath = ImageHelper::storeAsWebp(
+                $this->editPhoto,
+                'images/deliveries',
+                'delivery',
+                'public'
+            );
+            $dataToUpdate['image'] = $imagePath;
+        }
+
+        $row->fill($dataToUpdate)->save();
 
         $this->showEdit = false;
         $this->editId = null;
+        $this->editPhoto = null;
         $this->resetPage('pendingPage');
         $this->dispatch('toast', type: 'success', title: 'Saved', message: 'Information successfully saved.', duration: 3000);
     }

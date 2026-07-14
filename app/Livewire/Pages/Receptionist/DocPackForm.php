@@ -48,7 +48,7 @@ class DocPackForm extends Component
             'itemName'     => ['required', 'string', 'max:255'],
             'departmentId' => ['required', 'integer'],
             'userId'       => ['required', 'integer'],
-            'photo'        => ['nullable', 'image', 'max:2048'], // 2MB
+            'photo'        => ['required', 'image', 'max:2048'], // 2MB
         ];
 
         if ($this->direction === 'taken') {
