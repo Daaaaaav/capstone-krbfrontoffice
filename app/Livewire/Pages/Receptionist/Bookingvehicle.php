@@ -359,7 +359,11 @@ class Bookingvehicle extends Component
                 if ($b->status !== 'pending') {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not pending.");
                 }
-                $b->status = 'approved';
+                if (now() < $b->start_at) {
+                    $b->status = 'approved';
+                } else {
+                    $b->status = 'on_progress';
+                }
                 $b->save();
             });
 

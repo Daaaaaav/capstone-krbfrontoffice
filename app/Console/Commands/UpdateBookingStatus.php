@@ -30,14 +30,6 @@ class UpdateBookingStatus extends Command
     {
         $now = Carbon::now('Asia/Jakarta');
 
-        // 1. Pending State -> Rejected
-        // If now() >= start_at and status is still pending, automatically change it to rejected.
-        $affectedRejected = VehicleBooking::where('status', 'pending')
-            ->where('start_at', '<=', $now)
-            ->update([
-                'status' => 'rejected',
-                'notes' => DB::raw("TRIM(CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', '\n'), '[System Auto-Rejected] Not approved before start time.'))")
-            ]);
 
         // 2. Approved State -> On Progress
         // If now() >= start_at and status is approved, automatically move to on_progress.
@@ -48,6 +40,6 @@ class UpdateBookingStatus extends Command
                 'status' => 'on_progress'
             ]);
 
-        $this->info("Booking status updated. Rejected: {$affectedRejected}, On Progress: {$affectedOnProgress}");
+        $this->info("Booking status updated. On Progress: {$affectedOnProgress}");
     }
 }

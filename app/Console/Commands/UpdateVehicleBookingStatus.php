@@ -27,14 +27,17 @@ class UpdateVehicleBookingStatus extends Command
      */
     public function handle()
     {
-        $updated = VehicleBooking::where('status', 'approved')
-            ->where('start_at', '<=', DB::raw('NOW()'))
-            ->where(function($query) {
-                $query->whereNull('end_at')
-                      ->orWhere('end_at', '>', DB::raw('NOW()'));
-            })
-            ->update(['status' => 'on_progress']);
+        $bookings = VehicleBooking::where('status', 'approved')
+            ->where('start_at', '<=', \Carbon\Carbon::now())
+            ->get();
 
-        $this->info("Updated {$updated} vehicle bookings to on_progress.");
+        $count = 0;
+        foreach ($bookings as $booking) {
+            $booking->status = 'on_progress';
+            $booking->save();
+            $count++;
+        }
+
+        $this->info("Updated {$count} vehicle bookings to on_progress.");
     }
 }

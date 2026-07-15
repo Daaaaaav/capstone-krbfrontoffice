@@ -19,3 +19,6 @@ Schedule::command('bookings:auto-complete')->everyMinute()->withoutOverlapping()
 
 // Automate vehicle booking status transitions based on start time
 Schedule::command('booking:update-status')->everyMinute()->withoutOverlapping()->runInBackground();
+
+// Auto-reject pending vehicle bookings when their end time passes
+Schedule::command('booking:auto-reject')->everyMinute()->withoutOverlapping()->runInBackground();
