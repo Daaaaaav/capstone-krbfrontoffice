@@ -72,6 +72,18 @@
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
                     <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
+                         @php $guestActive = request()->routeIs('manager.guestbook'); @endphp
+                        <a href="{{ route('manager.guestbook') }}" class="sidebar-unified-item {{ $guestActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($guestActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.guestbook') }}</span>
+                            <div class="tooltip">{{ __('app.guestbook') }}</div>
+                        </a>
                         @php $roomActive = request()->routeIs('manager.room'); @endphp
                         <a href="{{ route('manager.room') }}" class="sidebar-unified-item {{ $roomActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                             @if($roomActive)<div class="active-pip"></div>@endif
@@ -114,18 +126,6 @@
                             <div class="tooltip">{{ __('app.deliveries') }}</div>
                         </a>
                         
-                        @php $guestActive = request()->routeIs('manager.guestbook'); @endphp
-                        <a href="{{ route('manager.guestbook') }}" class="sidebar-unified-item {{ $guestActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($guestActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                                </svg>
-                            </div>
-                            <span class="item-label">{{ __('app.guestbook') }}</span>
-                            <div class="tooltip">{{ __('app.guestbook') }}</div>
-                        </a>
                     </div>
                 </div>
 
