@@ -279,6 +279,9 @@
                                                                 @endif
                                                             </div>
                                                         </div>
+                                                        @if($e->email)
+                                                            <p class="text-xs text-gray-500 truncate">{{ $e->email }}</p>
+                                                        @endif
                                                         @if($e->phone_number)
                                                             <p class="text-xs text-gray-500 font-mono">{{ $e->phone_number }}</p>
                                                         @endif
@@ -297,7 +300,7 @@
                                                             <span class="truncate">{{ __('app.visit_purpose') }}: <span class="font-semibold text-gray-900">{{ $e->keperluan }}</span></span>
                                                         </div>
                                                     @endif
-                                                    @if($e->visitor_count)
+                                                    @if($e->visitor_count !== null)
                                                         <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-users class="w-4 h-4 text-gray-500 shrink-0"/>
                                                             <span class="truncate">Jumlah Pengunjung: <span class="font-semibold text-gray-900">{{ $e->visitor_count }} org</span></span>
@@ -476,7 +479,7 @@
                                                             @if($e->deleted_at)
                                                                 <span class="inline-flex items-center text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-semibold">{{ strtoupper(__('app.deleted')) }}</span>
                                                             @endif
-                                                            @if($e->visitor_count)
+                                                            @if($e->visitor_count !== null)
                                                                 <span class="inline-flex items-center gap-1 text-xs text-gray-600 font-medium mt-1">
                                                                     <x-heroicon-o-users class="w-3.5 h-3.5 text-gray-400" />
                                                                     {{ $e->visitor_count }} org

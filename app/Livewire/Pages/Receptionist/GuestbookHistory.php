@@ -87,7 +87,7 @@ class GuestbookHistory extends Component
             'edit.instansi' => ['nullable', 'string', 'max:255'],
             'edit.keperluan' => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
-            'edit.visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
+            'edit.visitor_count' => ['required', 'integer', 'min:0', 'max:999'],
         ];
     }
 
