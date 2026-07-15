@@ -785,6 +785,42 @@ class BookingsApproval extends Component
         $notif->markRead();
     }
 
+    /**
+     * Open the priority approval modal directly from a priority booking card
+     * (no notification required — used by the "Accept" button on the card itself).
+     */
+    public function openRoomPriorityApprovalByBookingId(int $priorityBookingId): void
+    {
+        $companyId = Auth::user()->company_id ?? null;
+
+        $priority = PriorityRoomBooking::where('id', $priorityBookingId)
+            ->where('company_id', $companyId)
+            ->whereIn('status', [
+                PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+            ])
+            ->first();
+
+        if (!$priority) {
+            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Priority booking not found or already handled.');
+            return;
+        }
+
+        // For pending_receipt (no conflict), skip the modal and approve directly
+        if ($priority->status === PriorityRoomBooking::STATUS_PENDING_RECEIPT) {
+            $this->roomPriorityNotifId   = null;
+            $this->roomPriorityBookingId = $priorityBookingId;
+            $this->approveRoomPriority();
+            return;
+        }
+
+        // For pending_cancellation, show the conflict resolution modal
+        $this->roomPriorityNotifId          = null; // no notification — direct card action
+        $this->roomPriorityBookingId        = $priorityBookingId;
+        $this->showRoomPriorityApprovalModal = true;
+        $this->showRoomNotifPanel           = false;
+    }
+
     public function closeRoomPriorityApprovalModal(): void
     {
         $this->showRoomPriorityApprovalModal = false;
@@ -793,21 +829,24 @@ class BookingsApproval extends Component
     }
 
     /**
-     * Receptionist approves: cancel the conflicting offline booking, approve the priority booking.
+     * Receptionist approves: cancel the conflicting offline booking (if any), approve the priority booking.
+     * Works whether opened from a notification or directly from a priority booking card.
      */
     public function approveRoomPriority(): void
     {
         if (!$this->roomPriorityBookingId) return;
 
         $companyId = Auth::user()->company_id ?? null;
+        $hadConflict = false;
 
         try {
-            DB::transaction(function () use ($companyId) {
+            DB::transaction(function () use ($companyId, &$hadConflict) {
                 $priority = PriorityRoomBooking::where('id', $this->roomPriorityBookingId)
                     ->where('company_id', $companyId)
                     ->firstOrFail();
 
                 if ($priority->cancels_booking_id) {
+                    $hadConflict = true;
                     BookingRoom::where('bookingroom_id', $priority->cancels_booking_id)
                         ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
                         ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
@@ -823,13 +862,27 @@ class BookingsApproval extends Component
                     'handled_by' => Auth::user()->user_id,
                 ]);
 
+                // Mark the associated notification as handled (if the modal was opened via a notification)
                 if ($this->roomPriorityNotifId) {
                     ManagerNotification::where('id', $this->roomPriorityNotifId)
                         ->update(['action_taken' => 'approved', 'is_read' => true]);
                 }
+
+                // Also mark any unresolved notifications for this booking as handled
+                ManagerNotification::where('notifiable_id', $this->roomPriorityBookingId)
+                    ->whereIn('type', [
+                        ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
+                        ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+                    ])
+                    ->whereNull('action_taken')
+                    ->update(['action_taken' => 'approved', 'is_read' => true]);
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority room booking approved and conflicting booking cancelled.');
+            $message = $hadConflict
+                ? 'Priority booking approved and conflicting booking cancelled.'
+                : 'Priority booking approved.';
+
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: $message);
         } catch (\Throwable $e) {
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
@@ -863,6 +916,15 @@ class BookingsApproval extends Component
                     ManagerNotification::where('id', $this->roomPriorityNotifId)
                         ->update(['action_taken' => 'denied', 'is_read' => true]);
                 }
+
+                // Also mark any unresolved notifications for this booking as handled
+                ManagerNotification::where('notifiable_id', $this->roomPriorityBookingId)
+                    ->whereIn('type', [
+                        ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
+                        ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+                    ])
+                    ->whereNull('action_taken')
+                    ->update(['action_taken' => 'denied', 'is_read' => true]);
             });
 
             $this->dispatch('toast', type: 'info', title: 'Denied', message: 'Cancellation request denied. Original booking kept.');
