@@ -508,13 +508,22 @@
         window.dashChart.update('active');
     }
 
+    // The Vite bundle loads as a module (deferred), so window.Chart may not be
+    // available yet when this inline script runs. Poll until it is ready.
+    function waitForChart(cb) {
+        if (window.Chart) { cb(); return; }
+        var t = setInterval(function () {
+            if (window.Chart) { clearInterval(t); cb(); }
+        }, 20);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-        buildChart(@json($labels), @json($datasets));
+        waitForChart(() => buildChart(@json($labels), @json($datasets)));
     });
 
     document.addEventListener('livewire:init', () => {
         Livewire.on('chart-data-updated', ({ labels, datasets }) => {
-            updateChart(labels, datasets);
+            waitForChart(() => updateChart(labels, datasets));
         });
     });
 </script>
