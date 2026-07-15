@@ -418,7 +418,8 @@
 
 
 @push('scripts')
-{{-- Chart.js is bundled via resources/js/app.js (chart.js npm package) and exposed as window.Chart --}}
+{{-- Load Chart.js directly so it works regardless of Vite build state on the server --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
     const CHART_COLORS = {
         'room':    { border: '#4E653D', bg: 'rgba(78, 101, 61, 0.1)' },
@@ -508,22 +509,13 @@
         window.dashChart.update('active');
     }
 
-    // The Vite bundle loads as a module (deferred), so window.Chart may not be
-    // available yet when this inline script runs. Poll until it is ready.
-    function waitForChart(cb) {
-        if (window.Chart) { cb(); return; }
-        var t = setInterval(function () {
-            if (window.Chart) { clearInterval(t); cb(); }
-        }, 20);
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
-        waitForChart(() => buildChart(@json($labels), @json($datasets)));
+        buildChart(@json($labels), @json($datasets));
     });
 
     document.addEventListener('livewire:init', () => {
         Livewire.on('chart-data-updated', ({ labels, datasets }) => {
-            waitForChart(() => updateChart(labels, datasets));
+            updateChart(labels, datasets);
         });
     });
 </script>
