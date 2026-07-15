@@ -25,23 +25,10 @@
                 <div class="absolute bottom-0 -left-4 w-16 h-16 bg-[#CDDEA7] rounded-full blur-lg"></div>
             </div>
             <div class="relative z-10 p-6 sm:p-8">
-                <div class="flex items-center justify-between gap-4 flex-wrap">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-[#CDDEA7]/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-[#CDDEA7]/20">
-                            <x-heroicon-o-book-open class="w-6 h-6 text-[#CDDEA7]" />
-                        </div>
-                        <div>
-                            <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.guestbook_title') }}</h2>
-                            <p class="text-xs text-[#CDDEA7]/80">{{ __('app.guestbook_subtitle') }}</p>
-                        </div>
-                    </div>
-
-                    <div class="inline-flex rounded-lg overflow-hidden bg-[#CDDEA7]/10 border border-[#CDDEA7]/20 backdrop-blur-sm shadow-sm">
-                        <a href="{{ route('receptionist.guestbookhistory') }}"
-                           class="px-4 py-2 text-xs font-bold bg-[#CDDEA7] text-[#4A2F24] hover:bg-[#CDDEA7]/90 inline-flex items-center gap-1.5 transition">
-                            <x-heroicon-o-calendar class="w-4 h-4"/>
-                            <span>{{ __('app.guestbook_history') }}</span>
-                        </a>
+                <div class="flex items-center gap-4">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-semibold">{{ __('app.guestbook_title') }}</h2>
+                        <p class="text-xs text-[#CDDEA7]/80">{{ __('app.guestbook_subtitle') }}</p>
                     </div>
                 </div>
             </div>
