@@ -92,6 +92,44 @@
                                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
                         </button>
+                        {{-- Export buttons (manager only) --}}
+                        @if ($userRole === 'manager' && count($messages) > 1)
+                            {{-- Export PDF --}}
+                            <button type="button" wire:click="exportPdf" title="Export chat as PDF"
+                                    class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-red-400 hover:bg-white/10 transition">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </button>
+                            {{-- Export CSV --}}
+                            <button type="button" wire:click="exportCsv" title="Export chat as CSV (Excel)"
+                                    class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-emerald-400 hover:bg-white/10 transition">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                                </svg>
+                            </button>
+                        @endif
+                    @endif
+                    {{-- Export buttons for session viewer (manager only) --}}
+                    @if ($panel === 'session' && $userRole === 'manager' && count($viewingMessages) > 0)
+                        {{-- Export PDF --}}
+                        <button type="button" wire:click="exportPdf" title="Export session as PDF"
+                                class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-red-400 hover:bg-white/10 transition">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </button>
+                        {{-- Export CSV --}}
+                        <button type="button" wire:click="exportCsv" title="Export session as CSV (Excel)"
+                                class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-emerald-400 hover:bg-white/10 transition">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M3 10h18M3 14h18M10 3v18M14 3v18M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+                            </svg>
+                        </button>
                     @endif
                     {{-- Close (always) --}}
                     <button type="button" x-on:click="show = false; $wire.closeModal()"

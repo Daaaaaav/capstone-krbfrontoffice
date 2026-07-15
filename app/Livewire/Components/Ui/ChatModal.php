@@ -16,6 +16,7 @@ class ChatModal extends Component
     public bool   $isOpen       = false;
     public string $message      = '';
     public bool   $isLoading    = false;
+    public string $userRole     = 'receptionist';   // set in mount()
 
     // 'chat' | 'history' | 'session'
     public string $panel        = 'chat';
@@ -53,6 +54,10 @@ class ChatModal extends Component
 
     public function mount(): void
     {
+        // Resolve the user's role once and store it as a public property
+        // so Blade templates can access it as $userRole directly.
+        $this->userRole = $this->resolveUserRole();
+
         // Auto-archive any session this user left open (e.g. navigated away
         // mid-conversation without clicking clear). This runs once per page load.
         AiChatSession::where('user_id', Auth::id())
@@ -335,6 +340,35 @@ class ChatModal extends Component
     }
 
     // ─────────────────────────────────────────────────────────
+    // Export helpers (manager only)
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Open the analytics PDF report in a new tab.
+     * The controller pulls live stats directly — no messages needed.
+     */
+    public function exportPdf(): void
+    {
+        if ($this->userRole !== 'manager') {
+            return;
+        }
+
+        $this->js("window.open(" . json_encode(route('chat.export.pdf')) . ", '_blank')");
+    }
+
+    /**
+     * Open the analytics CSV report in a new tab.
+     */
+    public function exportCsv(): void
+    {
+        if ($this->userRole !== 'manager') {
+            return;
+        }
+
+        $this->js("window.open(" . json_encode(route('chat.export.csv')) . ", '_blank')");
+    }
+
+    // ─────────────────────────────────────────────────────────
     // Misc helpers
     // ─────────────────────────────────────────────────────────
 
@@ -355,6 +389,13 @@ class ChatModal extends Component
     }
 
     private function userRole(): string
+    {
+        // Keep this as an internal alias so sendMessage() and seedGreeting()
+        // can still call it without reading the public property during hydration.
+        return $this->resolveUserRole();
+    }
+
+    private function resolveUserRole(): string
     {
         $user = Auth::user();
         if (!$user) {

@@ -9,6 +9,7 @@ use App\Http\Controllers\GuestbookScanController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\VehicleAttachmentController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\ChatExportController;
 
 // ========== Livewire Pages (Manager) ==========
 use App\Livewire\Pages\Manager\Dashboard as ManagerDashboard;
@@ -200,6 +201,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications', function () {
         return view('pages.notifications');
     })->name('notifications.index');
+
+    // ---------- Chat export (manager chatbot → PDF / CSV) ----------
+    Route::middleware('is.manager')->group(function () {
+        Route::get('/chat-export/pdf', [ChatExportController::class, 'exportPdf'])->name('chat.export.pdf');
+        Route::get('/chat-export/csv', [ChatExportController::class, 'exportCsv'])->name('chat.export.csv');
+    });
 
     // ---------- Manager routes ----------
     Route::middleware('is.manager')->group(function () {

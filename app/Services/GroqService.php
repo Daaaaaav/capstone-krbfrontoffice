@@ -273,6 +273,9 @@ class GroqService
         - Keep answers concise — use short paragraphs or bullet points, not walls of text.
         - Never invent figures not present in the context below.
         - Respond in the same language the manager uses (English or Indonesian).
+        - NEVER suggest copying text to Word, creating external documents, or any workaround for exporting.
+          The dashboard already has built-in PDF and CSV export buttons in the chat header.
+          If asked about exporting or downloading, simply say: "Use the PDF or CSV export buttons in the chat header (the download icons next to the trash icon)."
 
         When asked to summarize a specific period (e.g. "this week", "today"), focus on the matching
         section of the data. When asked a general question, give the year-to-date picture first, then
