@@ -725,12 +725,12 @@ class BookingsApproval extends Component
             'ongoing',
             'recentCompleted'
         ) + [
-            'zoomConfigured'        => $this->zoomConfigured,
-            'googleConnected'       => $this->googleConnected,
-            'roomNotifCount'        => $this->roomNotifCount,
-            'roomNotifs'            => $this->roomNotifs,
+            'zoomConfigured'              => $this->zoomConfigured,
+            'googleConnected'             => $this->googleConnected,
+            'roomNotifCount'              => $this->roomNotifCount,
+            'roomNotifs'                  => $this->roomNotifs,
             // Manager priority room bookings — pending & approved stages
-            'priorityRoomPending'   => PriorityRoomBooking::with(['room', 'manager'])
+            'priorityRoomPending'         => PriorityRoomBooking::with(['room', 'manager'])
                 ->forCompany($companyId)
                 ->whereIn('status', [
                     PriorityRoomBooking::STATUS_PENDING_RECEIPT,
@@ -738,12 +738,14 @@ class BookingsApproval extends Component
                 ])
                 ->orderByDesc('created_at')
                 ->get(),
-            'priorityRoomApproved'  => PriorityRoomBooking::with(['room', 'manager'])
+            'priorityRoomApproved'        => PriorityRoomBooking::with(['room', 'manager'])
                 ->forCompany($companyId)
                 ->where('status', PriorityRoomBooking::STATUS_APPROVED)
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get(),
+            // Detail modal data for priority room booking
+            'priorityRoomDetailBooking'   => $this->priorityRoomDetailBooking,
         ]);
     }
 
@@ -762,6 +764,14 @@ class BookingsApproval extends Component
 
     public function openPriorityRoomDetail(int $id): void
     {
+        $booking = \App\Models\PriorityRoomBooking::with(['room', 'manager', 'cancelledBooking'])
+            ->find($id);
+
+        if (!$booking) {
+            $this->dispatch('toast', type: 'error', title: 'Not Found', message: 'Priority booking #' . $id . ' not found.');
+            return;
+        }
+
         $this->priorityRoomDetailId        = $id;
         $this->showPriorityRoomDetailModal = true;
     }
@@ -782,7 +792,7 @@ class BookingsApproval extends Component
         $this->openRoomPriorityApprovalByBookingId($priorityBookingId);
     }
 
-    /** Computed: load the PriorityRoomBooking being viewed in the detail modal. */
+    /** Load the PriorityRoomBooking being viewed in the detail modal (called fresh in render/blade). */
     public function getPriorityRoomDetailBookingProperty(): ?\App\Models\PriorityRoomBooking
     {
         if (!$this->priorityRoomDetailId) return null;
