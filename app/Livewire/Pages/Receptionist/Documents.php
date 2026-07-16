@@ -213,7 +213,6 @@ class Documents extends Component
 
         $msg = 'Perubahan disimpan. Posisi kartu diperbarui sesuai status.';
         $this->dispatch('toast', type: 'success', title: __('app.success'), message: 'Item berhasil diperbarui. ' . $msg, duration: 3000);
-        $this->dispatch('$refresh');
     }
 
     public function confirmDelete(int $id, string $summary, bool $force = false): void
@@ -242,7 +241,6 @@ class Documents extends Component
     {
         $this->findOwnedOrFail($id)->delete(); // soft delete
         $this->dispatch('toast', type: 'success', title: __('app.success'), message: 'Item dihapus (soft delete).', duration: 3000);
-        $this->dispatch('$refresh');
     }
 
     private function resetForm(): void

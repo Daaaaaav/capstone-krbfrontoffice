@@ -297,7 +297,6 @@ class Bookingvehicle extends Component
                 'notes'          => null,
             ]);
 
-            $this->dispatch('$refresh');
             $this->dispatch('toast', type: 'success', title: 'Submitted', message: 'Vehicle booking has been created.', duration: 3000);
 
             // reset form (list departemen/vehicles tetap)

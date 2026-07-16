@@ -264,8 +264,6 @@ class Guestbook extends Component
         // Reset user list 
         $this->users_list = []; 
 
-        $this->dispatch('$refresh');
-        
         if ($emailFailed) {
             $this->dispatch('toast', type: 'warning', title: 'Data Tersimpan (Tanpa Email)', message: 'Guest ditambah (' . $visitorCount . ' pengunjung). Namun, email gagal terkirim ke alamat tujuan.', duration: 7000);
         } elseif ($emailLogOnly) {

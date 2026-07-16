@@ -221,7 +221,6 @@ class GuestbookStatus extends Component
         } else {
             $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
         }
-        $this->dispatch('$refresh');
     }
 
     /** Manually check out a visitor right now */
@@ -242,7 +241,6 @@ class GuestbookStatus extends Component
             ]);
 
         $this->dispatch('toast', type: 'success', title: __('app.toast_checkout_title'), message: __('app.toast_checkout_message'), duration: 3000);
-        $this->dispatch('$refresh');
     }
 
     /** Resend QR email for a pending entry */
