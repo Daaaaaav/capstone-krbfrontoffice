@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive>
+<div class="min-h-screen bg-background" wire:poll.30000ms.keep-alive>
     @php
         $card      = 'bg-card border border-border rounded-2xl shadow-xl overflow-hidden';
         $head      = 'bg-gradient-to-r from-slate-900 via-slate-800 to-black';
@@ -451,7 +451,7 @@
     </div>
 
     @if ($showEdit)
-        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" wire:poll.1000ms>
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-all duration-300" wire:click="closeEdit"></div>
             
             <div class="relative w-full max-w-lg bg-card rounded-2xl shadow-2xl border border-border overflow-hidden transform transition-all duration-300 scale-100 max-h-[90vh] flex flex-col">

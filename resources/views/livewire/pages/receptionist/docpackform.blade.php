@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive>
+<div class="min-h-screen bg-background" wire:poll.30000ms.keep-alive>
     @php
         $card   = 'bg-card border border-border rounded-2xl shadow-xl overflow-hidden';
         $head   = 'bg-[#4A2F24]';
