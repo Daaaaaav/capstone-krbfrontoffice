@@ -206,14 +206,14 @@ class Bookingvehicle extends Component
             return;
         }
 
-        // ── 30-Minutes Advance Booking Constraint ──────────────────────────
+        // ── 1-Hour Advance Booking Constraint ──────────────────────────
         $minAdvanceDate = now($this->tz)->addMinutes(30);
         if ($startAt->lessThan($minAdvanceDate)) {
             $this->dispatch(
                 'toast',
                 type: 'error',
                 title: 'Invalid Booking Time',
-                message: 'Bookings must be made at least 30 minutes in advance.',
+                message: 'Bookings must be made at least 1 hour in advance.',
                 duration: 7000
             );
             return;

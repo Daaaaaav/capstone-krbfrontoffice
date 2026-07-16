@@ -753,6 +753,40 @@ class BookingsApproval extends Component
     public ?int $roomPriorityNotifId          = null;
     public ?int $roomPriorityBookingId        = null;
 
+    // Read-only detail modal for priority room bookings (all statuses)
+    public bool $showPriorityRoomDetailModal = false;
+    public ?int $priorityRoomDetailId        = null;
+
+    public function openPriorityRoomDetail(int $id): void
+    {
+        $this->priorityRoomDetailId        = $id;
+        $this->showPriorityRoomDetailModal = true;
+    }
+
+    public function closePriorityRoomDetail(): void
+    {
+        $this->showPriorityRoomDetailModal = false;
+        $this->priorityRoomDetailId        = null;
+    }
+
+    /**
+     * Called from the "Take Action" button in the read-only detail modal.
+     * Closes the detail view and opens the approval/action modal for the same booking.
+     */
+    public function takeActionFromDetail(int $priorityBookingId): void
+    {
+        $this->closePriorityRoomDetail();
+        $this->openRoomPriorityApprovalByBookingId($priorityBookingId);
+    }
+
+    /** Computed: load the PriorityRoomBooking being viewed in the detail modal. */
+    public function getPriorityRoomDetailBookingProperty(): ?\App\Models\PriorityRoomBooking
+    {
+        if (!$this->priorityRoomDetailId) return null;
+        return \App\Models\PriorityRoomBooking::with(['room', 'manager', 'cancelledBooking'])
+            ->find($this->priorityRoomDetailId);
+    }
+
     public function toggleRoomNotifPanel(): void
     {
         $this->showRoomNotifPanel = !$this->showRoomNotifPanel;
