@@ -184,7 +184,7 @@
                                 @php
                                     $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
                                     $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
-                                    $isScheduled = $e->date && $e->date->gte(now()->startOfDay()) && !$e->jam_in;
+                                    $isScheduled = $e->date && $e->date->gte(now()->startOfDay()) && ($e->qr_status === 'pending' || !$e->jam_in);
                                     $cardBorder  = $isScheduled ? 'border-violet-300 bg-violet-50/40' : 'border-[#4E653D]/25 bg-white';
                                     $cardHover   = $isScheduled ? 'hover:border-violet-400 hover:shadow-violet-100' : 'hover:border-[#4E653D]/40';
                                     $avatarBg    = $isScheduled ? 'bg-violet-600' : 'bg-[#4E653D]';
@@ -339,7 +339,7 @@
                                             $rowNo       = ($activeEntries->firstItem() ?? 1) + $loop->index;
                                             $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
                                             $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
-                                            $isScheduled = $e->date && $e->date->gte(now()->startOfDay()) && !$e->jam_in;
+                                            $isScheduled = $e->date && $e->date->gte(now()->startOfDay()) && ($e->qr_status === 'pending' || !$e->jam_in);
                                         @endphp
                                         <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="{{ $isScheduled ? 'bg-violet-50/50 hover:bg-violet-50' : 'hover:bg-gray-50/50' }} transition-colors">
                                             
