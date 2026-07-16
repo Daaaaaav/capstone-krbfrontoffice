@@ -50,6 +50,27 @@ class GuestbookCheckout extends Component
         // This ensures any device opening the page sees the full history.
         $tz = config('app.timezone', 'Asia/Jakarta');
 
+        // One-time backfill: if this entry pre-dates the attempts table, recover
+        // the successful checkouts from guestbook_qr_codes so old logs are not lost.
+        $hasAttempts = GuestbookCheckoutAttempt::where('guestbook_id', $entry->guestbook_id)->exists();
+        if (!$hasAttempts) {
+            $legacy = GuestbookQrCode::where('guestbook_id', $entry->guestbook_id)
+                ->where('is_scanned', true)
+                ->orderBy('scanned_at')
+                ->get();
+
+            foreach ($legacy as $qr) {
+                GuestbookCheckoutAttempt::create([
+                    'guestbook_id'   => $entry->guestbook_id,
+                    'success'        => true,
+                    'message'        => 'Pengunjung ' . $qr->visitor_number . ' berhasil checkout',
+                    'visitor_number' => $qr->visitor_number,
+                    'error_type'     => null,
+                    'attempted_at'   => $qr->scanned_at ?? $entry->updated_at ?? now(),
+                ]);
+            }
+        }
+
         $this->initialScanLog = GuestbookCheckoutAttempt::where('guestbook_id', $entry->guestbook_id)
             ->orderByDesc('attempted_at')
             ->get()
