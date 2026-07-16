@@ -2,8 +2,8 @@
     @php
         use Carbon\Carbon;
         $card      = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
-        $label     = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
-        $input     = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
+        $label     = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1';
+        $input     = 'w-full h-9 sm:h-10 px-3 sm:px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
         $icoAvatar = 'w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm shrink-0';
 
         function gbsFmtTime($v) {
@@ -16,7 +16,7 @@
         }
     @endphp
 
-    <main class="px-4 sm:px-6 py-6 space-y-6">
+    <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
         {{-- HEADER --}}
         <x-page-header
@@ -29,7 +29,7 @@
         <div class="{{ $card }}">
 
             {{-- Card Header & Toggler --}}
-            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-200 space-y-3">
+            <div class="px-3 sm:px-6 pt-3 sm:pt-4 pb-2 sm:pb-3 border-b border-gray-200 space-y-2 sm:space-y-3">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <h3 class="text-base font-semibold text-gray-900">{{ __('app.guestbook_status_title') }}</h3>
@@ -71,9 +71,9 @@
             </div>
 
             {{-- Filters --}}
-            <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-200">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+            <div class="px-3 sm:px-6 pt-3 sm:pt-4 pb-2 sm:pb-3 border-b border-gray-200">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
+                    <div class="col-span-2 md:col-span-1">
                         <label class="{{ $label }}">{{ __('app.search') }}</label>
                         <div class="relative">
                             <input type="text"
@@ -166,7 +166,7 @@
             </div>
 
             {{-- Card grid --}}
-            <div class="p-4 sm:p-6">
+            <div class="p-3 sm:p-6">
 
                 {{-- ===== ACTIVE GUESTS ===== --}}
                 @if($activeEntries->isEmpty())
@@ -179,14 +179,14 @@
                     </div>
                 @else
                     @if($viewMode === 'card')
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                             @foreach($activeEntries as $e)
                                 @php
                                     $avatarChar = strtoupper(substr($e->name ?? 'G', 0, 1));
                                     $scans = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
                                 @endphp
                                 <div wire:key="active-{{ $e->guestbook_id }}"
-                                     class="bg-white border border-[#4E653D]/25 rounded-xl p-4 flex flex-col gap-3 hover:shadow-md hover:border-[#4E653D]/40 transition">
+                                     class="bg-white border border-[#4E653D]/25 rounded-xl p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 hover:shadow-md hover:border-[#4E653D]/40 transition">
                                     {{-- Header --}}
                                     <div class="flex items-start gap-3">
                                         <div class="{{ $icoAvatar }} bg-[#4E653D]">{{ $avatarChar }}</div>
@@ -282,24 +282,25 @@
                                     {{-- Actions --}}
                                     <div class="pt-2 border-t border-gray-100 flex items-center justify-end gap-1.5 mt-auto">
                                         <button wire:click="openEdit({{ $e->guestbook_id }})"
-                                                class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition focus:outline-none">
-                                            {{ __('app.edit') }}
+                                                class="px-2 py-1.5 sm:px-2.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition focus:outline-none">
+                                            <span class="hidden sm:inline">{{ __('app.edit') }}</span>
+                                            <x-heroicon-o-pencil-square class="w-3.5 h-3.5 sm:hidden"/>
                                         </button>
                                         @if($e->qrCodes()->count() > 0)
                                             <a href="{{ route('receptionist.guestbook.checkout', $e->guestbook_id) }}"
-                                               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4A2F24] text-[#CDDEA7] hover:bg-[#3a2319] transition shadow-sm focus:outline-none">
-                                                <x-heroicon-o-qr-code class="w-3.5 h-3.5"/>
-                                                Scan Checkout
+                                               class="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4A2F24] text-[#CDDEA7] hover:bg-[#3a2319] transition shadow-sm focus:outline-none">
+                                                <x-heroicon-o-qr-code class="w-3.5 h-3.5 shrink-0"/>
+                                                <span class="hidden sm:inline">Scan Checkout</span>
                                                 @if($e->qr_status === 'ongoing')
-                                                    ({{ $e->scannedQrCount() }}/{{ $e->visitor_count }})
+                                                    <span class="text-[10px] font-bold">({{ $e->scannedQrCount() }}/{{ $e->visitor_count }})</span>
                                                 @endif
                                             </a>
                                         @endif
                                         <button wire:click="checkOutNow({{ $e->guestbook_id }})"
                                                 wire:confirm="{{ __('app.checkout_confirm') }}"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm focus:outline-none">
-                                            <x-heroicon-o-arrow-right-start-on-rectangle class="w-3.5 h-3.5"/>
-                                            {{ __('app.checkout_btn') }}
+                                                class="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm focus:outline-none">
+                                            <x-heroicon-o-arrow-right-start-on-rectangle class="w-3.5 h-3.5 shrink-0"/>
+                                            <span class="hidden sm:inline">{{ __('app.checkout_btn') }}</span>
                                         </button>
                                     </div>
                                 </div>
