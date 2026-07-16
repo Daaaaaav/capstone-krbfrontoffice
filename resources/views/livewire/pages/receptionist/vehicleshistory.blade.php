@@ -28,7 +28,7 @@
 @endphp
 
 <div class="min-h-screen bg-gray-50" x-data="{ showFilterModal: false }">
-    <main class="px-4 sm:px-6 py-6 space-y-6">
+    <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
         {{-- Flash Messages (Replaced by Toast) --}}
 

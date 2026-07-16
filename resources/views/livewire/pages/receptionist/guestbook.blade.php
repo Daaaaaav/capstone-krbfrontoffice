@@ -16,7 +16,7 @@
       option:checked { background: #f3f4f6 !important; color: #111827 !important; }
     </style>
 
-    <main class="px-4 sm:px-6 py-6 space-y-6">
+    <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
         {{-- Hero Header --}}
         <div class="relative overflow-hidden rounded-2xl {{ $head }} text-[#CDDEA7] shadow-2xl">
