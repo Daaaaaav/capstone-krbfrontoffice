@@ -51,7 +51,7 @@ class GuestbookCheckout extends Component
         $this->initialScanLog = GuestbookQrCode::where('guestbook_id', $entry->guestbook_id)
             ->orderByDesc('scanned_at')
             ->get()
-            ->map(function (GuestbookQrCode $qr) use ($tz): array {
+            ->map(function (GuestbookQrCode $qr) use ($tz): ?array {
                 $scannedAt = $qr->scanned_at
                     ? $qr->scanned_at->setTimezone($tz)->format('H:i:s')
                     : null;
