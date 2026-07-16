@@ -138,6 +138,7 @@ class Vehiclestatus extends Component
             'bookings'               => $bookings,
             'vehicleNotifCount'      => $this->vehicleNotifCount,
             'vehicleNotifs'          => $this->vehicleNotifs,
+            'priorityVehicleDetailBooking' => $this->priorityVehicleDetailBooking,
             // Manager priority vehicle bookings for the current status tab
             'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
                 ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
