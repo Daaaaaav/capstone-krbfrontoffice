@@ -30,6 +30,9 @@ class GuestbookCheckout extends Component
     /** Pre-existing scan history loaded from DB, serialized into the Alpine component. */
     public array $initialScanLog = [];
 
+    /** ISO timestamp of the newest attempt in initialScanLog — used as the polling cursor. */
+    public string $latestAttemptAt = '';
+
     public function mount(int $guestbookId): void
     {
         $entry = GuestbookModel::where('guestbook_id', $guestbookId)
@@ -84,6 +87,14 @@ class GuestbookCheckout extends Component
             ])
             ->values()
             ->toArray();
+
+        // Set polling cursor to the newest attempt we just loaded (or 5s ago if none)
+        $newest = GuestbookCheckoutAttempt::where('guestbook_id', $entry->guestbook_id)
+            ->orderByDesc('attempted_at')
+            ->value('attempted_at');
+        $this->latestAttemptAt = $newest
+            ? Carbon::parse($newest)->toISOString()
+            : Carbon::now($tz)->subSeconds(5)->toISOString();
     }
 
     public function processScan(string $qrContent): array
@@ -171,6 +182,46 @@ class GuestbookCheckout extends Component
             'error_type'     => $errorType,
             'attempted_at'   => $at,
         ]);
+    }
+
+    /**
+     * Called by Alpine polling to fetch attempts newer than the latest one
+     * already shown. Returns only the new rows so the client can prepend them.
+     */
+    public function fetchNewAttempts(string $afterTimestamp): array
+    {
+        $tz = config('app.timezone', 'Asia/Jakarta');
+
+        return GuestbookCheckoutAttempt::where('guestbook_id', $this->guestbookId)
+            ->where('attempted_at', '>', $afterTimestamp)
+            ->orderBy('attempted_at')
+            ->get()
+            ->map(fn (GuestbookCheckoutAttempt $a) => [
+                'success'       => $a->success,
+                'message'       => $a->message,
+                'visitorNumber' => $a->visitor_number,
+                'time'          => $a->attempted_at
+                    ? $a->attempted_at->setTimezone($tz)->format('H:i:s')
+                    : '--:--:--',
+                'attempted_at'  => $a->attempted_at->toISOString(),
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Returns current scan progress so polling devices can sync their counter.
+     */
+    public function getProgress(): array
+    {
+        $entry = GuestbookModel::where('guestbook_id', $this->guestbookId)->first();
+        $scanned = $entry ? $entry->scannedQrCount() : $this->scannedCount;
+        $allDone = $scanned >= $this->totalVisitors;
+
+        return [
+            'scanned_count' => $scanned,
+            'all_done'      => $allDone,
+        ];
     }
 
     public function render()

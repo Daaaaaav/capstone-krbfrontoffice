@@ -333,6 +333,9 @@
                 _lastScanTime: 0,
                 _stream: null,
                 _animFrameId: null,
+                _pollInterval: null,
+                // Track the latest attempt timestamp we have, so polling only fetches newer rows.
+                _latestAttemptAt: @json($latestAttemptAt),
 
                 // Camera selection
                 cameras: [],
@@ -346,6 +349,7 @@
                 async init() {
                     if (this.allDone) return;
                     await this.requestCameraAccess();
+                    this.startPolling();
                 },
 
                 async requestCameraAccess() {
@@ -591,6 +595,57 @@
                 // Clean up when component is destroyed
                 destroy() {
                     this.stopCamera();
+                    this.stopPolling();
+                },
+
+                startPolling() {
+                    // Poll every 4 seconds for new attempts written by other devices
+                    this._pollInterval = setInterval(() => this.pollNewAttempts(), 4000);
+                },
+
+                stopPolling() {
+                    if (this._pollInterval) {
+                        clearInterval(this._pollInterval);
+                        this._pollInterval = null;
+                    }
+                },
+
+                async pollNewAttempts() {
+                    try {
+                        const newRows = await $wire.fetchNewAttempts(this._latestAttemptAt);
+                        if (newRows && newRows.length > 0) {
+                            // newRows are ordered oldest-first from the server; prepend newest-first
+                            for (let i = newRows.length - 1; i >= 0; i--) {
+                                const row = newRows[i];
+                                // Avoid duplicates: skip if this message+time already exists
+                                const exists = this.scanLog.some(
+                                    l => l.time === row.time && l.message === row.message
+                                );
+                                if (!exists) {
+                                    this.scanLog.unshift(row);
+                                }
+                            }
+                            // Advance our cursor to the newest timestamp we just received
+                            this._latestAttemptAt = newRows[newRows.length - 1].attempted_at;
+
+                            // Sync scanned count and completion state in case another device
+                            // completed a checkout we haven't seen yet
+                            const lastSuccess = newRows.filter(r => r.success).pop();
+                            if (lastSuccess) {
+                                const data = await $wire.getProgress();
+                                if (data) {
+                                    this.scannedCount = data.scanned_count;
+                                    if (data.all_done) {
+                                        this.allDone = true;
+                                        this.stopCamera();
+                                        this.stopPolling();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Silently ignore poll errors — next interval will retry
+                    }
                 },
             };
         }
