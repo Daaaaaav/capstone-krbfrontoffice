@@ -120,6 +120,7 @@ class Guestbook extends Component
             $this->email = $guest['email'];
             $this->phone_number = $guest['phone_number'];
             $this->instansi = $guest['instansi'];
+            $this->keperluan = $guest['keperluan'];
 
             $this->isAutoFilled = true;
             $this->historyGuests = [];
@@ -151,7 +152,7 @@ class Guestbook extends Component
             'email'         => ['required', 'email', 'max:255'],
             'phone_number'  => ['nullable', 'string', 'max:50'],
             'instansi'      => ['nullable', 'string', 'max:255'],
-            'keperluan'     => ['nullable', 'string', 'max:255'],
+            'keperluan'     => ['required', 'string', 'max:255'],
             'visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
             'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
             // Ensures department_id and user_id are nullable
