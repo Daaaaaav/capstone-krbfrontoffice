@@ -1,4 +1,6 @@
-﻿<div class="min-h-screen bg-background" wire:poll.30s>
+﻿<div class="min-h-screen bg-background">
+    {{-- Polling trigger: refreshes data every 30s without putting wire:poll on the root element --}}
+    <div wire:poll.30s wire:key="guestbook-poll-trigger" class="hidden" aria-hidden="true"></div>
     @php
         use Carbon\Carbon;
         $card      = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
