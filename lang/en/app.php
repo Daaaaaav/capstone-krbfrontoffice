@@ -189,7 +189,7 @@ return [
     'join_link'                 => 'Join link',
 
     // ── Bookings Approval ─────────────────────────────────────────────────────
-    'bookings_approval_title'   => 'Bookings Approval (Receptionist)',
+    'bookings_approval_title'   => 'Room Booking Status',
     'bookings_approval_subtitle'=> 'Manage room booking requests (online/offline): approve, reject (reason required), or reschedule.',
     'approval_queue'            => 'Approval Queue',
     'approval_queue_subtitle'   => 'Manage bookings awaiting approval or currently ongoing.',
@@ -874,7 +874,7 @@ return [
     'faq_rec_q1' => 'How do I book a meeting room?',
     'faq_rec_a1' => 'Go to Room Management → Booking Room. Fill in the meeting title, select a room, choose your date and time, then submit. Your booking will be pending approval.',
     'faq_rec_q2' => 'How do I approve or reject a room booking?',
-    'faq_rec_a2' => 'Navigate to Room Management → Booking Approval. You will see all pending requests. Click Approve or Reject on each entry.',
+    'faq_rec_a2' => 'Navigate to Room Management → Room Booking Status. You will see all pending requests. Click Approve or Reject on each entry.',
     'faq_rec_q3' => 'How do I book a vehicle?',
     'faq_rec_a3' => 'Go to Vehicle Management → Book Vehicle. Enter the borrower name, purpose, destination, and travel times, then submit.',
     'faq_rec_q4' => 'How do I check vehicle status?',
