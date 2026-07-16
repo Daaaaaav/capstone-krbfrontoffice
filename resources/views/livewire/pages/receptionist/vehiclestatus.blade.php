@@ -1144,9 +1144,67 @@
         </div>
 
         {{-- Footer --}}
-        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end">
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
+            @if($pvd->isActionable())
+                @if($pvd->status === 'pending_cancellation')
+                    {{-- Conflict booking: needs explicit approval to cancel the existing booking --}}
+                    <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
+                            wire:loading.attr="disabled"
+                            wire:target="approvePriorityVehicleById({{ $pvd->id }})"
+                            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Approve &amp; Cancel Conflict
+                    </button>
+                @else
+                    {{-- Non-clashing: straightforward approve --}}
+                    <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
+                            wire:loading.attr="disabled"
+                            wire:target="approvePriorityVehicleById({{ $pvd->id }})"
+                            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Approve
+                    </button>
+                @endif
+                <button wire:click="openPriorityVehicleReject({{ $pvd->id }})"
+                        class="px-4 py-2 text-xs font-semibold rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Reject
+                </button>
+            @endif
             <button wire:click="closePriorityVehicleDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
                 Close
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Priority Vehicle Reject Modal --}}
+@if($showPriorityVehicleRejectModal)
+<div class="fixed inset-0 z-[210] flex items-center justify-center p-4" wire:key="priority-veh-reject-modal">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closePriorityVehicleReject"></div>
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-rose-200">
+        <div class="px-6 py-4 border-b border-rose-200 bg-rose-50/60 flex items-center justify-between">
+            <p class="text-sm font-semibold text-gray-900">Reject Priority Vehicle Booking</p>
+            <button wire:click="closePriorityVehicleReject" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-100 text-gray-500 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-3">
+            <p class="text-xs text-gray-600">Provide a reason so the manager can review and resubmit if needed.</p>
+            <textarea wire:model="priorityVehicleRejectReason"
+                      rows="3"
+                      placeholder="Enter rejection reason…"
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder:text-gray-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 resize-none transition"></textarea>
+            @error('priorityVehicleRejectReason') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
+            <button wire:click="closePriorityVehicleReject" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Cancel</button>
+            <button wire:click="submitPriorityVehicleReject"
+                    wire:loading.attr="disabled"
+                    wire:target="submitPriorityVehicleReject"
+                    class="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition">
+                Confirm Reject
             </button>
         </div>
     </div>

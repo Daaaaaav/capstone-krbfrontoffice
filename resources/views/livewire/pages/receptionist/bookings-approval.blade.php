@@ -320,35 +320,24 @@
                                 </div>
                             </div>
 
-                            {{-- Action buttons — only for pending items; stop propagation so card click doesn't also fire --}}
-                            @if($pbIsPending)
+                            {{-- Action buttons — only for conflict items; non-clashing ones auto-approve at start time --}}
+                            @if($pbHasConflict)
                             <div class="flex items-center gap-2 pt-1 border-t border-gray-100" wire:click.stop>
-                                @if($pbHasConflict)
-                                    <button type="button"
-                                        wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                        class="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        Accept &amp; Resolve Conflict
-                                    </button>
-                                    <button type="button"
-                                        wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                        class="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition focus:outline-none">
-                                        Review
-                                    </button>
-                                @else
-                                    <button type="button"
-                                        wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                        class="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        Accept
-                                    </button>
-                                @endif
+                                <button type="button"
+                                    wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
+                                    class="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Accept &amp; Resolve Conflict
+                                </button>
+                                <button type="button"
+                                    wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
+                                    class="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition focus:outline-none">
+                                    Review
+                                </button>
                             </div>
                             @endif
                         </div>
