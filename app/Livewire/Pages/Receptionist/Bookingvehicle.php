@@ -519,7 +519,13 @@ class Bookingvehicle extends Component
             'departments' => $departments,
             'users'       => $users,
             'vehicles'    => $this->vehicles,
-            'hasVehicles' => $this->hasVehicles
+            'hasVehicles' => $this->hasVehicles,
+            // Fresh query every render so newly-added/activated vehicles appear in
+            // the Fleet Availability sidebar without a full page reload.
+            'vehiclesForDirectory' => Vehicle::where('company_id', (int) (Auth::user()?->company_id ?? 0))
+                ->where('is_active', 1)
+                ->orderBy('name', 'asc')
+                ->get(['vehicle_id', 'name', 'plate_number']),
         ]);
     }
 }

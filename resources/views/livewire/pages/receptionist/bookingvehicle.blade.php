@@ -708,7 +708,7 @@
                         </div>
                     </div>
                     <div class="p-4 space-y-4">
-                        @forelse(collect($vehicles)->take(5) as $vehicle)
+                        @forelse($vehiclesForDirectory ?? [] as $vehicle)
                             <div wire:click="openVehicleScheduleModal({{ $vehicle->vehicle_id }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
                                 <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
                                     <x-heroicon-o-truck class="w-4 h-4" />

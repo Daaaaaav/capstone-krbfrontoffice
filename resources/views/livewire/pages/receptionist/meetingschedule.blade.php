@@ -757,7 +757,7 @@
                         </div>
                     </div>
                     <div class="p-4 space-y-4">
-                        @forelse(array_slice($rooms ?? [], 0, 5) as $room)
+                        @forelse($rooms ?? [] as $room)
                             <div wire:click="openScheduleModal({{ $room['id'] }})" class="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition cursor-pointer">
                                 <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
                                     <x-heroicon-o-building-office-2 class="w-4 h-4" />

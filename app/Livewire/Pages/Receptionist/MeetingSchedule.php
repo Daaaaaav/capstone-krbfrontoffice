@@ -74,7 +74,9 @@ class MeetingSchedule extends Component
     public bool $googleConnected = false;
     public array $departments = [];
     public array $requirementOptions = [];
-    public array $rooms = [];
+    // NOTE: $rooms is intentionally NOT a public property so Livewire does not
+    // snapshot-hydrate it. It is re-queried fresh on every render() call instead,
+    // which ensures newly-added rooms appear without a full page reload.
 
     /** Department search inputs (front-end filtered) */
     public string $deptQueryOffline = '';
@@ -90,7 +92,6 @@ class MeetingSchedule extends Component
         }
 
         $this->loadDepartments();
-        $this->loadRooms();
         $this->loadRequirements();
         $this->otherRequirementId = $this->getOtherRequirementId();
 
@@ -131,18 +132,19 @@ class MeetingSchedule extends Component
         ])->all();
     }
 
-    protected function loadRooms(): void
+    protected function loadRooms(): array
     {
         $pkCol    = $this->pickColumn('rooms', ['room_id', 'id'], 'room_id');
         $labelCol = $this->pickColumn('rooms', ['room_name', 'room_number', 'name'], 'room_name');
 
         $rooms = DB::table('rooms')
             ->selectRaw("$pkCol as id, $labelCol as label")
+            ->whereNull('deleted_at')
             ->when(Auth::user()?->company_id, fn($q, $cid) => $q->where('company_id', $cid))
             ->orderBy($labelCol)
             ->get();
 
-        $this->rooms = $rooms->map(fn($r) => [
+        return $rooms->map(fn($r) => [
             'id'   => (int) $r->id,
             'name' => (string) $r->label,
         ])->all();
@@ -855,7 +857,7 @@ class MeetingSchedule extends Component
             'departmentsOffline' => $departmentsOffline,
             'departmentsOnline'  => $departmentsOnline,
             'requirementOptions' => $this->requirementOptions,
-            'rooms'              => $this->rooms,
+            'rooms'              => $this->loadRooms(),
             'usersByDept'        => $usersOnlineFiltered,
             'usersByDeptOffline' => $usersOfflineFiltered,
             'googleConnected'    => $this->googleConnected,

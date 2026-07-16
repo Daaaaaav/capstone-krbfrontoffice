@@ -69,7 +69,7 @@ $newSidebar = <<<'HTML'
 
                 {{-- Rooms --}}
                 @php $roomActiveGroup = request()->routeIs('receptionist.schedule', 'receptionist.bookings', 'receptionist.bookinghistory'); @endphp
-                <div class="sidebar-unified-group" x-data="{ expanded: {{ $roomActiveGroup ? 'true' : 'false' }} }" x-show="!search || ['room management','booking room','room book approval','booking history'].some(s => s.includes(search.toLowerCase()))">
+                <div class="sidebar-unified-group" x-data="{ expanded: {{ $roomActiveGroup ? 'true' : 'false' }} }" x-show="!search || ['room management','booking room','room book status','booking history'].some(s => s.includes(search.toLowerCase()))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">{{ __('app.room_management') }}</span>
                         <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -91,7 +91,7 @@ $newSidebar = <<<'HTML'
                         </a>
                         
                         @php $bookActive = request()->routeIs('receptionist.bookings'); @endphp
-                        <a href="{{ route('receptionist.bookings') }}" class="sidebar-unified-item {{ $bookActive ? 'active' : '' }}" x-show="!search || 'room book approval'.includes(search.toLowerCase())" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                        <a href="{{ route('receptionist.bookings') }}" class="sidebar-unified-item {{ $bookActive ? 'active' : '' }}" x-show="!search || 'room book status'.includes(search.toLowerCase())" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                             @if($bookActive)<div class="active-pip"></div>@endif
                             <div class="item-icon">
                                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

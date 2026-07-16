@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" style="overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y;">
+<div class="min-h-screen bg-background">
     @php
         $card = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
     @endphp
@@ -140,7 +140,7 @@
                 </div>
 
                 {{-- Camera Viewport --}}
-                <div class="relative bg-black" style="touch-action: none;">
+                <div class="relative bg-black" style="touch-action: pan-y;">
                     {{-- Video element - single clean camera feed --}}
                     <video x-ref="cameraVideo"
                            playsinline muted
@@ -281,7 +281,7 @@
                         <p class="text-xs text-gray-500 mt-0.5">QR code yang sudah di-scan</p>
                     </div>
                 </div>
-                <div class="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                <div class="divide-y divide-gray-100 lg:max-h-80 lg:overflow-y-auto">
                     <template x-for="(log, idx) in scanLog" :key="idx">
                         <div class="px-6 py-3.5 flex items-center gap-3">
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
