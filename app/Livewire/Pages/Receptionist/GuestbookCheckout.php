@@ -26,6 +26,9 @@ class GuestbookCheckout extends Component
     public int $scannedCount = 0;
     public string $qrStatus = 'pending';
 
+    /** Pre-existing scan history loaded from DB, serialized into the Alpine component. */
+    public array $initialScanLog = [];
+
     public function mount(int $guestbookId): void
     {
         $entry = GuestbookModel::where('guestbook_id', $guestbookId)
@@ -41,6 +44,32 @@ class GuestbookCheckout extends Component
         $this->totalVisitors = (int) $entry->visitor_count;
         $this->scannedCount  = $entry->scannedQrCount();
         $this->qrStatus      = $entry->qr_status ?? 'pending';
+
+        // Build the initial scan log from DB records so any device resuming
+        // the session sees the same history.
+        $tz = config('app.timezone', 'Asia/Jakarta');
+        $this->initialScanLog = GuestbookQrCode::where('guestbook_id', $entry->guestbook_id)
+            ->orderByDesc('scanned_at')
+            ->get()
+            ->map(function (GuestbookQrCode $qr) use ($tz): array {
+                $scannedAt = $qr->scanned_at
+                    ? $qr->scanned_at->setTimezone($tz)->format('H:i:s')
+                    : null;
+
+                if ($qr->is_scanned) {
+                    return [
+                        'success'        => true,
+                        'message'        => 'Pengunjung ' . $qr->visitor_number . ' berhasil checkout',
+                        'visitorNumber'  => $qr->visitor_number,
+                        'time'           => $scannedAt ?? '--:--:--',
+                    ];
+                }
+
+                return null; // not yet scanned — exclude
+            })
+            ->filter()
+            ->values()
+            ->toArray();
     }
 
     public function processScan(string $qrContent): array

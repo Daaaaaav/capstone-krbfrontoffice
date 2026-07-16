@@ -325,7 +325,8 @@
 
                 cameraError: null,
                 showCameraSelect: false,
-                scanLog: [],
+                // Pre-seeded from DB so history survives page reloads and different devices
+                scanLog: @json($initialScanLog),
                 processing: false,
                 lastScannedToken: null,
                 cooldownMs: 2000,
