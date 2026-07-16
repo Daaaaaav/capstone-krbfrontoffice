@@ -351,6 +351,8 @@ class GuestbookHistory extends Component
         } else {
             $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
         }
+
+        $this->dispatch('$refresh');
     }
 
     /** Keluar sekarang (set jam_out real-time) */
@@ -372,6 +374,7 @@ class GuestbookHistory extends Component
         );
 
         // Explicitly refresh only the relevant list (latest will move it to entries)
+        $this->dispatch('$refresh');
     }
 
     /** SOFT DELETE */
@@ -393,6 +396,8 @@ class GuestbookHistory extends Component
             message: __('app.toast_deleted_message'),
             duration: 3000
         );
+
+        $this->dispatch('$refresh');
     }
 
     public function restore(int $id): void
@@ -412,6 +417,8 @@ class GuestbookHistory extends Component
                 message: __('app.toast_restored_message'),
                 duration: 2500
             );
+
+            $this->dispatch('$refresh');
         }
     }
 
@@ -432,6 +439,8 @@ class GuestbookHistory extends Component
                 message: __('app.toast_perm_deleted_message'),
                 duration: 2500
             );
+
+            $this->dispatch('$refresh');
         }
     }
 

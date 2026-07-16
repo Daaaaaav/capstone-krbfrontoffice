@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
     use App\Models\Requirement; // ADDED: Required for the temporary bug workaround
@@ -1212,7 +1212,7 @@
         <div
             class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
-            wire:key="detail-modal"
+            wire:key="detail-modal-{{ $selectedBookingDetail->bookingroom_id }}"
             wire:keydown.escape.window="closeDetailModal">
             <div class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
 
@@ -1471,9 +1471,8 @@
 @endif
 
 @if($showRoomNotifPanel)
-<div class="fixed inset-0 z-[90]">
-    <div class="absolute inset-0" wire:click="closeRoomNotifPanel"></div>
-    <div class="absolute top-20 right-20 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden relative z-10">
+<div class="fixed inset-0 z-[90]" wire:click.self="closeRoomNotifPanel">
+    <div class="absolute top-20 right-20 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
         <div class="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
             <p class="text-sm font-semibold text-foreground">Priority Room Notifications</p>
             <button wire:click="closeRoomNotifPanel" class="text-muted-foreground hover:text-foreground">

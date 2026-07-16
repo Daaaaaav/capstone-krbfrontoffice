@@ -5,7 +5,7 @@
     $btnSm  = 'inline-flex items-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-lg transition focus:outline-none';
 @endphp
 
-<div class="min-h-screen bg-background" wire:poll.30s>
+<div class="min-h-screen bg-background" wire:poll.30000ms.keep-alive>
 <div class="px-4 sm:px-6 py-6 space-y-6">
 
     <x-page-header title="Doc / Pack — Status" subtitle="Track and advance pending items through storage to final delivery." />

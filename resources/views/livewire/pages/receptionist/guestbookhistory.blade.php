@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" x-data="{ showFilterModal: false }" wire:poll.15s>
     @php
         use Carbon\Carbon;
 

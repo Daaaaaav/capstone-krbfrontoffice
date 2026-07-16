@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background">
+﻿<div class="min-h-screen bg-background" wire:poll.30s>
     @php
         use Carbon\Carbon;
         $card      = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';

@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.30s>
+<div class="min-h-screen bg-background" wire:poll.30000ms.keep-alive>
     @php
         $card   = 'bg-card border border-border rounded-2xl shadow-sm overflow-hidden';
         $label  = 'block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5';
