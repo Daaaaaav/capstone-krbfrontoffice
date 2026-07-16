@@ -182,14 +182,25 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                             @foreach($activeEntries as $e)
                                 @php
-                                    $avatarChar = strtoupper(substr($e->name ?? 'G', 0, 1));
-                                    $scans = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
+                                    $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
+                                    $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
+                                    $isScheduled = $e->date && $e->date->gt(now()->startOfDay());
+                                    $cardBorder  = $isScheduled ? 'border-violet-300 bg-violet-50/40' : 'border-[#4E653D]/25 bg-white';
+                                    $cardHover   = $isScheduled ? 'hover:border-violet-400 hover:shadow-violet-100' : 'hover:border-[#4E653D]/40';
+                                    $avatarBg    = $isScheduled ? 'bg-violet-600' : 'bg-[#4E653D]';
                                 @endphp
                                 <div wire:key="active-{{ $e->guestbook_id }}"
-                                     class="bg-white border border-[#4E653D]/25 rounded-xl p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 hover:shadow-md hover:border-[#4E653D]/40 transition">
+                                     class="{{ $cardBorder }} border rounded-xl p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 hover:shadow-md {{ $cardHover }} transition">
+                                    {{-- Scheduled Guest banner --}}
+                                    @if($isScheduled)
+                                        <div class="flex items-center gap-1.5 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 px-3 sm:px-4 py-1.5 bg-violet-600 rounded-t-xl">
+                                            <svg class="w-3 h-3 text-violet-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            <span class="text-[10px] font-bold uppercase tracking-wider text-violet-100">Scheduled Guest</span>
+                                        </div>
+                                    @endif
                                     {{-- Header --}}
                                     <div class="flex items-start gap-3">
-                                        <div class="{{ $icoAvatar }} bg-[#4E653D]">{{ $avatarChar }}</div>
+                                        <div class="{{ $icoAvatar }} {{ $avatarBg }}">{{ $avatarChar }}</div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center justify-between gap-2">
                                                 <p class="font-semibold text-gray-900 truncate">{{ $e->name }}</p>
@@ -219,7 +230,7 @@
                                     </div>
 
                                     {{-- Details --}}
-                                    <div class="space-y-1 text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 border border-gray-100">
+                                    <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-violet-50 border-violet-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
                                         @if($e->keperluan)
                                             <div class="flex gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.visit_purpose_label') }}:</span>
@@ -227,8 +238,8 @@
                                             </div>
                                         @endif
                                         <div class="flex gap-1.5">
-                                            <span class="text-gray-400 shrink-0">{{ __('app.check_in_label') }}:</span>
-                                            <span class="font-semibold text-emerald-700">{{ gbsFmtDate($e->date) }} · {{ gbsFmtTime($e->jam_in) }}</span>
+                                            <span class="text-gray-400 shrink-0">{{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:</span>
+                                            <span class="font-semibold {{ $isScheduled ? 'text-violet-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} · {{ gbsFmtTime($e->jam_in) }}</span>
                                         </div>
                                         @if($e->email && !$e->qr_status)
                                             <div class="flex gap-1.5">
@@ -238,7 +249,7 @@
                                         @endif
                                         <div class="flex gap-1.5">
                                             <span class="text-gray-400 shrink-0">{{ __('app.officer_label') }}:</span>
-                                            <span class="font-medium text-gray-700 truncate">{{ $e->petugas_penjaga }}</span>
+                                            <span class="font-medium {{ $isScheduled ? 'text-violet-700' : 'text-gray-700' }} truncate">{{ $e->petugas_penjaga }}</span>
                                         </div>
                                     </div>
 
@@ -280,7 +291,7 @@
                                     @endif
 
                                     {{-- Actions --}}
-                                    <div class="pt-2 border-t border-gray-100 flex items-center justify-end gap-1.5 mt-auto">
+                                    <div class="pt-2 {{ $isScheduled ? 'border-violet-100' : 'border-gray-100' }} border-t flex items-center justify-end gap-1.5 mt-auto">
                                         <button wire:click="openEdit({{ $e->guestbook_id }})"
                                                 class="px-2 py-1.5 sm:px-2.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition focus:outline-none">
                                             <span class="hidden sm:inline">{{ __('app.edit') }}</span>
@@ -325,11 +336,12 @@
                                 <tbody class="divide-y divide-gray-200">
                                     @foreach($activeEntries as $e)
                                         @php
-                                            $rowNo = ($activeEntries->firstItem() ?? 1) + $loop->index;
-                                            $avatarChar = strtoupper(substr($e->name ?? 'G', 0, 1));
-                                            $scans = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
+                                            $rowNo       = ($activeEntries->firstItem() ?? 1) + $loop->index;
+                                            $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
+                                            $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
+                                            $isScheduled = $e->date && $e->date->gt(now()->startOfDay());
                                         @endphp
-                                        <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="hover:bg-gray-50/50 transition-colors">
+                                        <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="{{ $isScheduled ? 'bg-violet-50/50 hover:bg-violet-50' : 'hover:bg-gray-50/50' }} transition-colors">
                                             
                                             <td class="h-12 px-4 py-0 text-gray-400 text-xs font-mono">
                                                 {{ $rowNo }}
@@ -337,12 +349,18 @@
                                             
                                             <td class="h-12 px-4 py-0 ">
                                                 <div class="flex items-center gap-2.5">
-                                                    <div class="w-7 h-7 rounded-full bg-[#4E653D] text-white flex items-center justify-center text-xs font-semibold shrink-0">
+                                                    <div class="w-7 h-7 rounded-full {{ $isScheduled ? 'bg-violet-600' : 'bg-[#4E653D]' }} text-white flex items-center justify-center text-xs font-semibold shrink-0">
                                                         {{ $avatarChar }}
                                                     </div>
                                                     <div class="min-w-0">
                                                         <div class="flex items-center justify-end gap-2">
                                                             <p class="font-semibold text-gray-900 truncate">{{ $e->name }}</p>
+                                                            @if($isScheduled)
+                                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-violet-600 text-white text-[9px] font-bold uppercase tracking-wide shrink-0">
+                                                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                                    Sched.
+                                                                </span>
+                                                            @endif
                                                             @if($e->storage_place)
                                                                 <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#4E653D] text-white text-[10px] font-bold shadow-sm" title="Tempat Penyimpanan">{{ $e->storage_place }}</span>
                                                             @endif
@@ -367,7 +385,7 @@
                                                     <div>
                                                         <span class="text-gray-900 font-medium">{{ gbsFmtDate($e->date) }}</span>
                                                         <span class="mx-1 text-gray-300">·</span>
-                                                        <span class="text-emerald-600 font-semibold">{{ gbsFmtTime($e->jam_in) }}</span>
+                                                        <span class="font-semibold {{ $isScheduled ? 'text-violet-600' : 'text-emerald-600' }}">{{ gbsFmtTime($e->jam_in) }}</span>
                                                     </div>
                                                     <div class="text-[10px] text-gray-400 mt-0.5 truncate">{{ __('app.officer_label') }}: {{ $e->petugas_penjaga }}</div>
                                                 </div>
