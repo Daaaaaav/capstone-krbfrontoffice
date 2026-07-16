@@ -3,7 +3,7 @@
         $card = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
     @endphp
 
-    <main class="px-4 sm:px-6 py-6 space-y-6">
+    <main class="px-4 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
         {{-- HEADER --}}
         <x-page-header
@@ -20,7 +20,7 @@
 
         {{-- Guest Info Card --}}
         <div class="{{ $card }}">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex items-center gap-3">
+            <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-200 bg-gray-50/50 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-[#4A2F24] flex items-center justify-center text-white font-bold text-sm">
                     {{ strtoupper(substr($guestName ?? 'G', 0, 1)) }}
                 </div>
@@ -51,7 +51,7 @@
             class="space-y-5"
         >
             {{-- Progress Bar --}}
-            <div class="{{ $card }} p-5">
+            <div class="{{ $card }} p-3 sm:p-5">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
                         <x-heroicon-o-user-group class="w-4.5 h-4.5 text-[#4E653D]"/>
@@ -145,7 +145,7 @@
                     <video x-ref="cameraVideo"
                            playsinline muted
                            class="w-full block"
-                           style="aspect-ratio: 4/3; object-fit: cover;"></video>
+                           style="aspect-ratio: 4/3; object-fit: cover; max-height: 52vw; min-height: 200px;"></video>
 
                     {{-- Hidden canvas for QR decoding --}}
                     <canvas x-ref="scanCanvas" class="hidden"></canvas>
