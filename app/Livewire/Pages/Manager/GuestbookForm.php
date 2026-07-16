@@ -127,22 +127,23 @@ class GuestbookForm extends Component
         $visitorCount = (int) $validated['visitor_count'];
 
         $entry = GuestbookModel::create([
-            'company_id'      => $companyId,
-            'department_id'   => $validated['department_id'] ?? null,
-            'user_id'         => $validated['user_id'] ?? null,
-            'date'            => $validated['scheduled_date'],
-            'jam_in'          => $validated['scheduled_time'],
-            'jam_out'         => null,
-            'name'            => $validated['name'],
-            'email'           => $validated['email'],
-            'phone_number'    => $validated['phone_number'] ?? null,
-            'instansi'        => $validated['instansi'] ?? null,
-            'keperluan'       => $validated['keperluan'],
-            'petugas_penjaga' => $user->full_name ?? $user->name ?? 'Manager',
-            'storage_place'   => $validated['storage_place'] ?? null,
-            'visitor_count'   => $visitorCount,
-            'qr_token'        => $qrToken,
-            'qr_status'       => 'pending',
+            'company_id'           => $companyId,
+            'department_id'        => $validated['department_id'] ?? null,
+            'user_id'              => $validated['user_id'] ?? null,
+            'date'                 => $validated['scheduled_date'],
+            'jam_in'               => $validated['scheduled_time'],
+            'jam_out'              => null,
+            'name'                 => $validated['name'],
+            'email'                => $validated['email'],
+            'phone_number'         => $validated['phone_number'] ?? null,
+            'instansi'             => $validated['instansi'] ?? null,
+            'keperluan'            => $validated['keperluan'],
+            'petugas_penjaga'      => $user->full_name ?? $user->name ?? 'Manager',
+            'storage_place'        => $validated['storage_place'] ?? null,
+            'visitor_count'        => $visitorCount,
+            'qr_token'             => $qrToken,
+            'qr_status'            => 'pending',
+            'scheduled_by_manager' => true, // Manager-scheduled: shown as "Scheduled Guest"
         ]);
 
         // Generate individual QR codes

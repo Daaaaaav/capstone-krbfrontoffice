@@ -212,14 +212,15 @@ class Guestbook extends Component
 
         // Prepare data including auto-filled fields
         $entryData = array_merge($validatedData, [
-            'date'              => $this->date,
-            'jam_in'            => $this->jam_in,
-            'petugas_penjaga'   => $this->petugas_penjaga,
-            'company_id'        => $companyId,
-            'jam_out'           => null,
-            'qr_token'          => $qrToken,
-            'qr_status'         => 'pending',
-            'visitor_count'     => $visitorCount,
+            'date'                 => $this->date,
+            'jam_in'               => $this->jam_in,
+            'petugas_penjaga'      => $this->petugas_penjaga,
+            'company_id'           => $companyId,
+            'jam_out'              => null,
+            'qr_token'             => $qrToken,
+            'qr_status'            => 'pending',
+            'visitor_count'        => $visitorCount,
+            'scheduled_by_manager' => false, // Receptionist walk-in: NOT a Scheduled Guest
         ]);
 
         // Saves data to the database

@@ -34,12 +34,14 @@ class Guestbook extends Model
         'qr_status',
         'visitor_count',
         'storage_place',
+        'scheduled_by_manager', // true = pre-scheduled by Manager via GuestbookForm
     ];
 
     // If column `date` is DATE, this is safe. Times are left as string (TIME cast is not native Carbon).
     protected $casts = [
-        'date'          => 'date:Y-m-d',
-        'visitor_count' => 'integer',
+        'date'                 => 'date:Y-m-d',
+        'visitor_count'        => 'integer',
+        'scheduled_by_manager' => 'boolean',
     ];
 
     // -----------------------------------------------------------------------
