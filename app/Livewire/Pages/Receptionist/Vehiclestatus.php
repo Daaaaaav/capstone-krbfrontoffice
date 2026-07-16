@@ -52,7 +52,7 @@ class Vehiclestatus extends Component
 
     // *** BARU: Detail modal state ***
     public bool $showDetailModal = false;
-    public ?VehicleBooking $selectedBooking = null;
+    public ?int  $selectedBookingId = null;
     /** @var array{before: array, after: array} */
     public array $selectedPhotos = ['before' => [], 'after' => []];
     // *** END BARU ***
@@ -139,6 +139,7 @@ class Vehiclestatus extends Component
             'vehicleNotifCount'      => $this->vehicleNotifCount,
             'vehicleNotifs'          => $this->vehicleNotifs,
             'priorityVehicleDetailBooking' => $this->priorityVehicleDetailBooking,
+            'selectedBooking'        => $this->selectedBooking,
             // Manager priority vehicle bookings for the current status tab
             'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
                 ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
@@ -367,41 +368,29 @@ class Vehiclestatus extends Component
     public function showDetails(int $id): void
     {
         try {
-            $booking = VehicleBooking::findOrFail($id);
-
-            // $photos = VehicleBookingPhoto::where('vehiclebooking_id', $id)
-            //     ->with('user') // Pastikan relasi user ada di model VehicleBookingPhoto
-            //     ->orderBy('created_at')
-            //     ->get();
-
-            $this->selectedBooking = $booking;
-
-            // // Sort photos
-            // $before = [];
-            // $after = [];
-            // foreach ($photos as $photo) {
-            //     if ($photo->photo_type === 'after') {
-            //         $after[] = $photo;
-            //     } else {
-            //         $before[] = $photo;
-            //     }
-            // }
-            // $this->selectedPhotos = ['before' => $before, 'after' => $after];
-
-            $this->showDetailModal = true;
+            // Verify it exists before opening
+            VehicleBooking::findOrFail($id);
+            $this->selectedBookingId = $id;
+            $this->showDetailModal   = true;
             $this->resetErrorBag();
-
         } catch (\Throwable $e) {
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to load details: ' . $e->getMessage());
         }
     }
 
+    /** Computed: load the VehicleBooking being viewed in the detail modal. */
+    public function getSelectedBookingProperty(): ?VehicleBooking
+    {
+        if (!$this->selectedBookingId) return null;
+        return VehicleBooking::find($this->selectedBookingId);
+    }
+
     public function closeDetailModal(): void
     {
-        $this->showDetailModal = false;
-        $this->selectedBooking = null;
-        $this->selectedPhotos = ['before' => [], 'after' => []];
+        $this->showDetailModal   = false;
+        $this->selectedBookingId = null;
+        $this->selectedPhotos    = ['before' => [], 'after' => []];
         $this->resetErrorBag();
     }
     // *** END BARU ***
