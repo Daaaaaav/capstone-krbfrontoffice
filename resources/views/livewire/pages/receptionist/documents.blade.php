@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.30000ms.keep-alive>
+<div class="min-h-screen bg-background" wire:poll.30s>
     @php
         $card      = 'bg-card border border-border rounded-2xl shadow-xl overflow-hidden';
         $head      = 'bg-gradient-to-r from-slate-900 via-slate-800 to-black';

@@ -36,7 +36,7 @@
     $chip  = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-gray-100 text-xs';
 @endphp
 
-<div class="min-h-screen bg-gray-50" wire:poll.30000ms.keep-alive>
+<div class="min-h-screen bg-gray-50" wire:poll.30s>
     <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
         
         {{-- HERO --}}

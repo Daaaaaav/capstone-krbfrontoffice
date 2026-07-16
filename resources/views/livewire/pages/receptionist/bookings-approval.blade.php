@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.30000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.30000ms x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
     use App\Models\Requirement; // ADDED: Required for the temporary bug workaround
