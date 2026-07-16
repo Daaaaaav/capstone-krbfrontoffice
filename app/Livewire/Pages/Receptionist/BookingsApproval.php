@@ -734,17 +734,43 @@ class BookingsApproval extends Component
             'roomNotifCount'              => $this->roomNotifCount,
             'roomNotifs'                  => $this->roomNotifs,
             // Manager priority room bookings — pending & approved stages
+            // "pending" pool: truly pending statuses PLUS approved bookings whose start time
+            // has not yet arrived (approved-but-not-started stays in Pending tab).
             'priorityRoomPending'         => PriorityRoomBooking::with(['room', 'manager'])
                 ->forCompany($companyId)
-                ->whereIn('status', [
-                    PriorityRoomBooking::STATUS_PENDING_RECEIPT,
-                    PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
-                ])
+                ->where(function ($q) {
+                    $today     = now()->toDateString();
+                    $timeNow   = now()->format('H:i:s');
+                    $q->whereIn('status', [
+                        PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                        PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+                    ])->orWhere(function ($q2) use ($today, $timeNow) {
+                        // Approved but start datetime is still in the future
+                        $q2->where('status', PriorityRoomBooking::STATUS_APPROVED)
+                           ->where(function ($q3) use ($today, $timeNow) {
+                               $q3->where('date', '>', $today)
+                                  ->orWhere(function ($q4) use ($today, $timeNow) {
+                                      $q4->where('date', $today)
+                                         ->where('start_time', '>', $timeNow);
+                                  });
+                           });
+                    });
+                })
                 ->orderByDesc('created_at')
                 ->get(),
+            // "ongoing" pool: only approved bookings whose start time has already arrived
             'priorityRoomApproved'        => PriorityRoomBooking::with(['room', 'manager'])
                 ->forCompany($companyId)
                 ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+                ->where(function ($q) {
+                    $today   = now()->toDateString();
+                    $timeNow = now()->format('H:i:s');
+                    $q->where('date', '<', $today)
+                      ->orWhere(function ($q2) use ($today, $timeNow) {
+                          $q2->where('date', $today)
+                             ->where('start_time', '<=', $timeNow);
+                      });
+                })
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get(),
