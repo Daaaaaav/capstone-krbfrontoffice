@@ -465,7 +465,7 @@
                             </table>
                         </div>
                     @endif
-                    <div class="mt-5">{{ $activeEntries->links() }}</div>
+                    <div class="mt-5" wire:key="guestbook-pagination">{{ $activeEntries->links() }}</div>
                 @endif
 
             </div>
@@ -474,6 +474,7 @@
     </main>
 
     {{-- ===== EDIT MODAL ===== --}}
+    <div wire:key="guestbook-edit-modal-wrapper">
     @if($showEdit)
         <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="$set('showEdit', false)"></div>
@@ -536,6 +537,7 @@
             </div>
         </div>
     @endif
+    </div>{{-- end wire:key="guestbook-edit-modal-wrapper" --}}
 
     <script>
         function updateElapsedTimers() {
