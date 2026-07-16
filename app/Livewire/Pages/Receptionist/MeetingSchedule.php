@@ -740,7 +740,8 @@ class MeetingSchedule extends Component
         $now = now($this->tz);
         $endDate = $now->copy()->addDays(30);
 
-        $this->roomScheduleData = \App\Models\BookingRoom::with(['room', 'user', 'department'])
+        // Regular room bookings (pending + approved)
+        $regularBookings = \App\Models\BookingRoom::with(['room', 'user', 'department'])
             ->where('room_id', $roomId)
             ->whereBetween('date', [$now->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->whereIn('status', ['pending', 'approved', '0', '1', 'PENDING', 'APPROVED'])
@@ -766,8 +767,54 @@ class MeetingSchedule extends Component
                     'start_at_full' => $b->date->format('d M Y') . ' ' . Carbon::parse($b->start_time)->format('H:i'),
                     'end_at_full'   => $b->date->format('d M Y') . ' ' . Carbon::parse($b->end_time)->format('H:i'),
                     'status'       => $b->status,
+                    'is_priority'  => false,
+                    'requested_by' => null,
+                    'attendees'    => $b->number_of_attendees ?? null,
                 ];
-            })
+            });
+
+        // Priority room bookings for this room (all active statuses)
+        $priorityBookings = \App\Models\PriorityRoomBooking::with(['room', 'manager'])
+            ->where('room_id', $roomId)
+            ->whereBetween('date', [$now->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->whereIn('status', [
+                \App\Models\PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                \App\Models\PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+                \App\Models\PriorityRoomBooking::STATUS_APPROVED,
+            ])
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($pb) {
+                $date = $pb->date instanceof \Carbon\Carbon ? $pb->date : Carbon::parse($pb->date);
+                return [
+                    'id'           => 'priority-' . $pb->id,
+                    'title'        => $pb->meeting_title ?? 'Priority Meeting',
+                    'room_name'    => $pb->room->room_name ?? 'Room',
+                    'borrower'     => $pb->manager?->full_name ?? '—',
+                    'department'   => '—',
+                    'purpose'      => $pb->meeting_title ?? '-',
+                    'destination'  => $pb->room->room_name ?? '-',
+                    'date'         => $date->format('Y-m-d'),
+                    'start'        => Carbon::parse($pb->start_time)->format('H:i'),
+                    'end'          => Carbon::parse($pb->end_time)->format('H:i'),
+                    'start_date'   => $date->format('l, d M Y'),
+                    'end_date'     => $date->format('l, d M Y'),
+                    'start_time'   => Carbon::parse($pb->start_time)->format('H:i'),
+                    'end_time'     => Carbon::parse($pb->end_time)->format('H:i'),
+                    'start_at_full' => $date->format('d M Y') . ' ' . Carbon::parse($pb->start_time)->format('H:i'),
+                    'end_at_full'   => $date->format('d M Y') . ' ' . Carbon::parse($pb->end_time)->format('H:i'),
+                    'status'       => $pb->statusLabel(),
+                    'is_priority'  => true,
+                    'requested_by' => $pb->manager?->full_name ?? '—',
+                    'attendees'    => $pb->number_of_attendees ?? null,
+                ];
+            });
+
+        // Merge and sort by date + start_time
+        $this->roomScheduleData = $regularBookings->concat($priorityBookings)
+            ->sortBy(fn($b) => $b['date'] . ' ' . $b['start_time'])
+            ->values()
             ->toArray();
 
         $this->showScheduleModal = true;
@@ -775,7 +822,7 @@ class MeetingSchedule extends Component
 
     public function openBookingDetail($bookingId): void
     {
-        $booking = collect($this->roomScheduleData)->firstWhere('id', $bookingId);
+        $booking = collect($this->roomScheduleData)->first(fn($b) => (string) $b['id'] === (string) $bookingId);
         if ($booking) {
             $this->selectedBookingDetail = $booking;
             $this->showBookingDetailModal = true;

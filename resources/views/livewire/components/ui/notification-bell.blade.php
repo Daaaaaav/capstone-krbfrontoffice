@@ -71,6 +71,11 @@
                                 {{ $n->action_taken === 'approved' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-500' }}">
                                 {{ ucfirst($n->action_taken) }}
                             </span>
+                            @else
+                            {{-- Direct/informational notification — no action needed, still clickable for details --}}
+                            <span class="text-[10px] font-medium text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded-full">
+                                View details
+                            </span>
                             @endif
                         </div>
                     </div>

@@ -20,7 +20,7 @@ use App\Models\PriorityRoomBooking;
 use App\Models\ManagerNotification;
 
 #[Layout('layouts.receptionist')]
-#[Title('Bookings Approval')]
+#[Title('Room Booking Status')]
 class BookingsApproval extends Component
 {
     use WithPagination;

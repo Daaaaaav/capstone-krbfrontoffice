@@ -57,6 +57,10 @@ class Vehiclestatus extends Component
     public array $selectedPhotos = ['before' => [], 'after' => []];
     // *** END BARU ***
 
+    // Priority vehicle booking detail modal
+    public bool $showPriorityVehicleDetailModal = false;
+    public ?int $priorityVehicleDetailId        = null;
+
     // Mobile filter modal
     public bool $showFilterModal = false;
 
@@ -400,6 +404,28 @@ class Vehiclestatus extends Component
         $this->resetErrorBag();
     }
     // *** END BARU ***
+
+    // ── Priority Vehicle Booking detail modal ──────────────────────────────
+
+    public function openPriorityVehicleDetail(int $id): void
+    {
+        $this->priorityVehicleDetailId        = $id;
+        $this->showPriorityVehicleDetailModal = true;
+    }
+
+    public function closePriorityVehicleDetail(): void
+    {
+        $this->showPriorityVehicleDetailModal = false;
+        $this->priorityVehicleDetailId        = null;
+    }
+
+    /** Computed: load the PriorityVehicleBooking being viewed in the detail modal. */
+    public function getPriorityVehicleDetailBookingProperty(): ?PriorityVehicleBooking
+    {
+        if (!$this->priorityVehicleDetailId) return null;
+        return PriorityVehicleBooking::with(['vehicle', 'manager', 'department', 'cancelledBooking'])
+            ->find($this->priorityVehicleDetailId);
+    }
 
     // ───────── Mobile Filter Modal ─────────
     public function openFilterModal(): void

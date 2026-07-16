@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Receptionist;
 
 use App\Models\BookingRoom;
+use App\Models\PriorityRoomBooking;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -24,10 +25,34 @@ class RoomApproval extends Component
     public int $perPending = 6;
     public int $perOngoing = 6;
 
+    // Priority booking detail modal
+    public bool  $showPriorityDetailModal = false;
+    public ?int  $priorityDetailId        = null;
+
     /** Poller */
     public function tick(): void
     {
         // No action needed; Livewire will automatically re-render and re-query
+    }
+
+    public function openPriorityDetail(int $id): void
+    {
+        $this->priorityDetailId        = $id;
+        $this->showPriorityDetailModal = true;
+    }
+
+    public function closePriorityDetail(): void
+    {
+        $this->showPriorityDetailModal = false;
+        $this->priorityDetailId        = null;
+    }
+
+    /** Computed: load the PriorityRoomBooking being viewed */
+    public function getPriorityDetailBookingProperty(): ?PriorityRoomBooking
+    {
+        if (!$this->priorityDetailId) return null;
+        return PriorityRoomBooking::with(['room', 'manager', 'cancelledBooking'])
+            ->find($this->priorityDetailId);
     }
 
     private function uiMap(BookingRoom $r): array
@@ -66,9 +91,22 @@ class RoomApproval extends Component
             ->paginate($this->perOngoing, pageName: 'ongoingPage')
             ->through(fn($r) => $this->uiMap($r));
 
+        // Priority room bookings — pending + approved (all active statuses)
+        $priorityRoomBookings = PriorityRoomBooking::with(['room', 'manager'])
+            ->forCompany($cid)
+            ->whereIn('status', [
+                PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+                PriorityRoomBooking::STATUS_APPROVED,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
         return view('livewire.pages.receptionist.room-approval', [
-            'pending' => $pending,
-            'ongoing' => $ongoing,
+            'pending'              => $pending,
+            'ongoing'              => $ongoing,
+            'priorityRoomBookings' => $priorityRoomBookings,
+            'priorityDetailBooking' => $this->priorityDetailBooking,
         ]);
     }
 }
