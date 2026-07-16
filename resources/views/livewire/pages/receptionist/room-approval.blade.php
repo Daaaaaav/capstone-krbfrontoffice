@@ -184,14 +184,17 @@
                                         </div>
                                     </div>
                                 </div>
-                                                               {{-- 5. BOTTOM ACTIONS (Auto-Approve Notice) --}}
+                                                               {{-- 5. BOTTOM STATUS --}}
                                 <div class="pt-3 border-t border-gray-100 flex items-center justify-between">
+                                    @if($m['status'] === 'approved')
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+                                        {{ __('app.approved') }}
+                                    </span>
+                                    @else
                                     <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/20">
                                         {{ __('app.pending') }}
                                     </span>
-                                    <span class="text-[11px] text-muted-foreground italic">
-                                        Auto-approves at start time
-                                    </span>
+                                    @endif
                                 </div>
                             </div>
                         @empty
@@ -232,9 +235,15 @@
                                         <td class="h-12 px-6 py-4 font-medium text-gray-800">{{ $m['participants'] }}</td>
                                         <td class="h-12 px-6 py-4">
                                             <div class="flex justify-end">
+                                                @if($m['status'] === 'approved')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 text-emerald-700 border-emerald-500/20">
+                                                    {{ __('app.approved') }}
+                                                </span>
+                                                @else
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-amber-500/10 text-amber-600 border-amber-500/20">
                                                     {{ __('app.pending') }}
                                                 </span>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>

@@ -40,49 +40,13 @@ class AutoApproveBookings extends Command
         $this->info('[' . $now->toDateTimeString() . '] Running auto-approve check...');
 
         // ──────────────────────────────────────────────────────────────────
-        // 1. ALL ROOM BOOKINGS (offline + online)
-        //    pending → approved when start_time <= NOW()
-        //    Link creation for online meetings happens at manual approval or
-        //    can be handled by a separate link-creation job if needed.
+        // 1. ROOM BOOKINGS — auto-approve intentionally disabled.
+        //    Room bookings should only be approved by a receptionist via the
+        //    Bookings Approval page. Auto-approving at start time would move
+        //    manually-approved future meetings straight to Ongoing, bypassing
+        //    the "Approved" badge in the Pending tab.
         // ──────────────────────────────────────────────────────────────────
-        $pendingQuery = DB::table('booking_rooms')
-            ->whereNull('deleted_at')
-            ->where('status', 'pending')
-            ->whereNotNull('date')
-            ->whereNotNull('start_time')
-            ->whereRaw("COALESCE(
-                CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
-                CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
-                CONCAT(date, ' ', start_time)
-            ) <= ?", [$nowStr]);
-
-        $pendingCount = $pendingQuery->count();
-
-        if ($pendingCount > 0) {
-            if ($isDry) {
-                $this->line("  [DRY-RUN] Would approve {$pendingCount} pending room booking(s).");
-            } else {
-                $affected = DB::table('booking_rooms')
-                    ->whereNull('deleted_at')
-                    ->where('status', 'pending')
-                    ->whereNotNull('date')
-                    ->whereNotNull('start_time')
-                    ->whereRaw("COALESCE(
-                        CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
-                        CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
-                        CONCAT(date, ' ', start_time)
-                    ) <= ?", [$nowStr])
-                    ->update([
-                        'status'     => 'approved',
-                        'is_approve' => 1,
-                        'updated_at' => $nowStr,
-                    ]);
-
-                $this->info("  ✓ Room bookings auto-approved: {$affected}");
-            }
-        } else {
-            $this->line('  Room bookings: none to auto-approve.');
-        }
+        $this->line('  Room bookings: auto-approve disabled — manual approval required.');
 
         // ──────────────────────────────────────────────────────────────────
         // 2. VEHICLE BOOKINGS — approved → on_progress

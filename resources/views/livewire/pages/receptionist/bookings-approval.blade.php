@@ -410,10 +410,16 @@
                                                             <span class="text-[11px] px-2 py-0.5 rounded-full border flex-shrink-0 {{ $isOnline ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : 'border-blue-300 text-blue-700 bg-blue-50' }}">
                                                                 {{ $isOnline ? 'ONLINE' : 'OFFLINE' }}
                                                             </span>
-                                                            {{-- Status (Pending) --}}
-                                                            <span class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 flex-shrink-0">
-                                                                {{ strtoupper($b->status) }}
+                                                            {{-- Status (Pending / Approved) --}}
+                                                            @if($b->status === 'approved')
+                                                            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex-shrink-0">
+                                                                APPROVED
                                                             </span>
+                                                            @else
+                                                            <span class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 flex-shrink-0">
+                                                                PENDING
+                                                            </span>
+                                                            @endif
                                                         </div>
                                                     </div>
 
@@ -507,6 +513,23 @@
                                                     class="{{ $btnGhost }} px-4 py-2">
                                                     {{ __('app.detail') }}
                                                 </button>
+
+                                                {{-- APPROVE BUTTON — only shown when still pending (not yet approved) --}}
+                                                @if($b->status === 'pending')
+                                                <button type="button"
+                                                    wire:click="approve({{ $b->bookingroom_id }})"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="approve({{ $b->bookingroom_id }})"
+                                                    @if($needsGoogleConnect || $needsZoomConfig) disabled @endif
+                                                    class="px-4 py-2 text-xs font-medium rounded-lg border inline-flex items-center justify-center transition
+                                                        {{ ($needsGoogleConnect || $needsZoomConfig)
+                                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                            : 'bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20' }}"
+                                                    @if($needsGoogleConnect) title="Google not connected" @elseif($needsZoomConfig) title="Zoom not configured" @endif>
+                                                    <x-heroicon-o-check class="w-3.5 h-3.5 inline-block mr-0.5"/>
+                                                    {{ __('app.approve') }}
+                                                </button>
+                                                @endif
 
                                                 {{-- REJECT BUTTON (Red) - disabled if < 30min before meeting --}}
                                                 @php $canReject = canRejectBooking($b); @endphp
@@ -627,6 +650,20 @@
                                                                     class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition">
                                                                     {{ __('app.detail') }}
                                                                 </button>
+                                                                {{-- Approve button — only for still-pending bookings --}}
+                                                                @if($b->status === 'pending')
+                                                                <button type="button"
+                                                                    wire:click="approve({{ $b->bookingroom_id }})"
+                                                                    wire:loading.attr="disabled"
+                                                                    wire:target="approve({{ $b->bookingroom_id }})"
+                                                                    @if($needsGoogleConnect || $needsZoomConfig) disabled @endif
+                                                                    class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition
+                                                                        {{ ($needsGoogleConnect || $needsZoomConfig)
+                                                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                                            : 'bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none' }}">
+                                                                    {{ __('app.approve') }}
+                                                                </button>
+                                                                @endif
                                                                 @php $canRejectTbl = canRejectBooking($b); @endphp
                                                                 <button type="button"
                                                                     wire:click="openReject({{ $b->bookingroom_id }})"

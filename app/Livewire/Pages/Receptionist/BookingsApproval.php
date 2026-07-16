@@ -157,34 +157,15 @@ class BookingsApproval extends Component
     }
 
     /**
-     * Auto-approve pending offline and online bookings whose start time has arrived.
-     * Mirrors the AutoApproveBookings command so it also works without a scheduler.
-     * Online bookings are approved directly without link creation (links are created
-     * at manual approval time, or by the scheduler if configured).
+     * Auto-approve is intentionally disabled here.
+     * Pending bookings should only be approved by a receptionist via the approve() action.
+     * The scheduler command (bookings:auto-approve) is also disabled for room bookings
+     * so that approved-but-not-yet-started bookings remain visible in the Pending tab
+     * with an "Approved" badge until their start time arrives.
      */
     private function autoApprovePending(): void
     {
-        $now       = Carbon::now($this->tz)->toDateTimeString();
-        $companyId = Auth::user()->company_id ?? null;
-
-        $startExpr = "COALESCE(
-            CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
-            CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
-            CONCAT(date, ' ', start_time)
-        )";
-
-        DB::table('booking_rooms')
-            ->whereNull('deleted_at')
-            ->where('status', 'pending')
-            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-            ->whereNotNull('date')
-            ->whereNotNull('start_time')
-            ->whereRaw("$startExpr <= ?", [$now])
-            ->update([
-                'status'     => 'approved',
-                'is_approve' => 1,
-                'updated_at' => $now,
-            ]);
+        // Intentionally left empty — no auto-approve for room bookings.
     }
 
     private function selectedDateValue(): ?string
@@ -687,15 +668,38 @@ class BookingsApproval extends Component
 
         $companyId = Auth::user()->company_id ?? null;
 
+        $now = Carbon::now($this->tz)->toDateTimeString();
+
+        $startExpr = "COALESCE(
+            CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
+            CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
+            CONCAT(date, ' ', start_time)
+        )";
+
+        // Pending tab: bookings with status='pending' PLUS approved bookings whose
+        // start time has NOT yet arrived (approved-but-not-started). This way a
+        // manually-approved future meeting stays visible here with an "Approved" badge.
         $pending = BookingRoom::query()
             ->with(['room', 'requirements', 'user.department', 'department'])
-            ->where('status', 'pending')
+            ->where(function ($q) use ($now, $startExpr) {
+                $q->where('status', 'pending')
+                  ->orWhere(function ($q2) use ($now, $startExpr) {
+                      $q2->where('status', 'approved')
+                         ->whereNotNull('date')
+                         ->whereNotNull('start_time')
+                         ->whereRaw("$startExpr > ?", [$now]);
+                  });
+            })
             ->tap(fn($q) => $this->applyCommonFilters($q, $companyId))
             ->paginate($this->perPending, $cols, 'pendingPage');
 
+        // Ongoing tab: only approved bookings whose start time has already arrived.
         $ongoing = BookingRoom::query()
             ->with(['room', 'requirements', 'user.department', 'department'])
             ->where('status', 'approved')
+            ->whereNotNull('date')
+            ->whereNotNull('start_time')
+            ->whereRaw("$startExpr <= ?", [$now])
             ->tap(fn($q) => $this->applyCommonFilters($q, $companyId))
             ->paginate($this->perOngoing, $cols, 'ongoingPage');
 

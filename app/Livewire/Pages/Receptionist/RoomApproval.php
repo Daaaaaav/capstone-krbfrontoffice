@@ -72,20 +72,38 @@ class RoomApproval extends Component
     public function render()
     {
         $cid = Auth::user()?->company_id;
+        $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString();
 
-        // Paginated pending list
+        $startExpr = "COALESCE(
+            CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
+            CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
+            CONCAT(date, ' ', start_time)
+        )";
+
+        // Pending tab: truly pending PLUS approved bookings not yet started.
         $pending = BookingRoom::with('room')
             ->company($cid)
-            ->pending()
+            ->where(function ($q) use ($now, $startExpr) {
+                $q->pending()
+                  ->orWhere(function ($q2) use ($now, $startExpr) {
+                      $q2->approved()
+                         ->whereNotNull('date')
+                         ->whereNotNull('start_time')
+                         ->whereRaw("$startExpr > ?", [$now]);
+                  });
+            })
             ->orderBy('date')
             ->orderBy('start_time')
             ->paginate($this->perPending, pageName: 'pendingPage')
             ->through(fn($r) => $this->uiMap($r));
 
-        // Paginated ongoing list
+        // Ongoing tab: approved bookings whose start time has arrived.
         $ongoing = BookingRoom::with('room')
             ->company($cid)
             ->approved()
+            ->whereNotNull('date')
+            ->whereNotNull('start_time')
+            ->whereRaw("$startExpr <= ?", [$now])
             ->orderBy('date')
             ->orderBy('start_time')
             ->paginate($this->perOngoing, pageName: 'ongoingPage')
