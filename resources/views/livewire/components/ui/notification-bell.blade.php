@@ -99,7 +99,6 @@
 
     {{-- ── Detail modal ──────────────────────────────────────────────────── --}}
     @if($detailNotif)
-    @teleport('body')
     <div class="fixed inset-0 z-[500] flex items-center justify-center p-4"
          wire:key="notif-detail-modal">
 
@@ -402,7 +401,6 @@
 
         </div>{{-- /panel --}}
     </div>{{-- /modal --}}
-    @endteleport
     @endif
 
 </div>{{-- /root --}}
