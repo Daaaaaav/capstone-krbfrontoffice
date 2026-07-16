@@ -186,7 +186,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
 
                     {{-- Right side: notification bell + language toggle + date badge --}}
                     <div class="flex items-center gap-3">
-                        @livewire('components.ui.notification-bell', key: 'notification-bell')
+                        @livewire('components.ui.notification-bell', [], 'notification-bell')
                         {{-- Language Toggle --}}
                         <div class="relative" x-data="{ open: false }">
                             @php $isEn = app()->getLocale() === 'en'; @endphp
@@ -226,7 +226,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
         </div> {{-- End Main Content Wrapper --}}
     </div> {{-- End Flex Wrapper --}}
 
-    @livewire('components.ui.chat-modal', key: 'chat-modal')
+    @livewire('components.ui.chat-modal', [], 'chat-modal')
 
     {{-- Floating chat button --}}
     <div class="fixed bottom-6 right-6 z-[70]">
@@ -245,7 +245,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
         </button>
     </div>
 
-    @livewire('components.ui.toast', key: 'toast')
+    @livewire('components.ui.toast', [], 'toast')
 
     @livewireScripts
     @vite('resources/js/app.js')
