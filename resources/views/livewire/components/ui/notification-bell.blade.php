@@ -120,7 +120,24 @@
                         @endif
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-foreground">{{ $detailNotif->title }}</p>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="text-sm font-semibold text-foreground">{{ $detailNotif->title }}</p>
+                            {{-- Show booking status badge from the linked priority booking model --}}
+                            @if($detailBooking && !$detailNotif->isPendingAction() && !$detailNotif->action_taken)
+                            @php
+                                $bkStatus = $detailBooking->statusLabel() ?? ucfirst($detailBooking->status ?? '');
+                                $bkColor  = match($detailBooking->status ?? '') {
+                                    'approved'   => 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+                                    'completed'  => 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+                                    'rejected', 'cancelled_conflict_denied' => 'bg-red-500/10 text-red-500 border-red-500/20',
+                                    default      => 'bg-muted text-muted-foreground border-border',
+                                };
+                            @endphp
+                            <span class="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full border {{ $bkColor }}">
+                                {{ $bkStatus }}
+                            </span>
+                            @endif
+                        </div>
                         <p class="text-[11px] text-muted-foreground">{{ $detailNotif->created_at->diffForHumans() }}</p>
                     </div>
                 </div>
@@ -284,6 +301,38 @@
                     <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     <p class="text-xs font-semibold text-red-600">This priority booking request was denied. The original booking is kept.</p>
                     @endif
+                </div>
+                @elseif($detailBooking && !$detailNotif->isPendingAction())
+                {{-- Direct/informational notification: show live booking status from the model --}}
+                @php
+                    $liveStatus   = method_exists($detailBooking, 'statusLabel') ? $detailBooking->statusLabel() : ucfirst($detailBooking->status ?? '—');
+                    $liveBg = match($detailBooking->status ?? '') {
+                        'approved'   => 'bg-emerald-500/10 border-emerald-500/20',
+                        'completed'  => 'bg-blue-500/10 border-blue-500/20',
+                        'rejected', 'cancelled_conflict_denied' => 'bg-red-500/10 border-red-500/20',
+                        default      => 'bg-muted/50 border-border',
+                    };
+                    $liveIcon = match($detailBooking->status ?? '') {
+                        'approved', 'completed' => 'check',
+                        'rejected', 'cancelled_conflict_denied' => 'x',
+                        default => 'info',
+                    };
+                    $liveText = match($detailBooking->status ?? '') {
+                        'approved'  => 'text-emerald-700',
+                        'completed' => 'text-blue-700',
+                        'rejected', 'cancelled_conflict_denied' => 'text-red-600',
+                        default     => 'text-muted-foreground',
+                    };
+                @endphp
+                <div class="flex items-center gap-2.5 px-4 py-3 rounded-xl border {{ $liveBg }}">
+                    @if($liveIcon === 'check')
+                    <svg class="w-4 h-4 {{ $liveText }} shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    @elseif($liveIcon === 'x')
+                    <svg class="w-4 h-4 {{ $liveText }} shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    @else
+                    <svg class="w-4 h-4 {{ $liveText }} shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    @endif
+                    <p class="text-xs font-semibold {{ $liveText }}">Booking status: {{ $liveStatus }}</p>
                 </div>
                 @endif
 
