@@ -232,7 +232,7 @@
                             {{ __('app.no_data') }}
                         </div>
                     @else
-                        <div class="px-3 sm:px-6 py-4 sm:py-5 pb-24 sm:pb-5 bg-gray-50/30">
+                        <div class="px-3 sm:px-6 py-4 sm:py-5 bg-gray-50/30">
                             @if($viewMode === 'card')
                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     @foreach($entries as $e)
