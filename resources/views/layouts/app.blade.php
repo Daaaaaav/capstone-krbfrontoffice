@@ -18,17 +18,13 @@
 
 <body class="min-h-screen font-sans animate-fade-in-up" data-theme="light">
 
-    <div wire:ignore>
-        @livewire('components.partials.navbar')
-    </div>
+    @livewire('components.partials.navbar', key: 'navbar')
 
     <main class="w-full pt-9 pb-4 px-4 sm:px-6 lg:px-8">
         {{ $slot }}
     </main>
     
-    <div wire:ignore>
-        @livewire('components.ui.chat-modal')
-    </div>
+    @livewire('components.ui.chat-modal', key: 'chat-modal')
 
     <div class="fixed bottom-6 right-6 z-[70]">
         <button
@@ -46,9 +42,7 @@
     </div>
 
     @include('livewire.components.partials.footer')
-    <div wire:ignore>
-        @livewire('components.ui.toast')
-    </div>
+    @livewire('components.ui.toast', key: 'toast')
 
 
     @livewireScripts
