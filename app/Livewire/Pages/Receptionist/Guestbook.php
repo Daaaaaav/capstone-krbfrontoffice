@@ -93,20 +93,40 @@ class Guestbook extends Component
                 $query->where('company_id', $companyId);
             }
 
-            // Get unique guests by name, sorted alphabetically
-            $this->historyGuests = $query->orderBy('name', 'asc')
-                ->get()
-                ->unique('name')
-                ->take(5)
-                ->map(fn($g) => [
-                    'name' => $g->name,
-                    'email' => $g->email,
-                    'phone_number' => $g->phone_number,
-                    'instansi' => $g->instansi,
-                    'keperluan' => $g->keperluan
-                ])
-                ->values()
-                ->toArray();
+            // Fetch all matching records ordered newest-first so we can pick the
+            // most recent (and most complete) data for each unique guest name.
+            $rows = $query->orderBy('created_at', 'desc')->get();
+
+            // For each unique name, merge fields from all their past entries:
+            // prefer the most recent non-null / non-empty value for each field.
+            $byName = [];
+            foreach ($rows as $g) {
+                $name = $g->name;
+                if (!isset($byName[$name])) {
+                    $byName[$name] = [
+                        'name'         => $name,
+                        'email'        => $g->email,
+                        'phone_number' => $g->phone_number,
+                        'instansi'     => $g->instansi,
+                        'keperluan'    => $g->keperluan,
+                    ];
+                } else {
+                    // Fill in any blank fields from older records
+                    foreach (['email', 'phone_number', 'instansi', 'keperluan'] as $field) {
+                        if (empty($byName[$name][$field]) && !empty($g->$field)) {
+                            $byName[$name][$field] = $g->$field;
+                        }
+                    }
+                }
+            }
+
+            $this->historyGuests = array_values(
+                array_slice(
+                    array_filter($byName, fn($g) => !empty($g['name'])),
+                    0,
+                    5
+                )
+            );
         } else {
             $this->historyGuests = [];
         }
