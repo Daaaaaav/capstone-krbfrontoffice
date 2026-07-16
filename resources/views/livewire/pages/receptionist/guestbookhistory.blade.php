@@ -35,7 +35,7 @@
         option:checked { background:#e5e7eb !important; color:#111827 !important; }
     </style>
 
-    <main class="px-4 sm:px-6 py-6 space-y-6">
+    <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
         {{-- Flash Messages --}}
         @if (session('success') || session('error'))
