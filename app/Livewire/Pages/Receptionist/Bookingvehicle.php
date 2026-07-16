@@ -342,7 +342,8 @@ class Bookingvehicle extends Component
 
     public function openBookingDetail($bookingId): void
     {
-        $booking = collect($this->vehicleScheduleData)->firstWhere('id', $bookingId);
+        // IDs may be integers (regular) or strings like "priority-5" (priority bookings)
+        $booking = collect($this->vehicleScheduleData)->first(fn($b) => (string) $b['id'] === (string) $bookingId);
         if ($booking) {
             $this->selectedBookingDetail = $booking;
             $this->showBookingDetailModal = true;
@@ -441,33 +442,76 @@ class Bookingvehicle extends Component
         $now     = now($this->tz);
         $endDate = $now->copy()->addDays(30);
 
-        $this->vehicleScheduleData = VehicleBooking::with(['vehicle', 'user', 'department'])
+        // Regular vehicle bookings (pending + approved + on_progress)
+        $regularBookings = VehicleBooking::with(['vehicle', 'user', 'department'])
             ->where('vehicle_id', $vehicleId)
-            ->whereBetween('start_at', [$now->startOfDay(), $endDate->endOfDay()])
-            ->whereIn('status', ['pending', 'approved', 'ongoing', 'PENDING', 'APPROVED', 'ONGOING'])
+            ->whereBetween('start_at', [$now->copy()->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', ['pending', 'approved', 'on_progress', 'PENDING', 'APPROVED'])
             ->orderBy('start_at')
             ->get()
             ->map(function ($b) {
                 $startAt = Carbon::parse($b->start_at, $this->tz);
                 $endAt   = Carbon::parse($b->end_at,   $this->tz);
                 return [
-                    'id'           => $b->vehiclebooking_id,
-                    'title'        => $b->purpose ?? 'Vehicle Booking',
-                    'vehicle_name' => $b->vehicle->name ?? 'Vehicle',
-                    'plate_number' => $b->vehicle->plate_number ?? '-',
-                    'borrower'     => $b->user->full_name ?? $b->borrower_name ?? 'Unknown',
-                    'department'   => $b->department->department_name ?? 'Unknown',
-                    'purpose'      => $b->purpose ?? '-',
-                    'destination'  => $b->destination ?? '-',
-                    'start_date'   => $startAt->format('l, d M Y'),
-                    'end_date'     => $endAt->format('l, d M Y'),
-                    'start_time'   => $startAt->format('H:i'),
-                    'end_time'     => $endAt->format('H:i'),
+                    'id'            => $b->vehiclebooking_id,
+                    'title'         => $b->purpose ?? 'Vehicle Booking',
+                    'vehicle_name'  => $b->vehicle->name ?? 'Vehicle',
+                    'plate_number'  => $b->vehicle->plate_number ?? '-',
+                    'borrower'      => $b->user->full_name ?? $b->borrower_name ?? 'Unknown',
+                    'department'    => $b->department->department_name ?? 'Unknown',
+                    'purpose'       => $b->purpose ?? '-',
+                    'destination'   => $b->destination ?? '-',
+                    'start_date'    => $startAt->format('l, d M Y'),
+                    'end_date'      => $endAt->format('l, d M Y'),
+                    'start_time'    => $startAt->format('H:i'),
+                    'end_time'      => $endAt->format('H:i'),
                     'start_at_full' => $startAt->format('d M Y H:i'),
                     'end_at_full'   => $endAt->format('d M Y H:i'),
-                    'status'       => $b->status,
+                    'status'        => $b->status,
+                    'is_priority'   => false,
+                    'requested_by'  => null,
                 ];
-            })
+            });
+
+        // Priority vehicle bookings for this vehicle (pending + approved)
+        $priorityBookings = \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager', 'department'])
+            ->where('vehicle_id', $vehicleId)
+            ->whereBetween('start_at', [$now->copy()->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+            ])
+            ->orderBy('start_at')
+            ->get()
+            ->map(function ($pb) {
+                $startAt = Carbon::parse($pb->start_at, $this->tz);
+                $endAt   = Carbon::parse($pb->end_at,   $this->tz);
+                return [
+                    'id'            => 'priority-' . $pb->id,
+                    'title'         => $pb->purpose ?? 'Priority Vehicle Booking',
+                    'vehicle_name'  => $pb->vehicle->name ?? 'Vehicle',
+                    'plate_number'  => $pb->vehicle->plate_number ?? '-',
+                    'borrower'      => $pb->manager?->full_name ?? '—',
+                    'department'    => $pb->department?->department_name ?? '—',
+                    'purpose'       => $pb->purpose ?? '-',
+                    'destination'   => $pb->destination ?? '-',
+                    'start_date'    => $startAt->format('l, d M Y'),
+                    'end_date'      => $endAt->format('l, d M Y'),
+                    'start_time'    => $startAt->format('H:i'),
+                    'end_time'      => $endAt->format('H:i'),
+                    'start_at_full' => $startAt->format('d M Y H:i'),
+                    'end_at_full'   => $endAt->format('d M Y H:i'),
+                    'status'        => $pb->statusLabel(),
+                    'is_priority'   => true,
+                    'requested_by'  => $pb->manager?->full_name ?? '—',
+                ];
+            });
+
+        // Merge and sort by start_at
+        $this->vehicleScheduleData = $regularBookings->concat($priorityBookings)
+            ->sortBy(fn($b) => $b['start_date'] . ' ' . $b['start_time'])
+            ->values()
             ->toArray();
 
         $this->showVehicleScheduleModal = true;
