@@ -6,6 +6,7 @@ use App\Models\BookingRoom;
 use App\Models\PriorityRoomBooking;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -33,6 +34,56 @@ class RoomApproval extends Component
     public function tick(): void
     {
         // No action needed; Livewire will automatically re-render and re-query
+    }
+
+    // ─────────────── Auto-progress helpers ───────────────
+
+    /**
+     * Promote approved room bookings to 'completed' once their end_time has passed.
+     * Uses the same COALESCE expression as AutoCompleteBookings so behaviour is identical.
+     * Called on every render so transitions happen without waiting for the scheduler.
+     */
+    private function autoProgressToCompleted(): void
+    {
+        $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'));
+
+        // 1-minute tolerance: a booking ending at 11:00 is completed at 11:01,
+        // identical to AutoCompleteBookings::handle().
+        $threshold = $now->copy()->subMinute()->toDateTimeString();
+
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN end_time END,
+            CASE WHEN `date`   REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN `date`  END,
+            CONCAT(`date`, ' ', end_time)
+        )";
+
+        DB::transaction(function () use ($threshold, $endExpr) {
+            // 1. Approved bookings whose end time has passed → completed
+            BookingRoom::query()
+                ->where('status', 'approved')
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$threshold])
+                ->update([
+                    'status'     => 'completed',
+                    'updated_at' => now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString(),
+                ]);
+
+            // 2. Pending bookings whose end time has already passed will never be
+            //    approved — reject them automatically so they leave the active view.
+            BookingRoom::query()
+                ->where('status', 'pending')
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$threshold])
+                ->update([
+                    'status'     => 'rejected',
+                    'book_reject' => 'Auto-rejected: booking window expired without approval.',
+                    'updated_at' => now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString(),
+                ]);
+        });
     }
 
     public function openPriorityDetail(int $id): void
@@ -71,6 +122,12 @@ class RoomApproval extends Component
 
     public function render()
     {
+        // Advance status for any bookings whose time window has passed.
+        // This is the scheduler-independent fallback: transitions happen on
+        // every page render so users never see stale active/ongoing rows.
+        $this->autoProgressToCompleted();
+        PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
+
         $cid = Auth::user()?->company_id;
         $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString();
 

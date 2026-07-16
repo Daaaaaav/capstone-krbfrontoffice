@@ -143,7 +143,8 @@ class BookingsApproval extends Component
         )";
 
         return DB::transaction(function () use ($now, $endExpr) {
-            return BookingRoom::query()
+            // 1. Approved bookings whose end time has passed → completed
+            $completed = BookingRoom::query()
                 ->where('status', 'approved')
                 ->whereNotNull('date')
                 ->whereNotNull('end_time')
@@ -153,6 +154,22 @@ class BookingsApproval extends Component
                     'status'     => 'completed',
                     'updated_at' => Carbon::now($this->tz)->toDateTimeString(),
                 ]);
+
+            // 2. Pending bookings whose end time has already passed will never be
+            //    approved — reject them automatically so they leave the active view.
+            BookingRoom::query()
+                ->where('status', 'pending')
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$now])
+                ->update([
+                    'status'      => 'rejected',
+                    'book_reject' => 'Auto-rejected: booking window expired without approval.',
+                    'updated_at'  => Carbon::now($this->tz)->toDateTimeString(),
+                ]);
+
+            return $completed;
         });
     }
 

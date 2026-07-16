@@ -31,7 +31,8 @@ class AutoCompleteBookings extends Command
 
         // ── Regular room bookings ────────────────────────────────────────────
         $updatedRooms = DB::transaction(function () use ($threshold, $endExpr) {
-            return BookingRoom::query()
+            // 1. Approved → completed when end time has passed
+            $completed = BookingRoom::query()
                 ->whereNotNull('date')
                 ->whereNotNull('end_time')
                 ->whereRaw("$endExpr IS NOT NULL")
@@ -43,6 +44,23 @@ class AutoCompleteBookings extends Command
                     'status'     => 'completed',
                     'updated_at' => Carbon::now($this->tz)->toDateTimeString(),
                 ]);
+
+            // 2. Pending → rejected when end time has passed (will never be approved)
+            BookingRoom::query()
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$threshold])
+                ->where(function ($q) {
+                    $q->whereRaw("LOWER(TRIM(`status`)) = 'pending'");
+                })
+                ->update([
+                    'status'      => 'rejected',
+                    'book_reject' => 'Auto-rejected: booking window expired without approval.',
+                    'updated_at'  => Carbon::now($this->tz)->toDateTimeString(),
+                ]);
+
+            return $completed;
         });
 
         // ── Priority room bookings ────────────────────────────────────────────
