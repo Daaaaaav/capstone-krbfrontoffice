@@ -913,8 +913,10 @@
 
 {{-- Notification Panel --}}
 @if($showNotifPanel)
-<div class="fixed inset-0 z-[90]" wire:click.self="closeNotifPanel">
-    <div class="absolute top-20 right-6 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+<div class="fixed inset-0 z-[90]">
+    {{-- transparent click-outside backdrop --}}
+    <div class="absolute inset-0" wire:click="closeNotifPanel"></div>
+    <div class="absolute top-20 right-6 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden relative z-10">
         <div class="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
             <p class="text-sm font-semibold text-foreground">Priority Vehicle Notifications</p>
             <button wire:click="closeNotifPanel" class="text-muted-foreground hover:text-foreground transition">
