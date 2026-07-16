@@ -8,6 +8,7 @@ use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Guestbook as GuestbookModel;
 use App\Models\GuestbookQrCode;
+use App\Models\GuestbookCheckoutAttempt;
 use Carbon\Carbon;
 
 #[Layout('layouts.receptionist')]
@@ -45,46 +46,42 @@ class GuestbookCheckout extends Component
         $this->scannedCount  = $entry->scannedQrCount();
         $this->qrStatus      = $entry->qr_status ?? 'pending';
 
-        // Build the initial scan log from DB records so any device resuming
-        // the session sees the same history.
+        // Load all recorded attempts (success + failure) ordered newest-first.
+        // This ensures any device opening the page sees the full history.
         $tz = config('app.timezone', 'Asia/Jakarta');
-        $this->initialScanLog = GuestbookQrCode::where('guestbook_id', $entry->guestbook_id)
-            ->orderByDesc('scanned_at')
+
+        $this->initialScanLog = GuestbookCheckoutAttempt::where('guestbook_id', $entry->guestbook_id)
+            ->orderByDesc('attempted_at')
             ->get()
-            ->map(function (GuestbookQrCode $qr) use ($tz): ?array {
-                $scannedAt = $qr->scanned_at
-                    ? $qr->scanned_at->setTimezone($tz)->format('H:i:s')
-                    : null;
-
-                if ($qr->is_scanned) {
-                    return [
-                        'success'        => true,
-                        'message'        => 'Pengunjung ' . $qr->visitor_number . ' berhasil checkout',
-                        'visitorNumber'  => $qr->visitor_number,
-                        'time'           => $scannedAt ?? '--:--:--',
-                    ];
-                }
-
-                return null; // not yet scanned — exclude
-            })
-            ->filter()
+            ->map(fn (GuestbookCheckoutAttempt $a) => [
+                'success'       => $a->success,
+                'message'       => $a->message,
+                'visitorNumber' => $a->visitor_number,
+                'time'          => $a->attempted_at
+                    ? $a->attempted_at->setTimezone($tz)->format('H:i:s')
+                    : '--:--:--',
+            ])
             ->values()
             ->toArray();
     }
 
     public function processScan(string $qrContent): array
     {
+        $tz     = config('app.timezone', 'Asia/Jakarta');
+        $now    = Carbon::now($tz);
         $prefix = 'GUESTBOOK-CHECKOUT:';
+
         if (!str_starts_with($qrContent, $prefix)) {
-            // For backward compatibility with older QR formats (without prefix)
-            // check if length is 64 hex characters
+            // Backward compatibility: bare 64-char hex token
             if (strlen($qrContent) === 64 && ctype_xdigit($qrContent)) {
                 $token = $qrContent;
             } else {
-                return [
+                $result = [
                     'success' => false,
                     'message' => 'Format QR code tidak valid untuk Guestbook.',
                 ];
+                $this->recordAttempt($result, 'invalid', null, $now);
+                return $result;
             }
         } else {
             $token = substr($qrContent, strlen($prefix));
@@ -95,23 +92,27 @@ class GuestbookCheckout extends Component
             ->first();
 
         if (!$qrCode) {
-            return [
+            $result = [
                 'success' => false,
                 'message' => 'QR Code tidak ditemukan atau milik rombongan lain.',
             ];
+            $this->recordAttempt($result, 'invalid', null, $now);
+            return $result;
         }
 
         if ($qrCode->is_scanned) {
-            return [
-                'success' => false,
-                'message' => 'QR Code ini sudah di-scan sebelumnya.',
+            $result = [
+                'success'        => false,
+                'message'        => 'QR Code ini sudah di-scan sebelumnya.',
                 'visitor_number' => $qrCode->visitor_number,
             ];
+            $this->recordAttempt($result, 'already_scanned', $qrCode->visitor_number, $now);
+            return $result;
         }
 
         $qrCode->update([
             'is_scanned' => true,
-            'scanned_at' => Carbon::now(config('app.timezone', 'Asia/Jakarta')),
+            'scanned_at' => $now,
         ]);
 
         $this->scannedCount++;
@@ -121,17 +122,34 @@ class GuestbookCheckout extends Component
             $this->qrStatus = 'completed';
             GuestbookModel::where('guestbook_id', $this->guestbookId)->update([
                 'qr_status' => 'completed',
-                'jam_out'   => Carbon::now(config('app.timezone', 'Asia/Jakarta'))->format('H:i'),
+                'jam_out'   => $now->format('H:i'),
             ]);
         }
 
-        return [
+        $result = [
             'success'        => true,
             'message'        => 'Pengunjung ' . $qrCode->visitor_number . ' berhasil checkout',
             'visitor_number' => $qrCode->visitor_number,
             'scanned_count'  => $this->scannedCount,
             'all_done'       => $allDone,
         ];
+        $this->recordAttempt($result, null, $qrCode->visitor_number, $now);
+        return $result;
+    }
+
+    /**
+     * Persist a scan attempt so it survives page reloads and different devices.
+     */
+    private function recordAttempt(array $result, ?string $errorType, ?int $visitorNumber, Carbon $at): void
+    {
+        GuestbookCheckoutAttempt::create([
+            'guestbook_id'   => $this->guestbookId,
+            'success'        => $result['success'],
+            'message'        => $result['message'],
+            'visitor_number' => $visitorNumber,
+            'error_type'     => $errorType,
+            'attempted_at'   => $at,
+        ]);
     }
 
     public function render()
