@@ -92,6 +92,26 @@ class PriorityRoomBooking extends Model
     }
 
     /**
+     * Auto-approve non-clashing priority room bookings (status = pending_receipt) whose
+     * scheduled start time has arrived. These have no conflict so no receptionist action is
+     * needed — they move directly to approved (ongoing) as soon as the meeting begins.
+     */
+    public static function autoApproveNonClashing(?int $companyId): void
+    {
+        $now = now();
+
+        static::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', self::STATUS_PENDING_RECEIPT)
+            ->where('date', $now->toDateString())
+            ->where('start_time', '<=', $now->format('H:i:s'))
+            ->update([
+                'status'     => self::STATUS_APPROVED,
+                'updated_at' => $now->toDateTimeString(),
+            ]);
+    }
+
+    /**
      * Auto-complete any approved priority room bookings whose scheduled end time has passed.
      * Transitions approved → completed so they leave the active/ongoing view and appear in history.
      */

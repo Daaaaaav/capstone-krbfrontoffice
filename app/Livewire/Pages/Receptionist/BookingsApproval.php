@@ -673,6 +673,9 @@ class BookingsApproval extends Component
         // Auto-complete approved priority room bookings whose end time has passed
         PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
 
+        // Auto-approve non-clashing priority bookings (pending_receipt) once start time arrives
+        PriorityRoomBooking::autoApproveNonClashing(Auth::user()->company_id ?? null);
+
         $cols = [
             'bookingroom_id', 'meeting_title', 'booking_type', 'online_provider',
             'online_meeting_url', 'online_meeting_code', 'online_meeting_password',
