@@ -425,6 +425,26 @@ return [
     'csv_missing_columns'       => 'CSV tidak memiliki kolom yang diperlukan: :columns',
     'csv_upload_success'        => 'CSV ":name" berhasil diunggah dan kini aktif digunakan.',
     'csv_upload_failed'         => 'Pengunggahan gagal. Periksa file dan coba lagi.',
+    'csv_upload_failed_detail'  => 'Pengunggahan gagal: :detail',
+
+    // ── Pesan validasi CSV ────────────────────────────────────────────────────
+    'csv_error_no_file'         => 'Silakan pilih file CSV sebelum mengunggah.',
+    'csv_error_not_file'        => 'Item yang dipilih bukan file yang valid.',
+    'csv_error_wrong_type'      => 'Hanya file .csv atau .txt yang diterima.',
+    'csv_error_too_large'       => 'File melebihi batas ukuran 10 MB.',
+
+    // ── Panduan format CSV ────────────────────────────────────────────────────
+    'csv_format_guide_title'    => 'Persyaratan Format CSV',
+    'csv_guide_header_required' => 'Baris pertama harus berisi nama kolom (tidak membedakan huruf besar/kecil).',
+    'csv_guide_columns'         => 'Kolom yang diperlukan (urutan bebas)',
+    'csv_guide_date_format'     => 'Format tanggal',
+    'csv_guide_date_example'    => 'contoh',
+    'csv_guide_numeric'         => 'Semua kolom nilai harus berisi bilangan bulat (integer).',
+    'csv_guide_order'           => 'Baris harus diurutkan berdasarkan tanggal menaik (terlama dulu).',
+    'csv_guide_file_type'       => 'Jenis file yang diterima',
+    'csv_guide_or'              => 'atau',
+    'csv_guide_max_size'        => 'ukuran maks',
+    'csv_guide_example'         => 'Contoh',
 
     // ── Occupancy Forecasting ─────────────────────────────────────────────────
     'occupancy_title'           => 'Prakiraan Hunian',

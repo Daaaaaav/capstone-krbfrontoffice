@@ -437,6 +437,26 @@ return [
     'csv_missing_columns'       => 'CSV is missing required columns: :columns',
     'csv_upload_success'        => 'CSV ":name" uploaded successfully and is now active.',
     'csv_upload_failed'         => 'Upload failed. Please check the file and try again.',
+    'csv_upload_failed_detail'  => 'Upload failed: :detail',
+
+    // ── CSV validation messages ───────────────────────────────────────────────
+    'csv_error_no_file'         => 'Please select a CSV file before uploading.',
+    'csv_error_not_file'        => 'The selected item is not a valid file.',
+    'csv_error_wrong_type'      => 'Only .csv or .txt files are accepted.',
+    'csv_error_too_large'       => 'The file exceeds the 10 MB size limit.',
+
+    // ── CSV format guidance ───────────────────────────────────────────────────
+    'csv_format_guide_title'    => 'CSV Format Requirements',
+    'csv_guide_header_required' => 'The first row must contain column headers (case-insensitive).',
+    'csv_guide_columns'         => 'Required columns (any order)',
+    'csv_guide_date_format'     => 'Date format',
+    'csv_guide_date_example'    => 'e.g.',
+    'csv_guide_numeric'         => 'All value columns must contain whole numbers (integers).',
+    'csv_guide_order'           => 'Rows must be in ascending date order (oldest first).',
+    'csv_guide_file_type'       => 'Accepted file types',
+    'csv_guide_or'              => 'or',
+    'csv_guide_max_size'        => 'max size',
+    'csv_guide_example'         => 'Example',
 
     // ── Occupancy Forecasting ─────────────────────────────────────────────────
     'occupancy_title'           => 'Occupancy Forecasting',

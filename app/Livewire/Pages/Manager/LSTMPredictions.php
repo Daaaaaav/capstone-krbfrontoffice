@@ -91,9 +91,21 @@ class LSTMPredictions extends Component
         $this->uploadError   = null;
         $this->uploadSuccess = null;
 
-        $this->validate();
+        // Validate file presence, type, and size with descriptive messages
+        $this->validate($this->rules(), [
+            'uploadedCsv.required' => __('app.csv_error_no_file'),
+            'uploadedCsv.file'     => __('app.csv_error_not_file'),
+            'uploadedCsv.mimes'    => __('app.csv_error_wrong_type'),
+            'uploadedCsv.max'      => __('app.csv_error_too_large'),
+        ]);
 
         try {
+            // Ensure the upload directory exists (guards against missing dir after deploy)
+            $uploadDir = Storage::disk(CsvDataReader::DISK)->path(CsvDataReader::UPLOAD_PATH);
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
             $reader = new CsvDataReader();
 
             // Store to a temp path first so we can inspect the headers
@@ -101,6 +113,10 @@ class LSTMPredictions extends Component
                 CsvDataReader::UPLOAD_PATH,
                 CsvDataReader::DISK
             );
+
+            if (!$tmpPath) {
+                throw new \RuntimeException('File could not be stored. Check storage permissions.');
+            }
 
             $missing = $reader->validateColumns($tmpPath);
 
@@ -134,7 +150,9 @@ class LSTMPredictions extends Component
 
         } catch (\Throwable $e) {
             Log::error('LSTMPredictions: CSV upload failed', ['error' => $e->getMessage()]);
-            $this->uploadError = __('app.csv_upload_failed');
+            $this->uploadError = __('app.csv_upload_failed_detail', [
+                'detail' => $e->getMessage(),
+            ]);
             $this->uploadedCsv = null;
         }
     }

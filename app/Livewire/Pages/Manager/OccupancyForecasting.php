@@ -57,11 +57,31 @@ class OccupancyForecasting extends Component
         $this->uploadError   = null;
         $this->uploadSuccess = null;
 
-        $this->validate(['uploadedCsv' => 'required|file|mimes:csv,txt|max:10240']);
+        // Validate file presence, type, and size with descriptive messages
+        $this->validate(
+            ['uploadedCsv' => 'required|file|mimes:csv,txt|max:10240'],
+            [
+                'uploadedCsv.required' => __('app.csv_error_no_file'),
+                'uploadedCsv.file'     => __('app.csv_error_not_file'),
+                'uploadedCsv.mimes'    => __('app.csv_error_wrong_type'),
+                'uploadedCsv.max'      => __('app.csv_error_too_large'),
+            ]
+        );
 
         try {
+            // Ensure the upload directory exists (guards against missing dir after deploy)
+            $uploadDir = Storage::disk(CsvDataReader::DISK)->path(CsvDataReader::UPLOAD_PATH);
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
             $reader  = new CsvDataReader();
             $tmpPath = $this->uploadedCsv->store(CsvDataReader::UPLOAD_PATH, CsvDataReader::DISK);
+
+            if (!$tmpPath) {
+                throw new \RuntimeException('File could not be stored. Check storage permissions.');
+            }
+
             $missing = $reader->validateColumns($tmpPath);
 
             if (!empty($missing)) {
@@ -82,9 +102,16 @@ class OccupancyForecasting extends Component
             $this->trainingSource  = 'csv_upload';
             $this->uploadSuccess   = __('app.csv_upload_success', ['name' => $this->uploadedCsvName]);
 
+            Log::info('OccupancyForecasting: CSV uploaded', [
+                'path' => $tmpPath,
+                'name' => $this->uploadedCsvName,
+            ]);
+
         } catch (\Throwable $e) {
             Log::error('OccupancyForecasting: CSV upload failed', ['error' => $e->getMessage()]);
-            $this->uploadError = __('app.csv_upload_failed');
+            $this->uploadError = __('app.csv_upload_failed_detail', [
+                'detail' => $e->getMessage(),
+            ]);
             $this->uploadedCsv = null;
         }
     }

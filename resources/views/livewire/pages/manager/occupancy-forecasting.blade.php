@@ -149,12 +149,35 @@
                 {{-- ── CSV UPLOAD FORM (shown only when csv_upload is active) ── --}}
                 @if($trainingSource === 'csv_upload')
                     <div class="mt-4 p-4 bg-[#f5f7f2] border border-[#d4dfc8] rounded-xl space-y-3">
-                        <p class="text-xs font-medium text-[#4E653D]">{{ __('app.csv_required_columns') }}:
-                            <span class="font-normal text-[#7a8f6a]">
-                                date, visitors, docs_packages_received, docs_packages_sent,
-                                offline_room_bookings, online_room_bookings, vehicle_bookings
-                            </span>
-                        </p>
+
+                        {{-- CSV Format Guidance --}}
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                            <p class="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ __('app.csv_format_guide_title') }}
+                            </p>
+                            <ul class="text-xs text-blue-700 space-y-1 pl-5 list-disc">
+                                <li>{{ __('app.csv_guide_header_required') }}</li>
+                                <li>{{ __('app.csv_guide_columns') }}:
+                                    <code class="px-1 py-0.5 bg-blue-100 rounded text-blue-900 font-mono text-[10px]">
+                                        date, visitors, docs_packages_received, docs_packages_sent, offline_room_bookings, online_room_bookings, vehicle_bookings
+                                    </code>
+                                </li>
+                                <li>{{ __('app.csv_guide_date_format') }}: <code class="px-1 py-0.5 bg-blue-100 rounded text-blue-900 font-mono text-[10px]">YYYY-MM-DD</code> ({{ __('app.csv_guide_date_example') }}: <code class="font-mono text-[10px]">2024-01-15</code>)</li>
+                                <li>{{ __('app.csv_guide_numeric') }}</li>
+                                <li>{{ __('app.csv_guide_order') }}</li>
+                                <li>{{ __('app.csv_guide_file_type') }}: <code class="font-mono text-[10px]">.csv</code> {{ __('app.csv_guide_or') }} <code class="font-mono text-[10px]">.txt</code>, {{ __('app.csv_guide_max_size') }}: 10 MB</li>
+                            </ul>
+                            <div class="mt-2 pt-2 border-t border-blue-200">
+                                <p class="text-[10px] font-semibold text-blue-700 mb-1">{{ __('app.csv_guide_example') }}:</p>
+                                <pre class="text-[10px] font-mono text-blue-800 bg-blue-100 rounded px-2 py-1.5 overflow-x-auto whitespace-pre">date,visitors,docs_packages_received,docs_packages_sent,offline_room_bookings,online_room_bookings,vehicle_bookings
+2024-01-01,45,3,2,4,2,1
+2024-01-02,52,5,1,6,3,2
+2024-01-03,38,2,4,3,1,0</pre>
+                            </div>
+                        </div>
 
                         {{-- Error --}}
                         @if($uploadError)
