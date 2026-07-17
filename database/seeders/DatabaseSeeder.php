@@ -117,6 +117,20 @@ class DatabaseSeeder extends Seeder
                             'role' => 'Receptionist',
                             'department' => 'IT',
                         ],
+                         [
+                            'full_name' => 'Gilang Receptionist',
+                            'email' => 'gilangatha999@gmail.com',
+                            'phone_number' => '081234567891',
+                            'role' => 'Receptionist',
+                            'department' => 'Administration',
+                        ],
+                        [
+                            'full_name' => 'Gilang Manager',
+                            'email' => 'gilangatha@gmail.com',
+                            'phone_number' => '081234567891',
+                            'role' => 'Manager',
+                            'department' => 'IT',
+                        ],
                         [
                             'full_name' => 'Madoka Higuchi',
                             'email' => 'davinad828@gmail.com',
