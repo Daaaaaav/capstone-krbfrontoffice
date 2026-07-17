@@ -77,7 +77,7 @@ class Bookingvehicle extends Component
             'purpose'              => ['required', 'string', 'max:255'],
             'destination'          => ['nullable', 'string', 'max:255'],
             'odd_even_area'        => ['nullable', 'string', 'max:50'],
-            'purpose_type'         => ['nullable', 'string', 'max:50'],
+            'purpose_type'         => ['required', 'string', 'in:dinas,operasional,antar_jemput,lainnya'],
             'purpose_type_other'   => ['required_if:purpose_type,lainnya', 'nullable', 'string', 'max:255'],
         ];
     }

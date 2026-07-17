@@ -537,7 +537,7 @@
 
                         {{-- Jenis keperluan --}}
                         <div class="flex flex-col justify-end">
-                            <label class="{{ $label }}">{{ __('app.purpose_type') }}</label>
+                            <label class="{{ $label }}">{{ __('app.purpose_type') }} <span class="text-destructive">*</span></label>
                             <div
                                 x-data="{
                                     open: false,

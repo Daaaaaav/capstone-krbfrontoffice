@@ -268,7 +268,7 @@
                         @endphp
                         <div wire:key="priority-hist-{{ $pb->id }}"
                              class="bg-white border border-amber-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-amber-300 transition-all group">
-                            <div class="flex items-start gap-3 cursor-pointer" wire:click="openPriorityDetail({{ $pb->id }})">
+                            <div class="flex items-start gap-3">
                             <div class="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
                                 <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
                             </div>
@@ -290,11 +290,6 @@
                             </div>
                             {{-- Action buttons — same pattern as normal bookings --}}
                             <div class="pt-2 border-t border-amber-100 flex justify-end gap-2">
-                                <button type="button"
-                                    wire:click="openPriorityDetail({{ $pb->id }})"
-                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 focus:outline-none transition">
-                                    {{ __('app.detail') }}
-                                </button>
                                 <button type="button"
                                     wire:click="openPriorityEdit({{ $pb->id }})"
                                     class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
