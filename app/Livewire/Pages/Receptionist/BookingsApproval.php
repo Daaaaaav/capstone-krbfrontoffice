@@ -693,14 +693,29 @@ class BookingsApproval extends Component
             CONCAT(date, ' ', start_time)
         )";
 
-        // Pending tab: bookings with status='pending' PLUS approved bookings whose
-        // start time has NOT yet arrived (approved-but-not-started). This way a
-        // manually-approved future meeting stays visible here with an "Approved" badge.
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN end_time END,
+            CASE WHEN date     REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date     END,
+            CONCAT(date, ' ', end_time)
+        )";
+
+        // Pending tab: bookings with status='pending' whose booking window has NOT yet
+        // closed (end_time > now), PLUS approved bookings whose start time has NOT yet
+        // arrived (approved-but-not-started). Expired-window pending bookings are
+        // excluded here — they are auto-rejected by the scheduler (or the render-time
+        // fallback above) once their end_time passes.
         $pending = BookingRoom::query()
             ->with(['room', 'requirements', 'user.department', 'department'])
-            ->where(function ($q) use ($now, $startExpr) {
-                $q->where('status', 'pending')
+            ->where(function ($q) use ($now, $startExpr, $endExpr) {
+                $q->where(function ($q1) use ($now, $endExpr) {
+                      // Pending but end time hasn't passed yet — still actionable
+                      $q1->where('status', 'pending')
+                         ->whereNotNull('date')
+                         ->whereNotNull('end_time')
+                         ->whereRaw("$endExpr > ?", [$now]);
+                  })
                   ->orWhere(function ($q2) use ($now, $startExpr) {
+                      // Approved but not yet started — show with "Approved" badge
                       $q2->where('status', 'approved')
                          ->whereNotNull('date')
                          ->whereNotNull('start_time')

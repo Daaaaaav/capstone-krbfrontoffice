@@ -137,12 +137,27 @@ class RoomApproval extends Component
             CONCAT(date, ' ', start_time)
         )";
 
-        // Pending tab: truly pending PLUS approved bookings not yet started.
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN end_time END,
+            CASE WHEN date     REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date     END,
+            CONCAT(date, ' ', end_time)
+        )";
+
+        // Pending tab: pending bookings whose window has NOT yet closed (end > now),
+        // PLUS approved bookings not yet started. Expired-window pending rows are
+        // excluded here — the render-time fallback above already rejected them.
         $pending = BookingRoom::with('room')
             ->company($cid)
-            ->where(function ($q) use ($now, $startExpr) {
-                $q->pending()
+            ->where(function ($q) use ($now, $startExpr, $endExpr) {
+                $q->where(function ($q1) use ($now, $endExpr) {
+                      // Still-actionable pending: end time hasn't passed yet
+                      $q1->pending()
+                         ->whereNotNull('date')
+                         ->whereNotNull('end_time')
+                         ->whereRaw("$endExpr > ?", [$now]);
+                  })
                   ->orWhere(function ($q2) use ($now, $startExpr) {
+                      // Approved but not yet started — show with "Approved" badge
                       $q2->approved()
                          ->whereNotNull('date')
                          ->whereNotNull('start_time')
