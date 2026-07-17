@@ -78,6 +78,10 @@ class BookingHistory extends Component
     ];
     public array $statusLogs = [];
 
+    // Priority booking detail modal
+    public bool $showPriorityDetailModal = false;
+    public ?int $priorityDetailId        = null;
+
     // Tabs: done | rejected
     public string $activeTab = 'done';
 
@@ -230,6 +234,28 @@ class BookingHistory extends Component
     public function closeFilterModal(): void
     {
         $this->showFilterModal = false;
+    }
+
+    // ───────── Priority booking detail modal ─────────
+
+    public function openPriorityDetail(int $id): void
+    {
+        $this->priorityDetailId        = $id;
+        $this->showPriorityDetailModal = true;
+    }
+
+    public function closePriorityDetail(): void
+    {
+        $this->showPriorityDetailModal = false;
+        $this->priorityDetailId        = null;
+    }
+
+    /** Computed: load the PriorityRoomBooking being viewed */
+    public function getPriorityDetailBookingProperty(): ?PriorityRoomBooking
+    {
+        if (!$this->priorityDetailId) return null;
+        return PriorityRoomBooking::with(['room', 'manager'])
+            ->find($this->priorityDetailId);
     }
 
     // ───────── CRUD & modal ─────────
@@ -717,6 +743,7 @@ class BookingHistory extends Component
             'showFilterModal'      => $this->showFilterModal,
             'priorityRoomHistory'  => $priorityRoomHistory,
             'priorityRoomRejected' => $priorityRoomRejected,
+            'priorityDetailBooking' => $this->priorityDetailBooking,
         ]);
     }
 }

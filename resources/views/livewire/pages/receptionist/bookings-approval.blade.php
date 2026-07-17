@@ -514,22 +514,7 @@
                                                     {{ __('app.detail') }}
                                                 </button>
 
-                                                {{-- APPROVE BUTTON — only shown when still pending (not yet approved) --}}
-                                                @if($b->status === 'pending')
-                                                <button type="button"
-                                                    wire:click="approve({{ $b->bookingroom_id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:target="approve({{ $b->bookingroom_id }})"
-                                                    @if($needsGoogleConnect || $needsZoomConfig) disabled @endif
-                                                    class="px-4 py-2 text-xs font-medium rounded-lg border inline-flex items-center justify-center transition
-                                                        {{ ($needsGoogleConnect || $needsZoomConfig)
-                                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                                            : 'bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20' }}"
-                                                    @if($needsGoogleConnect) title="Google not connected" @elseif($needsZoomConfig) title="Zoom not configured" @endif>
-                                                    <x-heroicon-o-check class="w-3.5 h-3.5 inline-block mr-0.5"/>
-                                                    {{ __('app.approve') }}
-                                                </button>
-                                                @endif
+                                                {{-- Approve button removed: approval is handled automatically by the scheduler --}}
 
                                                 {{-- REJECT BUTTON (Red) - disabled if < 30min before meeting --}}
                                                 @php $canReject = canRejectBooking($b); @endphp
@@ -650,20 +635,7 @@
                                                                     class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition">
                                                                     {{ __('app.detail') }}
                                                                 </button>
-                                                                {{-- Approve button — only for still-pending bookings --}}
-                                                                @if($b->status === 'pending')
-                                                                <button type="button"
-                                                                    wire:click="approve({{ $b->bookingroom_id }})"
-                                                                    wire:loading.attr="disabled"
-                                                                    wire:target="approve({{ $b->bookingroom_id }})"
-                                                                    @if($needsGoogleConnect || $needsZoomConfig) disabled @endif
-                                                                    class="px-2.5 py-1.5 text-xs font-medium rounded-lg border transition
-                                                                        {{ ($needsGoogleConnect || $needsZoomConfig)
-                                                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                                                            : 'bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none' }}">
-                                                                    {{ __('app.approve') }}
-                                                                </button>
-                                                                @endif
+                                                                {{-- Approve button removed: approval is handled automatically by the scheduler --}}
                                                                 @php $canRejectTbl = canRejectBooking($b); @endphp
                                                                 <button type="button"
                                                                     wire:click="openReject({{ $b->bookingroom_id }})"
