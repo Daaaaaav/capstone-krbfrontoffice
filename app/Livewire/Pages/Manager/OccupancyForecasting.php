@@ -24,7 +24,7 @@ use Carbon\Carbon;
 class OccupancyForecasting extends Component
 {
     use WithFileUploads;
-    public string $forecastType     = 'room';   // choice of room | vehicle | combined
+    public string $forecastType     = 'combined';   // choice of room | vehicle | combined
     public int    $forecastDays     = 21;      // default to 21 days
     public string $trainingSource   = 'csv_server'; // csv_server | csv_upload | live_db
     public        $uploadedCsv      = null;

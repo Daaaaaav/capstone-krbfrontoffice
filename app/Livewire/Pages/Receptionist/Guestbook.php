@@ -197,8 +197,6 @@ class Guestbook extends Component
         $this->petugas_penjaga = $user?->full_name ?? $user?->name ?? 'Petugas Receptionist';
         $companyId = $this->companyId();
         
-        // 🔥 FIX FOR SQLSTATE[22007]: Converts empty string '' (from the select box) to null
-        // so MySQL accepts it for an INT/Foreign Key column.
         $this->department_id = $this->department_id === '' ? null : $this->department_id;
         $this->user_id       = $this->user_id === '' ? null : $this->user_id;
 
