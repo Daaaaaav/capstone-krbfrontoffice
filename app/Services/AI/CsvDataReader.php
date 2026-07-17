@@ -92,6 +92,54 @@ class CsvDataReader
     }
 
     /**
+     * Read the bundled server CSV and return a time series where 'count' is the
+     * sum of two or more metric columns — parsed in a **single** file pass.
+     *
+     * This avoids opening and scanning the same CSV file multiple times when
+     * the caller needs to add several columns together (e.g. offline_room_bookings
+     * + online_room_bookings to get a combined room-booking count).
+     *
+     * @param  string[] $metrics  Two or more column names from REQUIRED_COLUMNS (not 'date')
+     * @return array              [['date' => 'Y-m-d', 'count' => int], ...]
+     *
+     * @throws \RuntimeException|\InvalidArgumentException
+     */
+    public function readServerCsvColumnsSummed(array $metrics): array
+    {
+        $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
+
+        if (!file_exists($path)) {
+            throw new \RuntimeException(
+                'Server CSV not found at: ' . $path . '. ' .
+                'Run docs/generate_historical_csv.py and copy the output to storage/app/private/lstm/.'
+            );
+        }
+
+        return $this->parseCsvMultiColumn($path, $metrics);
+    }
+
+    /**
+     * Read an uploaded CSV file and return a time series where 'count' is the
+     * sum of two or more metric columns — parsed in a **single** file pass.
+     *
+     * @param  string   $storagePath
+     * @param  string[] $metrics
+     * @return array
+     *
+     * @throws \RuntimeException|\InvalidArgumentException
+     */
+    public function readUploadedCsvColumnsSummed(string $storagePath, array $metrics): array
+    {
+        $path = Storage::disk(self::DISK)->path($storagePath);
+
+        if (!file_exists($path)) {
+            throw new \RuntimeException('Uploaded CSV not found: ' . $storagePath);
+        }
+
+        return $this->parseCsvMultiColumn($path, $metrics);
+    }
+
+    /**
      * Validate that an uploaded file has the required columns.
      * Returns an array of missing column names (empty = valid).
      *
@@ -227,6 +275,107 @@ class CsvDataReader
             'path'   => basename($absolutePath),
             'metric' => $metric,
             'rows'   => count($timeSeries),
+        ]);
+
+        return $timeSeries;
+    }
+
+    /**
+     * Parse a CSV file into a [{date, count}] array where 'count' is the sum
+     * of all requested $metrics columns — in a single file pass.
+     *
+     * Identical validation and row-filtering behaviour as parseCsv().
+     *
+     * @param  string   $absolutePath
+     * @param  string[] $metrics  Must be valid non-date REQUIRED_COLUMNS entries
+     * @return array
+     *
+     * @throws \InvalidArgumentException|\RuntimeException
+     */
+    private function parseCsvMultiColumn(string $absolutePath, array $metrics): array
+    {
+        // Validate every requested metric up front
+        $validMetrics = array_diff(self::REQUIRED_COLUMNS, ['date']);
+        foreach ($metrics as $metric) {
+            if (!in_array($metric, $validMetrics, true)) {
+                throw new \InvalidArgumentException(
+                    "Invalid metric '{$metric}'. Must be one of: " . implode(', ', $validMetrics)
+                );
+            }
+        }
+
+        $handle = fopen($absolutePath, 'r');
+        if ($handle === false) {
+            throw new \RuntimeException("Cannot open CSV: {$absolutePath}");
+        }
+
+        // Read header row
+        $rawHeaders = fgetcsv($handle);
+        if ($rawHeaders === false) {
+            fclose($handle);
+            throw new \RuntimeException("CSV is empty: {$absolutePath}");
+        }
+
+        $headers = array_map('trim', array_map('strtolower', $rawHeaders));
+
+        // Check required columns
+        $missing = [];
+        foreach (self::REQUIRED_COLUMNS as $col) {
+            if (!in_array($col, $headers, true)) {
+                $missing[] = $col;
+            }
+        }
+        if (!empty($missing)) {
+            fclose($handle);
+            throw new \InvalidArgumentException(
+                'CSV is missing required columns: ' . implode(', ', $missing)
+            );
+        }
+
+        $dateIdx = array_search('date', $headers, true);
+
+        // Resolve column index for each requested metric once, before the loop
+        $metricIdxs = [];
+        foreach ($metrics as $m) {
+            $metricIdxs[] = array_search($m, $headers, true);
+        }
+        $maxIdx = max($dateIdx, ...$metricIdxs);
+
+        $timeSeries = [];
+
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) <= $maxIdx) {
+                continue; // skip malformed rows
+            }
+
+            $date = trim($row[$dateIdx]);
+
+            // Basic date sanity check
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                continue;
+            }
+
+            // Sum all requested metric columns for this row in one inner pass
+            $count = 0;
+            foreach ($metricIdxs as $idx) {
+                $count += max(0, (int) trim($row[$idx]));
+            }
+
+            $timeSeries[] = [
+                'date'  => $date,
+                'count' => $count,
+            ];
+        }
+
+        fclose($handle);
+
+        // Sort ascending by date (CSV should already be sorted, but be safe)
+        usort($timeSeries, fn($a, $b) => strcmp($a['date'], $b['date']));
+
+        Log::info('CsvDataReader: parsed CSV (multi-column)', [
+            'path'    => basename($absolutePath),
+            'metrics' => implode('+', $metrics),
+            'rows'    => count($timeSeries),
         ]);
 
         return $timeSeries;

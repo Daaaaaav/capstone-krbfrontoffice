@@ -62,6 +62,24 @@ class AISettings extends Model
     }
 
     /**
+     * Get multiple setting values in a single cache read.
+     * Returns key => casted_value for each requested key.
+     * Falls back to the corresponding $defaults entry when a key is missing.
+     *
+     * @param  array<string, mixed> $defaults  key => default_value pairs
+     * @return array<string, mixed>
+     */
+    public static function getMultiple(array $defaults): array
+    {
+        $all    = static::allCached();
+        $result = [];
+        foreach ($defaults as $key => $default) {
+            $result[$key] = array_key_exists($key, $all) ? $all[$key] : $default;
+        }
+        return $result;
+    }
+
+    /**
      * Bust the settings cache (call after any bulk update).
      */
     public static function bustCache(): void

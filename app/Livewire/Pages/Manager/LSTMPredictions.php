@@ -170,7 +170,11 @@ class LSTMPredictions extends Component
             $lstmClient      = new LSTMClient();
             $isLSTMAvailable = $lstmClient->isAvailable();
 
-            $timeSeries = $this->buildTimeSeries();
+            // ── Build time series and reuse the same CsvDataReader instance ───
+            // Pass $csvReader by reference so buildTimeSeries() can populate it,
+            // avoiding a second instantiation just for serverCsvInfo() below.
+            $csvReader  = new CsvDataReader();
+            $timeSeries = $this->buildTimeSeries($csvReader);
 
             // ── Get predictions ───────────────────────────────────────────────
             $result = null;
@@ -192,12 +196,35 @@ class LSTMPredictions extends Component
                 ]);
             }
 
-            // ── Build chart arrays ────────────────────────────────────────────
-            $predictions     = $result['predictions'];
-            $dailyLabels     = array_map(fn($p) => date('d/m', strtotime($p['date'])), $predictions);
-            $dailyPredicted  = array_map(fn($p) => round($p['predicted'], 1), $predictions);
-            $dailyLowerBound = array_map(fn($p) => round($p['lower_bound'], 1), $predictions);
-            $dailyUpperBound = array_map(fn($p) => round($p['upper_bound'], 1), $predictions);
+            // ── Build chart arrays and enrich predictions in a single pass ───────
+            // Previously four separate array_map() passes traversed $predictions
+            // four times.  One foreach produces the same four arrays, accumulates
+            // the confidence sum for the stats card, and pre-computes the day name
+            // for each row so the Blade table does not call Carbon::parse() per row
+            // (up to 21 instantiations per render).
+            $rawPredictions  = $result['predictions'];
+            $predictions     = [];
+            $dailyLabels     = [];
+            $dailyPredicted  = [];
+            $dailyLowerBound = [];
+            $dailyUpperBound = [];
+            $confidenceSum   = 0.0;
+
+            foreach ($rawPredictions as $p) {
+                $dailyLabels[]     = date('d/m', strtotime($p['date']));
+                $rounded           = round($p['predicted'], 1);
+                $dailyPredicted[]  = $rounded;
+                $dailyLowerBound[] = round($p['lower_bound'], 1);
+                $dailyUpperBound[] = round($p['upper_bound'], 1);
+                $confidenceSum    += $p['confidence'];
+
+                // Attach the pre-computed day name; Blade reads $pred['day_name']
+                // instead of calling \Carbon\Carbon::parse($pred['date'])->isoFormat('dddd').
+                $p['day_name'] = \Carbon\Carbon::parse($p['date'])->isoFormat('dddd');
+                $predictions[] = $p;
+            }
+
+            $predCount = count($predictions);
 
             // ── Weekly summary ────────────────────────────────────────────────
             $weeklyData = null;
@@ -210,9 +237,11 @@ class LSTMPredictions extends Component
             }
 
             // ── Stats cards ───────────────────────────────────────────────────
+            // $dailyPredicted and $confidenceSum were already built in the loop
+            // above — no extra array traversal needed here.
             $totalPredicted = array_sum($dailyPredicted);
-            $avgDaily       = $totalPredicted / max(1, count($dailyPredicted));
-            $avgConfidence  = array_sum(array_column($predictions, 'confidence')) / max(1, count($predictions));
+            $avgDaily       = $totalPredicted / max(1, $predCount);
+            $avgConfidence  = $predCount > 0 ? $confidenceSum / $predCount : 0;
             $maxDay         = !empty($dailyPredicted) ? max($dailyPredicted) : 0;
 
             $stats = [
@@ -223,8 +252,9 @@ class LSTMPredictions extends Component
             ];
 
             // ── CSV server metadata (shown in the UI) ─────────────────────────
-            $csvReader  = new CsvDataReader();
-            $csvInfo    = $csvReader->serverCsvInfo();
+            // Re-use the $csvReader already created above instead of instantiating
+            // a second CsvDataReader just for this one call.
+            $csvInfo = $csvReader->serverCsvInfo();
 
             return view('livewire.pages.manager.lstm-predictions', [
                 'isLSTMAvailable' => $isLSTMAvailable,
@@ -268,10 +298,13 @@ class LSTMPredictions extends Component
     /**
      * Build the time-series array from whichever source is currently active.
      * Falls back to the server CSV when the upload path is missing.
+     *
+     * Accepts an optional $reader so the caller can pass in an already-created
+     * CsvDataReader and avoid a second instantiation within the same request.
      */
-    private function buildTimeSeries(): array
+    private function buildTimeSeries(?CsvDataReader $reader = null): array
     {
-        $reader = new CsvDataReader();
+        $reader = $reader ?? new CsvDataReader();
 
         switch ($this->trainingSource) {
 

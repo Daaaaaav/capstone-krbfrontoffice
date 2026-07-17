@@ -92,16 +92,21 @@ class OccupancyForecasting extends Component
     public function render()
     {
         $companyId = Auth::user()->company_id;
-        $reader    = new CsvDataReader();
+
+        // ── Single CsvDataReader instance shared across render ────────────────
+        // Previously render() created one reader for csvInfo() and buildTimeSeries()
+        // created a second one internally.  One instance is passed down.
+        $reader = new CsvDataReader();
 
         // ── CSV INFO for server csv ───────────────────────────────────────────
         $this->csvInfo = $reader->serverCsvInfo();
 
         // ── Determine data source for training ────────────────────────────────
-        $roomHistory    = $this->buildTimeSeries('room');
-        $vehicleHistory = $this->buildTimeSeries('vehicle');
+        $roomHistory    = $this->buildTimeSeries('room',    $reader);
+        $vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
 
-        // LSTM forecast
+        // ── LSTM forecast ─────────────────────────────────────────────────────
+        // LSTMClient is instantiated once; isAvailable() is called once.
         $lstm        = new LSTMClient();
         $isAvailable = $lstm->isAvailable();
 
@@ -153,10 +158,13 @@ class OccupancyForecasting extends Component
     /**
      * Build time series from the selected data source for a given booking type.
      * type: 'room' | 'vehicle'
+     *
+     * Accepts an optional $reader so the caller can pass in an already-created
+     * CsvDataReader and avoid a second instantiation within the same request.
      */
-    private function buildTimeSeries(string $type): array
+    private function buildTimeSeries(string $type, ?CsvDataReader $reader = null): array
     {
-        $reader = new CsvDataReader();
+        $reader = $reader ?? new CsvDataReader();
 
         // Column names in the CSV that correspond to each booking type
         $csvMetric = match($type) {
@@ -171,7 +179,7 @@ class OccupancyForecasting extends Component
                 if ($this->uploadedCsvPath) {
                     try {
                         if ($type === 'room') {
-                            return $this->readRoomHistoryFromCsv($this->uploadedCsvPath);
+                            return $this->readRoomHistoryFromCsv($this->uploadedCsvPath, $reader);
                         }
                         return $reader->readUploadedCsv($this->uploadedCsvPath, $csvMetric);
                     } catch (\Throwable $e) {
@@ -186,7 +194,7 @@ class OccupancyForecasting extends Component
 
             case 'csv_server':
                 if ($type === 'room') {
-                    return $this->readRoomHistoryFromServerCsv();
+                    return $this->readRoomHistoryFromServerCsv($reader);
                 }
                 return $reader->readServerCsv($csvMetric);
 
@@ -202,32 +210,24 @@ class OccupancyForecasting extends Component
     }
 
     /**
-     * Read room history from server CSV (combines offline + online columns)
+     * Read room history from server CSV (combines offline + online columns).
+     *
+     * Previously called readServerCsv() twice — once for each column — causing
+     * the CSV file to be opened, read, and sorted twice.  Now uses
+     * readServerCsvColumnsSummed() to do both columns in a single file pass.
+     *
+     * Accepts an optional $reader to avoid a third instantiation within render().
      */
-    private function readRoomHistoryFromServerCsv(): array
+    private function readRoomHistoryFromServerCsv(?CsvDataReader $reader = null): array
     {
-        $reader = new CsvDataReader();
+        $reader = $reader ?? new CsvDataReader();
         try {
-            $offline = $reader->readServerCsv('offline_room_bookings');
-            $online  = $reader->readServerCsv('online_room_bookings');
-
-            // Merge by date
-            $merged = [];
-            $byDate = [];
-            foreach ($offline as $row) {
-                $byDate[$row['date']] = $row['count'];
-            }
-            foreach ($online as $row) {
-                $byDate[$row['date']] = ($byDate[$row['date']] ?? 0) + $row['count'];
-            }
-
-            foreach ($byDate as $date => $count) {
-                $merged[] = ['date' => $date, 'count' => $count];
-            }
-
-            usort($merged, fn($a, $b) => strcmp($a['date'], $b['date']));
-            return $merged;
-
+            // Single file pass: reads offline_room_bookings + online_room_bookings
+            // and sums them per date row, replacing the previous two-pass approach.
+            return $reader->readServerCsvColumnsSummed([
+                'offline_room_bookings',
+                'online_room_bookings',
+            ]);
         } catch (\Throwable $e) {
             Log::warning('OccupancyForecasting: failed to read room history from server CSV', [
                 'error' => $e->getMessage(),
@@ -237,31 +237,23 @@ class OccupancyForecasting extends Component
     }
 
     /**
-     * Read room history from uploaded CSV (combines offline + online columns)
+     * Read room history from uploaded CSV (combines offline + online columns).
+     *
+     * Same optimisation as readRoomHistoryFromServerCsv(): one file pass instead
+     * of two.
+     *
+     * Accepts an optional $reader to avoid a third instantiation within render().
      */
-    private function readRoomHistoryFromCsv(string $storagePath): array
+    private function readRoomHistoryFromCsv(string $storagePath, ?CsvDataReader $reader = null): array
     {
-        $reader = new CsvDataReader();
+        $reader = $reader ?? new CsvDataReader();
         try {
-            $offline = $reader->readUploadedCsv($storagePath, 'offline_room_bookings');
-            $online  = $reader->readUploadedCsv($storagePath, 'online_room_bookings');
-
-            $merged = [];
-            $byDate = [];
-            foreach ($offline as $row) {
-                $byDate[$row['date']] = $row['count'];
-            }
-            foreach ($online as $row) {
-                $byDate[$row['date']] = ($byDate[$row['date']] ?? 0) + $row['count'];
-            }
-
-            foreach ($byDate as $date => $count) {
-                $merged[] = ['date' => $date, 'count' => $count];
-            }
-
-            usort($merged, fn($a, $b) => strcmp($a['date'], $b['date']));
-            return $merged;
-
+            // Single file pass: reads offline_room_bookings + online_room_bookings
+            // and sums them per date row, replacing the previous two-pass approach.
+            return $reader->readUploadedCsvColumnsSummed($storagePath, [
+                'offline_room_bookings',
+                'online_room_bookings',
+            ]);
         } catch (\Throwable $e) {
             Log::warning('OccupancyForecasting: failed to read room history from uploaded CSV', [
                 'error' => $e->getMessage(),
@@ -295,12 +287,22 @@ class OccupancyForecasting extends Component
 
     private function movingAverageForecast(array $history, int $days): array
     {
-        // All magic numbers read from ai_settings table
-        $window     = (int)   AISettings::get('ma_window',      7);
-        $lowerMult  = (float) AISettings::get('ma_lower_bound', 0.8);
-        $upperMult  = (float) AISettings::get('ma_upper_bound', 1.2);
-        $confidence = (float) AISettings::get('ma_confidence',  0.60);
-        $floorAvg   = (float) AISettings::get('ma_floor_avg',   3.0);
+        // All magic numbers read from ai_settings table.
+        // Previously called AISettings::get() five times separately — each call
+        // hits Cache::remember() individually.  One getMultiple() call reads the
+        // shared cache entry once and resolves all five keys in a single pass.
+        $settings   = AISettings::getMultiple([
+            'ma_window'      => 7,
+            'ma_lower_bound' => 0.8,
+            'ma_upper_bound' => 1.2,
+            'ma_confidence'  => 0.60,
+            'ma_floor_avg'   => 3.0,
+        ]);
+        $window     = (int)   $settings['ma_window'];
+        $lowerMult  = (float) $settings['ma_lower_bound'];
+        $upperMult  = (float) $settings['ma_upper_bound'];
+        $confidence = (float) $settings['ma_confidence'];
+        $floorAvg   = (float) $settings['ma_floor_avg'];
 
         if (empty($history)) {
             $avg = $floorAvg;
@@ -358,21 +360,24 @@ class OccupancyForecasting extends Component
 
     private function buildChartData(?array $room, ?array $vehicle): array
     {
-        $labels = [];
+        $labels      = [];
         $roomData    = [];
         $vehicleData = [];
 
-        // Use whichever forecast is available for labels
-        $base = $room ?? $vehicle ?? [];
-        foreach ($base as $p) {
-            $labels[]    = date('d/m', strtotime($p['date']));
-            $roomData[]  = $room    ? round($p['predicted'], 1) : null;
-        }
+        // Use whichever forecast is available for labels.
+        // When both are present, they always have the same dates (same forecastDays,
+        // same base date), so a single combined loop covers both arrays at once,
+        // removing the second foreach that previously traversed $vehicle separately.
+        $base        = $room ?? $vehicle ?? [];
+        $hasRoom     = $room    !== null;
+        $hasVehicle  = $vehicle !== null;
 
-        if ($vehicle) {
-            foreach ($vehicle as $p) {
-                $vehicleData[] = round($p['predicted'], 1);
-            }
+        // If both arrays exist they are the same length (both come from the same
+        // forecastDays value), so we can zip them in one pass.
+        foreach ($base as $i => $p) {
+            $labels[]    = date('d/m', strtotime($p['date']));
+            $roomData[]  = $hasRoom    ? round($p['predicted'], 1) : null;
+            $vehicleData[] = $hasVehicle ? round($vehicle[$i]['predicted'], 1) : null;
         }
 
         return compact('labels', 'roomData', 'vehicleData');

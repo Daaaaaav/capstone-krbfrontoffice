@@ -285,7 +285,7 @@
                             @foreach($predictions as $pred)
                                 <tr class="hover:bg-[#f0f4eb]">
                                     <td class="px-6 py-4 text-[#2d3a24] font-medium">{{ $pred['date'] }}</td>
-                                    <td class="px-6 py-4 text-[#5a6e4a]">{{ \Carbon\Carbon::parse($pred['date'])->isoFormat('dddd') }}</td>
+                                    <td class="px-6 py-4 text-[#5a6e4a]">{{ $pred['day_name'] }}</td>
                                     <td class="px-6 py-4 text-right text-[#2d3a24] font-semibold">{{ number_format($pred['predicted'], 1) }}</td>
                                     <td class="px-6 py-4 text-right text-[#5a6e4a]">{{ number_format($pred['lower_bound'], 1) }}</td>
                                     <td class="px-6 py-4 text-right text-[#5a6e4a]">{{ number_format($pred['upper_bound'], 1) }}</td>
