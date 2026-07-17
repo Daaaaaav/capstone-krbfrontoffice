@@ -122,10 +122,9 @@ class RoomApproval extends Component
 
     public function render()
     {
-        // Advance status for any bookings whose time window has passed.
-        // This is the scheduler-independent fallback: transitions happen on
-        // every page render so users never see stale active/ongoing rows.
-        $this->autoProgressToCompleted();
+        // NOTE: Status transitions are handled exclusively by the scheduler
+        // (bookings:auto-approve, bookings:auto-complete). render() is
+        // read-only — it reflects whatever the database currently contains.
         PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
 
         $cid = Auth::user()?->company_id;

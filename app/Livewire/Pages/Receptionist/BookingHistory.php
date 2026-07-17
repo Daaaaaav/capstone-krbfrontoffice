@@ -674,7 +674,8 @@ class BookingHistory extends Component
 
     public function render()
     {
-        $this->autoProgressToDone();
+        // NOTE: Status transitions are handled exclusively by the scheduler.
+        // render() is read-only.
 
         $companyId = Auth::user()->company_id ?? null;
 

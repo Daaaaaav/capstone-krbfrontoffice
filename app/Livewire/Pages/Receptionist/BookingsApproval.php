@@ -666,7 +666,10 @@ class BookingsApproval extends Component
     public function render()
     {
         $this->autoApprovePending();
-        $this->autoProgressToCompleted();
+        // NOTE: Status transitions (approved→completed, pending→rejected) are
+        // handled exclusively by the scheduler (bookings:auto-complete,
+        // bookings:auto-approve). render() is read-only — it reflects whatever
+        // the database currently contains.
 
         // Auto-complete approved priority room bookings whose end time has passed
         PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);

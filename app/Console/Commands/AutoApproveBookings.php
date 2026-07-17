@@ -40,13 +40,65 @@ class AutoApproveBookings extends Command
         $this->info('[' . $now->toDateTimeString() . '] Running auto-approve check...');
 
         // ──────────────────────────────────────────────────────────────────
-        // 1. ROOM BOOKINGS — auto-approve intentionally disabled.
-        //    Room bookings should only be approved by a receptionist via the
-        //    Bookings Approval page. Auto-approving at start time would move
-        //    manually-approved future meetings straight to Ongoing, bypassing
-        //    the "Approved" badge in the Pending tab.
+        // 1. ROOM BOOKINGS — auto-approve pending bookings whose window has
+        //    already started but not yet ended.
+        //
+        //    When a pending booking reaches its start_time without manual
+        //    receptionist approval it would otherwise sit in Pending forever.
+        //    Auto-approving at start_time lets the full lifecycle run:
+        //      pending → approved (ongoing) → completed
+        //
+        //    Guard: only bookings whose end_time has NOT yet passed are
+        //    promoted. Bookings whose window is entirely in the past are
+        //    left for AutoCompleteBookings to reject (pending → rejected).
         // ──────────────────────────────────────────────────────────────────
-        $this->line('  Room bookings: auto-approve disabled — manual approval required.');
+        $startExpr = "COALESCE(
+            CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
+            CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date       END,
+            CONCAT(date, ' ', start_time)
+        )";
+
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN end_time END,
+            CASE WHEN date     REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date     END,
+            CONCAT(date, ' ', end_time)
+        )";
+
+        $roomQuery = BookingRoom::query()
+            ->where('status', 'pending')
+            ->whereNotNull('date')
+            ->whereNotNull('start_time')
+            ->whereNotNull('end_time')
+            ->whereRaw("$startExpr IS NOT NULL")
+            ->whereRaw("$endExpr IS NOT NULL")
+            ->whereRaw("$startExpr <= ?", [$nowStr])   // start has arrived
+            ->whereRaw("$endExpr > ?",   [$nowStr]);    // end has not passed yet
+
+        $roomCount = $roomQuery->count();
+
+        if ($roomCount > 0) {
+            if ($isDry) {
+                $this->line("  [DRY-RUN] Would auto-approve {$roomCount} room booking(s) whose start time has arrived.");
+            } else {
+                $affected = BookingRoom::query()
+                    ->where('status', 'pending')
+                    ->whereNotNull('date')
+                    ->whereNotNull('start_time')
+                    ->whereNotNull('end_time')
+                    ->whereRaw("$startExpr IS NOT NULL")
+                    ->whereRaw("$endExpr IS NOT NULL")
+                    ->whereRaw("$startExpr <= ?", [$nowStr])
+                    ->whereRaw("$endExpr > ?",   [$nowStr])
+                    ->update([
+                        'status'     => 'approved',
+                        'updated_at' => $nowStr,
+                    ]);
+
+                $this->info("  ✓ Room bookings auto-approved (start time reached): {$affected}");
+            }
+        } else {
+            $this->line('  Room bookings: none to auto-approve.');
+        }
 
         // ──────────────────────────────────────────────────────────────────
         // 2. VEHICLE BOOKINGS — approved → on_progress
