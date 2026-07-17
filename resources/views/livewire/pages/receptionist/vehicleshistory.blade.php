@@ -228,59 +228,61 @@
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-rose-100 text-rose-700';
                         @endphp
-                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-                            <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
-                                <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0 space-y-0.5">
-                                <p class="text-sm font-semibold text-gray-900 truncate">
-                                    {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
-                                </p>
-                                <p class="text-xs text-gray-500">
-                                    {{ $pvb->borrower_name }} &bull;
-                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
-                                </p>
-                                <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
-                                <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
-                                <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2 mb-1">
-                                    @if($pvb->created_at)
-                                        <div class="flex items-center gap-1.5">
-                                            <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                            <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($pvb->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
-                                        </div>
-                                    @endif
-                                    @if($pvb->updated_at)
-                                        <div class="flex items-center gap-1.5">
-                                            <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                            <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($pvb->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
-                                        </div>
+                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                            <div class="flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                                    <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0 space-y-0.5">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">
+                                        {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        {{ $pvb->borrower_name }} &bull;
+                                        {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
+                                    <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                    <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2 mb-1">
+                                        @if($pvb->created_at)
+                                            <div class="flex items-center gap-1.5">
+                                                <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($pvb->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                            </div>
+                                        @endif
+                                        @if($pvb->updated_at)
+                                            <div class="flex items-center gap-1.5">
+                                                <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($pvb->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @if($pvb->rejection_reason)
+                                        <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
                                     @endif
                                 </div>
-                                @if($pvb->rejection_reason)
-                                    <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
-                                @endif
+                                <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
+                                    {{ $pvb->statusLabel() }}
+                                </span>
                             </div>
-                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
-                                {{ $pvb->statusLabel() }}
-                            </span>
-                        </div>
-                        {{-- Priority entry actions --}}
-                        <div class="pt-2 border-t border-blue-100 mt-2 flex justify-end gap-2">
-                            <button type="button"
-                                wire:click="openPriorityDetail({{ $pvb->id }})"
-                                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 focus:outline-none transition">
-                                {{ __('app.detail') }}
-                            </button>
-                            <button type="button"
-                                wire:click="openPriorityEdit({{ $pvb->id }})"
-                                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
-                                {{ __('app.edit') }}
-                            </button>
-                            <button type="button"
-                                wire:click="confirmPriorityDelete({{ $pvb->id }}, '{{ str_replace('\'', '', $pvb->purpose ?? 'Priority Booking') }}')"
-                                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
-                                {{ __('app.delete') }}
-                            </button>
+                            {{-- Priority entry actions — inside card, same pattern as normal bookings --}}
+                            <div class="pt-2 border-t border-blue-100 flex justify-end gap-2">
+                                <button type="button"
+                                    wire:click="openPriorityDetail({{ $pvb->id }})"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 focus:outline-none transition">
+                                    {{ __('app.detail') }}
+                                </button>
+                                <button type="button"
+                                    wire:click="openPriorityEdit({{ $pvb->id }})"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
+                                    {{ __('app.edit') }}
+                                </button>
+                                <button type="button"
+                                    wire:click="confirmPriorityDelete({{ $pvb->id }}, '{{ str_replace('\'', '', $pvb->purpose ?? 'Priority Booking') }}')"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
+                                    {{ __('app.delete') }}
+                                </button>
+                            </div>
                         </div>
                         @endforeach
                     </div>
