@@ -158,7 +158,11 @@
             class="grid grid-cols-2 lg:grid-cols-4 gap-4"
         >
             {{-- Card: Room Bookings --}}
-            @php $totalRoom = $pendingRoomBookings->count() + $ongoingRoomBookings->count(); @endphp
+            @php
+                $totalRoom = $pendingRoomBookings->count() + $ongoingRoomBookings->count();
+                // Merge pending first, then ongoing — preserves existing ordering from each collection
+                $previewRoomBookings = $pendingRoomBookings->concat($ongoingRoomBookings)->take(3);
+            @endphp
             <button @click="open('room')"
                 class="group text-left bg-card border border-[#4E653D]/40 rounded-xl p-5 hover:border-[#4E653D] hover:shadow-md transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4E653D]">
                 <div class="flex items-center justify-between mb-3">
@@ -179,6 +183,46 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>{{ $ongoingRoomBookings->count() }} ongoing
                     </span>
                 </div>
+
+                {{-- Inline booking preview (visible without clicking) --}}
+                @if($previewRoomBookings->isNotEmpty())
+                <div class="mt-3 space-y-1.5 border-t border-[#4E653D]/20 pt-2.5">
+                    @foreach($previewRoomBookings as $rb)
+                    @php
+                        $rbStatus   = $rb->status;
+                        $rbIsPending = in_array($rbStatus, ['pending', '0', 0]);
+                        $rbDate     = \Carbon\Carbon::parse($rb->date)->format('d M Y');
+                        $rbStart    = $rb->start_time ? substr($rb->start_time, 0, 5) : null;
+                        $rbEnd      = $rb->end_time   ? substr($rb->end_time,   0, 5) : null;
+                    @endphp
+                    <div class="flex items-start gap-1.5">
+                        {{-- Status dot --}}
+                        <span class="mt-1 w-1.5 h-1.5 rounded-full shrink-0 {{ $rbIsPending ? 'bg-amber-400' : 'bg-emerald-500' }}"></span>
+                        <div class="min-w-0 flex-1">
+                            {{-- Title + Room --}}
+                            <p class="text-[11px] font-medium text-foreground truncate leading-tight">
+                                {{ $rb->meeting_title ?? '—' }}
+                            </p>
+                            <p class="text-[10px] text-muted-foreground truncate leading-tight">
+                                {{ $rb->room?->room_name ?? '—' }}
+                            </p>
+                            {{-- Date & Time on one line --}}
+                            <p class="text-[10px] text-[#4E653D]/80 leading-tight flex items-center gap-1 flex-wrap">
+                                <span>{{ $rbDate }}</span>
+                                @if($rbStart)
+                                <span class="text-muted-foreground/50">&middot;</span>
+                                <span>{{ $rbStart }}{{ $rbEnd ? '–' . $rbEnd : '' }}</span>
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    @endforeach
+                    @if($totalRoom > 3)
+                    <p class="text-[10px] text-muted-foreground/50 pl-3">+{{ $totalRoom - 3 }} more</p>
+                    @endif
+                </div>
+                @endif
+
                 <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">Click to view details &rarr;</p>
             </button>
 
