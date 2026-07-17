@@ -686,6 +686,7 @@ return [
     'stored_at'                 => 'Stored',
     'taken_at'                  => 'Taken',
     'are_you_sure_delete'       => 'Are you sure you want to delete this item?',
+    'lihat_bukti_foto'          => 'Show Image',
 
     // ── Packages (legacy) ─────────────────────────────────────────────────────
     'package_name'              => 'Package Name',

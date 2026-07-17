@@ -252,7 +252,7 @@
                                         @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->image) }}' })"
                                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
                                         <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
-                                        {{ __('app.lihat_bukti_foto') ?? 'Lihat Bukti Foto' }}
+                                        {{ __('app.lihat_bukti_foto') }}
                                     </button>
                                 @endif
 
@@ -353,7 +353,7 @@
                                                             @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->image) }}' })"
                                                             class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 focus:outline-none transition inline-flex items-center gap-1.5">
                                                             <x-heroicon-o-photo class="w-3.5 h-3.5"/>
-                                                            {{ __('app.lihat_bukti_foto') ?? 'Lihat Bukti Foto' }}
+                                                            {{ __('app.lihat_bukti_foto') }}
                                                         </button>
                                                     @endif
                                                     <button type="button" wire:click="openEdit({{ $row->delivery_id }})"

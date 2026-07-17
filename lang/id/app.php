@@ -674,6 +674,7 @@ return [
     'stored_at'                 => 'Disimpan',
     'taken_at'                  => 'Diambil',
     'are_you_sure_delete'       => 'Apakah Anda yakin ingin menghapus item ini?',
+    'lihat_bukti_foto'          => 'Lihat Bukti Foto',
 
     // ── Packages (legacy) ─────────────────────────────────────────────────────
     'package_name'              => 'Nama Paket',
