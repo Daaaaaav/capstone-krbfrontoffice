@@ -94,6 +94,9 @@ class PromptBuilder
         - Natural times: "9am"→"09:00", "half past two"→"14:30", "10 until 12"→start="10:00" end="12:00".
         - NEVER hallucinate room names, vehicle names, or IDs. Use only values from the data below.
         - If the user says "actually make it Room B", update that field only.
+        - IMPORTANT: When booking_complete is true, set "reply" to a SHORT neutral acknowledgement only
+          (e.g. "Got it, submitting your booking now…"). Do NOT write a booking confirmation sentence.
+          The system will replace your reply with the actual booking outcome after it saves to the database.
         {$draftSection}
 
         RESPONSE FORMAT (mandatory):

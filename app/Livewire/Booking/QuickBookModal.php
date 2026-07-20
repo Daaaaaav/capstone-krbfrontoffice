@@ -124,6 +124,18 @@ class QuickBookModal extends Component
         } else {
             $rules['online_provider'] = 'required|in:google_meet,zoom';
         }
+
+        \Illuminate\Support\Facades\Log::info('QuickBookModal: starting validation', [
+            'stage'        => 'booking_validation',
+            'source'       => 'QuickBookModal',
+            'booking_type' => $this->booking_type,
+            'room_id'      => $this->room_id,
+            'date'         => $this->date,
+            'start_time'   => $this->start_time,
+            'end_time'     => $this->end_time,
+            'title'        => $this->meeting_title,
+        ]);
+
         $this->validate($rules);
 
         $now = Carbon::now($this->tz);
@@ -150,6 +162,14 @@ class QuickBookModal extends Component
                 ->exists();
 
             if ($overlap) {
+                \Illuminate\Support\Facades\Log::warning('QuickBookModal: room slot conflict', [
+                    'stage'      => 'booking_validation',
+                    'source'     => 'QuickBookModal',
+                    'room_id'    => $this->room_id,
+                    'date'       => $this->date,
+                    'start_time' => $this->start_time,
+                    'end_time'   => $this->end_time,
+                ]);
                 $this->dispatch('toast', type: 'error', message: 'Slot waktu sudah terpakai (pending/approved).');
                 return;
             }
@@ -193,6 +213,17 @@ class QuickBookModal extends Component
             }
         }
 
+        \Illuminate\Support\Facades\Log::info('QuickBookModal: creating room booking', [
+            'stage'        => 'booking_create_started',
+            'source'       => 'QuickBookModal',
+            'room_id'      => $this->room_id,
+            'date'         => $this->date,
+            'start_time'   => $this->start_time,
+            'end_time'     => $this->end_time,
+            'title'        => $this->meeting_title,
+            'booking_type' => $this->booking_type,
+        ]);
+
         DB::transaction(function () use ($startDt, $endDt, $isOnline, $meetingUrl, $meetingCode, $meetingPassword, $meetingEventId) {
             $data = [
                 'company_id'           => Auth::user()->company_id ?? 1,
@@ -221,6 +252,12 @@ class QuickBookModal extends Component
             }
 
             $booking = BookingRoom::create($data);
+
+            \Illuminate\Support\Facades\Log::info('QuickBookModal: room booking created', [
+                'stage'      => 'booking_created',
+                'source'     => 'QuickBookModal',
+                'booking_id' => $booking->bookingroom_id,
+            ]);
 
             if (!$isOnline && !empty($this->requirements)) {
                 $ids = Requirement::upsertByName($this->requirements);

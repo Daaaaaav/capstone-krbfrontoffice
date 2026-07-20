@@ -10,6 +10,7 @@ use App\Services\AI\AIService;
 use App\Services\AI\PromptBuilder;
 use App\Services\AI\BookingDraftService;
 use App\Services\AI\ContextRouter;
+use App\Services\AI\DirectBookingService;
 use App\Services\AI\ToolDispatcher;
 use App\Models\AiChatSession;
 use App\Models\AiChatMessage;
@@ -291,7 +292,7 @@ class ChatModal extends Component
     }
 
     // ─────────────────────────────────────────────────────────
-    // Receptionist AI call — ContextRouter + ToolDispatcher + draft
+    // Receptionist AI call — ContextRouter + draft + DirectBookingService
     // ─────────────────────────────────────────────────────────
 
     /** @return array{0: string, 1: array|null, 2: array|null} */
@@ -324,14 +325,16 @@ class ChatModal extends Component
         $ai  = app(AIService::class);
         $raw = $ai->chat($systemPrompt, $userMessage, $recentHistory);
 
-        // ── Parse response ────────────────────────────────────
-        $parsed       = $this->parseIntentResponse($raw, $companyId);
-        $reply        = $parsed['reply'];
-        $prefill      = $parsed['booking_prefill']  ?? [];
-        $vprefill     = $parsed['vehicle_prefill']  ?? [];
-        $isComplete   = $parsed['booking_complete'] ?? false;
+        // ── Parse AI response ─────────────────────────────────
+        $parsed     = $this->parseIntentResponse($raw, $companyId);
+        $reply      = $parsed['reply'];
+        $prefill    = $parsed['booking_prefill']  ?? [];
+        $vprefill   = $parsed['vehicle_prefill']  ?? [];
+        $isComplete = $parsed['booking_complete'] ?? false;
 
-        // ── Update booking draft ──────────────────────────────
+        // ── Merge into draft ──────────────────────────────────
+        $prevDraft = $this->bookingDraft;
+
         $this->bookingDraft = $draftService->mergePrefill(
             $this->bookingDraft,
             $this->hasAnyValue($prefill)  ? $prefill  : null,
@@ -341,31 +344,167 @@ class ChatModal extends Component
         $this->bookingDraft = $draftService->resolveRoomId($this->bookingDraft, $companyId);
         $this->bookingDraft = $draftService->resolveVehicleId($this->bookingDraft, $companyId);
 
+        Log::info('ChatModal: booking draft updated', [
+            'stage'          => 'booking_draft_updated',
+            'type'           => $this->bookingDraft['type'],
+            'turns'          => $this->bookingDraft['turns'],
+            'ai_complete'    => $isComplete,
+            'room_fields'    => $this->bookingDraft['room'],
+            'vehicle_fields' => $this->bookingDraft['vehicle'],
+        ]);
+
         // ── Update conversation memory ────────────────────────
         $this->updateMemory($prefill, $vprefill);
 
-        // ── Auto-submit when complete ─────────────────────────
-        $roomComplete    = $isComplete && $this->bookingDraft['type'] === 'room';
-        $vehicleComplete = $isComplete && $this->bookingDraft['type'] === 'vehicle';
+        // ── Check completeness ────────────────────────────────
+        $roomReady    = $isComplete && $this->bookingDraft['type'] === 'room';
+        $vehicleReady = $isComplete && $this->bookingDraft['type'] === 'vehicle';
 
-        if ($roomComplete || $draftService->isRoomDraftComplete($this->bookingDraft)) {
+        // Also trigger on service-level completeness check (belt-and-suspenders)
+        if (! $roomReady)    $roomReady    = $draftService->isRoomDraftComplete($this->bookingDraft);
+        if (! $vehicleReady) $vehicleReady = $draftService->isVehicleDraftComplete($this->bookingDraft);
+
+        // ── Room booking ──────────────────────────────────────
+        if ($roomReady) {
             $payload = $draftService->buildRoomPayload($this->bookingDraft);
-            $this->bookingDraft = $draftService->resetDraft();
-            $this->dispatch('open-quick-book', $payload);
+
+            Log::info('ChatModal: room draft complete — attempting direct creation', [
+                'stage'   => 'booking_draft_complete',
+                'type'    => 'room',
+                'payload' => $payload,
+            ]);
+
+            Log::info('ChatModal: dispatching to DirectBookingService', [
+                'stage' => 'booking_dispatch_started',
+                'type'  => 'room',
+            ]);
+
+            $result = app(DirectBookingService::class)->createRoomBooking($payload);
+
+            if ($result['ok']) {
+                $this->bookingDraft = $draftService->resetDraft();
+
+                $roomName = $payload['roomId']
+                    ? ($this->bookingDraft['room']['room_name'] ?? "Room #{$payload['roomId']}")
+                    : 'the meeting room';
+                $roomLabel = $prevDraft['room']['room_name'] ?? ($payload['title'] ? '' : $roomName);
+
+                // Override the AI reply with a factual confirmation
+                $reply = "Booking saved successfully and is now **pending approval**."
+                    . "\n\n**{$payload['title']}**"
+                    . ($prevDraft['room']['room_name'] ? " — {$prevDraft['room']['room_name']}" : '')
+                    . "\n📅 {$payload['ymd']}  🕐 {$payload['time']}–{$payload['endTime']}"
+                    . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
+
+                Log::info('ChatModal: room booking confirmed', [
+                    'stage'      => 'booking_created',
+                    'booking_id' => $result['booking_id'],
+                ]);
+
+                return [$reply, null, null];
+            }
+
+            // Creation failed — tell the user what went wrong (never claim success)
+            Log::warning('ChatModal: room booking creation failed', [
+                'stage' => 'booking_failed',
+                'error' => $result['error'],
+            ]);
+
+            $reply = "I wasn't able to save the booking. **Reason:** {$result['error']}\n\nPlease correct the details and try again.";
+            // Keep the draft so the user can correct it
             return [$reply, null, null];
         }
 
-        if ($vehicleComplete || $draftService->isVehicleDraftComplete($this->bookingDraft)) {
+        // ── Vehicle booking ───────────────────────────────────
+        if ($vehicleReady) {
             $payload = $draftService->buildVehiclePayload($this->bookingDraft);
-            $this->bookingDraft = $draftService->resetDraft();
-            $this->dispatch('open-quick-vehicle-book', $payload);
+
+            Log::info('ChatModal: vehicle draft complete — attempting direct creation', [
+                'stage'   => 'booking_draft_complete',
+                'type'    => 'vehicle',
+                'payload' => $payload,
+            ]);
+
+            Log::info('ChatModal: dispatching to DirectBookingService', [
+                'stage' => 'booking_dispatch_started',
+                'type'  => 'vehicle',
+            ]);
+
+            $result = app(DirectBookingService::class)->createVehicleBooking($payload);
+
+            if ($result['ok']) {
+                $this->bookingDraft = $draftService->resetDraft();
+
+                $vehicleName = $prevDraft['vehicle']['vehicle_name'] ?? "Vehicle #{$payload['vehicleId']}";
+                $reply = "Vehicle booking saved successfully and is now **pending approval**."
+                    . "\n\n**{$vehicleName}**"
+                    . " — {$payload['borrowerName']}"
+                    . "\n📅 {$payload['dateFrom']}  🕐 {$payload['startTime']}–{$payload['endTime']}"
+                    . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
+
+                Log::info('ChatModal: vehicle booking confirmed', [
+                    'stage'      => 'booking_created',
+                    'booking_id' => $result['booking_id'],
+                ]);
+
+                return [$reply, null, null];
+            }
+
+            Log::warning('ChatModal: vehicle booking creation failed', [
+                'stage' => 'booking_failed',
+                'error' => $result['error'],
+            ]);
+
+            $reply = "I wasn't able to save the vehicle booking. **Reason:** {$result['error']}\n\nPlease correct the details and try again.";
             return [$reply, null, null];
         }
+
+        // ── Draft still incomplete — return AI reply as-is ────
+        Log::info('ChatModal: booking draft still incomplete', [
+            'stage'       => 'booking_draft_updated',
+            'type'        => $this->bookingDraft['type'],
+            'turns'       => $this->bookingDraft['turns'],
+            'missing_room'    => $this->bookingDraft['type'] === 'room'
+                ? $this->missingRoomSummary($this->bookingDraft['room'])
+                : [],
+            'missing_vehicle' => $this->bookingDraft['type'] === 'vehicle'
+                ? $this->missingVehicleSummary($this->bookingDraft['vehicle'])
+                : [],
+        ]);
 
         $outPrefill  = $this->hasAnyValue($prefill)  ? $prefill  : null;
         $outVprefill = $this->hasAnyValue($vprefill) ? $vprefill : null;
 
         return [$reply, $outPrefill, $outVprefill];
+    }
+
+    /** Summarise which room fields are still null (for logs only). */
+    private function missingRoomSummary(array $r): array
+    {
+        $missing = [];
+        if (empty($r['meeting_title'])) $missing[] = 'meeting_title';
+        if (empty($r['date']))          $missing[] = 'date';
+        if (empty($r['start_time']))    $missing[] = 'start_time';
+        if (empty($r['end_time']))      $missing[] = 'end_time';
+        $isOnline = ($r['booking_type'] ?? '') === 'online_meeting';
+        if (! $isOnline && empty($r['room_id'])) $missing[] = 'room_id';
+        return $missing;
+    }
+
+    /** Summarise which vehicle fields are still null (for logs only). */
+    private function missingVehicleSummary(array $v): array
+    {
+        $missing = [];
+        if (empty($v['vehicle_id']))    $missing[] = 'vehicle_id';
+        if (empty($v['borrower_name'])) $missing[] = 'borrower_name';
+        if (empty($v['date_from']))     $missing[] = 'date_from';
+        if (empty($v['date_to']))       $missing[] = 'date_to';
+        if (empty($v['start_time']))    $missing[] = 'start_time';
+        if (empty($v['end_time']))      $missing[] = 'end_time';
+        if (empty($v['purpose']))       $missing[] = 'purpose';
+        if (empty($v['destination']))   $missing[] = 'destination';
+        if (empty($v['purpose_type']))  $missing[] = 'purpose_type';
+        return $missing;
     }
 
     // ─────────────────────────────────────────────────────────
