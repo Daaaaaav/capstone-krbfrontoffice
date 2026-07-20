@@ -20,10 +20,9 @@ class GroqService
 
     public function __construct()
     {
-        $this->apiKey = env('GROQ_API_KEY', '');
-        $this->model  = env('GROQ_MODEL', 'qwen/qwen3-32b');
+        $this->apiKey = config('services.groq.api_key', '');
+        $this->model  = config('services.groq.model', 'qwen/qwen3-32b');
     }
-
     // ──────────────────────────────────────────────────────────
     // Public entry-points
     // ──────────────────────────────────────────────────────────
@@ -78,6 +77,11 @@ class GroqService
         }
 
         try {
+            Log::info('Groq Prompt Stats', [
+                'system_chars' => strlen($systemPrompt),
+                'user_chars'   => strlen($userMessage),
+                'model'        => $this->model,
+            ]);
             $response = Http::withToken($this->apiKey)
                 ->timeout(30)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
@@ -89,12 +93,26 @@ class GroqService
                     ],
                 ]);
 
+           if ($response->status() === 429) {
+
+                Log::warning('Groq Rate Limit', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+
+                return "The AI assistant is temporarily busy because the Groq API rate limit has been reached.
+
+            Please wait about 20 seconds and try again.";
+            }
+
             if (!$response->successful()) {
+
                 Log::warning('Groq API returned an error', [
                     'status' => $response->status(),
                     'body'   => $response->body(),
                 ]);
-                return 'Sorry, the AI service returned an error. Please try again later.';
+
+                return "The AI service returned an unexpected error.";
             }
 
             return $response->json('choices.0.message.content')

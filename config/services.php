@@ -49,6 +49,11 @@ return [
         'captcha_enabled' => $isSecureMode,
     ],
 
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
+        'model'   => env('GROQ_MODEL', 'qwen/qwen3-32b'),
+    ],
+
     'zoom' => [
         'account_id'    => env('ZOOM_ACCOUNT_ID'),
         'client_id'     => env('ZOOM_CLIENT_ID'),
