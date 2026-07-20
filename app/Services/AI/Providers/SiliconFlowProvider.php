@@ -3,6 +3,7 @@
 namespace App\Services\AI\Providers;
 
 use App\Services\AI\Contracts\AIProviderInterface;
+use App\Services\AI\Exceptions\AIAuthException;
 use App\Services\AI\Exceptions\AIProviderException;
 use App\Services\AI\Exceptions\AIRateLimitException;
 use Illuminate\Support\Facades\Http;
@@ -63,6 +64,10 @@ class SiliconFlowProvider implements AIProviderInterface
 
         if ($response->status() === 429) {
             throw new AIRateLimitException('SiliconFlow rate limit exceeded (429).');
+        }
+
+        if (in_array($response->status(), [401, 403])) {
+            throw new AIAuthException("SiliconFlow auth error {$response->status()}: " . $response->body());
         }
 
         if (! $response->successful()) {

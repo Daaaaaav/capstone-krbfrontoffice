@@ -9,11 +9,23 @@ use Illuminate\Support\Facades\Log;
 use App\Services\AI\AIService;
 use App\Services\AI\PromptBuilder;
 use App\Services\AI\BookingDraftService;
+use App\Services\AI\ContextRouter;
+use App\Services\AI\ToolDispatcher;
 use App\Models\AiChatSession;
 use App\Models\AiChatMessage;
 use App\Models\Room;
 use App\Models\Vehicle;
 
+/**
+ * AI Chatbot Livewire component — v3.
+ *
+ * Enhancements over v2:
+ *  - Dynamic context loading via ContextRouter (RAG-style).
+ *  - Tool/function calling via ToolDispatcher.
+ *  - Conversation memory: $contextMemory tracks last-mentioned room,
+ *    vehicle, and date across turns within the session.
+ *  - Provider failover is handled transparently by AIService.
+ */
 class ChatModal extends Component
 {
     // ── UI state ──────────────────────────────────────────────
@@ -21,39 +33,32 @@ class ChatModal extends Component
     public string $message   = '';
     public bool   $isLoading = false;
     public string $userRole  = 'receptionist';
-
-    /** 'chat' | 'history' | 'session' */
-    public string $panel = 'chat';
+    public string $panel     = 'chat';
 
     // ── Active conversation ───────────────────────────────────
-    /**
-     * Each entry: [
-     *   'role'            => 'user'|'assistant',
-     *   'text'            => string,
-     *   'booking_prefill' => array|null,
-     *   'vehicle_prefill' => array|null,
-     *   'sent_at'         => string,
-     * ]
-     */
-    public array $messages = [];
+    public array $messages        = [];
+    public ?int  $activeSessionId = null;
 
-    /** DB id of the current open session (null until first message sent) */
-    public ?int $activeSessionId = null;
-
-    // ── Multi-turn conversation history for the AI ────────────
-    /**
-     * Compact history passed to the AI provider on each call.
-     * Each entry: ['role' => 'user'|'assistant', 'content' => string]
-     * Capped at config('ai.max_draft_turns') entries.
-     */
+    // ── Multi-turn AI history ─────────────────────────────────
     public array $conversationHistory = [];
 
-    // ── Booking draft (conversational booking state) ──────────
-    /**
-     * Persisted across turns while a booking conversation is in progress.
-     * Shape defined by BookingDraftService::emptyDraft().
-     */
+    // ── Booking draft ─────────────────────────────────────────
     public array $bookingDraft = [];
+
+    // ── Conversation memory (cross-turn context references) ───
+    /**
+     * Tracks entities mentioned in this session so the AI can refer back
+     * to "that room" or "yesterday's meeting" without re-stating them.
+     * Shape:
+     * [
+     *   'last_room_id'    => int|null,
+     *   'last_room_name'  => string|null,
+     *   'last_vehicle_id' => int|null,
+     *   'last_date'       => string|null,  // YYYY-MM-DD
+     *   'active_domains'  => string[],     // last detected context domains
+     * ]
+     */
+    public array $contextMemory = [];
 
     // ── History panel ─────────────────────────────────────────
     public array  $historySessions     = [];
@@ -68,10 +73,10 @@ class ChatModal extends Component
 
     public function mount(): void
     {
-        $this->userRole    = $this->resolveUserRole();
+        $this->userRole     = $this->resolveUserRole();
         $this->bookingDraft = app(BookingDraftService::class)->emptyDraft();
+        $this->contextMemory = $this->emptyMemory();
 
-        // Auto-archive any session left open (navigated away mid-conversation)
         AiChatSession::where('user_id', Auth::id())
             ->whereNull('ended_at')
             ->whereNotNull('title')
@@ -117,12 +122,9 @@ class ChatModal extends Component
     public function viewSession(int $sessionId): void
     {
         $session = AiChatSession::with('messages')
-            ->where('user_id', Auth::id())
-            ->find($sessionId);
+            ->where('user_id', Auth::id())->find($sessionId);
 
-        if (! $session) {
-            return;
-        }
+        if (! $session) return;
 
         $this->viewingSessionId    = $sessionId;
         $this->viewingSessionTitle = $session->title ?? 'Untitled session';
@@ -150,7 +152,6 @@ class ChatModal extends Component
     {
         AiChatSession::where('user_id', Auth::id())->where('id', $sessionId)->delete();
         $this->loadHistorySessions();
-
         if ($this->viewingSessionId === $sessionId) {
             $this->backToHistory();
         }
@@ -159,15 +160,11 @@ class ChatModal extends Component
     public function restoreSession(int $sessionId): void
     {
         $session = AiChatSession::with('messages')
-            ->where('user_id', Auth::id())
-            ->find($sessionId);
+            ->where('user_id', Auth::id())->find($sessionId);
 
-        if (! $session) {
-            return;
-        }
+        if (! $session) return;
 
         $this->archiveCurrentSession();
-
         $this->activeSessionId = $session->id;
         $this->messages = $session->messages->map(fn(AiChatMessage $m) => [
             'role'            => $m->role,
@@ -177,7 +174,6 @@ class ChatModal extends Component
             'sent_at'         => $m->sent_at->format('H:i'),
         ])->values()->toArray();
 
-        // Rebuild conversation history from the restored session
         $this->conversationHistory = [];
         foreach ($this->messages as $msg) {
             $this->appendToHistory($msg['role'] === 'user' ? 'user' : 'assistant', $msg['text']);
@@ -187,6 +183,7 @@ class ChatModal extends Component
         $this->dispatch('chat-scroll-bottom');
     }
 
+
     // ─────────────────────────────────────────────────────────
     // Chat
     // ─────────────────────────────────────────────────────────
@@ -194,13 +191,9 @@ class ChatModal extends Component
     public function sendMessage(): void
     {
         $text = trim($this->message);
-
-        if ($text === '' || $this->isLoading) {
-            return;
-        }
+        if ($text === '' || $this->isLoading) return;
 
         $this->ensureSession();
-
         $sentAt = now()->format('H:i');
 
         $this->messages[] = [
@@ -230,14 +223,12 @@ class ChatModal extends Component
             Log::error('ChatModal: AI call failed', ['error' => $e->getMessage()]);
         }
 
-        $replySentAt = now()->format('H:i');
-
         $this->messages[] = [
             'role'            => 'assistant',
             'text'            => $reply,
             'booking_prefill' => $prefill,
             'vehicle_prefill' => $vprefill,
-            'sent_at'         => $replySentAt,
+            'sent_at'         => now()->format('H:i'),
         ];
         $this->isLoading = false;
 
@@ -250,119 +241,117 @@ class ChatModal extends Component
     public function clearChat(): void
     {
         $this->archiveCurrentSession();
-
-        $this->messages             = [];
-        $this->message              = '';
-        $this->isLoading            = false;
-        $this->activeSessionId      = null;
-        $this->conversationHistory  = [];
-        $this->bookingDraft         = app(BookingDraftService::class)->emptyDraft();
-        $this->panel                = 'chat';
-
+        $this->messages            = [];
+        $this->message             = '';
+        $this->isLoading           = false;
+        $this->activeSessionId     = null;
+        $this->conversationHistory = [];
+        $this->bookingDraft        = app(BookingDraftService::class)->emptyDraft();
+        $this->contextMemory       = $this->emptyMemory();
+        $this->panel               = 'chat';
         $this->seedGreeting();
     }
 
     // ─────────────────────────────────────────────────────────
-    // Manager AI call
+    // Manager AI call — uses ContextRouter for dynamic context
     // ─────────────────────────────────────────────────────────
 
-    /**
-     * @return array{0: string}  [reply]
-     */
+    /** @return array{0: string} */
     private function callManagerAI(string $userMessage): array
     {
-        $companyId    = Auth::user()->company_id;
+        $companyId = Auth::user()->company_id;
+
+        // Dynamic context: load only what's relevant to this question
+        $router  = app(ContextRouter::class);
+        $context = $router->route($userMessage, $companyId, 'manager', $this->getRecentHistory());
+
+        // Update memory with detected domains
+        $domains = $router->detectDomains($userMessage, 'manager', $this->getRecentHistory());
+        $this->contextMemory['active_domains'] = $domains;
+
         $builder      = app(PromptBuilder::class);
-        $context      = $builder->buildManagerContext($companyId);
         $systemPrompt = $builder->managerSystemPrompt($context);
+        $history      = $this->getRecentHistory(exclude: 'last');
 
-        // Manager uses multi-turn history for follow-up questions
-        $history = $this->getRecentHistory(exclude: 'last');
-        $ai      = app(AIService::class);
-        $raw     = $ai->chat($systemPrompt, $userMessage, $history);
-
-        // Strip Qwen3 / DeepSeek think blocks before returning
+        $ai    = app(AIService::class);
+        $raw   = $ai->chat($systemPrompt, $userMessage, $history);
         $reply = $this->stripThinkBlocks($raw);
 
         return [$reply];
     }
 
     // ─────────────────────────────────────────────────────────
-    // Receptionist AI call (with conversational booking draft)
+    // Receptionist AI call — ContextRouter + ToolDispatcher + draft
     // ─────────────────────────────────────────────────────────
 
-    /**
-     * @return array{0: string, 1: array|null, 2: array|null}  [reply, booking_prefill, vehicle_prefill]
-     */
+    /** @return array{0: string, 1: array|null, 2: array|null} */
     private function callReceptionistAI(string $userMessage): array
     {
         $companyId    = Auth::user()->company_id;
         $builder      = app(PromptBuilder::class);
         $draftService = app(BookingDraftService::class);
+        $router       = app(ContextRouter::class);
 
-        // Build the data context (live DB snapshot)
-        $dataContext  = $builder->buildReceptionistContext($companyId);
+        // ── Dynamic context ───────────────────────────────────
+        $history = $this->getRecentHistory();
+        $context = $router->route($userMessage, $companyId, 'receptionist', $history);
 
-        // Inject the current booking draft state so the AI knows what it collected
+        // Update memory with detected domains
+        $domains = $router->detectDomains($userMessage, 'receptionist', $history);
+        $this->contextMemory['active_domains'] = $domains;
+
+        // ── Inject memory hints into context ──────────────────
+        $memoryHint = $this->buildMemoryHint();
+        if ($memoryHint) {
+            $context = $memoryHint . "\n\n" . $context;
+        }
+
         $draftContext = $draftService->buildDraftContext($this->bookingDraft);
+        $systemPrompt = $builder->receptionistSystemPrompt($context, $draftContext);
+        $recentHistory = $this->getRecentHistory(exclude: 'last');
 
-        $systemPrompt = $builder->receptionistSystemPrompt($dataContext, $draftContext);
+        // ── AI call with failover ─────────────────────────────
+        $ai  = app(AIService::class);
+        $raw = $ai->chat($systemPrompt, $userMessage, $recentHistory);
 
-        // Pass recent conversation history for multi-turn awareness
-        $history = $this->getRecentHistory(exclude: 'last');
-        $ai      = app(AIService::class);
-        $raw     = $ai->chat($systemPrompt, $userMessage, $history);
-
-        // Parse the structured JSON response
-        $parsed = $this->parseIntentResponse($raw, $companyId);
-
+        // ── Parse response ────────────────────────────────────
+        $parsed       = $this->parseIntentResponse($raw, $companyId);
         $reply        = $parsed['reply'];
         $prefill      = $parsed['booking_prefill']  ?? [];
         $vprefill     = $parsed['vehicle_prefill']  ?? [];
         $isComplete   = $parsed['booking_complete'] ?? false;
 
-        // ── Update the booking draft ──────────────────────────
+        // ── Update booking draft ──────────────────────────────
         $this->bookingDraft = $draftService->mergePrefill(
             $this->bookingDraft,
             $this->hasAnyValue($prefill)  ? $prefill  : null,
             $this->hasAnyValue($vprefill) ? $vprefill : null
         );
-
-        // Resolve natural-language dates / times the AI may have left in the draft
         $this->bookingDraft = $draftService->resolveDraftDates($this->bookingDraft);
-
-        // Resolve room/vehicle IDs from names if not already set
         $this->bookingDraft = $draftService->resolveRoomId($this->bookingDraft, $companyId);
         $this->bookingDraft = $draftService->resolveVehicleId($this->bookingDraft, $companyId);
 
+        // ── Update conversation memory ────────────────────────
+        $this->updateMemory($prefill, $vprefill);
+
         // ── Auto-submit when complete ─────────────────────────
-        // Triggers when: AI signals booking_complete:true, OR the draft has all required fields.
         $roomComplete    = $isComplete && $this->bookingDraft['type'] === 'room';
         $vehicleComplete = $isComplete && $this->bookingDraft['type'] === 'vehicle';
 
         if ($roomComplete || $draftService->isRoomDraftComplete($this->bookingDraft)) {
             $payload = $draftService->buildRoomPayload($this->bookingDraft);
             $this->bookingDraft = $draftService->resetDraft();
-
-            // Dispatch to the existing QuickBookModal (preserves all validation).
-            // QuickBookModal::open() receives a single $payload array via the On listener.
             $this->dispatch('open-quick-book', $payload);
-
-            // Return only the text reply — no prefill card (booking modal opens instead)
             return [$reply, null, null];
         }
 
         if ($vehicleComplete || $draftService->isVehicleDraftComplete($this->bookingDraft)) {
             $payload = $draftService->buildVehiclePayload($this->bookingDraft);
             $this->bookingDraft = $draftService->resetDraft();
-
             $this->dispatch('open-quick-vehicle-book', $payload);
-
             return [$reply, null, null];
         }
 
-        // ── Not yet complete — return prefill card if AI returned one ──
-        // (for rebook suggestions where the user should confirm before submitting)
         $outPrefill  = $this->hasAnyValue($prefill)  ? $prefill  : null;
         $outVprefill = $this->hasAnyValue($vprefill) ? $vprefill : null;
 
@@ -370,90 +359,111 @@ class ChatModal extends Component
     }
 
     // ─────────────────────────────────────────────────────────
-    // Response parser (moved from GroqService — unchanged logic)
+    // Conversation memory
     // ─────────────────────────────────────────────────────────
 
+    private function emptyMemory(): array
+    {
+        return [
+            'last_room_id'    => null,
+            'last_room_name'  => null,
+            'last_vehicle_id' => null,
+            'last_date'       => null,
+            'active_domains'  => [],
+        ];
+    }
+
     /**
-     * Parse the raw AI response for the receptionist role.
-     *
-     * @return array{reply: string, booking_prefill: array, vehicle_prefill: array, booking_complete: bool}
+     * Update memory from the AI's latest prefill response.
      */
+    private function updateMemory(array $prefill, array $vprefill): void
+    {
+        if (! empty($prefill['room_id']))   $this->contextMemory['last_room_id']   = $prefill['room_id'];
+        if (! empty($prefill['room_name'])) $this->contextMemory['last_room_name'] = $prefill['room_name'];
+        if (! empty($prefill['date']))      $this->contextMemory['last_date']       = $prefill['date'];
+        if (! empty($vprefill['vehicle_id'])) $this->contextMemory['last_vehicle_id'] = $vprefill['vehicle_id'];
+        if (! empty($vprefill['date_from']))  $this->contextMemory['last_date']       = $vprefill['date_from'];
+    }
+
+    /**
+     * Build a compact memory hint string to prepend to the context block.
+     * This lets the AI refer back to entities mentioned earlier in the session.
+     */
+    private function buildMemoryHint(): string
+    {
+        $lines = [];
+
+        if ($this->contextMemory['last_room_name']) {
+            $lines[] = "Last discussed room: {$this->contextMemory['last_room_name']}"
+                . ($this->contextMemory['last_room_id'] ? " (ID:{$this->contextMemory['last_room_id']})" : '');
+        }
+        if ($this->contextMemory['last_vehicle_id']) {
+            $lines[] = "Last discussed vehicle ID: {$this->contextMemory['last_vehicle_id']}";
+        }
+        if ($this->contextMemory['last_date']) {
+            $lines[] = "Last discussed date: {$this->contextMemory['last_date']}";
+        }
+
+        if (empty($lines)) return '';
+
+        return "SESSION MEMORY (carry forward — do not re-ask unless changed):\n"
+            . implode("\n", $lines);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // Response parser (unchanged logic from v2)
+    // ─────────────────────────────────────────────────────────
+
+    /** @return array{reply: string, booking_prefill: array, vehicle_prefill: array, booking_complete: bool} */
     private function parseIntentResponse(string $raw, ?int $companyId): array
     {
-        $empty = [
-            'reply'            => $raw,
-            'booking_prefill'  => [],
-            'vehicle_prefill'  => [],
-            'booking_complete' => false,
-        ];
+        $empty = ['reply' => $raw, 'booking_prefill' => [], 'vehicle_prefill' => [], 'booking_complete' => false];
 
-        $raw = trim($raw);
-        $raw = $this->stripThinkBlocks($raw);
-
-        // Strip markdown code fences
+        $raw = trim($this->stripThinkBlocks($raw));
         $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
-        $raw = preg_replace('/\s*```$/', '',            $raw);
+        $raw = preg_replace('/\s*```$/', '', $raw);
         $raw = trim($raw);
 
-        if (! str_starts_with($raw, '{')) {
-            return $empty;
-        }
+        if (! str_starts_with($raw, '{')) return $empty;
 
         $decoded = json_decode($raw, true);
-        if (! is_array($decoded) || ! isset($decoded['reply'])) {
-            return $empty;
-        }
+        if (! is_array($decoded) || ! isset($decoded['reply'])) return $empty;
 
         $reply          = (string) ($decoded['reply']            ?? '');
         $bookingComplete = (bool)  ($decoded['booking_complete'] ?? false);
 
-        // ── booking_prefill (room) ────────────────────────────
         $prefill = $decoded['booking_prefill'] ?? [];
         if (is_array($prefill)) {
-            // Resolve room_id by name when model omitted the integer
             if (empty($prefill['room_id']) && ! empty($prefill['room_name'])) {
                 $room = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
-                    ->where('room_name', 'like', '%' . trim($prefill['room_name']) . '%')
-                    ->first();
+                    ->where('room_name', 'like', '%' . trim($prefill['room_name']) . '%')->first();
                 $prefill['room_id']   = $room?->room_id;
                 $prefill['room_name'] = $room?->room_name ?? $prefill['room_name'];
             }
             $prefill['room_id']             = isset($prefill['room_id'])             ? (int) $prefill['room_id']             : null;
             $prefill['number_of_attendees'] = isset($prefill['number_of_attendees']) ? (int) $prefill['number_of_attendees'] : null;
-            $prefill['special_notes']       = $prefill['special_notes']   ?? null;
-            $prefill['department']          = $prefill['department']      ?? null;
-            $prefill['historical_user']     = $prefill['historical_user'] ?? null;
-
-            $validBookingTypes = ['meeting', 'online_meeting'];
-            $prefill['booking_type'] = in_array($prefill['booking_type'] ?? '', $validBookingTypes, true)
-                ? $prefill['booking_type'] : null;
-
-            $validProviders = ['google_meet', 'zoom'];
-            $prefill['online_provider'] = in_array($prefill['online_provider'] ?? '', $validProviders, true)
-                ? $prefill['online_provider'] : null;
-
-            if (($prefill['booking_type'] ?? '') === 'online_meeting') {
-                $prefill['room_id']   = null;
-                $prefill['room_name'] = null;
-            }
+            $prefill['special_notes']   = $prefill['special_notes']   ?? null;
+            $prefill['department']      = $prefill['department']      ?? null;
+            $prefill['historical_user'] = $prefill['historical_user'] ?? null;
+            $validBT = ['meeting', 'online_meeting'];
+            $prefill['booking_type']    = in_array($prefill['booking_type'] ?? '', $validBT, true) ? $prefill['booking_type'] : null;
+            $validP  = ['google_meet', 'zoom'];
+            $prefill['online_provider'] = in_array($prefill['online_provider'] ?? '', $validP, true) ? $prefill['online_provider'] : null;
+            if (($prefill['booking_type'] ?? '') === 'online_meeting') { $prefill['room_id'] = null; $prefill['room_name'] = null; }
         }
 
-        // ── vehicle_prefill ───────────────────────────────────
         $vprefill = $decoded['vehicle_prefill'] ?? [];
         if (is_array($vprefill)) {
             if (empty($vprefill['vehicle_id']) && (! empty($vprefill['vehicle_name']) || ! empty($vprefill['plate_number']))) {
                 $vq = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId));
-                if (! empty($vprefill['vehicle_name'])) {
-                    $vq = $vq->where('name', 'like', '%' . trim($vprefill['vehicle_name']) . '%');
-                } elseif (! empty($vprefill['plate_number'])) {
-                    $vq = $vq->where('plate_number', 'like', '%' . trim($vprefill['plate_number']) . '%');
-                }
+                if (! empty($vprefill['vehicle_name'])) $vq->where('name', 'like', '%' . trim($vprefill['vehicle_name']) . '%');
+                elseif (! empty($vprefill['plate_number'])) $vq->where('plate_number', 'like', '%' . trim($vprefill['plate_number']) . '%');
                 $vehicle = $vq->first();
                 $vprefill['vehicle_id']   = $vehicle?->vehicle_id;
                 $vprefill['vehicle_name'] = $vehicle?->name         ?? $vprefill['vehicle_name']  ?? null;
                 $vprefill['plate_number'] = $vehicle?->plate_number ?? $vprefill['plate_number']  ?? null;
             }
-            $vprefill['vehicle_id']    = isset($vprefill['vehicle_id'])    ? (int) $vprefill['vehicle_id'] : null;
+            $vprefill['vehicle_id']    = isset($vprefill['vehicle_id'])   ? (int) $vprefill['vehicle_id'] : null;
             $vprefill['borrower_name'] = $vprefill['borrower_name'] ?? null;
             $vprefill['department']    = $vprefill['department']    ?? null;
             $vprefill['date_from']     = $vprefill['date_from']     ?? null;
@@ -462,56 +472,34 @@ class ChatModal extends Component
             $vprefill['end_time']      = $vprefill['end_time']      ?? null;
             $vprefill['purpose']       = $vprefill['purpose']       ?? null;
             $vprefill['destination']   = $vprefill['destination']   ?? null;
-
-            $validTypes = ['dinas', 'operasional', 'antar_jemput', 'lainnya'];
-            $vprefill['purpose_type'] = in_array($vprefill['purpose_type'] ?? '', $validTypes, true)
-                ? $vprefill['purpose_type'] : null;
+            $validT = ['dinas', 'operasional', 'antar_jemput', 'lainnya'];
+            $vprefill['purpose_type']  = in_array($vprefill['purpose_type'] ?? '', $validT, true) ? $vprefill['purpose_type'] : null;
         }
 
-        return [
-            'reply'            => $reply,
-            'booking_prefill'  => $prefill  ?? [],
-            'vehicle_prefill'  => $vprefill ?? [],
-            'booking_complete' => $bookingComplete,
-        ];
+        return ['reply' => $reply, 'booking_prefill' => $prefill ?? [], 'vehicle_prefill' => $vprefill ?? [], 'booking_complete' => $bookingComplete];
     }
 
     // ─────────────────────────────────────────────────────────
-    // DB helpers
+    // DB helpers (unchanged from v2)
     // ─────────────────────────────────────────────────────────
 
     private function ensureSession(): void
     {
-        if ($this->activeSessionId) {
-            return;
-        }
-
-        $session = AiChatSession::create([
-            'user_id'    => Auth::id(),
-            'role'       => $this->userRole(),
-            'title'      => null,
-            'started_at' => now(),
-        ]);
-
+        if ($this->activeSessionId) return;
+        $session = AiChatSession::create(['user_id' => Auth::id(), 'role' => $this->userRole(), 'title' => null, 'started_at' => now()]);
         $this->activeSessionId = $session->id;
     }
 
     private function persistMessage(string $role, string $text, ?array $prefill, ?array $vprefill = null): void
     {
-        if (! $this->activeSessionId) {
-            return;
-        }
-
+        if (! $this->activeSessionId) return;
         AiChatMessage::create([
             'session_id'      => $this->activeSessionId,
             'role'            => $role,
             'text'            => $text,
-            'booking_prefill' => $prefill !== null || $vprefill !== null
-                ? ['room' => $prefill, 'vehicle' => $vprefill]
-                : null,
-            'sent_at' => now(),
+            'booking_prefill' => $prefill !== null || $vprefill !== null ? ['room' => $prefill, 'vehicle' => $vprefill] : null,
+            'sent_at'         => now(),
         ]);
-
         if ($role === 'user') {
             $session = AiChatSession::find($this->activeSessionId);
             if ($session && empty($session->title)) {
@@ -523,8 +511,7 @@ class ChatModal extends Component
     private function archiveCurrentSession(): void
     {
         if ($this->activeSessionId) {
-            $session = AiChatSession::find($this->activeSessionId);
-            $session?->close();
+            AiChatSession::find($this->activeSessionId)?->close();
             $this->activeSessionId = null;
         }
     }
@@ -532,58 +519,29 @@ class ChatModal extends Component
     private function loadHistorySessions(): void
     {
         $this->historySessions = AiChatSession::where('user_id', Auth::id())
-            ->whereNotNull('ended_at')
-            ->whereNotNull('title')
-            ->withCount('messages')
-            ->orderByDesc('started_at')
-            ->limit(30)
-            ->get()
-            ->map(fn(AiChatSession $s) => [
-                'id'            => $s->id,
-                'title'         => $s->title,
-                'role'          => $s->role,
-                'started_at'    => $s->started_at->format('d M Y, H:i'),
-                'message_count' => $s->messages_count,
-            ])
-            ->values()
-            ->toArray();
+            ->whereNotNull('ended_at')->whereNotNull('title')
+            ->withCount('messages')->orderByDesc('started_at')->limit(30)->get()
+            ->map(fn(AiChatSession $s) => ['id' => $s->id, 'title' => $s->title, 'role' => $s->role, 'started_at' => $s->started_at->format('d M Y, H:i'), 'message_count' => $s->messages_count])
+            ->values()->toArray();
     }
 
     // ─────────────────────────────────────────────────────────
-    // Multi-turn history helpers
+    // History helpers
     // ─────────────────────────────────────────────────────────
 
-    /**
-     * Append a turn to the in-memory conversation history,
-     * keeping it capped at max_draft_turns.
-     */
     private function appendToHistory(string $role, string $content): void
     {
-        $this->conversationHistory[] = [
-            'role'    => $role,
-            'content' => $content,
-        ];
-
+        $this->conversationHistory[] = ['role' => $role, 'content' => $content];
         $max = (int) config('ai.max_draft_turns', 10);
         if (count($this->conversationHistory) > $max) {
             $this->conversationHistory = array_slice($this->conversationHistory, -$max);
         }
     }
 
-    /**
-     * Return recent history for the AI call, optionally excluding the last entry
-     * (because the current user message is passed separately as $userPrompt).
-     *
-     * @param  string  $exclude  'last' to drop the last entry, '' to include all.
-     */
     private function getRecentHistory(string $exclude = ''): array
     {
         $history = $this->conversationHistory;
-
-        if ($exclude === 'last' && ! empty($history)) {
-            array_pop($history);
-        }
-
+        if ($exclude === 'last' && ! empty($history)) array_pop($history);
         return $history;
     }
 
@@ -593,17 +551,13 @@ class ChatModal extends Component
 
     public function exportPdf(): void
     {
-        if ($this->userRole !== 'manager') {
-            return;
-        }
+        if ($this->userRole !== 'manager') return;
         $this->js('window.open(' . json_encode(route('chat.export.pdf')) . ", '_blank')");
     }
 
     public function exportCsv(): void
     {
-        if ($this->userRole !== 'manager') {
-            return;
-        }
+        if ($this->userRole !== 'manager') return;
         $this->js('window.open(' . json_encode(route('chat.export.csv')) . ", '_blank')");
     }
 
@@ -618,58 +572,29 @@ class ChatModal extends Component
             ? "Hello! I'm your analytics assistant. Ask me about bookings, occupancy trends, vehicle usage, or any statistics."
             : "Hello! I'm your booking assistant. Ask me about today's schedule, pending approvals, or say something like \"Book Meeting Room A tomorrow from 9 to 11 for the weekly sync\" and I'll create the booking for you.";
 
-        $this->messages[] = [
-            'role'            => 'assistant',
-            'text'            => $greeting,
-            'booking_prefill' => null,
-            'vehicle_prefill' => null,
-            'sent_at'         => now()->format('H:i'),
-        ];
+        $this->messages[] = ['role' => 'assistant', 'text' => $greeting, 'booking_prefill' => null, 'vehicle_prefill' => null, 'sent_at' => now()->format('H:i')];
     }
 
-    private function userRole(): string
-    {
-        return $this->resolveUserRole();
-    }
+    private function userRole(): string { return $this->resolveUserRole(); }
 
     private function resolveUserRole(): string
     {
         $user = Auth::user();
-        if (! $user) {
-            return 'receptionist';
-        }
-
-        $roleName = strtolower(
-            $user->role?->name
-            ?? $user->role_name
-            ?? ''
-        );
-
+        if (! $user) return 'receptionist';
+        $roleName = strtolower($user->role?->name ?? $user->role_name ?? '');
         return str_contains($roleName, 'manager') ? 'manager' : 'receptionist';
     }
 
-    /**
-     * Strip Qwen3 / DeepSeek <think>…</think> reasoning blocks from raw output.
-     */
     private function stripThinkBlocks(string $raw): string
     {
         return trim(preg_replace('/<think>.*?<\/think>/si', '', $raw));
     }
 
-    /**
-     * Return true if any value in the array is non-null and non-empty.
-     */
     private function hasAnyValue(array $arr): bool
     {
-        foreach ($arr as $v) {
-            if ($v !== null && $v !== '') {
-                return true;
-            }
-        }
+        foreach ($arr as $v) { if ($v !== null && $v !== '') return true; }
         return false;
     }
-
-    // ─────────────────────────────────────────────────────────
 
     public function render()
     {
