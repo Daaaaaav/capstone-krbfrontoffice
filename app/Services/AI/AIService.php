@@ -59,15 +59,34 @@ class AIService
      */
     public function chat(string $systemPrompt, string $userPrompt, array $history = []): string
     {
+        Log::info('AIService: chat() called', [
+            'stage'          => 'provider_selection',
+            'priority_list'  => $this->priorityList,
+            'history_turns'  => count($history),
+            'system_chars'   => strlen($systemPrompt),
+            'user_chars'     => strlen($userPrompt),
+        ]);
+
         foreach ($this->priorityList as $providerName) {
             // Skip providers currently marked unhealthy
             if ($this->isUnhealthy($providerName)) {
-                Log::info("AIService: skipping unhealthy provider [{$providerName}]");
+                Log::info('AIService: skipping unhealthy provider', [
+                    'stage'    => 'provider_selection',
+                    'provider' => $providerName,
+                    'reason'   => 'health_cache_hit',
+                ]);
                 continue;
             }
 
+            $model    = $this->resolveModel($providerName);
+            Log::info('AIService: selected provider', [
+                'stage'    => 'provider_selection',
+                'provider' => $providerName,
+                'model'    => $model,
+            ]);
+
             $provider = $this->buildProvider($providerName);
-            $result   = $this->attemptProvider($provider, $providerName, $systemPrompt, $userPrompt, $history);
+            $result   = $this->attemptProvider($provider, $providerName, $model, $systemPrompt, $userPrompt, $history);
 
             if ($result !== null) {
                 return $result;
@@ -77,6 +96,7 @@ class AIService
 
         // All providers exhausted
         Log::error('AIService: all providers in the failover chain failed', [
+            'stage'         => 'provider_selection',
             'priority_list' => $this->priorityList,
         ]);
         return $this->genericErrorMessage();
@@ -119,6 +139,7 @@ class AIService
     private function attemptProvider(
         AIProviderInterface $provider,
         string              $providerName,
+        string              $resolvedModel,
         string              $systemPrompt,
         string              $userPrompt,
         array               $history
@@ -128,56 +149,89 @@ class AIService
         while ($attempt < $this->maxAttempts) {
             $attempt++;
 
-            try {
-                Log::info("AIService [{$providerName}]: attempt {$attempt}/{$this->maxAttempts}", [
-                    'model'         => $this->resolveModel($providerName),
-                    'system_chars'  => strlen($systemPrompt),
-                    'user_chars'    => strlen($userPrompt),
-                    'history_turns' => count($history),
-                ]);
+            Log::info('AIService: sending request', [
+                'stage'         => 'api_request',
+                'provider'      => $providerName,
+                'model'         => $resolvedModel,
+                'attempt'       => "{$attempt}/{$this->maxAttempts}",
+                'system_chars'  => strlen($systemPrompt),
+                'user_chars'    => strlen($userPrompt),
+                'history_turns' => count($history),
+            ]);
 
+            try {
                 $reply = $provider->chat($systemPrompt, $userPrompt, $history);
 
-                Log::info("AIService [{$providerName}]: success", ['reply_chars' => strlen($reply)]);
-                $this->clearUnhealthy($providerName);
+                Log::info('AIService: request succeeded', [
+                    'stage'       => 'api_request',
+                    'provider'    => $providerName,
+                    'model'       => $resolvedModel,
+                    'reply_chars' => strlen($reply),
+                ]);
 
+                $this->clearUnhealthy($providerName);
                 return $reply;
 
             } catch (AIAuthException $e) {
-                // Auth error — skip this provider entirely, no retries
-                Log::warning("AIService [{$providerName}]: auth error — skipping provider", [
-                    'error' => $e->getMessage(),
+                Log::warning('AIService: auth error — skipping provider', [
+                    'stage'    => 'api_request',
+                    'provider' => $providerName,
+                    'model'    => $resolvedModel,
+                    'http'     => $this->extractHttpStatus($e),
+                    'error'    => $e->getMessage(),
+                    'action'   => 'skip_provider_no_retry',
                 ]);
                 $this->markUnhealthy($providerName);
                 return null;
 
             } catch (AIRateLimitException $e) {
-                // Rate limit — mark unhealthy, move to next provider immediately
-                Log::warning("AIService [{$providerName}]: rate limited — trying next provider", [
-                    'error' => $e->getMessage(),
+                Log::warning('AIService: rate limited — trying next provider', [
+                    'stage'    => 'api_request',
+                    'provider' => $providerName,
+                    'model'    => $resolvedModel,
+                    'http'     => 429,
+                    'error'    => $e->getMessage(),
+                    'action'   => 'failover_next_provider',
                 ]);
                 $this->markUnhealthy($providerName);
                 return null;
 
             } catch (AIProviderException $e) {
-                Log::warning("AIService [{$providerName}]: provider error on attempt {$attempt}", [
-                    'error' => $e->getMessage(),
+                Log::warning('AIService: provider error', [
+                    'stage'           => 'api_request',
+                    'provider'        => $providerName,
+                    'model'           => $resolvedModel,
+                    'http'            => $this->extractHttpStatus($e),
+                    'attempt'         => "{$attempt}/{$this->maxAttempts}",
+                    'error'           => $e->getMessage(),
+                    'action'          => $attempt >= $this->maxAttempts ? 'failover_next_provider' : 'retry',
                 ]);
 
                 if ($attempt >= $this->maxAttempts) {
-                    // Hard failure — mark unhealthy, try next provider
                     $this->markUnhealthy($providerName);
                     return null;
                 }
+
+                Log::info('AIService: waiting before retry', [
+                    'stage'    => 'api_request',
+                    'provider' => $providerName,
+                    'delay_s'  => $this->retryDelay,
+                ]);
 
                 if ($this->retryDelay > 0) {
                     sleep($this->retryDelay);
                 }
 
             } catch (\Throwable $e) {
-                Log::error("AIService [{$providerName}]: unexpected error on attempt {$attempt}", [
-                    'error' => $e->getMessage(),
-                    'class' => get_class($e),
+                Log::error('AIService: unexpected exception', [
+                    'stage'    => 'api_request',
+                    'provider' => $providerName,
+                    'model'    => $resolvedModel,
+                    'attempt'  => "{$attempt}/{$this->maxAttempts}",
+                    'class'    => get_class($e),
+                    'error'    => $e->getMessage(),
+                    'file'     => $e->getFile() . ':' . $e->getLine(),
+                    'action'   => $attempt >= $this->maxAttempts ? 'failover_next_provider' : 'retry',
                 ]);
 
                 if ($attempt >= $this->maxAttempts) {
@@ -205,6 +259,13 @@ class AIService
         $baseUrl = (string) ($creds['base_url'] ?? '');
         $model   = $this->resolveModel($name);
         $timeout = (int) config('ai.timeout', 30);
+
+        Log::info('AIService: resolved model', [
+            'stage'    => 'model_resolution',
+            'provider' => $name,
+            'model'    => $model,
+            'api_key_set' => $apiKey !== '',
+        ]);
 
         return match ($name) {
             'openrouter'  => new OpenRouterProvider($apiKey,  $model, $baseUrl ?: 'https://openrouter.ai/api/v1',                           $timeout),
@@ -266,7 +327,11 @@ class AIService
             return;
         }
         Cache::put($this->healthKey($provider), true, $this->healthTtl);
-        Log::warning("AIService: marked [{$provider}] as unhealthy for {$this->healthTtl}s");
+        Log::warning('AIService: provider marked unhealthy', [
+            'stage'    => 'health_cache',
+            'provider' => $provider,
+            'ttl_s'    => $this->healthTtl,
+        ]);
     }
 
     private function clearUnhealthy(string $provider): void
@@ -282,5 +347,17 @@ class AIService
     {
         return "Sorry, I could not reach the AI service right now. "
              . "Please check your connection and try again in a moment.";
+    }
+
+    /**
+     * Attempt to extract an HTTP status code from an exception message.
+     * Providers format their exception messages as "ProviderName API error 429: ...".
+     */
+    private function extractHttpStatus(\Throwable $e): ?int
+    {
+        if (preg_match('/\b(4\d{2}|5\d{2})\b/', $e->getMessage(), $m)) {
+            return (int) $m[1];
+        }
+        return null;
     }
 }

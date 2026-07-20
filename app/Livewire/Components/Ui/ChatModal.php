@@ -193,6 +193,10 @@ class ChatModal extends Component
         $text = trim($this->message);
         if ($text === '' || $this->isLoading) return;
 
+        // Re-hydrate any missing contextMemory keys that Livewire may have
+        // dropped when deserialising an older component snapshot.
+        $this->ensureMemoryDefaults();
+
         $this->ensureSession();
         $sentAt = now()->format('H:i');
 
@@ -220,7 +224,13 @@ class ChatModal extends Component
                 [$reply, $prefill, $vprefill] = $this->callReceptionistAI($text);
             }
         } catch (\Throwable $e) {
-            Log::error('ChatModal: AI call failed', ['error' => $e->getMessage()]);
+            Log::error('ChatModal: AI call failed', [
+                'stage'     => $this->userRole() === 'manager' ? 'manager_ai_call' : 'receptionist_ai_call',
+                'class'     => get_class($e),
+                'error'     => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
+                'user_role' => $this->userRole(),
+            ]);
         }
 
         $this->messages[] = [
@@ -386,21 +396,41 @@ class ChatModal extends Component
     }
 
     /**
+     * Ensure all expected contextMemory keys exist with safe defaults.
+     *
+     * Livewire serialises public properties between requests. If the component
+     * was first mounted before emptyMemory() was introduced (or the state was
+     * partially written), some keys may be absent on re-hydration, causing
+     * "Undefined array key" errors. This guard is cheap and idempotent.
+     */
+    private function ensureMemoryDefaults(): void
+    {
+        $defaults = $this->emptyMemory();
+        foreach ($defaults as $key => $default) {
+            if (! array_key_exists($key, $this->contextMemory)) {
+                $this->contextMemory[$key] = $default;
+            }
+        }
+    }
+
+    /**
      * Build a compact memory hint string to prepend to the context block.
      * This lets the AI refer back to entities mentioned earlier in the session.
      */
     private function buildMemoryHint(): string
     {
+        $this->ensureMemoryDefaults();
+
         $lines = [];
 
-        if ($this->contextMemory['last_room_name']) {
+        if ($this->contextMemory['last_room_name'] ?? null) {
             $lines[] = "Last discussed room: {$this->contextMemory['last_room_name']}"
-                . ($this->contextMemory['last_room_id'] ? " (ID:{$this->contextMemory['last_room_id']})" : '');
+                . (($this->contextMemory['last_room_id'] ?? null) ? " (ID:{$this->contextMemory['last_room_id']})" : '');
         }
-        if ($this->contextMemory['last_vehicle_id']) {
+        if ($this->contextMemory['last_vehicle_id'] ?? null) {
             $lines[] = "Last discussed vehicle ID: {$this->contextMemory['last_vehicle_id']}";
         }
-        if ($this->contextMemory['last_date']) {
+        if ($this->contextMemory['last_date'] ?? null) {
             $lines[] = "Last discussed date: {$this->contextMemory['last_date']}";
         }
 

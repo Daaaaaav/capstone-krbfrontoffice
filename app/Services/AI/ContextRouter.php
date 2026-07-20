@@ -59,25 +59,71 @@ class ContextRouter
         $domains = $this->detect($message, $role, $history);
         $params  = $this->extractParams($message);
 
-        Log::debug('ContextRouter: detected domains', ['domains' => $domains, 'role' => $role]);
+        Log::info('ContextRouter: routing message', [
+            'stage'           => 'context_routing',
+            'role'            => $role,
+            'detected_domains'=> $domains,
+            'extracted_params'=> $params,
+            'message_preview' => mb_substr($message, 0, 80),
+        ]);
 
         $blocks = [];
         foreach ($domains as $domain) {
             if (isset($this->providers[$domain])) {
-                $block = $this->providers[$domain]->load($companyId, $params);
-                if ($block !== '') {
-                    $blocks[] = $block;
+                Log::info('ContextRouter: loading provider', [
+                    'stage'    => 'context_routing',
+                    'provider' => get_class($this->providers[$domain]),
+                    'domain'   => $domain,
+                    'params'   => $params,
+                ]);
+
+                try {
+                    $block = $this->providers[$domain]->load($companyId, $params);
+                    if ($block !== '') {
+                        $blocks[] = $block;
+                        Log::info('ContextRouter: provider loaded', [
+                            'stage'    => 'context_routing',
+                            'domain'   => $domain,
+                            'chars'    => strlen($block),
+                        ]);
+                    } else {
+                        Log::info('ContextRouter: provider returned empty block', [
+                            'stage'  => 'context_routing',
+                            'domain' => $domain,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('ContextRouter: provider threw an exception', [
+                        'stage'    => 'context_routing',
+                        'domain'   => $domain,
+                        'provider' => get_class($this->providers[$domain]),
+                        'class'    => get_class($e),
+                        'error'    => $e->getMessage(),
+                        'file'     => $e->getFile() . ':' . $e->getLine(),
+                    ]);
+                    // Continue — skip this domain rather than aborting the whole request
                 }
             }
         }
 
         if (empty($blocks)) {
+            Log::info('ContextRouter: no domains matched — loading fallback (rooms + vehicles)', [
+                'stage' => 'context_routing',
+            ]);
             // Fallback: load minimal room + vehicle context so the AI is never empty
             $blocks[] = $this->providers['rooms']->load($companyId, $params);
             $blocks[] = $this->providers['vehicles']->load($companyId, $params);
         }
 
-        return "=== CONTEXT ({$this->now()}) ===\n\n" . implode("\n\n", $blocks);
+        $assembled = "=== CONTEXT ({$this->now()}) ===\n\n" . implode("\n\n", $blocks);
+
+        Log::info('ContextRouter: context assembled', [
+            'stage'        => 'context_routing',
+            'total_chars'  => strlen($assembled),
+            'blocks_count' => count($blocks),
+        ]);
+
+        return $assembled;
     }
 
     /**

@@ -92,23 +92,42 @@ class ToolDispatcher
     public function dispatch(string $toolName, array $arguments): string
     {
         if (! isset($this->tools[$toolName])) {
-            Log::warning("ToolDispatcher: unknown tool '{$toolName}'");
+            Log::warning('ToolDispatcher: unknown tool requested', [
+                'stage'            => 'tool_execution',
+                'requested_tool'   => $toolName,
+                'registered_tools' => array_keys($this->tools),
+            ]);
             return "[Tool '{$toolName}' is not available.]";
         }
 
         try {
-            Log::info("ToolDispatcher: executing '{$toolName}'", ['args' => $arguments]);
+            Log::info('ToolDispatcher: executing tool', [
+                'stage'    => 'tool_execution',
+                'tool'     => $toolName,
+                'class'    => get_class($this->tools[$toolName]),
+                'args'     => $arguments,
+            ]);
 
             $result = $this->tools[$toolName]->execute($arguments);
 
-            Log::info("ToolDispatcher: '{$toolName}' returned", ['keys' => array_keys($result)]);
+            Log::info('ToolDispatcher: tool executed successfully', [
+                'stage'       => 'tool_execution',
+                'tool'        => $toolName,
+                'result_keys' => array_keys($result),
+                'text_chars'  => isset($result['text']) ? strlen($result['text']) : null,
+            ]);
 
             return $this->formatResult($toolName, $result);
 
         } catch (\Throwable $e) {
-            Log::error("ToolDispatcher: '{$toolName}' threw an exception", [
-                'error' => $e->getMessage(),
-                'args'  => $arguments,
+            Log::error('ToolDispatcher: tool threw an exception', [
+                'stage'  => 'tool_execution',
+                'tool'   => $toolName,
+                'class'  => get_class($this->tools[$toolName]),
+                'args'   => $arguments,
+                'exception_class' => get_class($e),
+                'error'  => $e->getMessage(),
+                'file'   => $e->getFile() . ':' . $e->getLine(),
             ]);
             return "[Tool '{$toolName}' failed: {$e->getMessage()}]";
         }

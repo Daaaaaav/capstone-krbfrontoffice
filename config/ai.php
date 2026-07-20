@@ -70,13 +70,13 @@ return [
     'model_aliases' => [
         // Logical alias => [provider => model_slug]
         'qwen_32b' => [
-            'groq'        => 'qwen/qwen3-32b',
+            'groq'        => 'llama-3.3-70b-versatile', // qwen/qwen3-32b not on Groq; use best available
             'openrouter'  => 'qwen/qwen3-32b',
             'siliconflow' => 'Qwen/Qwen3-32B',
             'dashscope'   => 'qwen3-32b',
         ],
         'qwen_plus' => [
-            'groq'        => 'qwen/qwen3-32b',
+            'groq'        => 'llama-3.3-70b-versatile', // qwen/qwen3-32b not on Groq; use best available
             'openrouter'  => 'qwen/qwen3-32b',
             'siliconflow' => 'Qwen/Qwen3-32B',
             'dashscope'   => 'qwen-plus',
@@ -86,6 +86,14 @@ return [
             'openrouter'  => 'meta-llama/llama-3.3-70b-instruct',
             'siliconflow' => 'meta-llama/Meta-Llama-3.1-70B-Instruct',
             'dashscope'   => 'llama3.3-70b-instruct',
+        ],
+        // Raw slug alias — catches deployments still using the literal value
+        // "qwen/qwen3-32b" in AI_MODEL / GROQ_MODEL and silently remaps Groq.
+        'qwen/qwen3-32b' => [
+            'groq'        => 'llama-3.3-70b-versatile',
+            'openrouter'  => 'qwen/qwen3-32b',
+            'siliconflow' => 'Qwen/Qwen3-32B',
+            'dashscope'   => 'qwen3-32b',
         ],
     ],
 
