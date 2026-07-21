@@ -173,6 +173,34 @@ class LSTMClient
     }
 
     /**
+     * Fetch the persisted model evaluation metrics from /model-metrics.
+     * This is a lightweight, display-only call — no prediction or training runs.
+     *
+     * @return array|null  Returns null when the service is unreachable.
+     *                     Returns ['available' => false, ...] when never trained.
+     *                     Returns full metrics array otherwise.
+     */
+    public function getModelMetrics(): ?array
+    {
+        try {
+            $response = $this->http()->timeout(5)->get($this->baseUrl . '/model-metrics');
+
+            if (!$response->successful()) {
+                Log::warning('LSTM /model-metrics returned non-200', [
+                    'status' => $response->status(),
+                ]);
+                return null;
+            }
+
+            return $response->json();
+
+        } catch (\Exception $e) {
+            Log::warning('LSTM getModelMetrics failed', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
      * Call the demo endpoint (always uses dummy data).
      */
     public function getDemo(): ?array

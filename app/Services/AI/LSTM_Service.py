@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 import holidays
@@ -23,7 +24,8 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
-    mean_absolute_percentage_error
+    mean_absolute_percentage_error,
+    r2_score,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -56,9 +58,10 @@ MODEL_DIR = os.getenv(
 )
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-MODEL_PATH      = os.path.join(MODEL_DIR, "lstm_model.keras")
-SCALER_PATH     = os.path.join(MODEL_DIR, "scaler.pkl")
+MODEL_PATH       = os.path.join(MODEL_DIR, "lstm_model.keras")
+SCALER_PATH      = os.path.join(MODEL_DIR, "scaler.pkl")
 FINGERPRINT_PATH = os.path.join(MODEL_DIR, "fingerprint.json")
+METRICS_PATH     = os.path.join(MODEL_DIR, "model_metrics.json")
 
 
 # ── HEALTH CHECK ─────────────────────────────────────────────────────────────
@@ -155,6 +158,29 @@ def load_fingerprint_meta() -> dict:
             return json.load(f)
     except Exception:
         return {}
+
+
+# ── MODEL METRICS PERSISTENCE ─────────────────────────────────────────────────
+
+def save_model_metrics(metrics: dict) -> None:
+    """Persist evaluation metrics to METRICS_PATH after every training run."""
+    try:
+        with open(METRICS_PATH, "w") as f:
+            json.dump(metrics, f, indent=2)
+        logger.info("Model metrics saved to %s", METRICS_PATH)
+    except Exception as e:
+        logger.warning("Could not save model metrics: %s", e)
+
+
+def load_model_metrics() -> Optional[dict]:
+    """Load previously stored evaluation metrics. Returns None if absent."""
+    if not os.path.exists(METRICS_PATH):
+        return None
+    try:
+        with open(METRICS_PATH, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 
 # ── SAVE / LOAD MODEL + SCALER ────────────────────────────────────────────────
@@ -353,7 +379,8 @@ def generate_dummy_booking_data(days: int = 180):
 
 def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool = False):
     """
-    Returns (model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache).
+    Returns (model, scaler, scaled, X_train, y_train, X_test, y_test,
+             from_cache, history, training_time_seconds).
 
     - If a saved model exists AND its fingerprint matches the current
       config + data, it is loaded directly (no training).
@@ -382,7 +409,7 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         model, scaler = load_model_and_scaler()
         if model is not None:
             logger.info("Cache hit — skipping training.")
-            return model, scaler, scaled, X_train, y_train, X_test, y_test, True
+            return model, scaler, scaled, X_train, y_train, X_test, y_test, True, None, None
 
     # ── Train ────────────────────────────────────────────────────────────────
     logger.info("Training new LSTM model (force=%s)…", force_retrain)
@@ -395,7 +422,8 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         min_delta=1e-4,
     )
 
-    model.fit(
+    t_start = time.time()
+    history = model.fit(
         X_train, y_train,
         epochs=cfg.epochs,
         batch_size=cfg.batch_size,
@@ -403,11 +431,13 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         callbacks=[early_stop],
         verbose=0
     )
+    training_time = round(time.time() - t_start, 2)
 
     save_model_and_scaler(model, scaler_fit)
-    save_fingerprint(current_fp, datetime.now().isoformat(), int(len(X_train)))
+    trained_at = datetime.now().isoformat()
+    save_fingerprint(current_fp, trained_at, int(len(X_train)))
 
-    return model, scaler_fit, scaled, X_train, y_train, X_test, y_test, False
+    return model, scaler_fit, scaled, X_train, y_train, X_test, y_test, False, history, training_time
 
 
 # ── MAIN PREDICTION ENDPOINT ──────────────────────────────────────────────────
@@ -433,7 +463,7 @@ def predict(request: RequestData):
             "predictions": []
         }
 
-    model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache = \
+    model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache, history, training_time = \
         _get_or_train_model(df, cfg, force_retrain=request.force_retrain)
 
     # We need the feature-engineered df for forecast()
@@ -444,6 +474,7 @@ def predict(request: RequestData):
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     mae  = mean_absolute_error(y_test, preds)
     mape = mean_absolute_percentage_error(y_test, preds)
+    r2   = r2_score(y_test, preds)
 
     future = forecast(
         model, scaled, scaler, df_feat,
@@ -477,21 +508,76 @@ def predict(request: RequestData):
             "confidence":  confidence_score,
         })
 
+    # ── Persist full evaluation metrics after every prediction ──────────────
+    # When training ran (from_cache=False), capture the loss history.
+    # When loaded from cache, carry over whichever history was stored previously.
+    loss_history      = None
+    val_loss_history  = None
+    final_train_loss  = None
+    final_val_loss    = None
+    actual_epochs     = None
+    val_samples       = None
+
+    if history is not None:
+        loss_history     = [round(v, 6) for v in history.history.get("loss", [])]
+        val_loss_history = [round(v, 6) for v in history.history.get("val_loss", [])]
+        actual_epochs    = len(loss_history)
+        final_train_loss = loss_history[-1]     if loss_history     else None
+        final_val_loss   = val_loss_history[-1] if val_loss_history else None
+        # approximate validation sample count from the training split fraction
+        val_samples      = round(len(X_train) * cfg.validation_split)
+    else:
+        # Cache hit — load previously stored history values if present
+        stored = load_model_metrics()
+        if stored:
+            loss_history     = stored.get("loss_history")
+            val_loss_history = stored.get("val_loss_history")
+            actual_epochs    = stored.get("epochs_run")
+            final_train_loss = stored.get("training_loss")
+            final_val_loss   = stored.get("validation_loss")
+            val_samples      = stored.get("validation_samples")
+
+    meta       = load_fingerprint_meta()
+    trained_at = meta.get("trained_at") if from_cache else datetime.now().isoformat()
+
+    metrics_payload = {
+        "trained_at":         trained_at,
+        "from_cache":         from_cache,
+        "epochs_run":         actual_epochs,
+        "training_loss":      final_train_loss,
+        "validation_loss":    final_val_loss,
+        "mae":                round(float(mae),  4),
+        "rmse":               round(float(rmse), 4),
+        "mape":               round(float(mape), 4),
+        "r2":                 round(float(r2),   4),
+        "training_samples":   len(X_train),
+        "validation_samples": val_samples,
+        "test_samples":       len(X_test),
+        "training_time":      training_time,
+        "loss_history":       loss_history,
+        "val_loss_history":   val_loss_history,
+    }
+
+    # Only overwrite the file when real training happened, or no file exists yet
+    if not from_cache or not os.path.exists(METRICS_PATH):
+        save_model_metrics(metrics_payload)
+
     return {
         "model":            "Improved LSTM Forecast Model",
         "features_used":    FEATURE_COLUMNS,
         "config_used":      cfg.dict(),
-        "from_cache":       from_cache,        # tells caller whether training ran
+        "from_cache":       from_cache,
         "metrics": {
             "rmse": round(float(rmse), 4),
             "mae":  round(float(mae),  4),
-            "mape": round(float(mape), 4)
+            "mape": round(float(mape), 4),
+            "r2":   round(float(r2),   4),
         },
         "rmse":             round(float(rmse), 4),
         "predictions":      final,
         "data_source":      "dummy" if request.use_dummy_data else "real",
         "training_samples": len(X_train),
-        "test_samples":     len(X_test)
+        "test_samples":     len(X_test),
     }
 
 
@@ -593,3 +679,37 @@ def force_retrain(request: RequestData):
     """
     request.force_retrain = True
     return predict(request)
+
+
+# ── MODEL METRICS ENDPOINT ────────────────────────────────────────────────────
+
+@app.get("/model-metrics")
+def model_metrics():
+    """
+    Returns the persisted evaluation metrics from the last training run.
+    Does NOT trigger any training or prediction — display-only.
+    """
+    stored = load_model_metrics()
+    if stored is None:
+        return {
+            "available": False,
+            "message":   "No evaluation metrics found. Train the model at least once.",
+        }
+    return {
+        "available":          True,
+        "trained_at":         stored.get("trained_at"),
+        "from_cache":         stored.get("from_cache"),
+        "epochs_run":         stored.get("epochs_run"),
+        "training_loss":      stored.get("training_loss"),
+        "validation_loss":    stored.get("validation_loss"),
+        "mae":                stored.get("mae"),
+        "rmse":               stored.get("rmse"),
+        "mape":               stored.get("mape"),
+        "r2":                 stored.get("r2"),
+        "training_samples":   stored.get("training_samples"),
+        "validation_samples": stored.get("validation_samples"),
+        "test_samples":       stored.get("test_samples"),
+        "training_time":      stored.get("training_time"),
+        "loss_history":       stored.get("loss_history"),
+        "val_loss_history":   stored.get("val_loss_history"),
+    }

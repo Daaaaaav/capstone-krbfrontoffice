@@ -165,6 +165,11 @@ class OccupancyForecasting extends Component
         // ── Occupancy stats ───────────────────────────────────────────────────
         $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
+        // ── Model performance metrics (display-only, no re-training) ──────────
+        // getModelMetrics() calls GET /model-metrics which reads the persisted
+        // JSON file on the FastAPI side — it never triggers training or prediction.
+        $modelMetrics = $isAvailable ? $lstm->getModelMetrics() : null;
+
         return view('livewire.pages.manager.occupancy-forecasting', [
             'isLSTMAvailable' => $isAvailable,
             'roomForecast'    => $roomForecast,
@@ -179,6 +184,7 @@ class OccupancyForecasting extends Component
             'uploadedCsvName' => $this->uploadedCsvName,
             'uploadError'     => $this->uploadError,
             'uploadSuccess'   => $this->uploadSuccess,
+            'modelMetrics'    => $modelMetrics,
         ]);
     }
 

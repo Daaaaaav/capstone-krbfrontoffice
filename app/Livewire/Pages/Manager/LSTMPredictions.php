@@ -274,6 +274,11 @@ class LSTMPredictions extends Component
             // a second CsvDataReader just for this one call.
             $csvInfo = $csvReader->serverCsvInfo();
 
+            // ── Model performance metrics (display-only, no re-training) ──────
+            // getModelMetrics() calls GET /model-metrics which reads the persisted
+            // JSON file — it never triggers training or prediction.
+            $modelMetrics = $isLSTMAvailable ? $lstmClient->getModelMetrics() : null;
+
             return view('livewire.pages.manager.lstm-predictions', [
                 'isLSTMAvailable' => $isLSTMAvailable,
                 'predictions'     => $predictions,
@@ -288,6 +293,7 @@ class LSTMPredictions extends Component
                 'title'           => $result['title'] ?? 'Visitor Traffic Predictions',
                 'description'     => $result['description'] ?? null,
                 'csvInfo'         => $csvInfo,
+                'modelMetrics'    => $modelMetrics,
             ]);
 
         } catch (\Exception $e) {

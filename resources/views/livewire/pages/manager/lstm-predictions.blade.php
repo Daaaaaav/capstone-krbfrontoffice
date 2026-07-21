@@ -336,6 +336,171 @@
             </div>
         @endif
 
+        {{-- ── MODEL PERFORMANCE ────────────────────────────────────────────── --}}
+        <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
+
+            {{-- Card header --}}
+            <div class="px-6 py-4 bg-[#f0f4eb] border-b border-[#d4dfc8] flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-[#4E653D] text-white flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-[#2d3a24]">{{ __('app.model_performance_title') }}</h3>
+                    <p class="text-xs text-[#7a8f6a] mt-0.5">{{ __('app.model_performance_subtitle') }}</p>
+                </div>
+            </div>
+
+            @php $m = $modelMetrics ?? []; $hasMetrics = !empty($m) && ($m['available'] ?? false); @endphp
+
+            @if($hasMetrics)
+                <div class="p-6 space-y-6">
+
+                    {{-- Primary metrics grid --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+
+                        {{-- Last Trained --}}
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_last_trained') }}</p>
+                            <p class="text-sm font-bold text-[#2d3a24] leading-snug">
+                                @if(!empty($m['trained_at']))
+                                    {{ \Carbon\Carbon::parse($m['trained_at'])->format('d M Y') }}<br>
+                                    <span class="font-normal text-[#5a6e4a]">{{ \Carbon\Carbon::parse($m['trained_at'])->format('H:i') }}</span>
+                                @else —
+                                @endif
+                            </p>
+                        </div>
+
+                        {{-- Epochs --}}
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_epochs') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ $m['epochs_run'] ?? '—' }}</p>
+                        </div>
+
+                        {{-- Training Loss --}}
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_training_loss') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['training_loss']) && $m['training_loss'] !== null ? number_format((float)$m['training_loss'], 4) : '—' }}
+                            </p>
+                        </div>
+
+                        {{-- Validation Loss --}}
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_validation_loss') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['validation_loss']) && $m['validation_loss'] !== null ? number_format((float)$m['validation_loss'], 4) : '—' }}
+                            </p>
+                        </div>
+
+                        {{-- MAE --}}
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_mae') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['mae']) && $m['mae'] !== null ? number_format((float)$m['mae'], 4) : '—' }}
+                            </p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_visitors_unit') }}</p>
+                        </div>
+
+                        {{-- RMSE --}}
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_rmse') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['rmse']) && $m['rmse'] !== null ? number_format((float)$m['rmse'], 4) : '—' }}
+                            </p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_visitors_unit') }}</p>
+                        </div>
+
+                        {{-- MAPE --}}
+                        @if(isset($m['mape']) && $m['mape'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_mape') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['mape'] * 100, 2) }}%</p>
+                        </div>
+                        @endif
+
+                        {{-- R² --}}
+                        @if(isset($m['r2']) && $m['r2'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_r2') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['r2'], 4) }}</p>
+                        </div>
+                        @endif
+
+                    </div>
+
+                    {{-- Secondary metrics row --}}
+                    @php
+                        $hasSecondary = (isset($m['training_time']) && $m['training_time'] !== null)
+                            || (isset($m['training_samples']) && $m['training_samples'] !== null)
+                            || (isset($m['validation_samples']) && $m['validation_samples'] !== null)
+                            || (isset($m['test_samples']) && $m['test_samples'] !== null);
+                    @endphp
+                    @if($hasSecondary)
+                    <div class="border-t border-[#e8ede2] pt-4">
+                        <div class="flex flex-wrap gap-6">
+                            @if(isset($m['training_time']) && $m['training_time'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_training_time') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $m['training_time'] }}s</p>
+                            </div>
+                            @endif
+                            @if(isset($m['training_samples']) && $m['training_samples'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_training_samples') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ number_format($m['training_samples']) }}</p>
+                            </div>
+                            @endif
+                            @if(isset($m['validation_samples']) && $m['validation_samples'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_validation_samples') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ number_format($m['validation_samples']) }}</p>
+                            </div>
+                            @endif
+                            @if(isset($m['test_samples']) && $m['test_samples'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_test_samples') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ number_format($m['test_samples']) }}</p>
+                            </div>
+                            @endif
+                            @if(!empty($m['from_cache']))
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_cache_status') }}</p>
+                                <span class="inline-flex items-center gap-1 mt-0.5 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                    {{ __('app.mp_loaded_from_cache') }}
+                                </span>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Loss Curve chart — only rendered when epoch data exists --}}
+                    @if(!empty($m['loss_history']) && !empty($m['val_loss_history']))
+                    <div class="border-t border-[#e8ede2] pt-4">
+                        <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_loss_curve') }}</h4>
+                        <div wire:ignore style="position: relative; height: 220px;">
+                            <canvas id="lossCurveChartLstm"></canvas>
+                        </div>
+                    </div>
+                    @endif
+
+                </div>
+            @else
+                {{-- Never-trained or service-unavailable empty state --}}
+                <div class="p-10 text-center">
+                    <svg class="w-10 h-10 text-[#b5c4a5] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm font-medium text-[#5a6e4a]">{{ __('app.mp_no_metrics') }}</p>
+                    <p class="text-xs text-[#9aaa8a] mt-1">{{ __('app.mp_no_metrics_hint') }}</p>
+                </div>
+            @endif
+        </div>
+
     </main>
 </div>
 
@@ -423,6 +588,63 @@
         });
     }
     @endif
+</script>
+@endpush
+@endif
+
+{{-- Loss curve chart for Model Performance card (only when epoch history is available) --}}
+@php $lossCurveData = $modelMetrics['loss_history'] ?? []; $lossCurveVal = $modelMetrics['val_loss_history'] ?? []; @endphp
+@if(!empty($lossCurveData) && !empty($lossCurveVal))
+@push('scripts')
+<script>
+(function () {
+    function buildLossCurve() {
+        const ctx = document.getElementById('lossCurveChartLstm');
+        if (!ctx) return;
+        if (window.lossCurveChartLstm && typeof window.lossCurveChartLstm.destroy === 'function') {
+            window.lossCurveChartLstm.destroy();
+        }
+        const epochs = Array.from({ length: @json(count($lossCurveData)) }, (_, i) => i + 1);
+        window.lossCurveChartLstm = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: epochs,
+                datasets: [
+                    {
+                        label: '{{ __('app.mp_training_loss') }}',
+                        data: @json($lossCurveData),
+                        borderColor: '#4E653D',
+                        backgroundColor: 'rgba(78,101,61,0.08)',
+                        borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
+                    },
+                    {
+                        label: '{{ __('app.mp_validation_loss') }}',
+                        data: @json($lossCurveVal),
+                        borderColor: '#4A2F24',
+                        backgroundColor: 'rgba(74,47,36,0.05)',
+                        borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderDash: [4,3],
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                    tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(6) } }
+                },
+                scales: {
+                    x: { title: { display: true, text: '{{ __('app.mp_epoch') }}', font: { size: 11 } }, ticks: { maxTicksLimit: 10 } },
+                    y: { title: { display: true, text: 'Loss (MSE)', font: { size: 11 } }, beginAtZero: false }
+                }
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', buildLossCurve);
+    document.addEventListener('livewire:init', () => {
+        Livewire.hook('morph.updated', () => setTimeout(buildLossCurve, 150));
+    });
+})();
 </script>
 @endpush
 @endif
