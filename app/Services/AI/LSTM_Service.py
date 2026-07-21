@@ -142,6 +142,7 @@ def load_fingerprint() -> Optional[str]:
 
 
 def save_fingerprint(fp: str, trained_at: str, training_samples: int) -> None:
+    os.makedirs(MODEL_DIR, exist_ok=True)
     with open(FINGERPRINT_PATH, "w") as f:
         json.dump({
             "fingerprint":      fp,
@@ -165,6 +166,7 @@ def load_fingerprint_meta() -> dict:
 def save_model_metrics(metrics: dict) -> None:
     """Persist evaluation metrics to METRICS_PATH after every training run."""
     try:
+        os.makedirs(MODEL_DIR, exist_ok=True)
         with open(METRICS_PATH, "w") as f:
             json.dump(metrics, f, indent=2)
         logger.info("Model metrics saved to %s", METRICS_PATH)
@@ -186,6 +188,7 @@ def load_model_metrics() -> Optional[dict]:
 # ── SAVE / LOAD MODEL + SCALER ────────────────────────────────────────────────
 
 def save_model_and_scaler(model, scaler: MinMaxScaler) -> None:
+    os.makedirs(MODEL_DIR, exist_ok=True)
     model.save(MODEL_PATH)
     with open(SCALER_PATH, "wb") as f:
         pickle.dump(scaler, f)
