@@ -170,6 +170,16 @@ class OccupancyForecasting extends Component
         // JSON file on the FastAPI side — it never triggers training or prediction.
         $modelMetrics = $isAvailable ? $lstm->getModelMetrics() : null;
 
+        Log::info('OccupancyForecasting: metrics pipeline trace', [
+            'lstm_available'       => $isAvailable,
+            'model_metrics_null'   => is_null($modelMetrics),
+            'metrics_available'    => $modelMetrics['available'] ?? false,
+            'metrics_trained_at'   => $modelMetrics['trained_at'] ?? 'null',
+            'metrics_mae'          => $modelMetrics['mae'] ?? 'null',
+            'metrics_rmse'         => $modelMetrics['rmse'] ?? 'null',
+            'metrics_epochs'       => $modelMetrics['epochs_run'] ?? 'null',
+        ]);
+
         return view('livewire.pages.manager.occupancy-forecasting', [
             'isLSTMAvailable' => $isAvailable,
             'roomForecast'    => $roomForecast,

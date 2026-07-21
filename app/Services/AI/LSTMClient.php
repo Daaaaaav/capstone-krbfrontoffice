@@ -183,16 +183,29 @@ class LSTMClient
     public function getModelMetrics(): ?array
     {
         try {
+            Log::info('LSTMClient: calling GET /model-metrics', ['url' => $this->baseUrl . '/model-metrics']);
+
             $response = $this->http()->timeout(5)->get($this->baseUrl . '/model-metrics');
 
             if (!$response->successful()) {
                 Log::warning('LSTM /model-metrics returned non-200', [
                     'status' => $response->status(),
+                    'body'   => substr($response->body(), 0, 500),
                 ]);
                 return null;
             }
 
-            return $response->json();
+            $data = $response->json();
+
+            Log::info('LSTMClient: /model-metrics response received', [
+                'available'  => $data['available'] ?? false,
+                'trained_at' => $data['trained_at'] ?? 'null',
+                'mae'        => $data['mae'] ?? 'null',
+                'rmse'       => $data['rmse'] ?? 'null',
+                'epochs_run' => $data['epochs_run'] ?? 'null',
+            ]);
+
+            return $data;
 
         } catch (\Exception $e) {
             Log::warning('LSTM getModelMetrics failed', ['error' => $e->getMessage()]);

@@ -279,6 +279,16 @@ class LSTMPredictions extends Component
             // JSON file — it never triggers training or prediction.
             $modelMetrics = $isLSTMAvailable ? $lstmClient->getModelMetrics() : null;
 
+            Log::info('LSTMPredictions: metrics pipeline trace', [
+                'lstm_available'       => $isLSTMAvailable,
+                'model_metrics_null'   => is_null($modelMetrics),
+                'metrics_available'    => $modelMetrics['available'] ?? false,
+                'metrics_trained_at'   => $modelMetrics['trained_at'] ?? 'null',
+                'metrics_mae'          => $modelMetrics['mae'] ?? 'null',
+                'metrics_rmse'         => $modelMetrics['rmse'] ?? 'null',
+                'metrics_epochs'       => $modelMetrics['epochs_run'] ?? 'null',
+            ]);
+
             return view('livewire.pages.manager.lstm-predictions', [
                 'isLSTMAvailable' => $isLSTMAvailable,
                 'predictions'     => $predictions,
@@ -313,6 +323,7 @@ class LSTMPredictions extends Component
                 'title'           => 'Visitor Traffic Predictions',
                 'description'     => null,
                 'csvInfo'         => ['rows' => 0, 'start' => null, 'end' => null],
+                'modelMetrics'    => null,
             ]);
         }
     }

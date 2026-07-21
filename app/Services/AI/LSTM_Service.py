@@ -509,8 +509,10 @@ def predict(request: RequestData):
         })
 
     # ── Persist full evaluation metrics after every prediction ──────────────
-    # When training ran (from_cache=False), capture the loss history.
-    # When loaded from cache, carry over whichever history was stored previously.
+    # Metrics are ALWAYS persisted — on training and on cache hit.
+    # On cache hit: real metrics (mae/rmse/mape/r2) are computed fresh from
+    # X_test predictions above, and stored/history values are loaded from the
+    # existing file if present.
     loss_history      = None
     val_loss_history  = None
     final_train_loss  = None
@@ -519,15 +521,17 @@ def predict(request: RequestData):
     val_samples       = None
 
     if history is not None:
+        # Fresh training run — capture everything from Keras history object
         loss_history     = [round(v, 6) for v in history.history.get("loss", [])]
         val_loss_history = [round(v, 6) for v in history.history.get("val_loss", [])]
         actual_epochs    = len(loss_history)
         final_train_loss = loss_history[-1]     if loss_history     else None
         final_val_loss   = val_loss_history[-1] if val_loss_history else None
-        # approximate validation sample count from the training split fraction
         val_samples      = round(len(X_train) * cfg.validation_split)
+        logger.info("Metrics extracted from fresh training: epochs=%s train_loss=%s val_loss=%s",
+                    actual_epochs, final_train_loss, final_val_loss)
     else:
-        # Cache hit — load previously stored history values if present
+        # Cache hit — load loss history from the existing metrics file (if any)
         stored = load_model_metrics()
         if stored:
             loss_history     = stored.get("loss_history")
@@ -536,9 +540,13 @@ def predict(request: RequestData):
             final_train_loss = stored.get("training_loss")
             final_val_loss   = stored.get("validation_loss")
             val_samples      = stored.get("validation_samples")
+            logger.info("Cache hit — reusing stored loss history (epochs=%s)", actual_epochs)
+        else:
+            logger.warning("Cache hit but no metrics file found — metrics file will be bootstrapped now")
 
+    # Resolve trained_at timestamp
     meta       = load_fingerprint_meta()
-    trained_at = meta.get("trained_at") if from_cache else datetime.now().isoformat()
+    trained_at = meta.get("trained_at") or datetime.now().isoformat()
 
     metrics_payload = {
         "trained_at":         trained_at,
@@ -558,9 +566,14 @@ def predict(request: RequestData):
         "val_loss_history":   val_loss_history,
     }
 
-    # Only overwrite the file when real training happened, or no file exists yet
-    if not from_cache or not os.path.exists(METRICS_PATH):
-        save_model_metrics(metrics_payload)
+    # Always write the metrics file:
+    #   • On fresh training: captures new history
+    #   • On cache hit with no file: bootstraps the file so /model-metrics works
+    #   • On cache hit with existing file: refreshes mae/rmse/mape/r2 in-place
+    #     (they are recomputed each request, so they stay accurate)
+    save_model_metrics(metrics_payload)
+    logger.info("Metrics persisted to %s (from_cache=%s, mae=%.4f, rmse=%.4f)",
+                METRICS_PATH, from_cache, float(mae), float(rmse))
 
     return {
         "model":            "Improved LSTM Forecast Model",
@@ -681,6 +694,65 @@ def force_retrain(request: RequestData):
     return predict(request)
 
 
+# ── STARTUP BOOTSTRAP ─────────────────────────────────────────────────────────
+
+@app.on_event("startup")
+async def bootstrap_metrics_on_startup():
+    """
+    On server start, if a trained model exists but model_metrics.json does not,
+    run a lightweight evaluation pass to populate the metrics file.
+    This covers the case where the model was trained before metrics persistence
+    was introduced — the file will be created automatically the first time
+    the server starts with the updated code, without requiring any manual step.
+    """
+    if os.path.exists(METRICS_PATH):
+        logger.info("Startup: metrics file already present — no bootstrap needed.")
+        return
+
+    if not (os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH)):
+        logger.info("Startup: no trained model found — skipping metrics bootstrap.")
+        return
+
+    logger.warning(
+        "Startup: trained model found but model_metrics.json is missing. "
+        "Bootstrapping metrics from existing model…"
+    )
+
+    try:
+        # Load the fingerprint to recover training metadata
+        meta           = load_fingerprint_meta()
+        trained_at     = meta.get("trained_at") or datetime.now().isoformat()
+        train_samples  = meta.get("training_samples")
+
+        # We cannot recover history or training time from the cached model file,
+        # but we can at least create a partial record so the UI shows something.
+        bootstrap_payload = {
+            "trained_at":         trained_at,
+            "from_cache":         True,
+            "epochs_run":         None,
+            "training_loss":      None,
+            "validation_loss":    None,
+            "mae":                None,
+            "rmse":               None,
+            "mape":               None,
+            "r2":                 None,
+            "training_samples":   train_samples,
+            "validation_samples": None,
+            "test_samples":       None,
+            "training_time":      None,
+            "loss_history":       None,
+            "val_loss_history":   None,
+            "_bootstrap":         True,
+        }
+        save_model_metrics(bootstrap_payload)
+        logger.info(
+            "Startup: bootstrap metrics written. Full metrics will populate "
+            "automatically after the next prediction request."
+        )
+    except Exception as exc:
+        logger.error("Startup: metrics bootstrap failed: %s", exc)
+
+
 # ── MODEL METRICS ENDPOINT ────────────────────────────────────────────────────
 
 @app.get("/model-metrics")
@@ -688,28 +760,61 @@ def model_metrics():
     """
     Returns the persisted evaluation metrics from the last training run.
     Does NOT trigger any training or prediction — display-only.
+
+    If the metrics file does not yet exist but a trained model is present,
+    returns a partial record from the fingerprint so the UI shows something
+    useful rather than the empty-state message.
     """
     stored = load_model_metrics()
-    if stored is None:
+    if stored is not None:
+        logger.info("Serving model metrics from %s", METRICS_PATH)
         return {
-            "available": False,
-            "message":   "No evaluation metrics found. Train the model at least once.",
+            "available":          True,
+            "trained_at":         stored.get("trained_at"),
+            "from_cache":         stored.get("from_cache"),
+            "epochs_run":         stored.get("epochs_run"),
+            "training_loss":      stored.get("training_loss"),
+            "validation_loss":    stored.get("validation_loss"),
+            "mae":                stored.get("mae"),
+            "rmse":               stored.get("rmse"),
+            "mape":               stored.get("mape"),
+            "r2":                 stored.get("r2"),
+            "training_samples":   stored.get("training_samples"),
+            "validation_samples": stored.get("validation_samples"),
+            "test_samples":       stored.get("test_samples"),
+            "training_time":      stored.get("training_time"),
+            "loss_history":       stored.get("loss_history"),
+            "val_loss_history":   stored.get("val_loss_history"),
         }
+
+    # Metrics file not found — check whether a trained model exists so we can
+    # return a partial record from the fingerprint metadata instead of nothing.
+    model_exists = os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH)
+    if model_exists:
+        meta = load_fingerprint_meta()
+        logger.warning("/model-metrics: metrics file absent but model exists — returning partial record")
+        return {
+            "available":          True,
+            "trained_at":         meta.get("trained_at"),
+            "from_cache":         True,
+            "epochs_run":         None,
+            "training_loss":      None,
+            "validation_loss":    None,
+            "mae":                None,
+            "rmse":               None,
+            "mape":               None,
+            "r2":                 None,
+            "training_samples":   meta.get("training_samples"),
+            "validation_samples": None,
+            "test_samples":       None,
+            "training_time":      None,
+            "loss_history":       None,
+            "val_loss_history":   None,
+            "_note": "Metrics file was not found. Run a prediction to populate full metrics.",
+        }
+
+    logger.info("/model-metrics: no model or metrics found")
     return {
-        "available":          True,
-        "trained_at":         stored.get("trained_at"),
-        "from_cache":         stored.get("from_cache"),
-        "epochs_run":         stored.get("epochs_run"),
-        "training_loss":      stored.get("training_loss"),
-        "validation_loss":    stored.get("validation_loss"),
-        "mae":                stored.get("mae"),
-        "rmse":               stored.get("rmse"),
-        "mape":               stored.get("mape"),
-        "r2":                 stored.get("r2"),
-        "training_samples":   stored.get("training_samples"),
-        "validation_samples": stored.get("validation_samples"),
-        "test_samples":       stored.get("test_samples"),
-        "training_time":      stored.get("training_time"),
-        "loss_history":       stored.get("loss_history"),
-        "val_loss_history":   stored.get("val_loss_history"),
+        "available": False,
+        "message":   "No evaluation metrics found. Train the model at least once.",
     }
