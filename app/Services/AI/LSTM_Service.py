@@ -17,14 +17,13 @@ from pydantic import BaseModel, Field
 
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.regularizers import l2
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
-    mean_absolute_percentage_error,
     r2_score,
 )
 
@@ -78,14 +77,14 @@ def health_check():
 # ── CONFIG MODEL ─────────────────────────────────────────────────────────────
 
 class LSTMConfig(BaseModel):
-    lstm_units:          int   = Field(default=64,      ge=8,   le=512)
-    dropout_rate:        float = Field(default=0.1,     ge=0.0, le=0.5)
+    lstm_units:          int   = Field(default=128,     ge=8,   le=512)
+    dropout_rate:        float = Field(default=0.2,     ge=0.0, le=0.5)
     l2_regularization:   float = Field(default=1e-5,    ge=0.0, le=0.1)
-    sequence_window:     int   = Field(default=7,       ge=3,   le=60)
+    sequence_window:     int   = Field(default=14,      ge=3,   le=60)
     epochs:              int   = Field(default=150,     ge=1,   le=1000)
     batch_size:          int   = Field(default=16,      ge=4,   le=256)
     validation_split:    float = Field(default=0.15,    ge=0.05, le=0.30)
-    early_stop_patience: int   = Field(default=10,      ge=1,   le=50)
+    early_stop_patience: int   = Field(default=15,      ge=1,   le=50)
     min_data_points:     int   = Field(default=45,      ge=10)
     history_days:        int   = Field(default=730,     ge=30)
     confidence_min:      float = Field(default=0.30,    ge=0.0, le=1.0)
@@ -159,6 +158,43 @@ def load_fingerprint_meta() -> dict:
             return json.load(f)
     except Exception:
         return {}
+
+
+# ── NUMERICALLY STABLE PERCENTAGE METRICS ────────────────────────────────────
+
+def compute_smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Symmetric Mean Absolute Percentage Error (SMAPE).
+
+    Defined as:
+        SMAPE = 100 * mean( 2|y_t - y_p| / (|y_t| + |y_p| + epsilon) )
+
+    Returns a percentage value in [0, 200].
+    Safe when y_true contains zeros because the denominator uses the sum of
+    both absolute values plus a tiny epsilon — it never divides by zero.
+    """
+    eps        = 1e-8
+    numerator  = 2.0 * np.abs(y_true - y_pred)
+    denominator = np.abs(y_true) + np.abs(y_pred) + eps
+    return float(round(np.mean(numerator / denominator) * 100.0, 4))
+
+
+def compute_wape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """
+    Weighted Absolute Percentage Error (WAPE), also called MAD/Mean Ratio.
+
+    Defined as:
+        WAPE = 100 * sum(|y_t - y_p|) / (sum(|y_t|) + epsilon)
+
+    Returns a percentage in [0, +inf).
+    Robust to zeros in y_true because the denominator is the total weight of
+    all actuals — individual zero values are simply given zero weight.
+    """
+    eps = 1e-8
+    return float(round(
+        np.sum(np.abs(y_true - y_pred)) / (np.sum(np.abs(y_true)) + eps) * 100.0,
+        4
+    ))
 
 
 # ── MODEL METRICS PERSISTENCE ─────────────────────────────────────────────────
@@ -425,13 +461,21 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         min_delta=1e-4,
     )
 
+    reduce_lr = ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.5,
+        patience=5,
+        min_lr=1e-6,
+        verbose=0,
+    )
+
     t_start = time.time()
     history = model.fit(
         X_train, y_train,
         epochs=cfg.epochs,
         batch_size=cfg.batch_size,
         validation_split=cfg.validation_split,
-        callbacks=[early_stop],
+        callbacks=[early_stop, reduce_lr],
         verbose=0
     )
     training_time = round(time.time() - t_start, 2)
@@ -474,10 +518,15 @@ def predict(request: RequestData):
 
     preds = model.predict(X_test, verbose=0)
 
-    rmse = np.sqrt(mean_squared_error(y_test, preds))
-    mae  = mean_absolute_error(y_test, preds)
-    mape = mean_absolute_percentage_error(y_test, preds)
-    r2   = r2_score(y_test, preds)
+    rmse  = float(np.sqrt(mean_squared_error(y_test, preds)))
+    mae   = float(mean_absolute_error(y_test, preds))
+    r2    = float(r2_score(y_test, preds))
+    smape = compute_smape(y_test, preds)   # zero-safe, replaces raw MAPE
+    wape  = compute_wape(y_test, preds)    # weight-based, zero-safe
+
+    # Keep a backward-compatible 'mape' key in the response using SMAPE.
+    # SMAPE is in [0, 200%] and never explodes on zero-heavy booking data.
+    mape_compat = smape
 
     future = forecast(
         model, scaled, scaler, df_feat,
@@ -513,15 +562,25 @@ def predict(request: RequestData):
 
     # ── Persist full evaluation metrics after every prediction ──────────────
     # Metrics are ALWAYS persisted — on training and on cache hit.
-    # On cache hit: real metrics (mae/rmse/mape/r2) are computed fresh from
-    # X_test predictions above, and stored/history values are loaded from the
-    # existing file if present.
+    # On cache hit: real metrics are computed fresh from X_test predictions
+    # above; stored history/epoch data are loaded from the existing file.
     loss_history      = None
     val_loss_history  = None
     final_train_loss  = None
     final_val_loss    = None
+    best_val_loss     = None
     actual_epochs     = None
+    early_stop_epoch  = None
     val_samples       = None
+    trainable_params  = None
+
+    # Count trainable parameters — always available after model is built
+    try:
+        trainable_params = int(sum(
+            np.prod(v.shape) for v in model.trainable_weights
+        ))
+    except Exception:
+        trainable_params = None
 
     if history is not None:
         # Fresh training run — capture everything from Keras history object
@@ -530,11 +589,18 @@ def predict(request: RequestData):
         actual_epochs    = len(loss_history)
         final_train_loss = loss_history[-1]     if loss_history     else None
         final_val_loss   = val_loss_history[-1] if val_loss_history else None
-        val_samples      = round(len(X_train) * cfg.validation_split)
-        logger.info("Metrics extracted from fresh training: epochs=%s train_loss=%s val_loss=%s",
-                    actual_epochs, final_train_loss, final_val_loss)
+        best_val_loss    = round(float(min(val_loss_history)), 6) if val_loss_history else None
+        # Early stopping epoch: index of the best val_loss (0-based → report 1-based)
+        if val_loss_history:
+            early_stop_epoch = int(np.argmin(val_loss_history)) + 1
+        val_samples = round(len(X_train) * cfg.validation_split)
+        logger.info(
+            "Metrics extracted from fresh training: epochs=%s "
+            "best_val_loss=%s early_stop_epoch=%s",
+            actual_epochs, best_val_loss, early_stop_epoch,
+        )
     else:
-        # Cache hit — load loss history from the existing metrics file (if any)
+        # Cache hit — load history from the existing metrics file (if any)
         stored = load_model_metrics()
         if stored:
             loss_history     = stored.get("loss_history")
@@ -542,41 +608,59 @@ def predict(request: RequestData):
             actual_epochs    = stored.get("epochs_run")
             final_train_loss = stored.get("training_loss")
             final_val_loss   = stored.get("validation_loss")
+            best_val_loss    = stored.get("best_val_loss")
+            early_stop_epoch = stored.get("early_stop_epoch")
             val_samples      = stored.get("validation_samples")
             logger.info("Cache hit — reusing stored loss history (epochs=%s)", actual_epochs)
         else:
-            logger.warning("Cache hit but no metrics file found — metrics file will be bootstrapped now")
+            logger.warning("Cache hit but no metrics file found — file will be bootstrapped now")
 
     # Resolve trained_at timestamp
     meta       = load_fingerprint_meta()
     trained_at = meta.get("trained_at") or datetime.now().isoformat()
 
     metrics_payload = {
-        "trained_at":         trained_at,
-        "from_cache":         from_cache,
-        "epochs_run":         actual_epochs,
-        "training_loss":      final_train_loss,
-        "validation_loss":    final_val_loss,
-        "mae":                round(float(mae),  4),
-        "rmse":               round(float(rmse), 4),
-        "mape":               round(float(mape), 4),
-        "r2":                 round(float(r2),   4),
-        "training_samples":   len(X_train),
-        "validation_samples": val_samples,
-        "test_samples":       len(X_test),
-        "training_time":      training_time,
-        "loss_history":       loss_history,
-        "val_loss_history":   val_loss_history,
+        "trained_at":          trained_at,
+        "from_cache":          from_cache,
+        "epochs_run":          actual_epochs,
+        "early_stop_epoch":    early_stop_epoch,
+        "training_loss":       final_train_loss,
+        "validation_loss":     final_val_loss,
+        "best_val_loss":       best_val_loss,
+        "mae":                 round(mae,   4),
+        "rmse":                round(rmse,  4),
+        "r2":                  round(r2,    4),
+        # SMAPE replaces raw MAPE — safe for zero-heavy booking data
+        "mape":                round(smape, 4),   # backward-compat key (=SMAPE)
+        "smape":               round(smape, 4),   # explicit SMAPE
+        "wape":                round(wape,  4),   # explicit WAPE
+        "trainable_params":    trainable_params,
+        "training_samples":    len(X_train),
+        "validation_samples":  val_samples,
+        "test_samples":        len(X_test),
+        "training_time":       training_time,
+        "loss_history":        loss_history,
+        "val_loss_history":    val_loss_history,
+        # Hyperparameters used for this training run — reproducibility record
+        "hyperparameters": {
+            "lstm_units":          cfg.lstm_units,
+            "dropout_rate":        cfg.dropout_rate,
+            "l2_regularization":   cfg.l2_regularization,
+            "sequence_window":     cfg.sequence_window,
+            "epochs_max":          cfg.epochs,
+            "batch_size":          cfg.batch_size,
+            "validation_split":    cfg.validation_split,
+            "early_stop_patience": cfg.early_stop_patience,
+            "optimizer":           "adam",
+            "loss_fn":             "mse",
+        },
     }
 
-    # Always write the metrics file:
-    #   • On fresh training: captures new history
-    #   • On cache hit with no file: bootstraps the file so /model-metrics works
-    #   • On cache hit with existing file: refreshes mae/rmse/mape/r2 in-place
-    #     (they are recomputed each request, so they stay accurate)
     save_model_metrics(metrics_payload)
-    logger.info("Metrics persisted to %s (from_cache=%s, mae=%.4f, rmse=%.4f)",
-                METRICS_PATH, from_cache, float(mae), float(rmse))
+    logger.info(
+        "Metrics persisted (from_cache=%s, mae=%.4f, rmse=%.4f, smape=%.2f%%, wape=%.2f%%, r2=%.4f)",
+        from_cache, mae, rmse, smape, wape, r2,
+    )
 
     return {
         "model":            "Improved LSTM Forecast Model",
@@ -584,12 +668,14 @@ def predict(request: RequestData):
         "config_used":      cfg.dict(),
         "from_cache":       from_cache,
         "metrics": {
-            "rmse": round(float(rmse), 4),
-            "mae":  round(float(mae),  4),
-            "mape": round(float(mape), 4),
-            "r2":   round(float(r2),   4),
+            "rmse":  round(rmse,  4),
+            "mae":   round(mae,   4),
+            "mape":  round(smape, 4),   # backward-compat: SMAPE value
+            "smape": round(smape, 4),
+            "wape":  round(wape,  4),
+            "r2":    round(r2,    4),
         },
-        "rmse":             round(float(rmse), 4),
+        "rmse":             round(rmse, 4),
         "predictions":      final,
         "data_source":      "dummy" if request.use_dummy_data else "real",
         "training_samples": len(X_train),
@@ -730,22 +816,28 @@ async def bootstrap_metrics_on_startup():
         # We cannot recover history or training time from the cached model file,
         # but we can at least create a partial record so the UI shows something.
         bootstrap_payload = {
-            "trained_at":         trained_at,
-            "from_cache":         True,
-            "epochs_run":         None,
-            "training_loss":      None,
-            "validation_loss":    None,
-            "mae":                None,
-            "rmse":               None,
-            "mape":               None,
-            "r2":                 None,
-            "training_samples":   train_samples,
-            "validation_samples": None,
-            "test_samples":       None,
-            "training_time":      None,
-            "loss_history":       None,
-            "val_loss_history":   None,
-            "_bootstrap":         True,
+            "trained_at":          trained_at,
+            "from_cache":          True,
+            "epochs_run":          None,
+            "early_stop_epoch":    None,
+            "training_loss":       None,
+            "validation_loss":     None,
+            "best_val_loss":       None,
+            "mae":                 None,
+            "rmse":                None,
+            "r2":                  None,
+            "mape":                None,
+            "smape":               None,
+            "wape":                None,
+            "trainable_params":    None,
+            "training_samples":    train_samples,
+            "validation_samples":  None,
+            "test_samples":        None,
+            "training_time":       None,
+            "loss_history":        None,
+            "val_loss_history":    None,
+            "hyperparameters":     None,
+            "_bootstrap":          True,
         }
         save_model_metrics(bootstrap_payload)
         logger.info(
@@ -772,22 +864,28 @@ def model_metrics():
     if stored is not None:
         logger.info("Serving model metrics from %s", METRICS_PATH)
         return {
-            "available":          True,
-            "trained_at":         stored.get("trained_at"),
-            "from_cache":         stored.get("from_cache"),
-            "epochs_run":         stored.get("epochs_run"),
-            "training_loss":      stored.get("training_loss"),
-            "validation_loss":    stored.get("validation_loss"),
-            "mae":                stored.get("mae"),
-            "rmse":               stored.get("rmse"),
-            "mape":               stored.get("mape"),
-            "r2":                 stored.get("r2"),
-            "training_samples":   stored.get("training_samples"),
-            "validation_samples": stored.get("validation_samples"),
-            "test_samples":       stored.get("test_samples"),
-            "training_time":      stored.get("training_time"),
-            "loss_history":       stored.get("loss_history"),
-            "val_loss_history":   stored.get("val_loss_history"),
+            "available":           True,
+            "trained_at":          stored.get("trained_at"),
+            "from_cache":          stored.get("from_cache"),
+            "epochs_run":          stored.get("epochs_run"),
+            "early_stop_epoch":    stored.get("early_stop_epoch"),
+            "training_loss":       stored.get("training_loss"),
+            "validation_loss":     stored.get("validation_loss"),
+            "best_val_loss":       stored.get("best_val_loss"),
+            "mae":                 stored.get("mae"),
+            "rmse":                stored.get("rmse"),
+            "r2":                  stored.get("r2"),
+            "mape":                stored.get("mape"),        # = SMAPE for backward compat
+            "smape":               stored.get("smape"),
+            "wape":                stored.get("wape"),
+            "trainable_params":    stored.get("trainable_params"),
+            "training_samples":    stored.get("training_samples"),
+            "validation_samples":  stored.get("validation_samples"),
+            "test_samples":        stored.get("test_samples"),
+            "training_time":       stored.get("training_time"),
+            "loss_history":        stored.get("loss_history"),
+            "val_loss_history":    stored.get("val_loss_history"),
+            "hyperparameters":     stored.get("hyperparameters"),
         }
 
     # Metrics file not found — check whether a trained model exists so we can
@@ -797,22 +895,28 @@ def model_metrics():
         meta = load_fingerprint_meta()
         logger.warning("/model-metrics: metrics file absent but model exists — returning partial record")
         return {
-            "available":          True,
-            "trained_at":         meta.get("trained_at"),
-            "from_cache":         True,
-            "epochs_run":         None,
-            "training_loss":      None,
-            "validation_loss":    None,
-            "mae":                None,
-            "rmse":               None,
-            "mape":               None,
-            "r2":                 None,
-            "training_samples":   meta.get("training_samples"),
-            "validation_samples": None,
-            "test_samples":       None,
-            "training_time":      None,
-            "loss_history":       None,
-            "val_loss_history":   None,
+            "available":           True,
+            "trained_at":          meta.get("trained_at"),
+            "from_cache":          True,
+            "epochs_run":          None,
+            "early_stop_epoch":    None,
+            "training_loss":       None,
+            "validation_loss":     None,
+            "best_val_loss":       None,
+            "mae":                 None,
+            "rmse":                None,
+            "r2":                  None,
+            "mape":                None,
+            "smape":               None,
+            "wape":                None,
+            "trainable_params":    None,
+            "training_samples":    meta.get("training_samples"),
+            "validation_samples":  None,
+            "test_samples":        None,
+            "training_time":       None,
+            "loss_history":        None,
+            "val_loss_history":    None,
+            "hyperparameters":     None,
             "_note": "Metrics file was not found. Run a prediction to populate full metrics.",
         }
 

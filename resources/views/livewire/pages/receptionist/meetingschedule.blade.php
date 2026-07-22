@@ -62,7 +62,9 @@
                             <li><strong>Auto-Archive System:</strong> Completed meetings will be automatically moved to the history logs immediately after the scheduled duration ends.</li>
                         </ul>
                     </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5"
+                     x-data="{ offlineCapacity: null }"
+                     @room-capacity-changed.window="offlineCapacity = $event.detail.capacity">
                     <div class="md:col-span-3">
                         <label class="{{ $label }}">{{ __('app.title_col') }}</label>
                         <input type="text" wire:model.defer="form.meeting_title" class="{{ $input }}" placeholder="{{ __('app.title_col') }}">
@@ -78,16 +80,20 @@
                                 open: false,
                                 search: '',
                                 roomId: @entangle('form.room_id'),
+                                roomList: @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name'], 'capacity' => $r['capacity'] ?? null])->values()->toArray()),
                                 get items() {
                                     const q = (this.search || '').toLowerCase().trim();
-                                    const list = @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray());
-                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
-                                    return list.filter(i => !q || i.label.toLowerCase().includes(q));
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.roomList;
+                                    return this.roomList.filter(i => !q || i.label.toLowerCase().includes(q));
                                 },
                                 get selectedLabel() {
-                                    const list = @js(collect($rooms)->map(fn($r) => ['id' => $r['id'], 'label' => $r['name']])->values()->toArray());
-                                    const found = list.find(i => i.id == this.roomId);
+                                    const found = this.roomList.find(i => i.id == this.roomId);
                                     return found ? found.label : '';
+                                },
+                                get selectedCapacity() {
+                                    if (!this.roomId) return null;
+                                    const found = this.roomList.find(i => i.id == this.roomId);
+                                    return (found && found.capacity !== null && found.capacity !== undefined) ? found.capacity : null;
                                 },
                                 select(id, label) {
                                     this.search = label;
@@ -103,6 +109,7 @@
                                 search = selectedLabel;
                                 $watch('roomId', val => {
                                     search = selectedLabel;
+                                    $dispatch('room-capacity-changed', { capacity: selectedCapacity });
                                 });
                             "
                             class="relative"
@@ -155,6 +162,16 @@
                                 {{ __('app.no_data') }}
                             </p>
                             <input type="hidden" wire:model="form.room_id">
+
+                            {{-- Informational capacity badge — shown only when the selected room has a configured limit --}}
+                            <div x-show="selectedCapacity !== null"
+                                 x-cloak
+                                 class="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 text-xs font-medium">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                                <span>Room Capacity: <strong x-text="selectedCapacity"></strong> people</span>
+                            </div>
                         </div>
                         @error('form.room_id') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                     </div>
@@ -349,7 +366,11 @@
 
                     <div>
                         <label class="{{ $label }}">{{ __('app.participants_label') }}</label>
-                        <input type="number" min="1" wire:model.defer="form.participant" class="{{ $input }}">
+                        <input type="number"
+                               min="1"
+                               :max="offlineCapacity !== null ? offlineCapacity : undefined"
+                               wire:model.defer="form.participant"
+                               class="{{ $input }}">
                         @error('form.participant') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
                     </div>
 

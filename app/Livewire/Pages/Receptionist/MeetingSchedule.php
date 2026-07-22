@@ -137,17 +137,46 @@ class MeetingSchedule extends Component
         $pkCol    = $this->pickColumn('rooms', ['room_id', 'id'], 'room_id');
         $labelCol = $this->pickColumn('rooms', ['room_name', 'room_number', 'name'], 'room_name');
 
+        // Also select capacity so the view can show the occupancy limit
+        // and saveOffline() can validate without an extra query.
+        $hasCapacity = Schema::hasColumn('rooms', 'capacity');
+        $selectRaw   = $hasCapacity
+            ? "$pkCol as id, $labelCol as label, capacity"
+            : "$pkCol as id, $labelCol as label";
+
         $rooms = DB::table('rooms')
-            ->selectRaw("$pkCol as id, $labelCol as label")
+            ->selectRaw($selectRaw)
             ->whereNull('deleted_at')
             ->when(Auth::user()?->company_id, fn($q, $cid) => $q->where('company_id', $cid))
             ->orderBy($labelCol)
             ->get();
 
         return $rooms->map(fn($r) => [
-            'id'   => (int) $r->id,
-            'name' => (string) $r->label,
+            'id'       => (int) $r->id,
+            'name'     => (string) $r->label,
+            'capacity' => isset($r->capacity) && $r->capacity !== null ? (int) $r->capacity : null,
         ])->all();
+    }
+
+    /**
+     * Return the capacity for the currently selected room, or null if the room
+     * has no capacity configured. Reuses the rooms array already built for the
+     * render pass — does NOT issue an additional database query.
+     */
+    protected function getSelectedRoomCapacity(array $rooms): ?int
+    {
+        $roomId = (int) ($this->form['room_id'] ?? 0);
+        if ($roomId === 0) {
+            return null;
+        }
+
+        foreach ($rooms as $room) {
+            if ((int) $room['id'] === $roomId) {
+                return $room['capacity']; // null means no limit configured
+            }
+        }
+
+        return null;
     }
 
     protected function loadRequirements(): void
@@ -396,6 +425,22 @@ class MeetingSchedule extends Component
         // 1. Validation
         $this->validate();
         $this->validateNotesIfOther();
+
+        // 1b. Occupancy limit check (offline room meetings only)
+        // Rooms are loaded fresh here to get the latest capacity configured by the Manager.
+        // This reuses the same query that render() would call — no separate DB hit because
+        // saveOffline() is a Livewire action (not a render cycle), so we call loadRooms()
+        // once and pass the result to the helper.
+        $roomsForValidation = $this->loadRooms();
+        $roomCapacity       = $this->getSelectedRoomCapacity($roomsForValidation);
+
+        if ($roomCapacity !== null && (int) $this->form['participant'] > $roomCapacity) {
+            $this->addError(
+                'form.participant',
+                "The number of attendees exceeds the maximum occupancy limit for this room (Maximum: {$roomCapacity} people)."
+            );
+            return;
+        }
 
         $cid = Auth::user()?->company_id;
 

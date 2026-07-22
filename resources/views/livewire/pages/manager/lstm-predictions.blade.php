@@ -413,11 +413,26 @@
                             <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_visitors_unit') }}</p>
                         </div>
 
-                        {{-- MAPE --}}
-                        @if(isset($m['mape']) && $m['mape'] !== null)
+                        {{-- MAPE (now SMAPE — zero-safe percentage) --}}
+                        @if(isset($m['smape']) && $m['smape'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_smape') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['smape'], 2) }}%</p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_smape_hint') }}</p>
+                        </div>
+                        @elseif(isset($m['mape']) && $m['mape'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_mape') }}</p>
-                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['mape'] * 100, 2) }}%</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['mape'], 2) }}%</p>
+                        </div>
+                        @endif
+
+                        {{-- WAPE --}}
+                        @if(isset($m['wape']) && $m['wape'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_wape') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['wape'], 2) }}%</p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_wape_hint') }}</p>
                         </div>
                         @endif
 
@@ -426,6 +441,31 @@
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_r2') }}</p>
                             <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['r2'], 4) }}</p>
+                        </div>
+                        @endif
+
+                        {{-- Best Validation Loss --}}
+                        @if(isset($m['best_val_loss']) && $m['best_val_loss'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_best_val_loss') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['best_val_loss'], 6) }}</p>
+                        </div>
+                        @endif
+
+                        {{-- Early Stop Epoch --}}
+                        @if(isset($m['early_stop_epoch']) && $m['early_stop_epoch'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_early_stop_epoch') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ $m['early_stop_epoch'] }}</p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_best_epoch_hint') }}</p>
+                        </div>
+                        @endif
+
+                        {{-- Trainable Parameters --}}
+                        @if(isset($m['trainable_params']) && $m['trainable_params'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_trainable_params') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format($m['trainable_params']) }}</p>
                         </div>
                         @endif
 
@@ -483,6 +523,40 @@
                         <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_loss_curve') }}</h4>
                         <div wire:ignore style="position: relative; height: 220px;">
                             <canvas id="lossCurveChartLstm"></canvas>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Hyperparameters (reproducibility record for thesis/defense) --}}
+                    @if(!empty($m['hyperparameters']))
+                    <div class="border-t border-[#e8ede2] pt-4">
+                        <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_hyperparameters') }}</h4>
+                        @php $hp = $m['hyperparameters']; @endphp
+                        <div class="flex flex-wrap gap-x-6 gap-y-3">
+                            @if(isset($hp['lstm_units']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_lstm_units') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['lstm_units'] }}</p></div>
+                            @endif
+                            @if(isset($hp['sequence_window']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_seq_window') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['sequence_window'] }}</p></div>
+                            @endif
+                            @if(isset($hp['dropout_rate']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_dropout') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['dropout_rate'] }}</p></div>
+                            @endif
+                            @if(isset($hp['batch_size']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_batch_size') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['batch_size'] }}</p></div>
+                            @endif
+                            @if(isset($hp['validation_split']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_val_split') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['validation_split'] * 100 }}%</p></div>
+                            @endif
+                            @if(isset($hp['early_stop_patience']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_patience') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['early_stop_patience'] }}</p></div>
+                            @endif
+                            @if(isset($hp['optimizer']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_optimizer') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['optimizer'] }}</p></div>
+                            @endif
+                            @if(isset($hp['loss_fn']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_loss_fn') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['loss_fn'] }}</p></div>
+                            @endif
                         </div>
                     </div>
                     @endif
