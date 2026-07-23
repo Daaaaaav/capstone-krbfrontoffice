@@ -190,6 +190,8 @@ class Settings extends Component
             'priority_admin'                 => '1.0',
             'priority_manager'               => '0.8',
             'priority_default'               => '0.5',
+            // Booking behaviour
+            'approval_time_validation'       => '1',
         ];
 
         foreach ($defaults as $key => $value) {

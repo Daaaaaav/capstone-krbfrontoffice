@@ -279,6 +279,16 @@ class AISettingsSeeder extends Seeder
                 'description' => 'Minimum average used in occupancy fallback when no history exists.',
             ],
 
+            // ── Booking Behaviour ─────────────────────────────────────────────
+            [
+                'key'         => 'approval_time_validation',
+                'value'       => '1',
+                'type'        => 'bool',
+                'group'       => 'booking',
+                'label'       => 'Enable Approval Time Validation',
+                'description' => 'When ON (default), offline meeting bookings must be created at least 1 hour before the meeting start time. Turn OFF to allow same-hour bookings from the Receptionist Dashboard.',
+            ],
+
             // ── Security / Spam Detection ─────────────────────────────────────
             [
                 'key'         => 'spam_threshold',

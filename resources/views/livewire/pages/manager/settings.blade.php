@@ -196,6 +196,7 @@
             {{-- Group cards --}}
             @php
                 $groupLabels = [
+                    'booking' => ['Booking Behaviour',              'Controls validation rules applied to room bookings created by receptionists.'],
                     'lstm'     => ['LSTM Model Hyperparameters',   'Controls the neural network architecture and training behaviour.'],
                     'fallback' => ['Fallback Moving Average',       'Used when the LSTM service is unavailable.'],
                     'decision' => ['Decision Engine Thresholds',    'Risk scoring rules applied to booking requests.'],
@@ -222,13 +223,37 @@
                                     <label class="block text-sm font-medium text-[#4E653D] mb-1">
                                         {{ $meta['label'] }}
                                     </label>
-                                    <input
-                                        type="number"
-                                        step="{{ in_array($meta['type'], ['float']) ? 'any' : '1' }}"
-                                        wire:model.lazy="aiSettings.{{ $key }}"
-                                        class="w-full px-4 py-2.5 border border-[#c4d4b4] rounded-xl text-[#2d3a24]
-                                               focus:ring-2 focus:ring-[#4E653D] focus:outline-none transition text-sm"
-                                    >
+
+                                    @if($meta['type'] === 'bool')
+                                        {{-- Toggle switch for boolean settings --}}
+                                        <div class="flex items-center gap-3 mt-1">
+                                            <button
+                                                type="button"
+                                                wire:click="$set('aiSettings.{{ $key }}', '{{ $aiSettings[$key] == '1' ? '0' : '1' }}')"
+                                                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#4E653D] focus:ring-offset-2 {{ $aiSettings[$key] == '1' ? 'bg-[#4E653D]' : 'bg-gray-200' }}"
+                                                role="switch"
+                                                aria-checked="{{ $aiSettings[$key] == '1' ? 'true' : 'false' }}"
+                                            >
+                                                <span
+                                                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {{ $aiSettings[$key] == '1' ? 'translate-x-5' : 'translate-x-0' }}"
+                                                ></span>
+                                            </button>
+                                            <span class="text-sm font-medium {{ $aiSettings[$key] == '1' ? 'text-[#4E653D]' : 'text-gray-400' }}">
+                                                {{ $aiSettings[$key] == '1' ? 'ON' : 'OFF' }}
+                                            </span>
+                                        </div>
+                                        {{-- Hidden input so Livewire model stays in sync --}}
+                                        <input type="hidden" wire:model="aiSettings.{{ $key }}">
+                                    @else
+                                        <input
+                                            type="number"
+                                            step="{{ $meta['type'] === 'float' ? 'any' : '1' }}"
+                                            wire:model.lazy="aiSettings.{{ $key }}"
+                                            class="w-full px-4 py-2.5 border border-[#c4d4b4] rounded-xl text-[#2d3a24]
+                                                   focus:ring-2 focus:ring-[#4E653D] focus:outline-none transition text-sm"
+                                        >
+                                    @endif
+
                                     @error("aiSettings.{$key}")
                                         <p class="text-red-600 text-xs mt-1">{{ $message }}</p>
                                     @enderror

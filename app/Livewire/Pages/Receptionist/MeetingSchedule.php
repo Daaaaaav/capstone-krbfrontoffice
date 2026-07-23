@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Receptionist;
 
+use App\Models\AISettings;
 use App\Models\Requirement;
 use App\Services\GoogleMeetService;
 use App\Services\ZoomService;
@@ -463,17 +464,21 @@ class MeetingSchedule extends Component
         }
 
         // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
+        // Only enforced when the Manager has enabled approval time validation.
         $startCarbon = Carbon::parse($startAt, $this->tz);
-        $minAdvanceDate = now($this->tz)->startOfMinute()->addHour();
-        if ($startCarbon->lessThan($minAdvanceDate)) {
-            $this->dispatch(
-                'toast',
-                type: 'error',
-                title: 'Minimum Booking Limit',
-                message: 'Bookings must be made at least 1 hour in advance.',
-                duration: 7000
-            );
-            return;
+        $approvalTimeValidationEnabled = AISettings::get('approval_time_validation', true);
+        if ($approvalTimeValidationEnabled) {
+            $minAdvanceDate = now($this->tz)->startOfMinute()->addHour();
+            if ($startCarbon->lessThan($minAdvanceDate)) {
+                $this->dispatch(
+                    'toast',
+                    type: 'error',
+                    title: 'Minimum Booking Limit',
+                    message: 'Bookings must be made at least 1 hour in advance.',
+                    duration: 7000
+                );
+                return;
+            }
         }
 
         // ── 1-Month Advance Booking Constraint ─────────────────────────────
