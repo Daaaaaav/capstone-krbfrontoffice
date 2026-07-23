@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Pages\Receptionist;
 
-use App\Models\AISettings;
 use App\Models\Requirement;
 use App\Services\GoogleMeetService;
 use App\Services\ZoomService;
@@ -464,10 +463,15 @@ class MeetingSchedule extends Component
         }
 
         // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
-        // Only enforced when the Manager has enabled approval time validation.
+        // Enforced only when the selected room has requires_early_approval = true.
+        // The flag defaults to true (DB default), so existing behavior is preserved
+        // for all rooms until a Manager explicitly disables it per room.
         $startCarbon = Carbon::parse($startAt, $this->tz);
-        $approvalTimeValidationEnabled = AISettings::get('approval_time_validation', true);
-        if ($approvalTimeValidationEnabled) {
+        $selectedRoom = \App\Models\Room::select('room_id', 'requires_early_approval')
+            ->find((int) $this->form['room_id']);
+        $requiresEarlyApproval = $selectedRoom?->requires_early_approval ?? true;
+
+        if ($requiresEarlyApproval) {
             $minAdvanceDate = now($this->tz)->startOfMinute()->addHour();
             if ($startCarbon->lessThan($minAdvanceDate)) {
                 $this->dispatch(

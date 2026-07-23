@@ -16,10 +16,11 @@ class Room extends Model
 
     protected $dates = ['deleted_at'];
 
-    protected $fillable = ['company_id', 'room_name', 'capacity'];
+    protected $fillable = ['company_id', 'room_name', 'capacity', 'requires_early_approval'];
 
     protected $casts = [
-        'capacity' => 'integer',
+        'capacity'               => 'integer',
+        'requires_early_approval' => 'boolean',
     ];
 
     public function getNameAttribute()

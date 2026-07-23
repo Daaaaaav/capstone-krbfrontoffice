@@ -160,6 +160,31 @@ class Manageroom extends Component
 
     /*
     |--------------------------------------------------------------------------
+    | APPROVAL TIME VALIDATION TOGGLE
+    |--------------------------------------------------------------------------
+    */
+    public function toggleEarlyApproval(int $id): void
+    {
+        try {
+            $room = Room::where('company_id', $this->companyId)->findOrFail($id);
+            $newValue = ! $room->requires_early_approval;
+            $room->update(['requires_early_approval' => $newValue]);
+
+            $state = $newValue ? 'enabled' : 'disabled';
+            $this->dispatch(
+                'toast',
+                type: 'success',
+                title: 'Setting Updated',
+                message: "Approval time validation {$state} for \"{$room->room_name}\".",
+                duration: 3000
+            );
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update setting: ' . $e->getMessage(), duration: 4000);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | DELETE (soft delete)
     |--------------------------------------------------------------------------
     */

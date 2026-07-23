@@ -56,6 +56,7 @@
                             <th class="px-6 py-3 text-left">#</th>
                             <th class="px-6 py-3 text-left">Room Name</th>
                             <th class="px-6 py-3 text-left">Capacity</th>
+                            <th class="px-6 py-3 text-left">Approval Validation</th>
                             <th class="px-6 py-3 text-left">Created</th>
                             <th class="px-6 py-3 text-left">Actions</th>
                         </tr>
@@ -89,6 +90,23 @@
                                     @endif
                                 </td>
 
+                                {{-- APPROVAL TIME VALIDATION TOGGLE --}}
+                                <td class="px-6 py-4">
+                                    @php $enabled = $room->requires_early_approval ?? true; @endphp
+                                    <button
+                                        wire:click="toggleEarlyApproval({{ $room->room_id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="toggleEarlyApproval({{ $room->room_id }})"
+                                        title="{{ $enabled ? 'Click to disable 1-hour advance booking requirement' : 'Click to enable 1-hour advance booking requirement' }}"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all
+                                            {{ $enabled
+                                                ? 'bg-[#4E653D] text-white hover:bg-[#354C2B]'
+                                                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200' }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $enabled ? 'bg-white' : 'bg-gray-400' }}"></span>
+                                        {{ $enabled ? 'Enabled' : 'Disabled' }}
+                                    </button>
+                                </td>
+
                                 {{-- DATE --}}
                                 <td class="px-6 py-4 text-[#5a6e4a]">
                                     {{ $room->created_at?->format('M d, Y') ?? 'N/A' }}
@@ -111,7 +129,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-12 text-center">
+                                <td colspan="6" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center gap-2 text-[#9aaa8a]">
                                         <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5"/>
