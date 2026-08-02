@@ -1,7 +1,6 @@
 <div class="min-h-screen bg-[#f5f7f2]">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
-        {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.lstm_title') }}"
             subtitle="{{ __('app.lstm_subtitle') }}">
@@ -16,10 +15,7 @@
             </x-slot:actions>
         </x-page-header>
 
-        {{-- ── CONTROLS PANEL ───────────────────────────────────────────────── --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm space-y-6">
-
-            {{-- Forecast period --}}
             <div>
                 <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_period') }}</label>
                 <div class="flex gap-2 max-w-xs">
@@ -34,8 +30,6 @@
             </div>
 
             <div class="border-t border-[#e8ede2]"></div>
-
-            {{-- ── TRAINING DATA SOURCE ──────────────────────────────────────── --}}
             <div>
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div>
@@ -43,7 +37,6 @@
                         <p class="text-xs text-[#7a8f6a] mt-0.5">{{ __('app.training_data_source_sub') }}</p>
                     </div>
 
-                    {{-- Retrain button --}}
                     @if($isLSTMAvailable)
                         <button wire:click="retrain" wire:loading.attr="disabled"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#4E653D] text-white hover:bg-[#3d5130] transition disabled:opacity-60">
@@ -65,10 +58,7 @@
                     @endif
                 </div>
 
-                {{-- Source selector buttons --}}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                    {{-- CSV Server (default) --}}
                     <button wire:click="setTrainingSource('csv_server')"
                         class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             {{ $trainingSource === 'csv_server'
@@ -99,7 +89,6 @@
                         </div>
                     </button>
 
-                    {{-- Custom CSV Upload --}}
                     <button wire:click="setTrainingSource('csv_upload')"
                         class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             {{ $trainingSource === 'csv_upload'
@@ -120,7 +109,6 @@
                         </div>
                     </button>
 
-                    {{-- Live DB --}}
                     <button wire:click="setTrainingSource('live_db')"
                         class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             {{ $trainingSource === 'live_db'
@@ -138,14 +126,10 @@
                             <p class="text-xs text-[#7a8f6a] mt-0.5 leading-snug">{{ __('app.source_live_db_desc') }}</p>
                         </div>
                     </button>
-
                 </div>
 
-                {{-- ── CSV UPLOAD FORM (shown only when csv_upload is active) ── --}}
                 @if($trainingSource === 'csv_upload')
                     <div class="mt-4 p-4 bg-[#f5f7f2] border border-[#d4dfc8] rounded-xl space-y-3">
-
-                        {{-- CSV Format Guidance --}}
                         <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
                             <p class="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
                                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -174,7 +158,6 @@
                             </div>
                         </div>
 
-                        {{-- Error --}}
                         @if($uploadError)
                             <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                                 <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -184,7 +167,6 @@
                             </div>
                         @endif
 
-                        {{-- Success --}}
                         @if($uploadSuccess)
                             <div class="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                                 <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -194,7 +176,6 @@
                             </div>
                         @endif
 
-                        {{-- File input + upload button --}}
                         <form wire:submit.prevent="uploadCsv" class="flex flex-col sm:flex-row gap-2">
                             <div class="flex-1">
                                 <input type="file" wire:model="uploadedCsv" accept=".csv,.txt"
@@ -220,7 +201,6 @@
                     </div>
                 @endif
 
-                {{-- Active source badge --}}
                 <div class="mt-3 flex items-center gap-2 text-xs text-[#7a8f6a]">
                     <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
                     {{ __('app.currently_using') }}:
@@ -235,9 +215,7 @@
             </div>
         </div>
 
-        {{-- ── STATS CARDS ──────────────────────────────────────────────────── --}}
         @if(!empty($predictions))
-
             <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach($stats as $stat)
                     <div class="bg-white border border-[#d4dfc8] rounded-2xl p-5 shadow-sm hover:shadow-lg transition">
@@ -252,7 +230,6 @@
                 @endforeach
             </section>
 
-            {{-- ── DAILY PREDICTIONS CHART ──────────────────────────────────── --}}
             <div class="bg-white border border-[#d4dfc8] p-6 rounded-2xl shadow-sm">
                 <div class="mb-4">
                     <h3 class="text-lg font-semibold text-[#2d3a24]">{{ __('app.daily_predictions') }}</h3>
@@ -274,7 +251,6 @@
                 </div>
             </div>
 
-            {{-- ── WEEKLY SUMMARY CHART (21-day only) ──────────────────────── --}}
             @if($weeklyData)
                 <div class="bg-white border border-[#d4dfc8] p-6 rounded-2xl shadow-sm">
                     <div class="mb-4">
@@ -287,7 +263,6 @@
                 </div>
             @endif
 
-            {{-- ── PREDICTIONS TABLE ────────────────────────────────────────── --}}
             <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b bg-[#f0f4eb]">
                     <h3 class="font-semibold text-[#2d3a24]">{{ __('app.detailed_predictions') }}</h3>
@@ -336,10 +311,7 @@
             </div>
         @endif
 
-        {{-- ── MODEL PERFORMANCE ────────────────────────────────────────────── --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
-
-            {{-- Card header --}}
             <div class="px-6 py-4 bg-[#f0f4eb] border-b border-[#d4dfc8] flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg bg-[#4E653D] text-white flex items-center justify-center flex-shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,13 +345,11 @@
                             </p>
                         </div>
 
-                        {{-- Epochs --}}
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_epochs') }}</p>
                             <p class="text-2xl font-bold text-[#2d3a24]">{{ $m['epochs_run'] ?? '—' }}</p>
                         </div>
 
-                        {{-- Training Loss --}}
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_training_loss') }}</p>
                             <p class="text-2xl font-bold text-[#2d3a24]">
@@ -387,7 +357,6 @@
                             </p>
                         </div>
 
-                        {{-- Validation Loss --}}
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_validation_loss') }}</p>
                             <p class="text-2xl font-bold text-[#2d3a24]">
@@ -395,7 +364,6 @@
                             </p>
                         </div>
 
-                        {{-- MAE --}}
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_mae') }}</p>
                             <p class="text-2xl font-bold text-[#2d3a24]">
@@ -404,7 +372,6 @@
                             <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_visitors_unit') }}</p>
                         </div>
 
-                        {{-- RMSE --}}
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_rmse') }}</p>
                             <p class="text-2xl font-bold text-[#2d3a24]">
@@ -413,7 +380,6 @@
                             <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_visitors_unit') }}</p>
                         </div>
 
-                        {{-- MAPE (now SMAPE — zero-safe percentage) --}}
                         @if(isset($m['smape']) && $m['smape'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_smape') }}</p>
@@ -427,7 +393,6 @@
                         </div>
                         @endif
 
-                        {{-- WAPE --}}
                         @if(isset($m['wape']) && $m['wape'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_wape') }}</p>
@@ -436,7 +401,6 @@
                         </div>
                         @endif
 
-                        {{-- R² --}}
                         @if(isset($m['r2']) && $m['r2'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_r2') }}</p>
@@ -444,7 +408,6 @@
                         </div>
                         @endif
 
-                        {{-- Best Validation Loss --}}
                         @if(isset($m['best_val_loss']) && $m['best_val_loss'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_best_val_loss') }}</p>
@@ -452,7 +415,6 @@
                         </div>
                         @endif
 
-                        {{-- Early Stop Epoch --}}
                         @if(isset($m['early_stop_epoch']) && $m['early_stop_epoch'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_early_stop_epoch') }}</p>
@@ -461,7 +423,6 @@
                         </div>
                         @endif
 
-                        {{-- Trainable Parameters --}}
                         @if(isset($m['trainable_params']) && $m['trainable_params'] !== null)
                         <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
                             <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_trainable_params') }}</p>
@@ -471,7 +432,6 @@
 
                     </div>
 
-                    {{-- Secondary metrics row --}}
                     @php
                         $hasSecondary = (isset($m['training_time']) && $m['training_time'] !== null)
                             || (isset($m['training_samples']) && $m['training_samples'] !== null)
@@ -517,7 +477,6 @@
                     </div>
                     @endif
 
-                    {{-- Loss Curve chart — only rendered when epoch data exists --}}
                     @if(!empty($m['loss_history']) && !empty($m['val_loss_history']))
                     <div class="border-t border-[#e8ede2] pt-4">
                         <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_loss_curve') }}</h4>
@@ -527,7 +486,6 @@
                     </div>
                     @endif
 
-                    {{-- Hyperparameters (reproducibility record for thesis/defense) --}}
                     @if(!empty($m['hyperparameters']))
                     <div class="border-t border-[#e8ede2] pt-4">
                         <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_hyperparameters') }}</h4>
@@ -563,7 +521,6 @@
 
                 </div>
             @else
-                {{-- Never-trained or service-unavailable empty state --}}
                 <div class="p-10 text-center">
                     <svg class="w-10 h-10 text-[#b5c4a5] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -666,7 +623,6 @@
 @endpush
 @endif
 
-{{-- Loss curve chart for Model Performance card (only when epoch history is available) --}}
 @php $lossCurveData = $modelMetrics['loss_history'] ?? []; $lossCurveVal = $modelMetrics['val_loss_history'] ?? []; @endphp
 @if(!empty($lossCurveData) && !empty($lossCurveVal))
 @push('scripts')

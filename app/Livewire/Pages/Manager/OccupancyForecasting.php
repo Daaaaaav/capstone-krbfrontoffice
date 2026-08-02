@@ -325,11 +325,13 @@ class OccupancyForecasting extends Component
             $dowMultiplier[$d] = $dowAvg[$d] / $overallHistAvg;
         }
 
-        $lastDate = !empty($history) ? end($history)['date'] : date('Y-m-d');
+        // Always anchor to today so forecast dates are never stale relative
+        // to the historical CSV end date.
+        $today    = date('Y-m-d');
         $forecast = [];
 
         for ($i = 1; $i <= $days; $i++) {
-            $date      = date('Y-m-d', strtotime($lastDate . " +{$i} days"));
+            $date      = date('Y-m-d', strtotime($today . " +{$i} days"));
             $dow       = (int) date('w', strtotime($date));
             $predicted = round(max(0, $avg * $dowMultiplier[$dow]), 1);
 

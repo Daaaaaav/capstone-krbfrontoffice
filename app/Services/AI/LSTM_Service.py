@@ -273,7 +273,7 @@ def compute_confidence(rmse: float, y_test: np.ndarray, cfg: LSTMConfig) -> floa
 def forecast(model, data, scaler, df, days: int = 7, window: int = 7):
     results     = []
     last_seq    = data[-window:].copy()
-    last_date   = df['date'].max()
+    last_date   = datetime.now().date()
     id_holidays = holidays.ID()
 
     for i in range(days):

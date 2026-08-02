@@ -274,10 +274,10 @@ class LSTMClient
         }
 
         $predictions = [];
-        $lastDate    = end($timeSeries)['date'];
+        $today = date('Y-m-d');
 
         for ($i = 1; $i <= $forecastDays; $i++) {
-            $nextDate   = date('Y-m-d', strtotime($lastDate . " +{$i} days"));
+            $nextDate   = date('Y-m-d', strtotime($today . " +{$i} days"));
             $prediction = $avgCount + ($trend * $i);
 
             if (date('N', strtotime($nextDate)) >= 6) {
