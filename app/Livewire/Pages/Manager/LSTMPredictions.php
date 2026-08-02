@@ -28,6 +28,8 @@ class LSTMPredictions extends Component
     public ?string $uploadError = null;
     public ?string $uploadSuccess = null;
 
+    public ?array $csvInfo = null;
+
     public bool $isRetraining = false;
 
     protected function rules(): array
@@ -150,6 +152,7 @@ class LSTMPredictions extends Component
             $isLSTMAvailable = $lstmClient->isAvailable();
 
             $csvReader  = new CsvDataReader();
+            $this->csvInfo = $csvReader->serverCsvInfo();
             $timeSeries = $this->buildTimeSeries($csvReader);
 
             $result = null;
@@ -239,7 +242,7 @@ class LSTMPredictions extends Component
                 'activeSource'    => $result['data_source'] ?? 'statistical',
                 'title'           => $result['title'] ?? 'Visitor Traffic Predictions',
                 'description'     => $result['description'] ?? null,
-                'csvInfo'         => $csvInfo,
+                'csvInfo'         => $this->csvInfo,
                 'modelMetrics'    => $modelMetrics,
             ]);
 
@@ -259,7 +262,7 @@ class LSTMPredictions extends Component
                 'activeSource'    => 'error',
                 'title'           => 'Visitor Traffic Predictions',
                 'description'     => null,
-                'csvInfo'         => ['rows' => 0, 'start' => null, 'end' => null],
+                'csvInfo'         => $this->csvInfo,
                 'modelMetrics'    => null,
             ]);
         }
