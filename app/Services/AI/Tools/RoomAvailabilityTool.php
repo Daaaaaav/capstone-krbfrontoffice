@@ -8,13 +8,6 @@ use App\Services\AI\Contracts\ToolInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-/**
- * Tool: check_room_availability
- *
- * Queries existing BookingRoom and Room models to report which rooms
- * are free or occupied on a given date/time window.
- * Does NOT create or modify any booking.
- */
 class RoomAvailabilityTool implements ToolInterface
 {
     public function name(): string
@@ -51,7 +44,6 @@ class RoomAvailabilityTool implements ToolInterface
         $endTime    = $arguments['end_time']   ?? null;
         $roomName   = $arguments['room_name']  ?? null;
 
-        // All rooms for this company
         $roomQ = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->orderBy('room_name');
         if ($roomName) {
@@ -59,7 +51,6 @@ class RoomAvailabilityTool implements ToolInterface
         }
         $rooms = $roomQ->get(['room_id', 'room_name', 'capacity']);
 
-        // Bookings on that date (pending or approved = occupied)
         $bookingQ = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereDate('date', $date)
             ->whereIn('status', ['pending', 'approved'])
@@ -82,7 +73,6 @@ class RoomAvailabilityTool implements ToolInterface
             $status   = $occupied ? 'OCCUPIED' : 'FREE';
             if ($occupied) {
                 $busy++;
-                // Show what's occupying it
                 $roomBookings = $bookings->where('room_id', $room->room_id);
                 $slots = $roomBookings->map(fn($b) =>
                     substr($b->start_time ?? '', 0, 5) . '–' . substr($b->end_time ?? '', 0, 5)

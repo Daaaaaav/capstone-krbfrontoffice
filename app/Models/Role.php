@@ -14,9 +14,6 @@ class Role extends Model
     protected $primaryKey = 'role_id';
     public $incrementing = true;
     protected $keyType = 'int';
-    // your table HAS timestamps -> keep default (true)
-
-    // remove 'code' since the column doesn't exist
     protected $fillable = ['name'];
 
     public function users(): HasMany

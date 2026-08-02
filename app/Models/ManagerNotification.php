@@ -29,26 +29,20 @@ class ManagerNotification extends Model
         'is_read'         => 'boolean',
     ];
 
-    // ── Type constants ─────────────────────────────────────────────────────
     const TYPE_ROOM_CANCEL_REQUEST    = 'priority_room_cancel_request';
     const TYPE_VEHICLE_CANCEL_REQUEST = 'priority_vehicle_cancel_request';
-    const TYPE_PRIORITY_ROOM_DIRECT   = 'priority_room_direct';      // no conflict, just inform
+    const TYPE_PRIORITY_ROOM_DIRECT   = 'priority_room_direct';      
     const TYPE_PRIORITY_VEHICLE_DIRECT = 'priority_vehicle_direct';
-
-    // ── Relationships ──────────────────────────────────────────────────────
 
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recipient_id', 'user_id');
     }
 
-    /** Polymorphic: points to PriorityRoomBooking or PriorityVehicleBooking */
     public function notifiable(): MorphTo
     {
         return $this->morphTo(__FUNCTION__, 'notifiable_type', 'notifiable_id');
     }
-
-    // ── Scopes ─────────────────────────────────────────────────────────────
 
     public function scopeForCompany($query, ?int $companyId)
     {
@@ -69,8 +63,6 @@ class ManagerNotification extends Model
     {
         return $query->where('recipient_id', $userId);
     }
-
-    // ── Helpers ────────────────────────────────────────────────────────────
 
     public function markRead(): void
     {
@@ -93,19 +85,6 @@ class ManagerNotification extends Model
         };
     }
 
-    // ── Static factory helpers ─────────────────────────────────────────────
-
-    /**
-     * Create a notification for all receptionists of a company.
-     *
-     * @param  int         $companyId
-     * @param  string      $type
-     * @param  string      $title
-     * @param  string      $message
-     * @param  Model       $notifiable    PriorityRoomBooking or PriorityVehicleBooking
-     * @param  bool        $actionRequired
-     * @return void
-     */
     public static function notifyReceptionists(
         int $companyId,
         string $type,
@@ -114,7 +93,6 @@ class ManagerNotification extends Model
         Model $notifiable,
         bool $actionRequired = false
     ): void {
-        // Find all active receptionists for this company
         $receptionistRoleId = \App\Models\Role::where('name', 'Receptionist')->value('role_id');
 
         $receptionists = User::where('company_id', $companyId)
@@ -138,9 +116,6 @@ class ManagerNotification extends Model
         }
     }
 
-    /**
-     * Count unread + pending-action notifications for a given receptionist.
-     */
     public static function pendingCountFor(int $userId, int $companyId): int
     {
         return static::where('company_id', $companyId)

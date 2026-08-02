@@ -22,24 +22,17 @@ class MeetingSchedule extends Component
 {
     private const INITIAL_STATUS = 'pending';
     private string $tz = 'Asia/Jakarta';
-
     public ?int $editingId = null;
-
     public bool $showOfflineForm = false;
     public bool $showOnlineForm = false;
-
-    // Room Directory schedule modal
     public bool $showScheduleModal = false;
     public ?int $selectedRoomForSchedule = null;
     public array $roomScheduleData = [];
     public bool $showBookingDetailModal = false;
     public array $selectedBookingDetail = [];
-
-    // Room booking approve/reject (from directory modal)
     public bool $showRoomRejectModal = false;
     public ?int $roomRejectId = null;
     public string $roomRejectReason = '';
-    /** OFFLINE form state */
     public array $form = [
         'meeting_title' => null,
         'room_id'       => null,
@@ -51,14 +44,9 @@ class MeetingSchedule extends Component
         'notes'         => null,
         'requirements'  => [], 
     ];
-
-    /** OFFLINE specific state */
     public ?int $offline_user_id = null;
     public array $usersByDeptOffline = [];
     public string $userQueryOffline = '';
-
-
-    /** ONLINE form state */
     public string $online_meeting_title = '';
     public string $online_platform = 'google_meet';
     public ?string $online_date = null;
@@ -66,22 +54,13 @@ class MeetingSchedule extends Component
     public ?string $online_end_time = null;
     public ?int $online_department_id = null;
     public ?int $online_user_id = null;
-
     public array $usersByDept = [];
     public string $userQueryOnline = '';
-
-    /** Shared lookups / flags */
     public bool $googleConnected = false;
     public array $departments = [];
     public array $requirementOptions = [];
-    // NOTE: $rooms is intentionally NOT a public property so Livewire does not
-    // snapshot-hydrate it. It is re-queried fresh on every render() call instead,
-    // which ensures newly-added rooms appear without a full page reload.
-
-    /** Department search inputs (front-end filtered) */
     public string $deptQueryOffline = '';
     public string $deptQueryOnline  = '';
-    
     public ?int $otherRequirementId = null;
 
 
@@ -104,8 +83,6 @@ class MeetingSchedule extends Component
             $this->loadUsersForDeptOffline((int) $this->form['department_id']);
         }
     }
-
-    /* ===================== Lookups & Helpers ===================== */
 
     protected function pickColumn(string $table, array $candidates, string $fallback): string
     {
@@ -136,9 +113,6 @@ class MeetingSchedule extends Component
     {
         $pkCol    = $this->pickColumn('rooms', ['room_id', 'id'], 'room_id');
         $labelCol = $this->pickColumn('rooms', ['room_name', 'room_number', 'name'], 'room_name');
-
-        // Also select capacity so the view can show the occupancy limit
-        // and saveOffline() can validate without an extra query.
         $hasCapacity = Schema::hasColumn('rooms', 'capacity');
         $selectRaw   = $hasCapacity
             ? "$pkCol as id, $labelCol as label, capacity"
@@ -158,11 +132,6 @@ class MeetingSchedule extends Component
         ])->all();
     }
 
-    /**
-     * Return the capacity for the currently selected room, or null if the room
-     * has no capacity configured. Reuses the rooms array already built for the
-     * render pass — does NOT issue an additional database query.
-     */
     protected function getSelectedRoomCapacity(array $rooms): ?int
     {
         $roomId = (int) ($this->form['room_id'] ?? 0);
@@ -172,7 +141,7 @@ class MeetingSchedule extends Component
 
         foreach ($rooms as $room) {
             if ((int) $room['id'] === $roomId) {
-                return $room['capacity']; // null means no limit configured
+                return $room['capacity'];
             }
         }
 
@@ -255,11 +224,9 @@ class MeetingSchedule extends Component
             ->all();
     }
     
-    // Livewire Watchers (updated* methods)
     public function updatedDeptQueryOffline(): void
     {
         // Re-render will filter $departmentsOffline via render() automatically.
-        // Reset user selection if dept changes while filtering.
     }
 
     public function updatedDeptQueryOnline(): void
@@ -337,7 +304,6 @@ class MeetingSchedule extends Component
         }
     }
 
-    // Validation helpers
     protected function rules(): array
     {
         $deptPk = $this->pickColumn('departments', ['department_id', 'id'], 'department_id');
@@ -354,7 +320,6 @@ class MeetingSchedule extends Component
             'form.notes'         => ['nullable', 'string', 'max:1000'],
             'form.requirements'  => ['array'],
             'form.requirements.*' => ['nullable', 'sometimes', 'distinct', function ($attribute, $value, $fail) {
-                // Check if it's a numeric ID (for a requirement) or the string 'Other'
                 if (!is_numeric($value) && $value !== 'Other') {
                     $fail('The selected requirement is invalid.');
                 }
@@ -365,7 +330,7 @@ class MeetingSchedule extends Component
     protected function hasRoomOverlap(int $roomId, string $ymd, string $startAt, string $endAt, ?int $excludeId = null): bool
     {
         $pendingApproved = ['pending', 'approved', 0, 1, '0', '1', 'PENDING', 'APPROVED'];
-        $pkCol = $this->pickColumn('booking_rooms', ['bookingroom_id', 'id'], 'bookingroom_id'); // Assuming the PK column name
+        $pkCol = $this->pickColumn('booking_rooms', ['bookingroom_id', 'id'], 'bookingroom_id'); 
 
         return DB::table('booking_rooms')
             ->where('room_id', $roomId)
@@ -389,48 +354,27 @@ class MeetingSchedule extends Component
         }
     }
     
-    /**
-     * @param array $ids - Array of requirement IDs (numeric) and the string 'Other'.
-     * @param string $notes - The free-text notes.
-     * @return array{0: array<int>, 1: string} - [0] is a clean array of numeric IDs, [1] is the cleaned special notes string.
-     */
     private function parseRequirementsForSave(array $ids, string $notes): array
     {
         $requirementIds = [];
-        $specialNotes = trim((string) $notes); // Notes are now just the 'Other' text
+        $specialNotes = trim((string) $notes); 
 
         foreach ($ids as $id) {
             if (is_numeric($id)) {
                 $requirementIds[] = (int)$id;
             }
-            // The 'Other' text is already in $specialNotes, no need to include 'Other' ID here if we are attaching all to pivot
-            // The frontend uses the string 'Other', which we ignore for the pivot table if we assume the model handles it.
         }
-
-        // Check if 'Other' was checked, and if so, include its ID
         if (in_array('Other', $ids, true) && $this->otherRequirementId) {
             $requirementIds[] = $this->otherRequirementId;
         }
-
         $requirementIds = array_values(array_unique(array_filter($requirementIds, fn($v) => $v !== null)));
-        
         return [$requirementIds, $specialNotes];
     }
 
-
-    /* ===================== Save Methods ===================== */
-
     public function saveOffline(): void
     {
-        // 1. Validation
         $this->validate();
         $this->validateNotesIfOther();
-
-        // 1b. Occupancy limit check (offline room meetings only)
-        // Rooms are loaded fresh here to get the latest capacity configured by the Manager.
-        // This reuses the same query that render() would call — no separate DB hit because
-        // saveOffline() is a Livewire action (not a render cycle), so we call loadRooms()
-        // once and pass the result to the helper.
         $roomsForValidation = $this->loadRooms();
         $roomCapacity       = $this->getSelectedRoomCapacity($roomsForValidation);
 
@@ -448,7 +392,6 @@ class MeetingSchedule extends Component
             ? (int) $this->offline_user_id
             : (Auth::user()?->user_id ?? Auth::id());
 
-        // 2. Date/Time Parsing & Checks
         try {
             $startAt = $this->toDateTime((string)$this->form['date'], (string)$this->form['time']);
             $endAt   = $this->toDateTime((string)$this->form['date'], (string)$this->form['time_end']);
@@ -462,10 +405,6 @@ class MeetingSchedule extends Component
             return;
         }
 
-        // ── 1-Hour Minimum Booking Constraint ──────────────────────────────
-        // Enforced only when the selected room has requires_early_approval = true.
-        // The flag defaults to true (DB default), so existing behavior is preserved
-        // for all rooms until a Manager explicitly disables it per room.
         $startCarbon = Carbon::parse($startAt, $this->tz);
         $selectedRoom = \App\Models\Room::select('room_id', 'requires_early_approval')
             ->find((int) $this->form['room_id']);
@@ -485,7 +424,6 @@ class MeetingSchedule extends Component
             }
         }
 
-        // ── 1-Month Advance Booking Constraint ─────────────────────────────
         $maxAdvanceDate = now($this->tz)->addMonths(1);
         if ($startCarbon->greaterThan($maxAdvanceDate)) {
             $this->dispatch(
@@ -497,9 +435,7 @@ class MeetingSchedule extends Component
             );
             return;
         }
-        // ───────────────────────────────────────────────────────────────────
 
-        // 3. Overlap Check
         if ($this->hasRoomOverlap((int)$this->form['room_id'], (string)$this->form['date'], $startAt, $endAt, $this->editingId)) {
             $humanStart = Carbon::parse($startAt, $this->tz)->format('d M Y H:i');
             $humanEnd   = Carbon::parse($endAt,   $this->tz)->format('H:i');
@@ -507,15 +443,13 @@ class MeetingSchedule extends Component
             return;
         }
         
-        // 4. Prepare Data & **Separate Requirements**
         [$reqIds, $specialNotes] = $this->parseRequirementsForSave($this->form['requirements'], (string)($this->form['notes'] ?? ''));
 
-        // 5. Database Insertion (in transaction for atomicity)
         DB::beginTransaction();
         try {
             $bookingRoomPk = $this->pickColumn('booking_rooms', ['bookingroom_id', 'id'], 'bookingroom_id');
 
-            $bookingId = DB::table('booking_rooms')->insertGetId([ // Use insertGetId to get the PK
+            $bookingId = DB::table('booking_rooms')->insertGetId([ 
                 'room_id'              => (int)$this->form['room_id'],
                 'company_id'           => $cid,
                 'user_id'              => $targetUserId,
@@ -524,12 +458,10 @@ class MeetingSchedule extends Component
                 'date'                 => (string)$this->form['date'],
                 'start_time'           => $startAt,
                 'end_time'             => $endAt,
-                // Attendees
                 ...(Schema::hasColumn('booking_rooms', 'number_of_attendees')
                     ? ['number_of_attendees' => (int)$this->form['participant']]
                     : (Schema::hasColumn('booking_rooms', 'participant') ? ['participant' => (int)$this->form['participant']] : [])
                 ),
-                // Notes (Now only includes 'Other' text)
                 ...(Schema::hasColumn('booking_rooms', 'special_notes')
                     ? ['special_notes' => $specialNotes]
                     : (Schema::hasColumn('booking_rooms', 'notes') ? ['notes' => $specialNotes] : [])
@@ -540,37 +472,27 @@ class MeetingSchedule extends Component
                 ...(Schema::hasColumn('booking_rooms', 'is_approve') ? ['is_approve' => 0] : []),
                 'created_at'           => now(),
                 'updated_at'           => now(),
-            ], $bookingRoomPk); // Pass the primary key column name for insertGetId
+            ], $bookingRoomPk); 
 
-            // 6. **Attach Requirements** to the pivot table
             if (!empty($reqIds)) {
                 $pivotData = collect($reqIds)->map(fn($reqId) => [
-                    $bookingRoomPk => $bookingId, // Assumes booking_rooms PK is a foreign key on pivot table
+                    $bookingRoomPk => $bookingId, 
                     $this->pickColumn('requirements', ['requirement_id', 'id'], 'requirement_id') => $reqId,
                 ])->all();
-                
-                // Assuming the pivot table is named 'booking_requirements'
                 DB::table('booking_requirements')->insert($pivotData); 
             }
-            
             DB::commit();
-
         } catch (\Throwable $e) {
             DB::rollBack();
-            // Log the error
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Gagal menyimpan booking. ' . $e->getMessage(), duration: 5000);
             return;
         }
-
-
         $this->resetOfflineForm();
-
         $this->dispatch('toast', type: 'success', title: 'Sukses', message: 'Meeting offline disimpan.', duration: 3000);
     }
 
     public function saveOnline(): void
     {
-        // 1. Validation
         $data = $this->validate([
             'online_meeting_title' => ['required', 'string', 'max:255'],
             'online_platform'      => ['required', Rule::in(['google_meet', 'zoom'])],
@@ -587,7 +509,6 @@ class MeetingSchedule extends Component
             ? (int) $this->online_user_id
             : (Auth::user()?->user_id ?? Auth::id());
 
-        // 2. Date/Time Parsing & Checks
         try {
             $startAt = $this->toDateTime($data['online_date'], $data['online_start_time']);
             $endAt   = $this->toDateTime($data['online_date'], $data['online_end_time']);
@@ -602,8 +523,6 @@ class MeetingSchedule extends Component
         }
 
         $startCarbon = Carbon::parse($startAt, $this->tz);
-
-        // ── 1-Month Advance Booking Constraint ─────────────────────────────
         $maxAdvanceDate = now($this->tz)->addMonths(1);
         if ($startCarbon->greaterThan($maxAdvanceDate)) {
             $this->dispatch(
@@ -615,9 +534,7 @@ class MeetingSchedule extends Component
             );
             return;
         }
-        // ───────────────────────────────────────────────────────────────────
 
-        // 3. Create meeting link immediately at submission
         $meetingUrl = null;
         $meetingCode = null;
         $meetingPassword = null;
@@ -667,8 +584,6 @@ class MeetingSchedule extends Component
             }
         } catch (\Throwable $e) {
             $errorMsg = $e->getMessage();
-            
-            // For Google Meet API errors, extract the readable message
             if ($e instanceof \Google\Service\Exception) {
                 $errDecoded = json_decode($e->getMessage(), true);
                 if (isset($errDecoded['error']['message'])) {
@@ -681,10 +596,9 @@ class MeetingSchedule extends Component
 
             Log::error('Failed to create meeting link on submission: ' . $errorMsg);
             $this->dispatch('toast', type: 'error', title: 'Integration Error', message: $errorMsg, duration: 8000);
-            return; // Abort booking if link creation fails
+            return; 
         }
 
-        // 4. Database Insertion with meeting link
         $bookingRoomPk = $this->pickColumn('booking_rooms', ['bookingroom_id', 'id'], 'bookingroom_id');
 
         $bookingId = DB::table('booking_rooms')->insertGetId([
@@ -713,8 +627,6 @@ class MeetingSchedule extends Component
         $this->dispatch('toast', type: 'success', title: 'Sukses', message: 'Meeting online disimpan dengan link meeting.', duration: 3000);
     }
 
-    /* ===================== Room Directory Approve / Reject ===================== */
-
     public function approveRoomBooking(int $id): void
     {
         try {
@@ -728,8 +640,6 @@ class MeetingSchedule extends Component
                 $b->approved_by = \Illuminate\Support\Facades\Auth::id();
                 $b->save();
             });
-
-            // Refresh schedule data so the card updates inline
             if ($this->selectedRoomForSchedule) {
                 $this->openScheduleModal($this->selectedRoomForSchedule);
             }
@@ -786,15 +696,11 @@ class MeetingSchedule extends Component
         }
     }
 
-    /* ===================== Room Directory Schedule Modal ===================== */
-
     public function openScheduleModal($roomId): void
     {
         $this->selectedRoomForSchedule = (int) $roomId;
         $now = now($this->tz);
         $endDate = $now->copy()->addDays(30);
-
-        // Regular room bookings (pending + approved)
         $regularBookings = \App\Models\BookingRoom::with(['room', 'user', 'department'])
             ->where('room_id', $roomId)
             ->whereBetween('date', [$now->format('Y-m-d'), $endDate->format('Y-m-d')])
@@ -827,7 +733,6 @@ class MeetingSchedule extends Component
                 ];
             });
 
-        // Priority room bookings for this room (all active statuses)
         $priorityBookings = \App\Models\PriorityRoomBooking::with(['room', 'manager'])
             ->where('room_id', $roomId)
             ->whereBetween('date', [$now->format('Y-m-d'), $endDate->format('Y-m-d')])
@@ -865,7 +770,6 @@ class MeetingSchedule extends Component
                 ];
             });
 
-        // Merge and sort by date + start_time
         $this->roomScheduleData = $regularBookings->concat($priorityBookings)
             ->sortBy(fn($b) => $b['date'] . ' ' . $b['start_time'])
             ->values()
@@ -882,8 +786,6 @@ class MeetingSchedule extends Component
             $this->showBookingDetailModal = true;
         }
     }
-
-    /* ===================== Utilities & Rendering ===================== */
 
     protected function detectGoogleConnected(): bool
     {

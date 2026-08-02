@@ -1,4 +1,3 @@
-{{-- When using this button in another component that supports icons, this button will automatically inherit the icon-related props without needing to pass them explicitly each time. --}}
 @aware(['icon', 'iconClasses', 'iconVariant', 'iconAfter'])
 
 @props([
@@ -17,11 +16,8 @@
 ])
 
 @php
-// Automatically convert to square style if no content slot is provided
 $squared = $slot->isEmpty();
 
-/* DEALING WITH SIZES - START */
-// Determine size-specific classes, including height, text size, and padding adjustments based on squared mode and icon presence
 $sizeClasses = match($size) { 
     'lg' => '[:where(&)]:h-12 text-md' . ' '. ( $squared ? 'w-12': ($icon ? 'ps-4' : 'ps-5') . ' ' . ($iconAfter ? 'pe-4' : 'pe-5')),
     'md' => '[:where(&)]:h-10 text-base' . ' '. ( $squared ? 'w-10': ($icon ? 'ps-3' : 'ps-4') . ' ' . ($iconAfter ? 'pe-3' : 'pe-4')), // default
@@ -29,10 +25,7 @@ $sizeClasses = match($size) {
     'xs' => '[:where(&)]:h-6 text-xs' . ' '. ( $squared ? 'w-6': ($icon ? 'ps-1' : 'ps-2') . ' ' . ($iconAfter ? 'pe-1' : 'pe-2')),
     default => '[:where(&)]:h-10 text-sm' . ' '. ( $squared ? 'w-10': ($icon ? 'ps-3' : 'ps-4') . ' ' . ($iconAfter ? 'pe-3' : 'pe-4')),
 };
-/* SIZES - END */
 
-/* DEALING WITH ICONS - START */
-// Set default icon variant based on button size and squared mode
 $iconVariant ??= match($size) {
     'xs' => 'micro',
     'sm' => 'mini',
@@ -41,8 +34,6 @@ $iconVariant ??= match($size) {
     default => 'micro',
 };
 
-
-// Build icon classes array, including size, color overrides for variants, and any custom classes
 $iconClasses = [
     $iconClasses,
     $size !== 'xs' ? 'size-5' : 'size-4',
@@ -51,9 +42,7 @@ $iconClasses = [
 ];
  
 $iconAttributes = (new \Illuminate\View\ComponentAttributeBag())->class($iconClasses);
-/* ICONS - END */
 
-// Override theme variables based on the provided color for use in button styling (includes dark mode adjustments)
 $colors = match($color) {
     'slate' => '[--color-primary:var(--color-slate-800)] [--color-primary-content:var(--color-slate-800)] [--color-primary-fg:var(--color-neutral-50)] dark:[--color-primary:var(--color-white)] dark:[--color-primary-content:var(--color-white)] dark:[--color-primary-fg:var(--color-slate-800)]',
     'neutral' => '[--color-primary:var(--color-neutral-800)] [--color-primary-content:var(--color-neutral-800)] [--color-primary-fg:var(--color-neutral-50)] dark:[--color-primary:var(--color-white)] dark:[--color-primary-content:var(--color-white)] dark:[--color-primary-fg:var(--color-neutral-800)]',
@@ -79,12 +68,11 @@ $colors = match($color) {
     default => '',
 };
 
-// Determine variant-specific classes for background, text, borders, and hover states
 $variantClasses = match($variant){
     'primary' => [
-        'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90', // Background color 
-        'text-[var(--color-primary-fg)]', // Text color
-        'border border-black/10 dark:border-0', // Border styles
+        'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90', 
+        'text-[var(--color-primary-fg)]', 
+        'border border-black/10 dark:border-0',
         $colors => filled($color)
     ],
     'solid' => [
@@ -96,56 +84,47 @@ $variantClasses = match($variant){
         ' bg-transparent'
     ],
     'outline' => [
-        'border border-[--alpha(var(--color-primary)/20%)] hover:border-[--alpha(var(--color-primary)/25%)]', // Border
-        'bg-[--alpha(var(--color-primary)/5%)] hover:bg-[--alpha(var(--color-primary)/7%)]', // Background
+        'border border-[--alpha(var(--color-primary)/20%)] hover:border-[--alpha(var(--color-primary)/25%)]', 
+        'bg-[--alpha(var(--color-primary)/5%)] hover:bg-[--alpha(var(--color-primary)/7%)]', 
         'text-[var(--color-primary)]', 
-        $colors => filled($color), // Ensure variables are set
+        $colors => filled($color),
     ],
     'ghost' => [
-        'bg-transparent hover:bg-[--alpha(var(--color-neutral-900)/5%)] dark:hover:bg-[--alpha(var(--color-white)/5%)]', // Background colors
-        'text-neutral-800 dark:text-white' // Text colors
+        'bg-transparent hover:bg-[--alpha(var(--color-neutral-900)/5%)] dark:hover:bg-[--alpha(var(--color-white)/5%)]', 
+        'text-neutral-800 dark:text-white' 
     ],
     'danger' =>[
-        ' dark:shadow-none', // Shadow styling
-        'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500', // Background colors
-        'text-white' // Text colors
+        ' dark:shadow-none', 
+        'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500', 
+        'text-white' 
     ],
     'none' => [],
     default => []
 };
 
-// Assemble base button classes, including layout, disabled states, and conditional styles
 $classes = [
     'relative [:where(&)]:inline-flex items-center font-medium justify-center gap-x-2 whitespace-nowrap transition-colors duration-200',
     'disabled:opacity-55 dark:disabled:opacity-55 disabled:cursor-default disabled:pointer-events-none cursor-pointer',
-    '[&_a]:no-underline [&_a]:decoration-none [&_a:hover]:no-underline' => $variant !== 'none' , // Handle anchor tags inside the button
-    '[:where(&)]:rounded-field' => $variant !== 'none' , // Apply rounding unless variant is 'none'
-    
-    // Handling loading logic via CSS: Show loading indicator as flex and set opacity-0 on its siblings
-    '[&>[data-loading=true]:first-child]:flex', // Override 'hidden' to display the loading div during loading
-    '[&>[data-loading=true]:first-child~*]:opacity-0', // Apply opacity-0 to all subsequent children (e.g., icons, text)
+    '[&_a]:no-underline [&_a]:decoration-none [&_a:hover]:no-underline' => $variant !== 'none' ,
+    '[:where(&)]:rounded-field' => $variant !== 'none' , 
+    '[&>[data-loading=true]:first-child]:flex', 
+    '[&>[data-loading=true]:first-child~*]:opacity-0', 
     $sizeClasses,
     ...$variantClasses,
 ];
 
-/* LOADING LOGIC - START */
-
-// Check if any wire:loading attributes are present for dynamic handling
 $hasWireLoading = filled($attributes->whereStartsWith('wire:loading')->first());
 
 $loadingAttributes = new \Illuminate\View\ComponentAttributeBag();
-// Configure loading attributes for Livewire actions (adds data-loading="true" during loading)
 $loadingAttributes = $loadingAttributes->merge($hasWireLoading || $type === 'submit' ? [
     'wire:loading.attr' => 'data-loading',
     'wire:target' => $attributes->has('wire:target') ? $attributes->get('wire:target') : ($attributes->whereStartsWith('wire:click')->first() ?? null),
 ] : []);
 
-// Fallback for non-Livewire cases, I believe there use case for this static case beyond we actually need it in demo docs: 
 $loadingAttributes = $loadingAttributes->merge($loading ? [
     'data-loading' => 'true', // thats 'true' is crucial, boolean true will break the work
 ] : []);
 
-/* LOADING LOGIC - END */
 @endphp
 
 <x-ui.button.abstract 

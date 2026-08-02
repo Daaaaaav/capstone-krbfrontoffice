@@ -31,18 +31,11 @@ class GuestbookQrCode extends Model
         return $this->belongsTo(Guestbook::class, 'guestbook_id', 'guestbook_id');
     }
 
-    /**
-     * Generate a batch of unique QR tokens.
-     *
-     * @param  int  $count  Number of tokens to generate
-     * @return string[]  Array of unique hex tokens
-     */
     public static function generateTokenBatch(int $count): array
     {
         $tokens = [];
         while (count($tokens) < $count) {
             $token = bin2hex(random_bytes(32)); // 64 hex chars
-            // Ensure uniqueness within the batch and the DB
             if (!in_array($token, $tokens, true) && !static::where('qr_token', $token)->exists()) {
                 $tokens[] = $token;
             }

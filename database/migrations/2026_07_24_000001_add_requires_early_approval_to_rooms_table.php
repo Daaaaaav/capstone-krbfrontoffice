@@ -9,9 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-            // Controls whether the "must book at least 1 hour in advance" validation
-            // is enforced for offline meeting bookings in this room.
-            // Default TRUE preserves existing behavior for all current rooms.
             $table->boolean('requires_early_approval')
                   ->default(true)
                   ->after('capacity')

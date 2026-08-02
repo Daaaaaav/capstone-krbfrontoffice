@@ -24,9 +24,6 @@ class ZoomService
         $this->userId       = config('services.zoom.user_id', 'me');
     }
 
-    /**
-     * Check if Zoom credentials are configured.
-     */
     public function isConfigured(): bool
     {
         return !empty($this->accountId)
@@ -40,7 +37,6 @@ class ZoomService
             throw new \RuntimeException('Zoom API credentials are not configured. Please set ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET in your .env file.');
         }
 
-        // Cache the token for 55 minutes (Zoom tokens last 60 minutes)
         return Cache::remember('zoom_access_token', 55 * 60, function () {
             try {
                 $resp = $this->http->post('/oauth/token', [
@@ -68,10 +64,6 @@ class ZoomService
         });
     }
 
-    /**
-     * Create a Zoom meeting
-     * @return array [url, code, password]
-     */
     public function createMeeting(string $topic, Carbon $start, Carbon $end, ?string $agenda = null): array
     {
         $token = $this->getAccessToken();
@@ -109,9 +101,6 @@ class ZoomService
         ];
     }
 
-    /**
-     * Delete/cancel a Zoom meeting
-     */
     public function deleteMeeting(string $meetingId): bool
     {
         try {

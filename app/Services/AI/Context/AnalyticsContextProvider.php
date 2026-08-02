@@ -11,11 +11,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Loads analytics context — summaries and KPIs.
- * Used for both the Manager chatbot and when a receptionist asks a stats question.
- * Cached for 3 minutes to reduce repeated aggregation queries.
- */
 class AnalyticsContextProvider implements ContextProviderInterface
 {
     private string $tz = 'Asia/Jakarta';
@@ -43,7 +38,6 @@ class AnalyticsContextProvider implements ContextProviderInterface
         $weekEnd   = $now->copy()->endOfWeek()->toDateString();
         $today     = $now->toDateString();
 
-        // ── Rooms ────────────────────────────────────────────────
         $rQ  = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
         $rY  = (clone $rQ)->whereBetween('created_at', [$yearStart, $yearEnd]);
         $rP  = (clone $rQ)->whereBetween('created_at', [$prevStart, $prevEnd])->count();
@@ -63,18 +57,15 @@ class AnalyticsContextProvider implements ContextProviderInterface
             ->select('room_id', DB::raw('COUNT(*) as cnt'))
             ->groupBy('room_id')->orderByDesc('cnt')->with('room')->first();
         $topRoomName = $topRoom?->room?->room_name ?? 'N/A';
-
         $topDept = (clone $rQ)->whereBetween('created_at', [$yearStart, $yearEnd])
             ->select('department_id', DB::raw('COUNT(*) as cnt'))
             ->groupBy('department_id')->orderByDesc('cnt')->with('department')->first();
         $topDeptName = $topDept?->department?->name ?? 'N/A';
-
         $peakHr  = (clone $rQ)->whereBetween('created_at', [$yearStart, $yearEnd])
             ->selectRaw('HOUR(start_time) as hr, COUNT(*) as cnt')
             ->whereNotNull('start_time')->groupByRaw('HOUR(start_time)')->orderByDesc('cnt')->value('hr');
         $peakStr = $peakHr !== null ? sprintf('%02d:00–%02d:00', $peakHr, $peakHr + 1) : 'N/A';
 
-        // ── Vehicles ─────────────────────────────────────────────
         $vQ       = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
         $vTotal   = (clone $vQ)->whereBetween('created_at', [$yearStart, $yearEnd])->count();
         $vPrev    = (clone $vQ)->whereBetween('created_at', [$prevStart, $prevEnd])->count();
@@ -82,7 +73,6 @@ class AnalyticsContextProvider implements ContextProviderInterface
         $vPending = (clone $vQ)->where('status', 'pending')->count();
         $vTrend   = $this->trend($vPrev, $vTotal);
 
-        // ── Guests / Deliveries ───────────────────────────────────
         $gTotal  = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereBetween('created_at', [$yearStart, $yearEnd])->count();
         $gToday  = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId))

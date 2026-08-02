@@ -17,13 +17,11 @@ class BookingRoom extends Model
     protected $keyType = 'int';
     public $timestamps = true;
 
-    /** Numeric constants (keep for writes) */
     public const ST_PENDING = 0;
     public const ST_APPROVED = 1;
     public const ST_REJECTED = 2;
     public const ST_DONE = 3;
 
-    /** Tolerant sets (read both numeric & string rows) */
     private const PENDING_SET = [0, '0', 'pending', 'PENDING'];
     private const APPROVED_SET = [1, '1', 'approved', 'APPROVED'];
     private const REJECTED_SET = [2, '2', 'rejected', 'REJECTED'];
@@ -35,10 +33,10 @@ class BookingRoom extends Model
         'user_id',
         'department_id',
         'meeting_title',
-        'date',              // DATE
+        'date',              
         'number_of_attendees',
-        'start_time',        // TIME (HH:MM:SS)
-        'end_time',          // TIME (HH:MM:SS)
+        'start_time',       
+        'end_time',        
         'special_notes',
         'status',
         'approved_by',
@@ -50,21 +48,16 @@ class BookingRoom extends Model
         'online_meeting_password',
         'online_meeting_event_id',
         'requestinformation',
-        'book_reject' // Assuming this is also fillable for reschedule/reject logic
+        'book_reject'
     ];
 
     protected $casts = [
         'date' => 'date',
-        // Keep these as strings to avoid wrong datetime auto-casting
         'start_time' => 'string',
         'end_time' => 'string',
         'deleted_at' => 'datetime',
         'is_approve' => 'boolean',
     ];
-
-    /* ==========================
-    | Relationships
-      ========================== */
 
     public function room(): BelongsTo
     {
@@ -88,8 +81,6 @@ class BookingRoom extends Model
 
     public function requirements(): BelongsToMany
     {
-        // Links BookingRoom (bookingroom_id) to Requirement (requirement_id) via pivot table booking_requirements
-        // Assumes there is a model `App\Models\Requirement`
         return $this->belongsToMany(
             Requirement::class,
             'booking_requirements',
@@ -98,11 +89,6 @@ class BookingRoom extends Model
         )->withTimestamps();
     }
 
-    /* ==========================
-    | Scopes
-      ========================== */
-
-    /** Filter by company (no-op if null) */
     public function scopeCompany($query, $companyId)
     {
         return $companyId ? $query->where('company_id', $companyId) : $query;
@@ -125,10 +111,6 @@ class BookingRoom extends Model
         return $q->whereIn('status', self::DONE_SET);
     }
 
-    /**
-     * Approved + now inside window (DATE + TIME).
-     * (Kept for reference; RoomApproval shows all approved regardless of time)
-     */
     public function scopeOngoing($q, $now = null)
     {
         $now = ($now ?? now(config('app.timezone')))->format('Y-m-d H:i:s');
@@ -138,9 +120,6 @@ class BookingRoom extends Model
             ->whereRaw("CONCAT(date, ' ', end_time)   >= ?", [$now]);
     }
 
-    /**
-     * Promote finished approved meetings to DONE.
-     */
     public static function autoProgressToDone(?int $companyId = null, $now = null): void
     {
         $now = ($now ?? now(config('app.timezone')))->format('Y-m-d H:i:s');
@@ -152,15 +131,6 @@ class BookingRoom extends Model
             ->update(['status' => self::ST_DONE]);
     }
     
-
-    /* ==========================
-    | Helpers (optional)
-      ========================== */
-
-    /**
-     * Fallback URL generator when Zoom/Google services aren’t bound or creds missing.
-     * @return array{url:string|null, code:string|null, password:string|null}
-     */
     public static function generateMeetingUrl(string $provider = 'google_meet'): array
     {
         $provider = strtolower($provider) === 'zoom' ? 'zoom' : 'google_meet';

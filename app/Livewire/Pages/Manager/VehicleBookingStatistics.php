@@ -38,8 +38,6 @@ class VehicleBookingStatistics extends Component
 
             $since = now()->subDays($days)->startOfDay();
 
-            // ── KPI counts ────────────────────────────────────────────────────
-            // vehicle_bookings statuses: pending | approved | on_progress | completed | cancelled | rejected | returned
             $totalBookings      = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->count();
             $pendingBookings    = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'pending')->count();
             $approvedBookings   = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'approved')->count();
@@ -47,7 +45,6 @@ class VehicleBookingStatistics extends Component
             $completedBookings  = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->whereIn('status', ['completed', 'returned'])->count();
             $rejectedBookings   = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->whereIn('status', ['rejected', 'cancelled'])->count();
 
-            // ── Daily chart — zero-filled for every day in range ──────────────
             $raw = VehicleBooking::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')

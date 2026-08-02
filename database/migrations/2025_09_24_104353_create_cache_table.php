@@ -8,10 +8,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('cache', function (Blueprint $table) {
-            // key cache jadi primary
             $table->string('key')->primary();
             $table->mediumText('value');
-            // timestamp kadaluarsa (epoch seconds)
             $table->integer('expiration')->index();
         });
     }

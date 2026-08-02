@@ -9,12 +9,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Tool: get_occupancy_stats
- *
- * Returns room occupancy rates for a given period.
- * Reads BookingRoom and Room data only. Results are cached for 5 minutes.
- */
 class OccupancyTool implements ToolInterface
 {
     public function name(): string

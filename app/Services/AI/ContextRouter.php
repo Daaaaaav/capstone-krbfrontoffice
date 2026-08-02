@@ -11,22 +11,9 @@ use App\Services\AI\Context\VehicleContextProvider;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Classifies a user message and loads only the context providers whose
- * data is relevant to that message.
- *
- * This replaces the "always load everything" approach in PromptBuilder and
- * reduces prompt token usage by 50–80% on single-domain questions.
- *
- * Usage:
- *   $context = app(ContextRouter::class)->route($userMessage, $companyId, $role);
- *   // $context is a ready-to-embed string assembled from relevant providers only.
- */
 class ContextRouter
 {
     private string $tz = 'Asia/Jakarta';
-
-    /** @var array<string, ContextProviderInterface> */
     private array $providers;
 
     public function __construct()
@@ -40,20 +27,6 @@ class ContextRouter
         ];
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Public API
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Route the user message and return a combined context string built
-     * from only the relevant providers.
-     *
-     * @param  string   $message    Raw user message.
-     * @param  int|null $companyId  Tenant scope.
-     * @param  string   $role       'manager' or 'receptionist'.
-     * @param  array    $history    Recent conversation turns for follow-up detection.
-     * @return string   Assembled context block(s).
-     */
     public function route(string $message, ?int $companyId, string $role, array $history = []): string
     {
         $domains = $this->detect($message, $role, $history);
@@ -101,7 +74,6 @@ class ContextRouter
                         'error'    => $e->getMessage(),
                         'file'     => $e->getFile() . ':' . $e->getLine(),
                     ]);
-                    // Continue — skip this domain rather than aborting the whole request
                 }
             }
         }
@@ -110,7 +82,6 @@ class ContextRouter
             Log::info('ContextRouter: no domains matched — loading fallback (rooms + vehicles)', [
                 'stage' => 'context_routing',
             ]);
-            // Fallback: load minimal room + vehicle context so the AI is never empty
             $blocks[] = $this->providers['rooms']->load($companyId, $params);
             $blocks[] = $this->providers['vehicles']->load($companyId, $params);
         }
@@ -126,30 +97,20 @@ class ContextRouter
         return $assembled;
     }
 
-    /**
-     * Return just the list of detected domain names for a message.
-     * Exposed so ChatModal can decide which tool manifest subset to send.
-     */
     public function detectDomains(string $message, string $role, array $history = []): array
     {
         return $this->detect($message, $role, $history);
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Intent classification
-    // ──────────────────────────────────────────────────────────
 
     private function detect(string $message, string $role, array $history): array
     {
         $msg     = mb_strtolower($message);
         $domains = [];
 
-        // ── Manager always gets analytics as baseline ─────────
         if ($role === 'manager') {
             $domains[] = 'analytics';
         }
 
-        // ── Room booking / availability ───────────────────────
         if ($this->matches($msg, [
             'book', 'reserve', 'ruang', 'meeting room', 'room', 'rapat', 'schedule',
             'aula', 'hall', 'available', 'free slot', 'slot', 'konfirmasi', 'approve',
@@ -158,7 +119,6 @@ class ContextRouter
             $domains[] = 'rooms';
         }
 
-        // ── Vehicle booking / availability ────────────────────
         if ($this->matches($msg, [
             'vehicle', 'car', 'kendaraan', 'mobil', 'borrow', 'pinjam', 'trip',
             'driver', 'drive', 'transport', 'perjalanan', 'dinas', 'destination',
@@ -166,7 +126,6 @@ class ContextRouter
             $domains[] = 'vehicles';
         }
 
-        // ── Analytics / statistics ────────────────────────────
         if ($this->matches($msg, [
             'statistic', 'statistik', 'analytic', 'report', 'laporan', 'summary',
             'trend', 'total', 'how many', 'berapa', 'most', 'terbanyak', 'usage',
@@ -176,7 +135,6 @@ class ContextRouter
             $domains[] = 'analytics';
         }
 
-        // ── Guestbook / visitors ──────────────────────────────
         if ($this->matches($msg, [
             'guest', 'visitor', 'tamu', 'guestbook', 'check-in', 'checkin',
             'checkout', 'visit', 'kunjungan', 'who came', 'siapa yang datang',
@@ -184,7 +142,6 @@ class ContextRouter
             $domains[] = 'guestbook';
         }
 
-        // ── Deliveries / documents / packages ────────────────
         if ($this->matches($msg, [
             'package', 'paket', 'document', 'dokumen', 'delivery', 'pengiriman',
             'surat', 'letter', 'parcel', 'item', 'stored', 'tersimpan',
@@ -192,21 +149,15 @@ class ContextRouter
             $domains[] = 'deliveries';
         }
 
-        // ── Follow-up context: inherit from last turn ─────────
-        // If message is very short/vague (≤4 words), carry forward previous domain
         $wordCount = str_word_count($msg);
         if ($wordCount <= 4 && ! empty($history)) {
             $prevDomains = $this->detectFromHistory($history);
             $domains     = array_unique(array_merge($domains, $prevDomains));
         }
 
-        // Deduplicate
         return array_unique($domains);
     }
 
-    /**
-     * Scan the last 2 assistant turns in history to infer what domain was active.
-     */
     private function detectFromHistory(array $history): array
     {
         $recent  = array_slice($history, -4);
@@ -222,27 +173,18 @@ class ContextRouter
         return array_unique($domains);
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Parameter extraction
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Extract useful params from the message (date, period) to pass to providers.
-     */
     private function extractParams(string $message): array
     {
         $params = [];
         $now    = Carbon::now($this->tz);
         $msg    = mb_strtolower($message);
 
-        // Date hints
         if (str_contains($msg, 'tomorrow') || str_contains($msg, 'besok')) {
             $params['date'] = $now->copy()->addDay()->toDateString();
         } elseif (str_contains($msg, 'today') || str_contains($msg, 'hari ini')) {
             $params['date'] = $now->toDateString();
         }
 
-        // Period hints
         if (str_contains($msg, 'this week') || str_contains($msg, 'minggu ini')) {
             $params['period'] = 'this_week';
         } elseif (str_contains($msg, 'this month') || str_contains($msg, 'bulan ini')) {
@@ -257,10 +199,6 @@ class ContextRouter
 
         return $params;
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────
 
     private function matches(string $haystack, array $keywords): bool
     {

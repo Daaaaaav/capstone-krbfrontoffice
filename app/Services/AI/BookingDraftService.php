@@ -6,33 +6,8 @@ use App\Models\Room;
 use App\Models\Vehicle;
 use Carbon\Carbon;
 
-/**
- * Manages a stateless booking draft that lives in Livewire component state.
- *
- * The draft is just a plain PHP array — it is stored on the ChatModal
- * public property $bookingDraft and passed in/out of these methods.
- * Nothing is written to the database here; persistence is handled by
- * the existing QuickBookModal / QuickVehicleBookModal components when
- * the draft is complete.
- *
- * Draft shape:
- * [
- *   'type'       => 'room'|'vehicle'|null,
- *   'active'     => bool,          // true while a booking conversation is in progress
- *   'turns'      => int,           // how many AI turns have been used to fill this draft
- *   'room'       => [...fields],   // mirrors booking_prefill from PromptBuilder
- *   'vehicle'    => [...fields],   // mirrors vehicle_prefill from PromptBuilder
- * ]
- */
 class BookingDraftService
 {
-    // ──────────────────────────────────────────────────────────
-    // Draft lifecycle
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Return an empty draft array.
-     */
     public function emptyDraft(): array
     {
         return [
@@ -44,14 +19,8 @@ class BookingDraftService
         ];
     }
 
-    /**
-     * Merge a new set of AI-extracted prefill fields into the existing draft.
-     * Only non-null values from the new prefill overwrite existing values.
-     * This implements the "carry forward" behaviour across multiple turns.
-     */
     public function mergePrefill(array $draft, ?array $roomPrefill, ?array $vehiclePrefill): array
     {
-        // Determine / confirm booking type from what the AI returned
         $hasRoomData    = $this->hasAnyField($roomPrefill    ?? []);
         $hasVehicleData = $this->hasAnyField($vehiclePrefill ?? []);
 
@@ -63,7 +32,6 @@ class BookingDraftService
             $draft['active'] = true;
         }
 
-        // Merge room fields — only overwrite with non-null AI values
         if ($hasRoomData && is_array($roomPrefill)) {
             foreach ($roomPrefill as $key => $value) {
                 if ($value !== null && $value !== '' && array_key_exists($key, $draft['room'])) {
@@ -72,7 +40,6 @@ class BookingDraftService
             }
         }
 
-        // Merge vehicle fields — only overwrite with non-null AI values
         if ($hasVehicleData && is_array($vehiclePrefill)) {
             foreach ($vehiclePrefill as $key => $value) {
                 if ($value !== null && $value !== '' && array_key_exists($key, $draft['vehicle'])) {
@@ -86,21 +53,11 @@ class BookingDraftService
         return $draft;
     }
 
-    /**
-     * Reset the draft back to empty (called on clearChat or successful booking).
-     */
     public function resetDraft(): array
     {
         return $this->emptyDraft();
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Completeness checks
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Check whether the room draft has all required fields for submission.
-     */
     public function isRoomDraftComplete(array $draft): bool
     {
         $r = $draft['room'];
@@ -111,14 +68,10 @@ class BookingDraftService
             && !empty($r['start_time'])
             && !empty($r['end_time'])
             && (
-                // Either an in-room booking with a room, or an online meeting
                 (!empty($r['room_id']) || $r['booking_type'] === 'online_meeting')
             );
     }
 
-    /**
-     * Check whether the vehicle draft has all required fields for submission.
-     */
     public function isVehicleDraftComplete(array $draft): bool
     {
         $v = $draft['vehicle'];
@@ -135,13 +88,6 @@ class BookingDraftService
             && !empty($v['purpose_type']);
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Payload builders for QuickBookModal / QuickVehicleBookModal
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Build the payload array that open-quick-book expects (from QuickBookModal::open()).
-     */
     public function buildRoomPayload(array $draft): array
     {
         $r = $draft['room'];
@@ -161,9 +107,6 @@ class BookingDraftService
         ];
     }
 
-    /**
-     * Build the payload array that open-quick-vehicle-book expects.
-     */
     public function buildVehiclePayload(array $draft): array
     {
         $v = $draft['vehicle'];
@@ -183,14 +126,6 @@ class BookingDraftService
         ];
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Context summary for the AI prompt
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Build a compact text summary of the current draft state to inject
-     * into the system prompt so the AI knows what has already been collected.
-     */
     public function buildDraftContext(array $draft): string
     {
         if (!$draft['active']) {
@@ -208,15 +143,6 @@ class BookingDraftService
         return '';
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Natural language date resolution
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Attempt to resolve natural-language date expressions that the AI
-     * might return verbatim (e.g. "tomorrow", "next Monday") into YYYY-MM-DD.
-     * Called on the merged draft before completeness checks.
-     */
     public function resolveDraftDates(array $draft, string $tz = 'Asia/Jakarta'): array
     {
         $now = Carbon::now($tz);
@@ -239,7 +165,6 @@ class BookingDraftService
             }
         }
 
-        // Resolve time expressions (e.g. "9am", "half past two")
         $timeFields = [
             ['type' => 'room',    'field' => 'start_time'],
             ['type' => 'room',    'field' => 'end_time'],
@@ -262,13 +187,6 @@ class BookingDraftService
         return $draft;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // ID resolution helpers
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * If room_id is null but room_name is present, try to resolve it.
-     */
     public function resolveRoomId(array $draft, ?int $companyId): array
     {
         if (empty($draft['room']['room_id']) && !empty($draft['room']['room_name'])) {
@@ -281,9 +199,6 @@ class BookingDraftService
         return $draft;
     }
 
-    /**
-     * If vehicle_id is null but vehicle_name or plate_number is present, try to resolve it.
-     */
     public function resolveVehicleId(array $draft, ?int $companyId): array
     {
         if (empty($draft['vehicle']['vehicle_id'])) {
@@ -303,10 +218,6 @@ class BookingDraftService
         }
         return $draft;
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Private helpers
-    // ──────────────────────────────────────────────────────────
 
     private function emptyRoomFields(): array
     {
@@ -464,14 +375,13 @@ class BookingDraftService
             }
         }
 
-        // Try Carbon::parse as a last resort
         try {
             $parsed = Carbon::parse($val, $now->timezone);
             if ($parsed->year > 2000) {
                 return $parsed->toDateString();
             }
         } catch (\Throwable) {
-            // unparseable — return null
+            // unparseable would return null
         }
 
         return null;
@@ -481,7 +391,6 @@ class BookingDraftService
     {
         $val = strtolower(trim($val));
 
-        // "half past two" → 14:30, "quarter past nine" → 09:15
         if (preg_match('/half past (\w+)/', $val, $m)) {
             $h = $this->wordToHour($m[1]);
             if ($h !== null) return sprintf('%02d:30', $h);
@@ -494,16 +403,12 @@ class BookingDraftService
             $h = $this->wordToHour($m[1]);
             if ($h !== null) return sprintf('%02d:45', ($h - 1 + 24) % 24);
         }
-
-        // "9am" / "9 am" / "9pm"
         if (preg_match('/^(\d{1,2})\s*(am|pm)$/', $val, $m)) {
             $h = (int) $m[1];
             if ($m[2] === 'pm' && $h !== 12) $h += 12;
             if ($m[2] === 'am' && $h === 12) $h = 0;
             return sprintf('%02d:00', $h);
         }
-
-        // "9:30am"
         if (preg_match('/^(\d{1,2}):(\d{2})\s*(am|pm)$/', $val, $m)) {
             $h = (int) $m[1];
             $min = $m[2];
@@ -511,7 +416,6 @@ class BookingDraftService
             if ($m[3] === 'am' && $h === 12) $h = 0;
             return sprintf('%02d:%s', $h, $min);
         }
-
         return null;
     }
 

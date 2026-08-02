@@ -16,13 +16,11 @@ use App\Services\ZoomService;
 class QuickBookModal extends Component
 {
     public bool $show = false;
-    public string $mode = 'create'; // create|rebook
+    public string $mode = 'create'; 
 
-    // booking type
-    public string $booking_type    = 'meeting';     // meeting | online_meeting
-    public string $online_provider = 'google_meet'; // google_meet | zoom
+    public string $booking_type    = 'meeting';   
+    public string $online_provider = 'google_meet'; 
 
-    // form fields (shared)
     public ?int    $room_id              = null;
     public string  $date                 = '';
     public string  $start_time           = '';
@@ -32,11 +30,9 @@ class QuickBookModal extends Component
     public array   $requirements         = [];
     public string  $special_notes        = '';
 
-    // display-only context from the AI (not submitted to DB)
     public ?string $ai_department      = null;
     public ?string $ai_historical_user = null;
 
-    // dropdown
     public array $rooms = [];
 
     protected int $slotMinutes = 30;
@@ -107,8 +103,6 @@ class QuickBookModal extends Component
     public function submit(): void
     {
         $isOnline = $this->booking_type === 'online_meeting';
-
-        // Dynamic validation: room required only for offline meetings
         $rules = [
             'meeting_title'       => 'required|string|min:3',
             'date'                => 'required|date',
@@ -151,7 +145,6 @@ class QuickBookModal extends Component
         $startDt = Carbon::createFromFormat('Y-m-d H:i', "{$this->date} {$this->start_time}", $this->tz);
         $endDt   = Carbon::createFromFormat('Y-m-d H:i', "{$this->date} {$this->end_time}",   $this->tz);
 
-        // Overlap check — only relevant for room-based bookings
         if (!$isOnline && $this->room_id) {
             $overlap = BookingRoom::query()
                 ->where('room_id', $this->room_id)
@@ -175,7 +168,6 @@ class QuickBookModal extends Component
             }
         }
 
-        // For online meetings, call the provider API to create the link first
         $meetingUrl = $meetingCode = $meetingPassword = $meetingEventId = null;
 
         if ($isOnline) {
@@ -298,8 +290,8 @@ class QuickBookModal extends Component
     {
         $now      = Carbon::now($this->tz);
         $minStart = $now->toDateString() === $this->date
-            ? $now->format('H:i')   // today: can't pick a past time
-            : '00:00';              // future date: any time is fine
+            ? $now->format('H:i')   // if today: can't pick a past time, else future date: can pick any time
+            : '00:00';             
 
         $roomName = '';
         if ($this->room_id) {

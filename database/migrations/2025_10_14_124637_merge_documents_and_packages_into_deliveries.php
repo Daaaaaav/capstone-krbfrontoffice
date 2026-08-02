@@ -9,60 +9,42 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // 1) Buat tabel penyimpanan (storages)
         if (!Schema::hasTable('storages')) {
             Schema::create('storages', function (Blueprint $table) {
                 $table->id('storage_id');
-                // Opsional: storage bisa per-company. Kalau tidak perlu, hapus 3 baris berikut.
                 if (Schema::hasTable('companies')) {
                     $table->foreignId('company_id')->constrained('companies', 'company_id')->cascadeOnDelete();
                 } else {
                     $table->unsignedBigInteger('company_id')->nullable()->index();
                 }
 
-                $table->string('code', 100)->index();   // ex: rak1, rak2, rak3, dll (unik per company)
-                $table->string('name', 150)->nullable(); // label lebih manusiawi, opsional
+                $table->string('code', 100)->index(); 
+                $table->string('name', 150)->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->timestamps();
                 $table->softDeletes();
-
-                // Unik per company + code (kalau company_id null, biarkan unik berdasarkan code saja)
                 $table->unique(['company_id', 'code']);
             });
         }
 
-        // 2) Buat tabel gabungan deliveries
         if (!Schema::hasTable('deliveries')) {
             Schema::create('deliveries', function (Blueprint $table) {
                 $table->id('delivery_id');
 
-                // FK yang sudah ada di tabel lama
                 if (Schema::hasTable('companies')) {
                     $table->foreignId('company_id')->constrained('companies', 'company_id')->cascadeOnDelete();
                 } else {
                     $table->unsignedBigInteger('company_id')->nullable()->index();
                 }
 
-                // Biasanya receptionist itu user dengan role receptionist; karena di skema lama ada receptionist_id, kita ikutkan.
                 $table->unsignedBigInteger('receptionist_id')->nullable()->index();
-
-                // Nama item gabungan (document_name / package_name)
                 $table->string('item_name', 255);
-
-                // Type gabungan: includes 'package'
                 $table->enum('type', ['document', 'invoice', 'etc', 'package'])->default('document')->index();
-
                 $table->string('nama_pengirim', 255)->nullable();
                 $table->string('nama_penerima', 255)->nullable();
-
-                // storage_id refer ke storages
                 $table->foreignId('storage_id')->nullable()->constrained('storages', 'storage_id')->nullOnDelete();
-
-                // Waktu-waktu
                 $table->dateTime('pengambilan')->nullable();
                 $table->dateTime('pengiriman')->nullable();
-
-                // Status gabungan
                 $table->enum('status', ['pending', 'stored', 'taken', 'delivered'])->default('pending')->index();
 
                 $table->timestamps();
@@ -70,8 +52,6 @@ return new class extends Migration
             });
         }
 
-        // 3) Seed storages dari nilai "penyimpanan" di documents & packages
-        //    Kita bentuk daftar unik per (company_id, code)
         $storageRows = [];
 
         if (Schema::hasTable('documents')) {

@@ -12,14 +12,6 @@
     'description' => null
 ])
 
-{{-- 
-    I know using subgrids for this seems overengineering but these are may arguments:
-  Using subgrid ensures perfect alignment:
-  - Checkbox indicator and label are vertically centered in the first row.
-  - Description aligns directly under the label (not under the checkbox).
-  Other solutions (flexbox or simple grid) don't get the requirement 
---}}
-
 <div class="grid text-start grid-cols-[auto_1fr] gap-x-3 gap-y-1">
     <div class="grid grid-cols-subgrid col-span-2 items-center  ">
         <x-ui.checkbox.indicator class="col-start-1" />

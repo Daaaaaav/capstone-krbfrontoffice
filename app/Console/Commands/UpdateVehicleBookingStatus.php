@@ -11,32 +11,17 @@ use App\Models\VehicleBooking;
 
 class UpdateVehicleBookingStatus extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'bookings:auto-start';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Auto-start approved bookings (vehicle + room + priority room) when their start time arrives.';
 
     private string $tz = 'Asia/Jakarta';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
         $now = Carbon::now($this->tz);
         $nowStr = $now->toDateTimeString();
 
-        // ── 1. VEHICLE BOOKINGS — approved → on_progress ─────────────────────
-        // When start_at <= now() and status is still approved, move to on_progress.
         $vehicleCount = 0;
         $vehicleBookings = VehicleBooking::where('status', 'approved')
             ->where('start_at', '<=', $now)
@@ -48,17 +33,6 @@ class UpdateVehicleBookingStatus extends Command
             $vehicleCount++;
         }
 
-        // ── 2. ROOM BOOKINGS — approved → ongoing ────────────────────────────
-        // The booking_rooms table stores status as an ENUM('pending','approved',
-        // 'rejected','completed'). There is intentionally no 'ongoing' ENUM value.
-        // "Ongoing" is determined by a time-window query on approved rows:
-        //   start_time <= now()  AND  end_time > now()
-        // This is handled by the RoomApproval Livewire component's Ongoing tab,
-        // and approved rows whose end_time has passed are completed by the
-        // bookings:auto-complete command. No DB status change is required here.
-        //
-        // Priority room bookings follow the same pattern — approved rows are
-        // shown as ongoing based on time, and completed by bookings:auto-complete.
         $roomOngoingCount = BookingRoom::query()
             ->whereNotNull('date')
             ->whereNotNull('start_time')

@@ -15,8 +15,6 @@ class AiChatSession extends Model
         'ended_at'   => 'datetime',
     ];
 
-    // ── Relationships ────────────────────────────────────────
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
@@ -28,19 +26,11 @@ class AiChatSession extends Model
                     ->orderBy('sent_at');
     }
 
-    // ── Helpers ──────────────────────────────────────────────
-
-    /**
-     * Mark the session as ended right now.
-     */
     public function close(): void
     {
         $this->update(['ended_at' => now()]);
     }
-
-    /**
-     * Auto-derive a display title from the first user message, trimmed to 60 chars.
-     */
+    
     public static function titleFromMessage(string $text): string
     {
         $clean = preg_replace('/\s+/', ' ', trim($text));

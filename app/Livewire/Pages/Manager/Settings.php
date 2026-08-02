@@ -142,13 +142,9 @@ class Settings extends Component
         $this->aiError   = null;
     }
 
-    /**
-     * Reset all AI settings to their original seeded defaults.
-     */
     public function resetAISettings(): void
     {
         $defaults = [
-            // LSTM
             'lstm_units'                     => '64',
             'dropout_rate'                   => '0.1',
             'l2_regularization'              => '0.00001',
@@ -161,7 +157,7 @@ class Settings extends Component
             'history_days'                   => '730',
             'confidence_min'                 => '0.30',
             'confidence_max'                 => '0.92',
-            // Fallback MA
+        
             'ma_window'                      => '7',
             'ma_weekend_factor'              => '0.9',
             'ma_lower_bound'                 => '0.8',
@@ -169,7 +165,7 @@ class Settings extends Component
             'ma_confidence'                  => '0.60',
             'ma_noise_factor'                => '0.1',
             'ma_floor_avg'                   => '3.0',
-            // Decision engine
+        
             'urgency_hours'                  => '24',
             'long_duration_hours'            => '4',
             'risk_high_threshold'            => '70',
@@ -183,14 +179,14 @@ class Settings extends Component
             'demand_spike_multiplier'        => '1.5',
             'low_approval_threshold'         => '60',
             'approval_improvement_threshold' => '70',
-            // Security
+        
             'spam_threshold'                 => '10',
             'spam_window_seconds'            => '60',
-            // Role priorities
+        
             'priority_admin'                 => '1.0',
             'priority_manager'               => '0.8',
             'priority_default'               => '0.5',
-            // Booking behaviour
+        
             'approval_time_validation'       => '1',
         ];
 
@@ -207,11 +203,8 @@ class Settings extends Component
         $this->aiError   = null;
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
-
     public function render()
     {
-        // Group meta by group name for the blade template
         $grouped = [];
         foreach ($this->aiMeta as $key => $meta) {
             $grouped[$meta['group']][$key] = $meta;

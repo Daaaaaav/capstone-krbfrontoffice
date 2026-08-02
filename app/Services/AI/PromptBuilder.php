@@ -4,30 +4,10 @@ namespace App\Services\AI;
 
 use Carbon\Carbon;
 
-/**
- * Builds system prompts for the chatbot.
- *
- * v2 (dynamic context): PromptBuilder no longer loads data itself.
- * Instead it receives a pre-assembled context string from ContextRouter
- * (which loaded only the relevant providers for the current message).
- *
- * The old buildManagerContext() / buildReceptionistContext() methods are
- * preserved as deprecated pass-throughs so GroqService (backward-compat
- * shim) continues to work without changes.
- */
 class PromptBuilder
 {
     private string $tz = 'Asia/Jakarta';
 
-    // ──────────────────────────────────────────────────────────
-    // Manager prompt
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Build the manager system prompt with the supplied context block.
-     *
-     * @param  string  $dataContext  Pre-built context from ContextRouter or legacy buildManagerContext().
-     */
     public function managerSystemPrompt(string $dataContext): string
     {
         return <<<PROMPT
@@ -53,16 +33,6 @@ class PromptBuilder
         PROMPT;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Receptionist prompt
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Build the receptionist system prompt with the supplied context block and booking draft.
-     *
-     * @param  string  $dataContext         Pre-built context from ContextRouter.
-     * @param  string  $bookingDraftContext  Current booking draft summary (may be empty).
-     */
     public function receptionistSystemPrompt(string $dataContext, string $bookingDraftContext = ''): string
     {
         $draftSection = $bookingDraftContext
@@ -146,33 +116,18 @@ class PromptBuilder
         . $dataContext;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Backward-compatible context builders (used by GroqService shim)
-    // These still work but are superseded by ContextRouter for new callers.
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * @deprecated Use ContextRouter::route() instead.
-     */
     public function buildManagerContext(?int $companyId): string
     {
         return app(\App\Services\AI\Context\AnalyticsContextProvider::class)
             ->load($companyId, []);
     }
 
-    /**
-     * @deprecated Use ContextRouter::route() instead.
-     */
     public function buildReceptionistContext(?int $companyId): string
     {
         $room    = app(\App\Services\AI\Context\RoomContextProvider::class)->load($companyId, []);
         $vehicle = app(\App\Services\AI\Context\VehicleContextProvider::class)->load($companyId, []);
         return $room . "\n\n" . $vehicle;
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────
 
     public function trendLabel(int $prev, int $curr): string
     {

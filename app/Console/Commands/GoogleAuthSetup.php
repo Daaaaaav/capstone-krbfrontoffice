@@ -48,17 +48,15 @@ class GoogleAuthSetup extends Command
             }
         }
 
-        // --- Boot the client ---
         $client = new Client();
         $client->setAuthConfig($clientSecretPath);
         $client->setAccessType('offline');
-        $client->setPrompt('consent');   // forces refresh_token to be returned
+        $client->setPrompt('consent');  
         $client->setScopes([
             Calendar::CALENDAR,
             Calendar::CALENDAR_EVENTS,
         ]);
 
-        // --- Generate the auth URL ---
         $authUrl = $client->createAuthUrl();
 
         $this->line('');
@@ -81,7 +79,7 @@ class GoogleAuthSetup extends Command
             return self::FAILURE;
         }
 
-        // --- Exchange code for token ---
+
         try {
             $token = $client->fetchAccessTokenWithAuthCode(trim($code));
         } catch (\Throwable $e) {
@@ -100,7 +98,6 @@ class GoogleAuthSetup extends Command
             $this->warn('To fix: go to https://myaccount.google.com/permissions, revoke this app, then re-run with --force.');
         }
 
-        // --- Save token ---
         $dir = dirname($tokenPath);
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -111,8 +108,7 @@ class GoogleAuthSetup extends Command
         $this->line('');
         $this->info("Token saved to: {$tokenPath}");
         $this->info('Google Meet integration is now active.');
-
-        // --- Quick sanity check ---
+        
         $this->line('');
         $this->line('Running a quick connection test...');
         try {

@@ -15,10 +15,6 @@ class Vehicle extends Model
     protected $keyType = 'int';
     public $timestamps = true;
 
-    /**
-     * Properti $fillable DI-UPDATE.
-     * - 'image' dihapus (sesuai migrasi 53).
-     */
     protected $fillable = [
         'company_id',
         'name',
@@ -27,7 +23,6 @@ class Vehicle extends Model
         'year',
         'notes',
         'is_active',
-        // 'image', // <-- Dihapus
     ];
 
     protected $casts = [

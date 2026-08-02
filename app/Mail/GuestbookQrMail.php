@@ -14,19 +14,12 @@ class GuestbookQrMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Each item: [visitor_number => int, png => string (binary), token => string]
-     * @var array
-     */
     public array $qrItems = [];
 
-    /** PDF binary string for attachment */
     private string $pdfContent;
 
     public function __construct(public Guestbook $entry)
     {
-
-        // Load qrCodes if not already loaded
         if (!$entry->relationLoaded('qrCodes')) {
             $entry->load('qrCodes');
         }
@@ -41,8 +34,6 @@ class GuestbookQrMail extends Mailable
                 'token'          => $qrCode->qr_token,
             ];
         }
-
-        // Pre-generate the PDF
         $this->pdfContent = $this->buildPdf();
     }
 
@@ -50,8 +41,6 @@ class GuestbookQrMail extends Mailable
     {
         $mail = $this->subject('Konfirmasi Kunjungan – ' . $this->entry->visitor_count . ' QR Code Tamu')
                      ->view('mail.guestbook-qr');
-
-        // Attach the PDF
         $mail->attachData(
             $this->pdfContent,
             'QR-Code-Kunjungan-' . $this->entry->name . '.pdf',
@@ -61,13 +50,8 @@ class GuestbookQrMail extends Mailable
         return $mail;
     }
 
-    /**
-     * Generate a PNG QR code image using GD (no Imagick required).
-     * Uses BaconQrCode's encoder to get the matrix, then draws it with GD.
-     */
     public static function generateQrPng(string $data, int $size = 300, int $margin = 2): string
     {
-        // Encode the data using BaconQrCode encoder
         $encoder = Encoder::encode(
             $data,
             ErrorCorrectionLevel::M(),
@@ -76,21 +60,15 @@ class GuestbookQrMail extends Mailable
 
         $matrix     = $encoder->getMatrix();
         $matrixSize = $matrix->getWidth();
-
-        // Calculate pixel scale
         $totalModules = $matrixSize + ($margin * 2);
         $scale        = (int) floor($size / $totalModules);
         $imgSize      = $scale * $totalModules;
-
-        // Create image
         $img   = imagecreatetruecolor($imgSize, $imgSize);
         $white = imagecolorallocate($img, 255, 255, 255);
         $black = imagecolorallocate($img, 0, 0, 0);
 
-        // Fill background white
         imagefill($img, 0, 0, $white);
 
-        // Draw QR modules
         for ($y = 0; $y < $matrixSize; $y++) {
             for ($x = 0; $x < $matrixSize; $x++) {
                 if ($matrix->get($x, $y) === 1) {
@@ -101,7 +79,6 @@ class GuestbookQrMail extends Mailable
             }
         }
 
-        // Output to string
         ob_start();
         imagepng($img);
         $pngData = ob_get_clean();
@@ -110,12 +87,8 @@ class GuestbookQrMail extends Mailable
         return $pngData;
     }
 
-    /**
-     * Build the PDF with all QR codes.
-     */
     private function buildPdf(): string
     {
-        // Prepare base64-encoded images for the PDF view
         $pdfItems = [];
         foreach ($this->qrItems as $item) {
             $pdfItems[] = [

@@ -21,7 +21,6 @@ class DocPackStatus extends Component
 
     protected string $paginationTheme = 'tailwind';
 
-    // Filters
     public string $q              = '';
     public ?string $selectedDate  = null;
     public string $dateMode       = 'semua';
@@ -29,17 +28,13 @@ class DocPackStatus extends Component
     public string $filterSender   = '';
     public string $filterReceiver = '';
 
-    // Tabs
     public string $activeTab = 'pending';
 
-    // Pagination
     public int $perPending = 6;
     public int $perStored  = 6;
 
-    // Mobile filter modal
     public bool $showFilterModal = false;
 
-    // Edit modal
     public bool   $showEdit         = false;
     public ?int   $editId           = null;
     public array  $edit             = ['item_name' => null, 'nama_pengirim' => null, 'nama_penerima' => null];

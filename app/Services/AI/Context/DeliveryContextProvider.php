@@ -7,10 +7,6 @@ use App\Services\AI\Contracts\ContextProviderInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Loads delivery / document-package context.
- * Called only when the ContextRouter detects a delivery/document query.
- */
 class DeliveryContextProvider implements ContextProviderInterface
 {
     private string $tz = 'Asia/Jakarta';

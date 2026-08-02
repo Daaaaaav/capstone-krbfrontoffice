@@ -12,9 +12,6 @@ class ChatExportController extends Controller
 {
     public function __construct(private AnalyticsExportService $analytics) {}
 
-    /**
-     * Download a structured analytics report as PDF.
-     */
     public function exportPdf(Request $request)
     {
         $user    = Auth::user();
@@ -28,7 +25,6 @@ class ChatExportController extends Controller
                 'defaultFont'     => 'DejaVu Sans',
             ]);
 
-        // Clean up the one-time session key if it exists
         if ($request->query('key')) {
             session()->forget($request->query('key'));
         }
@@ -36,9 +32,6 @@ class ChatExportController extends Controller
         return $pdf->download('analytics-report-' . now()->format('Ymd-His') . '.pdf');
     }
 
-    /**
-     * Download a structured analytics spreadsheet as CSV.
-     */
     public function exportCsv(Request $request)
     {
         $user = Auth::user();
@@ -54,7 +47,7 @@ class ChatExportController extends Controller
 
         $callback = function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
+            fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM
             foreach ($rows as $row) {
                 fputcsv($handle, $row);
             }
@@ -66,16 +59,11 @@ class ChatExportController extends Controller
         ]);
     }
 
-    // ──────────────────────────────────────────────────────────
-    // CSV builder
-    // ──────────────────────────────────────────────────────────
-
     private function buildCsvRows(array $d, string $exportedBy): array
     {
         $rows   = [];
         $months = $d['months'];
 
-        // ── Report header ─────────────────────────────────────
         $rows[] = ['KRB Facility Management — Analytics Report'];
         $rows[] = ['Generated At', $d['generated_at']];
         $rows[] = ['Exported By',  $exportedBy];
@@ -83,7 +71,6 @@ class ChatExportController extends Controller
         $rows[] = ['Week Period',  $d['period_week']];
         $rows[] = [];
 
-        // ── KPI Summary ───────────────────────────────────────
         $rows[] = ['=== KPI SUMMARY ==='];
         $rows[] = ['Metric', 'This Week', 'Year-to-Date', "Prev Year ({$d['prev_year']})", 'YoY Change (%)'];
 
@@ -95,7 +82,6 @@ class ChatExportController extends Controller
         $rows[] = ['Guest Visits',     $d['guests']['week_total'],   $d['guests']['ytd_total'],   'N/A', 'N/A'];
         $rows[] = [];
 
-        // ── Room bookings detail ──────────────────────────────
         $rows[] = ['=== ROOM BOOKINGS ==='];
         $rows[] = ['Metric', 'Value'];
         $rows[] = ['Total YTD',          $d['rooms']['ytd_total']];
@@ -117,7 +103,6 @@ class ChatExportController extends Controller
         $rows[] = array_merge(['Count'], array_values($d['rooms']['monthly']));
         $rows[] = [];
 
-        // ── Vehicle bookings detail ───────────────────────────
         $rows[] = ['=== VEHICLE BOOKINGS ==='];
         $rows[] = ['Metric', 'Value'];
         $rows[] = ['Total YTD',          $d['vehicles']['ytd_total']];
@@ -133,7 +118,6 @@ class ChatExportController extends Controller
         $rows[] = array_merge(['Count'], array_values($d['vehicles']['monthly']));
         $rows[] = [];
 
-        // ── Deliveries detail ─────────────────────────────────
         $rows[] = ['=== DELIVERIES ==='];
         $rows[] = ['Metric', 'Value'];
         $rows[] = ['Total YTD',    $d['deliveries']['ytd_total']];
@@ -145,7 +129,6 @@ class ChatExportController extends Controller
         $rows[] = array_merge(['Count'], array_values($d['deliveries']['monthly']));
         $rows[] = [];
 
-        // ── Guest visits detail ───────────────────────────────
         $rows[] = ['=== GUEST VISITS ==='];
         $rows[] = ['Metric', 'Value'];
         $rows[] = ['Total YTD',     $d['guests']['ytd_total']];
@@ -157,7 +140,6 @@ class ChatExportController extends Controller
         $rows[] = array_merge(['Count'], array_values($d['guests']['monthly']));
         $rows[] = [];
 
-        // ── Actionable flags ──────────────────────────────────
         $rows[] = ['=== ACTIONABLE FLAGS ==='];
         $rows[] = ['Level', 'Category', 'Recommendation'];
         foreach ($d['flags'] as $flag) {

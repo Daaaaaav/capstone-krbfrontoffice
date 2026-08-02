@@ -12,24 +12,17 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->foreignId('company_id')->constrained('companies', 'company_id')->cascadeOnDelete();
 
-            // Who the notification is FOR (receptionist user_id)
             $table->unsignedBigInteger('recipient_id')->nullable();
             $table->foreign('recipient_id')->references('user_id')->on('users')->nullOnDelete();
 
-            // Notification type: 'priority_room_cancel_request' | 'priority_vehicle_cancel_request' | 'priority_room_approved' | etc.
-            $table->string('type', 80);
-
-            // Human-readable title and message
+            $table->string('type', 80);   // notification type: 'priority_room_cancel_request' | 'priority_vehicle_cancel_request' | 'priority_room_approved' | etc.
             $table->string('title');
             $table->text('message');
-
-            // Polymorphic reference: which model triggered this
-            $table->string('notifiable_type')->nullable();  // e.g. App\Models\PriorityRoomBooking
+            $table->string('notifiable_type')->nullable(); 
             $table->unsignedBigInteger('notifiable_id')->nullable();
 
-            // Action required flag and result
             $table->boolean('action_required')->default(false);
-            $table->string('action_taken', 20)->nullable(); // 'approved' | 'denied' | null
+            $table->string('action_taken', 20)->nullable(); // 'approved' | 'denied' | null (default)
 
             $table->boolean('is_read')->default(false);
             $table->timestamps();

@@ -24,10 +24,7 @@ class PriorityVehicleBooking extends Component
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
-    // ── Tabs ───────────────────────────────────────────────────────────────
     public string $activeTab = 'form';
-
-    // ── Form fields ────────────────────────────────────────────────────────
     public ?int $vehicle_id = null;
     public ?int $department_id = null;
     public string $borrower_name = '';
@@ -39,21 +36,13 @@ class PriorityVehicleBooking extends Component
     public string $destination = '';
     public string $purpose_type = 'dinas';
     public string $special_notes = '';
-
-    // ── Conflict detection (pending vehicle booking) ───────────────────────
     public ?int $conflicting_vehicle_booking_id = null;
     public bool $showConflictModal = false;
     public bool $requestCancellation = false;
-
-    // ── Status tab ─────────────────────────────────────────────────────────
     public string $statusFilter = 'all';
     public int $perPage = 8;
-
-    // ── Cancel own booking modal ───────────────────────────────────────────
     public bool $showCancelModal = false;
     public ?int $cancelTargetId = null;
-
-    // ── Dropdown data ──────────────────────────────────────────────────────
     public array $vehicles = [];
     public array $departments = [];
     public array $users = [];
@@ -87,7 +76,6 @@ class PriorityVehicleBooking extends Component
         $this->date_to   = $today;
     }
 
-    // ── Department → User cascade ──────────────────────────────────────────
     public function updatedDepartmentId(): void
     {
         $this->borrower_name   = '';
@@ -113,7 +101,6 @@ class PriorityVehicleBooking extends Component
         $this->resetPage();
     }
 
-    // ── Conflict detection: pending vehicle booking for same vehicle ────────
     public function detectConflict(): void
     {
         $this->conflicting_vehicle_booking_id = null;
@@ -133,10 +120,9 @@ class PriorityVehicleBooking extends Component
             return;
         }
 
-        // Find a conflicting vehicle booking that is PENDING (not yet approved / on the road)
         $conflict = VehicleBooking::query()
             ->where('vehicle_id', $this->vehicle_id)
-            ->where('status', 'pending')   // only pending — per requirements
+            ->where('status', 'pending')  
             ->where('start_at', '<', $end->toDateTimeString())
             ->where('end_at', '>', $start->toDateTimeString())
             ->first(['vehiclebooking_id', 'borrower_name', 'start_at', 'end_at']);
@@ -146,7 +132,6 @@ class PriorityVehicleBooking extends Component
         }
     }
 
-    // ── Form submission ────────────────────────────────────────────────────
     public function save(): void
     {
         $this->validate([
@@ -165,7 +150,6 @@ class PriorityVehicleBooking extends Component
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
 
-        // Re-check conflict at save time
         $this->detectConflict();
 
         if ($this->conflicting_vehicle_booking_id && !$this->requestCancellation) {
@@ -262,7 +246,6 @@ class PriorityVehicleBooking extends Component
         $this->requestCancellation = false;
     }
 
-    // ── Cancel own booking ─────────────────────────────────────────────────
     public function openCancelModal(int $id): void
     {
         $this->cancelTargetId  = $id;
@@ -297,7 +280,6 @@ class PriorityVehicleBooking extends Component
         $this->dispatch('toast', type: 'info', title: 'Cancelled', message: 'Priority booking cancelled.', duration: 3000);
     }
 
-    // ── Sidebar detail modal ───────────────────────────────────────────────
     public bool   $showVehicleSidebarDetail   = false;
     public ?int   $vehicleSidebarDetailId     = null;
     public bool   $showVehicleSidebarReject   = false;
@@ -358,7 +340,6 @@ class PriorityVehicleBooking extends Component
             ->find($this->vehicleSidebarDetailId);
     }
 
-    // ── Render ─────────────────────────────────────────────────────────────
     public function render()
     {
         $companyId = Auth::user()->company_id ?? null;
@@ -387,7 +368,6 @@ class PriorityVehicleBooking extends Component
             ? VehicleBooking::with('vehicle')->find($this->conflicting_vehicle_booking_id)
             : null;
 
-        // Sidebar: recent pending/approved vehicle bookings for the company
         $sidebarVehicles = VehicleBooking::with('vehicle')
             ->where('company_id', $companyId)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])

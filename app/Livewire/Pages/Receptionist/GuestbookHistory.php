@@ -22,41 +22,23 @@ class GuestbookHistory extends Component
 
     protected string $paginationTheme = 'tailwind';
 
-    // --- Pagination Controls ---
-    // Set default data per page to 12
-    public int $perLatest = 6; // for "Kunjungan Terbaru"
-    public int $perEntries = 6; // for "Riwayat Kunjungan"
-
-    // Shared property for the dropdown control in Blade
-    public int $selectedPerPage = 6; // Default selection
-
-    // Filters for history box
-    public ?string $filter_date = null; // YYYY-MM-DD (used in Blade as wire:model="filter_date")
+    public int $perLatest = 6; 
+    public int $perEntries = 6; 
+    public int $selectedPerPage = 6; 
+    public ?string $filter_date = null;
     public ?string $selectedDate = null;
     public string $q = '';
-
-    // Sorting (follow BookingsApproval pattern)
-    public string $dateMode = 'semua'; // semua | terbaru | terlama
-
-    // Include soft-deleted rows in history list
+    public string $dateMode = 'semua';  // semua (default) | terbaru | terlama
     public bool $withTrashed = false;
-
-    // Filter by security / receptionist officer in sidebar
     public ?string $petugasFilter = null;
-
-    // Edit modal state
     public bool $showEdit = false;
     public ?int $editId = null;
     public ?string $editLastEdited = null;
     public ?string $editCreatedAt = null;
-
-    // Delete modal state
     public bool $showDeleteModal = false;
     public ?int $deleteId = null;
     public bool $isForceDelete = false;
     public string $deletingSummary = '';
-
-    // Active tab: entries | latest
     public string $activeTab = 'entries';
 
     public array $edit = [
@@ -91,7 +73,6 @@ class GuestbookHistory extends Component
         ];
     }
 
-    /** ==== Normalizers for edit ==== */
     public function updatedEditDate($v): void
     {
         $this->edit['date'] = $this->normalizeDate($v);
@@ -141,9 +122,6 @@ class GuestbookHistory extends Component
         return Auth::user()?->company_id;
     }
 
-    /**
-     * Pastikan data milik company yang sama; tidak ikut yang sudah di-trashed kecuali withTrashed()
-     */
     private function findOwnedOrFail(int $id): GuestbookModel
     {
         return GuestbookModel::withTrashed()
@@ -152,7 +130,6 @@ class GuestbookHistory extends Component
             ->firstOrFail();
     }
 
-    /** ==== Reset the correct paginator when filters / per-page change ==== */
     public function updatingQ(): void
     {
         $this->resetPage('entriesPage');
@@ -173,15 +150,13 @@ class GuestbookHistory extends Component
         $this->resetPage('entriesPage');
     }
 
-    // Bind shared property to the list-specific pagination properties
     public function updatedSelectedPerPage($value): void
     {
         $this->perLatest = (int) $value;
         $this->perEntries = (int) $value;
-        $this->resetPage(); // Reset both paginations when size changes
+        $this->resetPage(); 
     }
 
-    /** Tabs switcher (Riwayat / Terbaru) */
     public function setTab(string $tab): void
     {
         if (!in_array($tab, ['entries', 'latest'], true)) {
@@ -190,7 +165,6 @@ class GuestbookHistory extends Component
 
         $this->activeTab = $tab;
 
-        // Reset the page of the tab you are switching TO
         if ($tab === 'entries') {
             $this->resetPage('entriesPage');
         } else {
@@ -198,44 +172,32 @@ class GuestbookHistory extends Component
         }
     }
 
-    /** Sorting helper like BookingsApproval */
     private function sortingDirection(): string
     {
         return $this->dateMode === 'terlama' ? 'ASC' : 'DESC';
     }
 
-    /** ==== Computed props with pagination (using Livewire v3 syntax) ==== */
-
-    /**
-     * Kunjungan hari ini yang BELUM keluar, paginated (independent page name)
-     */
     public function getLatestProperty()
     {
         $q = GuestbookModel::where('company_id', $this->companyId())
             ->whereDate('date', now()->toDateString())
             ->whereNull('jam_out')
-            ->whereNull('deleted_at'); // always exclude soft-deleted from active visitors
+            ->whereNull('deleted_at'); 
 
         if ($this->petugasFilter) {
             $q->where('petugas_penjaga', $this->petugasFilter);
         }
 
-        // Newest first
         $q->orderByDesc('created_at');
 
         return $q->paginate($this->perLatest, ['*'], 'latestPage');
     }
 
-    /**
-     * Riwayat kunjungan (sudah keluar), with soft delete toggle, paginated (independent page name)
-     */
     public function getEntriesProperty()
     {
         $q = GuestbookModel::query()
             ->where('company_id', $this->companyId())
             ->whereNotNull('jam_out');
-
-        // withTrashed toggle
         if ($this->withTrashed) {
             $q->withTrashed();
         } else {
@@ -260,24 +222,17 @@ class GuestbookHistory extends Component
                     ->orWhere('petugas_penjaga', 'like', $term);
             });
         }
-
-        // Sort by date+jam_in / jam_out similar to BookingsApproval (dateMode)
         $dir = $this->sortingDirection();
-
-        // MySQL/MariaDB only: Order by a calculated datetime based on jam_out (if present) or jam_in
-        // Note: For other DBs (Postgres/SQLite) this raw query must be adapted.
         $dtExpr = "COALESCE(
             CASE WHEN `jam_out` REGEXP '^[0-9]{2}:' THEN CONCAT(`date`, ' ', `jam_out`) ELSE CONCAT(`date`, ' ', `jam_in`) END,
             CONCAT(`date`, ' 00:00:00')
         )";
-
         $q->orderByRaw("$dtExpr $dir")
             ->orderByDesc('created_at');
 
         return $q->paginate($this->perEntries, ['*'], 'entriesPage');
     }
 
-    /** ====== Actions for history (edit/delete/restore) ====== */
     public function openEdit(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
@@ -298,7 +253,6 @@ class GuestbookHistory extends Component
             'visitor_count' => $row->visitor_count,
         ];
 
-        // Fetch QR and Scan logs
         $this->qrLogs = GuestbookQrCode::where('guestbook_id', $row->guestbook_id)
             ->orderBy('visitor_number')
             ->get(['qr_token', 'visitor_number', 'is_scanned', 'scanned_at'])
@@ -355,7 +309,6 @@ class GuestbookHistory extends Component
         $this->dispatch('$refresh');
     }
 
-    /** Keluar sekarang (set jam_out real-time) */
     public function setJamKeluarNow(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
@@ -373,17 +326,13 @@ class GuestbookHistory extends Component
             duration: 2500
         );
 
-        // Explicitly refresh only the relevant list (latest will move it to entries)
         $this->dispatch('$refresh');
     }
 
-    /** SOFT DELETE */
     public function delete(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
         $row->delete();
-
-        // If page becomes empty after deletion, go back one page
         $entries = $this->entries;
         if ($entries->isEmpty() && $entries->currentPage() > 1) {
             $this->setPage($entries->currentPage() - 1, 'entriesPage');
@@ -476,9 +425,6 @@ class GuestbookHistory extends Component
         $this->resetValidation();
     }
 
-    /**
-     * Get unique officers/security guards who have recorded entries
-     */
     public function getPetugasOptionsProperty(): array
     {
         return GuestbookModel::query()

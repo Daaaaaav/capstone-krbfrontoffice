@@ -18,27 +18,18 @@ class Package extends Component
     use WithPagination;
 
     public bool $showModal = false;
-    public ?int $editId = null;             // delivery_id
+    public ?int $editId = null;            
     public ?string $createdAtDisplay = null;
-
-    // Delete Modal State
     public ?int $deletingId = null;
     public string $deletingSummary = '';
     public bool $showDeleteModal = false;
     public bool $isForceDelete = false;
-
-    /**
-     * form mapping:
-     * - package_name  -> deliveries.item_name
-     * - penyimpanan   -> deliveries.storage_id
-     * - pengambilan   -> deliveries.pengambilan (datetime)
-     */
     public array $form = [
         'package_name' => '',
         'nama_pengirim' => '',
         'nama_penerima' => '',
-        'penyimpanan' => null,  // storage_id (nullable)
-        'pengambilan' => null,  // Y-m-d\TH:i (nullable)
+        'penyimpanan' => null,  
+        'pengambilan' => null, 
     ];
 
     protected function rules(): array
@@ -75,7 +66,6 @@ class Package extends Component
             'nama_pengirim' => $pkg->nama_pengirim,
             'nama_penerima' => $pkg->nama_penerima,
             'penyimpanan' => $pkg->storage_id,
-            // jika model belum di-cast datetime, fallback handle string
             'pengambilan' => $pkg->pengambilan
                 ? ($pkg->pengambilan instanceof Carbon
                     ? $pkg->pengambilan->format('Y-m-d\TH:i')
@@ -102,7 +92,6 @@ class Package extends Component
             ? Carbon::createFromFormat('Y-m-d\TH:i', $this->form['pengambilan'], config('app.timezone', 'Asia/Jakarta'))
             : null;
 
-        // Aturan status sederhana: ada pengambilan -> taken, belum -> stored
         $status = $pengambilan ? 'taken' : 'stored';
 
         $payload = [
@@ -113,9 +102,9 @@ class Package extends Component
             'nama_penerima' => $this->form['nama_penerima'],
             'storage_id' => $this->form['penyimpanan'] ?: null,
             'pengambilan' => $pengambilan,
-            'pengiriman' => null,       // tidak dipakai di halaman ini
-            'status' => $status,    // 'stored' | 'taken'
-            'type' => 'package',  // paksa type package (default tabel = document)
+            'pengiriman' => null,       
+            'status' => $status,   
+            'type' => 'package', 
         ];
 
         if ($this->editId) {
@@ -155,7 +144,6 @@ class Package extends Component
         $this->isForceDelete = false;
     }
 
-    /** Soft delete ONLY */
     private function deleteAction(int $id): void
     {
         $pkg = DeliveryModel::query()
@@ -164,7 +152,7 @@ class Package extends Component
             ->where('delivery_id', $id)
             ->firstOrFail();
 
-        $pkg->delete(); // soft delete
+        $pkg->delete(); 
 
         $this->dispatch('toast', type: 'success', title: 'Dihapus', message: 'Paket dihapus (soft delete).', duration: 3000);
         $this->resetPage();
@@ -220,13 +208,13 @@ class Package extends Component
         $companyId = Auth::user()->company_id;
 
         $ongoing = DeliveryModel::query()
-            ->with('receptionist') // pastikan relasi ada di model
+            ->with('receptionist')
             ->where('company_id', $companyId)
             ->where('type', 'package')
             ->where('status', 'stored')
             ->select([
                 'deliveries.*',
-                'item_name as package_name',   // alias untuk Blade lama
+                'item_name as package_name', 
                 'storage_id as penyimpanan',
             ])
             ->latest('created_at')

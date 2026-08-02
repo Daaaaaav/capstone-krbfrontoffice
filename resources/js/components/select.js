@@ -44,8 +44,6 @@ const selectComponent = ({
                 window.Livewire.hook('commit', ({ component, succeed }) => {
                     if (component.id === LIVEWIRE_ID) {
                         succeed(() => {
-                            // we need to wait until alpine finish it process then reconcile 
-                            // the dom with the new coming or deleted nodes
                             this.$nextTick(() => {
                                 this.$rover.reconcileDom();
                                 this.ensureSelectedMarked();
@@ -54,7 +52,6 @@ const selectComponent = ({
                     }
                 });
             }
-            //  handle dom interactions... 
             if (searchable) {
                 let inputManager = this.$rover.input
 
@@ -104,7 +101,6 @@ const selectComponent = ({
                 }
             });
 
-            // handle states changes...
             Alpine.effect(() => {
                 const currentArray = Array.isArray(this.__state)
                     ? this.__state
@@ -122,15 +118,10 @@ const selectComponent = ({
                 [toAdd, toRemove] = this.generateDiff(this.__previousSelected, selectedSet);
 
                 if (toAdd.length > 0 || toRemove.length > 0) {
-
-                    // diff based patching in single repaint to 
-                    // prevent redundant reflows, repaints... 
                     requestAnimationFrame(() => {
                         this.patchDom(toAdd, toRemove);
                         this.updateTriggerValue();
                     });
-
-                    // refresh the cached last optimizer 
                     this.__previousSelected.clear();
                     for (const v of selectedSet) this.__previousSelected.add(v);
                 }
@@ -143,11 +134,8 @@ const selectComponent = ({
                     const values = Array.isArray(this.__state) ? this.__state : [this.__state];
 
                     this.__selectedTags = values.map(value => {
-                        // keep existing tag with its label if already resolved
                         const existing = this.__selectedTags.find(t => t.value === value);
                         if (existing?.label) return existing;
-
-                        // return new tag object else
                         return {
                             value,
                             label: this.utils.getLabel(value),
@@ -170,9 +158,6 @@ const selectComponent = ({
             return [valuestoAdd, valuesToRemove]
         },
         patchDom(toAdd, toRemove) {
-            // we need to wait for alpine to flush the internal scheduler, thus 
-            // the rover get collect the options, ans so we have access to `getOptionElByValue` 
-            // method
             this.$nextTick(() => {
                 for (let i = 0; i < toAdd.length; i++) {
                     const el = this.$rover.getOptionElByValue(String(toAdd[i]))
@@ -205,7 +190,6 @@ const selectComponent = ({
                 })
             } else if (!isMultiple && this.__state) {
                 let el = this.$rover.getElementByValue(String(this.__state))
-
                 if (el === undefined) return;
 
                 el.dataset.selected = 'true';
@@ -219,7 +203,6 @@ const selectComponent = ({
             this.__isOpen = true;
 
             this.$nextTick(() => {
-                // this already happens on next frame at the rover core...
                 if (searchable) {
                     this.$rover.input.focus();
                 } else {
@@ -269,8 +252,6 @@ const selectComponent = ({
         },
 
         updateTriggerValue() {
-            // we need to wait until alpine boots up and all
-            //  options get collected by the `rover collector` 
             this.$nextTick(() => {
                 const trigger = this.$root.querySelector('[x-ref\\:trigger-value]');
                 if (!trigger) return;
@@ -336,16 +317,12 @@ const selectComponent = ({
 
 const CreateNewOptionActivator = () => ({
     init() {
-        // defer until Alpine finishes bootstrapping (on the current microtask)
-        //  this element's directives
         queueMicrotask(() => this.activate())
 
         if (window.Livewire !== undefined) {
             window.Livewire.hook('commit', ({ component, succeed }) => {
                 if (component.id === LIVEWIRE_ID) {
                     succeed(() => {
-                        // wait for Alpine's scheduler to flush 
-                        // after the Livewire commit
                         this.$nextTick(() => this.activate());
                     });
                 }

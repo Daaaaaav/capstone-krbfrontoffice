@@ -19,28 +19,18 @@ class LSTMClient
         $this->minimumDataPoints = AISettings::get('min_data_points', 45);
     }
 
-    /**
-     * Build an HTTP client pre-configured for the LSTM service.
-     * When the service URL is an ngrok tunnel, the browser-warning bypass
-     * header is automatically injected so requests reach FastAPI directly.
-     */
     private function http(): \Illuminate\Http\Client\PendingRequest
     {
         $headers = ['Accept' => 'application/json'];
 
-        // ngrok free-tier tunnels show a browser warning page unless this
-        // header is present. It has no effect on non-ngrok endpoints.
-        if (str_contains($this->baseUrl, 'ngrok')) {
-            $headers['ngrok-skip-browser-warning'] = '1';
-        }
+        // if (str_contains($this->baseUrl, 'ngrok')) {
+        //     $headers['ngrok-skip-browser-warning'] = '1';
+        // }
 
         return \Illuminate\Support\Facades\Http::timeout($this->timeout)
             ->withHeaders($headers);
     }
 
-    /**
-     * Check if the LSTM service is reachable.
-     */
     public function isAvailable(): bool
     {
         try {
@@ -52,14 +42,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Generate AI forecast predictions.
-     *
-     * @param  array $timeSeries   Array of ['date' => 'Y-m-d', 'count' => int]
-     * @param  int   $forecastDays
-     * @param  bool  $useDummyData
-     * @return array|null
-     */
     public function predict(array $timeSeries, int $forecastDays = 7, bool $useDummyData = false): ?array
     {
         try {
@@ -79,8 +61,6 @@ class LSTMClient
             $payload = [
                 'data'           => $data,
                 'forecast_days'  => $forecastDays,
-                'use_dummy_data' => $useDummyData,
-                // Pass all LSTM hyperparameters from the database
                 'lstm_config'    => AISettings::group('lstm'),
             ];
 
@@ -126,13 +106,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Generate a 21-day (3-week) forecast.
-     *
-     * @param  array $timeSeries
-     * @param  bool  $useDummyData
-     * @return array|null
-     */
     public function predict3Weeks(array $timeSeries = [], bool $useDummyData = false): ?array
     {
         try {
@@ -172,14 +145,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Fetch the persisted model evaluation metrics from /model-metrics.
-     * This is a lightweight, display-only call — no prediction or training runs.
-     *
-     * @return array|null  Returns null when the service is unreachable.
-     *                     Returns ['available' => false, ...] when never trained.
-     *                     Returns full metrics array otherwise.
-     */
     public function getModelMetrics(): ?array
     {
         try {
@@ -213,9 +178,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Call the demo endpoint (always uses dummy data).
-     */
     public function getDemo(): ?array
     {
         try {
@@ -234,14 +196,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Force a full model retrain regardless of the cached fingerprint.
-     * POSTs to the /retrain endpoint which sets force_retrain=true.
-     *
-     * @param  array $timeSeries
-     * @param  int   $forecastDays
-     * @return array|null
-     */
     public function forceRetrain(array $timeSeries, int $forecastDays = 7): ?array
     {
         try {
@@ -259,7 +213,7 @@ class LSTMClient
             ];
 
             $response = $this->http()
-                ->timeout(max($this->timeout, 120)) // retrain can take longer
+                ->timeout(max($this->timeout, 120))
                 ->post($this->baseUrl . '/retrain', $payload);
 
             if (!$response->successful()) {
@@ -279,9 +233,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Try LSTM first; fall back to simple moving average if unavailable.
-     */
     public function predictWithFallback(array $timeSeries, int $forecastDays = 7): array
     {
         $lstmResult = $this->predict($timeSeries, $forecastDays);
@@ -294,10 +245,6 @@ class LSTMClient
         return $this->simpleMovingAverage($timeSeries, $forecastDays);
     }
 
-    /**
-     * Simple moving-average fallback when LSTM is unavailable.
-     * All magic numbers are read from ai_settings.
-     */
     private function simpleMovingAverage(array $timeSeries, int $forecastDays): array
     {
         if (empty($timeSeries)) {
@@ -309,7 +256,6 @@ class LSTMClient
             ];
         }
 
-        // Read fallback config from DB (with hardcoded defaults as last resort)
         $windowSize     = AISettings::get('ma_window', 7);
         $weekendFactor  = AISettings::get('ma_weekend_factor', 0.9);
         $lowerMult      = AISettings::get('ma_lower_bound', 0.8);
@@ -320,7 +266,6 @@ class LSTMClient
         $recentData = array_slice($timeSeries, -(int) $windowSize);
         $avgCount   = array_sum(array_column($recentData, 'count')) / $windowSize;
 
-        // Simple trend: slope over the window
         $trend = 0;
         if (count($recentData) >= 2) {
             $first = $recentData[0]['count'];
@@ -335,7 +280,6 @@ class LSTMClient
             $nextDate   = date('Y-m-d', strtotime($lastDate . " +{$i} days"));
             $prediction = $avgCount + ($trend * $i);
 
-            // Weekend demand adjustment
             if (date('N', strtotime($nextDate)) >= 6) {
                 $prediction *= (float) $weekendFactor;
             }

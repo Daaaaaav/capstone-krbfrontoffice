@@ -9,18 +9,10 @@ use Illuminate\Support\Facades\Log;
 
 class OtpService
 {
-    /**
-     * Generate and send OTP to user's email
-     */
     public function generateAndSend(string $email): array
     {
-        // Generate 6-digit OTP
         $otpCode = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Delete old OTPs for this email
         OtpVerification::where('email', $email)->delete();
-
-        // Create new OTP (expires in 5 minutes)
         $otp = OtpVerification::create([
             'email' => $email,
             'otp_code' => $otpCode,
@@ -28,7 +20,6 @@ class OtpService
             'is_verified' => false,
         ]);
 
-        // Send OTP via email
         try {
             Mail::raw(
                 "Your OTP code is: {$otpCode}\n\nThis code will expire in 5 minutes.\n\nIf you didn't request this code, please ignore this email.",
@@ -52,9 +43,6 @@ class OtpService
         }
     }
 
-    /**
-     * Verify OTP code
-     */
     public function verify(string $email, string $code): array
     {
         $otp = OtpVerification::where('email', $email)
@@ -83,7 +71,6 @@ class OtpService
             ];
         }
 
-        // Mark as verified
         $otp->update(['is_verified' => true]);
 
         return [
@@ -92,9 +79,6 @@ class OtpService
         ];
     }
 
-    /**
-     * Check if user has a valid unverified OTP
-     */
     public function hasValidOtp(string $email): bool
     {
         return OtpVerification::where('email', $email)

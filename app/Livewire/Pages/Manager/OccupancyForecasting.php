@@ -16,7 +16,6 @@ use App\Models\AISettings;
 use App\Services\AI\LSTMClient;
 use App\Services\AI\CsvDataReader;
 use App\Services\AI\DataPreprocessor;
-use App\Services\WeatherService;
 use Carbon\Carbon;
 
 #[Layout('layouts.manager')]
@@ -24,16 +23,15 @@ use Carbon\Carbon;
 class OccupancyForecasting extends Component
 {
     use WithFileUploads;
-    public string $forecastType     = 'combined';   // choice of room | vehicle | combined
-    public int    $forecastDays     = 21;      // default to 21 days
-    public string $trainingSource   = 'csv_server'; // csv_server | csv_upload | live_db
+    public string $forecastType     = 'combined';   // room | vehicle | combined (default)
+    public int    $forecastDays     = 21;      // 7 | 14 | 21 (default) 
+    public string $trainingSource   = 'csv_server'; // csv_server (default) | csv_upload | live_db
     public        $uploadedCsv      = null;
-    public ?string $uploadedCsvPath = null;   // storage-relative path for uploaded CSV
+    public ?string $uploadedCsvPath = null;   
     public ?string $uploadedCsvName = null;
     public ?string $uploadError     = null;
     public ?string $uploadSuccess   = null;
     public ?array  $csvInfo         = null;
-    // public bool   $withWeather   = true;
 
     public function setForecastType(string $type): void
     {
@@ -57,7 +55,6 @@ class OccupancyForecasting extends Component
         $this->uploadError   = null;
         $this->uploadSuccess = null;
 
-        // Validate file presence, type, and size with descriptive messages
         $this->validate(
             ['uploadedCsv' => 'required|file|mimes:csv,txt|max:10240'],
             [
@@ -69,7 +66,6 @@ class OccupancyForecasting extends Component
         );
 
         try {
-            // Ensure the upload directory exists (guards against missing dir after deploy)
             $uploadDir = Storage::disk(CsvDataReader::DISK)->path(CsvDataReader::UPLOAD_PATH);
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
@@ -91,7 +87,7 @@ class OccupancyForecasting extends Component
                 return;
             }
 
-            // Remove old upload if one exists
+            // remove old upload if one exists
             if ($this->uploadedCsvPath) {
                 Storage::disk(CsvDataReader::DISK)->delete($this->uploadedCsvPath);
             }
@@ -120,20 +116,13 @@ class OccupancyForecasting extends Component
     {
         $companyId = Auth::user()->company_id;
 
-        // ── Single CsvDataReader instance shared across render ────────────────
-        // Previously render() created one reader for csvInfo() and buildTimeSeries()
-        // created a second one internally.  One instance is passed down.
         $reader = new CsvDataReader();
 
-        // ── CSV INFO for server csv ───────────────────────────────────────────
         $this->csvInfo = $reader->serverCsvInfo();
 
-        // ── Determine data source for training ────────────────────────────────
         $roomHistory    = $this->buildTimeSeries('room',    $reader);
         $vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
 
-        // ── LSTM forecast ─────────────────────────────────────────────────────
-        // LSTMClient is instantiated once; isAvailable() is called once.
         $lstm        = new LSTMClient();
         $isAvailable = $lstm->isAvailable();
 
@@ -150,7 +139,7 @@ class OccupancyForecasting extends Component
                 $vehicleForecast = $result['predictions'] ?? null;
             }
         } else {
-            // Fallback: simple moving-average projection
+            // fallback simple moving-average projection
             if (in_array($this->forecastType, ['room', 'combined'])) {
                 $roomForecast = $this->movingAverageForecast($roomHistory, $this->forecastDays);
             }
@@ -159,15 +148,10 @@ class OccupancyForecasting extends Component
             }
         }
 
-        // ── Chart data ────────────────────────────────────────────────────────
         $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
 
-        // ── Occupancy stats ───────────────────────────────────────────────────
         $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
-        // ── Model performance metrics (display-only, no re-training) ──────────
-        // getModelMetrics() calls GET /model-metrics which reads the persisted
-        // JSON file on the FastAPI side — it never triggers training or prediction.
         $modelMetrics = $isAvailable ? $lstm->getModelMetrics() : null;
 
         Log::info('OccupancyForecasting: metrics pipeline trace', [
@@ -198,20 +182,12 @@ class OccupancyForecasting extends Component
         ]);
     }
 
-    /**
-     * Build time series from the selected data source for a given booking type.
-     * type: 'room' | 'vehicle'
-     *
-     * Accepts an optional $reader so the caller can pass in an already-created
-     * CsvDataReader and avoid a second instantiation within the same request.
-     */
     private function buildTimeSeries(string $type, ?CsvDataReader $reader = null): array
     {
         $reader = $reader ?? new CsvDataReader();
 
-        // Column names in the CSV that correspond to each booking type
         $csvMetric = match($type) {
-            'room'    => 'combined_rooms',  // we'll need a special handler
+            'room'    => 'combined_rooms', 
             'vehicle' => 'vehicle_bookings',
             default   => 'visitors',
         };
@@ -231,9 +207,8 @@ class OccupancyForecasting extends Component
                         ]);
                     }
                 }
-                // Fall through to server CSV if upload is missing
+                // fallback server CSV if upload is missing
                 $this->trainingSource = 'csv_server';
-                // fallthrough
 
             case 'csv_server':
                 if ($type === 'room') {
@@ -252,21 +227,10 @@ class OccupancyForecasting extends Component
         }
     }
 
-    /**
-     * Read room history from server CSV (combines offline + online columns).
-     *
-     * Previously called readServerCsv() twice — once for each column — causing
-     * the CSV file to be opened, read, and sorted twice.  Now uses
-     * readServerCsvColumnsSummed() to do both columns in a single file pass.
-     *
-     * Accepts an optional $reader to avoid a third instantiation within render().
-     */
     private function readRoomHistoryFromServerCsv(?CsvDataReader $reader = null): array
     {
         $reader = $reader ?? new CsvDataReader();
         try {
-            // Single file pass: reads offline_room_bookings + online_room_bookings
-            // and sums them per date row, replacing the previous two-pass approach.
             return $reader->readServerCsvColumnsSummed([
                 'offline_room_bookings',
                 'online_room_bookings',
@@ -279,20 +243,10 @@ class OccupancyForecasting extends Component
         }
     }
 
-    /**
-     * Read room history from uploaded CSV (combines offline + online columns).
-     *
-     * Same optimisation as readRoomHistoryFromServerCsv(): one file pass instead
-     * of two.
-     *
-     * Accepts an optional $reader to avoid a third instantiation within render().
-     */
     private function readRoomHistoryFromCsv(string $storagePath, ?CsvDataReader $reader = null): array
     {
         $reader = $reader ?? new CsvDataReader();
         try {
-            // Single file pass: reads offline_room_bookings + online_room_bookings
-            // and sums them per date row, replacing the previous two-pass approach.
             return $reader->readUploadedCsvColumnsSummed($storagePath, [
                 'offline_room_bookings',
                 'online_room_bookings',
@@ -305,7 +259,6 @@ class OccupancyForecasting extends Component
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
     private function getRoomHistory(int $companyId): array
     {
         return BookingRoom::where('company_id', $companyId)
@@ -330,10 +283,6 @@ class OccupancyForecasting extends Component
 
     private function movingAverageForecast(array $history, int $days): array
     {
-        // All magic numbers read from ai_settings table.
-        // Previously called AISettings::get() five times separately — each call
-        // hits Cache::remember() individually.  One getMultiple() call reads the
-        // shared cache entry once and resolves all five keys in a single pass.
         $settings   = AISettings::getMultiple([
             'ma_window'      => 7,
             'ma_lower_bound' => 0.8,
@@ -354,9 +303,7 @@ class OccupancyForecasting extends Component
             $avg   = array_sum(array_column($slice, 'count')) / count($slice);
         }
 
-        // Build a day-of-week multiplier from historical data so the forecast
-        // reflects real patterns (e.g. busier on Fridays) instead of random noise.
-        $dowTotals = array_fill(0, 7, 0.0);   // Sun=0 … Sat=6
+        $dowTotals = array_fill(0, 7, 0.0);   
         $dowCounts = array_fill(0, 7, 0);
 
         foreach ($history as $row) {
@@ -365,7 +312,6 @@ class OccupancyForecasting extends Component
             $dowCounts[$dow]++;
         }
 
-        // Per-DOW average; fall back to the global avg when a day has no data.
         $dowAvg = [];
         for ($d = 0; $d < 7; $d++) {
             $dowAvg[$d] = $dowCounts[$d] > 0
@@ -373,8 +319,6 @@ class OccupancyForecasting extends Component
                 : $avg;
         }
 
-        // Express each DOW relative to the overall mean so we get a multiplier
-        // centred around 1.0.  Protect against a zero overall average.
         $overallHistAvg = $avg > 0 ? $avg : $floorAvg;
         $dowMultiplier  = [];
         for ($d = 0; $d < 7; $d++) {
@@ -406,17 +350,10 @@ class OccupancyForecasting extends Component
         $labels      = [];
         $roomData    = [];
         $vehicleData = [];
-
-        // Use whichever forecast is available for labels.
-        // When both are present, they always have the same dates (same forecastDays,
-        // same base date), so a single combined loop covers both arrays at once,
-        // removing the second foreach that previously traversed $vehicle separately.
         $base        = $room ?? $vehicle ?? [];
         $hasRoom     = $room    !== null;
         $hasVehicle  = $vehicle !== null;
 
-        // If both arrays exist they are the same length (both come from the same
-        // forecastDays value), so we can zip them in one pass.
         foreach ($base as $i => $p) {
             $labels[]    = date('d/m', strtotime($p['date']));
             $roomData[]  = $hasRoom    ? round($p['predicted'], 1) : null;
@@ -460,43 +397,6 @@ class OccupancyForecasting extends Component
             'total_room_fc'    => $roomFc    ? round(array_sum(array_column($roomFc, 'predicted')))    : '—',
             'total_vehicle_fc' => $vehicleFc ? round(array_sum(array_column($vehicleFc, 'predicted'))) : '—',
         ];
-    }
-
-    private function buildWeatherInsight(?array $weather, ?array $roomFc): ?array
-    {
-        if (!$weather || !$roomFc) return null;
-
-        $insights = [];
-        foreach ($weather['forecast'] as $day) {
-            $date = $day['date'];
-            // Find matching forecast day
-            foreach ($roomFc as $fc) {
-                if ($fc['date'] === $date) {
-                    $rain    = $day['rain_chance'];
-                    $weather_desc = $day['summary']['weather_desc'] ?? '';
-                    $predicted = round($fc['predicted'], 1);
-
-                    if ($rain >= 60) {
-                        $insights[] = [
-                            'date'    => $day['date_label'],
-                            'icon'    => '🌧️',
-                            'message' => "Rain likely ({$rain}% chance) on {$day['date_label']} — expect lower walk-in occupancy (~{$predicted} bookings).",
-                            'type'    => 'warning',
-                        ];
-                    } elseif ($rain <= 20 && in_array($day['summary']['weather'] ?? 99, [0, 1, 2])) {
-                        $insights[] = [
-                            'date'    => $day['date_label'],
-                            'icon'    => '☀️',
-                            'message' => "Clear weather on {$day['date_label']} — good conditions for higher visitor turnout (~{$predicted} bookings).",
-                            'type'    => 'positive',
-                        ];
-                    }
-                    break;
-                }
-            }
-        }
-
-        return $insights ?: null;
     }
 
     private function avg(array $values): float

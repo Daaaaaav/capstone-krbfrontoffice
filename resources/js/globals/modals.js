@@ -1,6 +1,5 @@
 import defineReactiveMagicProperty from "../utils";
 
-/** here we're we set global utilities to use them in our appx */
 document.addEventListener('alpine:init', () => {
     defineReactiveMagicProperty('modal', {
         openModals: new Set(),

@@ -21,8 +21,8 @@ class DocPackForm extends Component
 {
     use WithFileUploads;
 
-    public string $direction = 'taken'; // taken | deliver
-    public string $itemType = 'package'; // package | document
+    public string $direction = 'taken'; // taken (default) | deliver
+    public string $itemType = 'package'; // package (default) | document
 
     public ?int $departmentId = null;
     public ?int $userId = null;
@@ -30,11 +30,8 @@ class DocPackForm extends Component
     public string $receiverText = '';
     public ?int $storageId = null;
     public string $itemName = '';
-
-    /** Bukti foto (upload / kamera) */
     public $photo = null;
 
-    /** Dropdown Data */
     public array $departments = [];
     public array $users = [];
     public array $storages = [];
@@ -129,10 +126,7 @@ class DocPackForm extends Component
             $sender   = User::whereKey($this->userId)->value('full_name') ?? '—';
             $receiver = $this->receiverText;
         }
-
-        // SIMPAN FOTO KE FOLDER PUBLIC/images/deliveries
         $imagePath = null;
-
         if ($this->photo) {
             $imagePath = ImageHelper::storeAsWebp(
                 $this->photo,

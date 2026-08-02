@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\DB;
 #[Title('GuestBook')]
 class Guestbook extends Component
 {
-    // Form fields yang diisi user
     public $name;
     public $email;
     public $phone_number;
@@ -29,59 +28,41 @@ class Guestbook extends Component
     public $keperluan;
     public $visitor_count = 1;
     public $storage_place;
-    
-    // Field baru (Nullable / Optional)
     public $department_id;
     public $user_id;
-
-    // Data Lists untuk Dropdown
     public $departments_list = [];
     public $users_list = [];
-
-    // Field internal (diisi otomatis)
     public $date;
     public $jam_in;
     public $petugas_penjaga;
-
-    // Autocomplete state
     public $historyGuests = [];
     public $isAutoFilled = false;
-
-    // ---- Compatibility props (omitted for brevity, assume they exist) ----
     
     public function mount(): void
     {
         $this->date = $this->date ?: now()->format('Y-m-d');
-
-        // Load list departemen
         if ($compId = $this->companyId()) {
-            // Load departments belonging to the current user's company
             $this->departments_list = Department::where('company_id', $compId)
                 ->get(['department_id', 'department_name'])
                 ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
                 ->toArray();
         } else {
-            // Fallback: Load all departments if company_id is null/not used
             $this->departments_list = Department::all(['department_id', 'department_name'])
                 ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
                 ->toArray();
         }
         
-        // Load users if department_id is already set (e.g., via session or initial state)
         if ($this->department_id) {
             $this->loadUsers();
         }
     }
 
-    // Hook: Ketika department_id berubah, load user yang sesuai
     public function updatedDepartmentId($value)
     {
-        // Reset user yang dipilih sebelumnya
         $this->user_id = null; 
         $this->loadUsers($value);
     }
     
-    // Autocomplete for Name
     public function updatedName($value)
     {
         $this->isAutoFilled = false;
@@ -92,13 +73,7 @@ class Guestbook extends Component
             if ($companyId) {
                 $query->where('company_id', $companyId);
             }
-
-            // Fetch all matching records ordered newest-first so we can pick the
-            // most recent (and most complete) data for each unique guest name.
             $rows = $query->orderBy('created_at', 'desc')->get();
-
-            // For each unique name, merge fields from all their past entries:
-            // prefer the most recent non-null / non-empty value for each field.
             $byName = [];
             foreach ($rows as $g) {
                 $name = $g->name;
@@ -111,7 +86,6 @@ class Guestbook extends Component
                         'keperluan'    => $g->keperluan,
                     ];
                 } else {
-                    // Fill in any blank fields from older records
                     foreach (['email', 'phone_number', 'instansi', 'keperluan'] as $field) {
                         if (empty($byName[$name][$field]) && !empty($g->$field)) {
                             $byName[$name][$field] = $g->$field;
@@ -147,14 +121,11 @@ class Guestbook extends Component
         }
     }
 
-    // Helper function to load users
     private function loadUsers(?string $departmentId = null): void
     {
         $departmentId = $departmentId ?? $this->department_id;
         
         if ($departmentId) {
-            // Load users based on the selected department ID
-            // Convert to plain array so Livewire serializes it correctly between requests
             $this->users_list = User::where('department_id', (int)$departmentId)
                 ->get(['user_id', 'full_name'])
                 ->map(fn($u) => ['id' => $u->user_id, 'full_name' => $u->full_name])
@@ -175,13 +146,11 @@ class Guestbook extends Component
             'keperluan'     => ['required', 'string', 'max:255'],
             'visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
             'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
-            // Ensures department_id and user_id are nullable
             'department_id' => ['nullable', 'exists:departments,department_id'],
             'user_id'       => ['nullable', 'exists:users,user_id'],
         ];
     }
 
-    // Helper functions (omitted for brevity, assume they exist)
     private function companyId(): ?int
     {
         return Auth::user()?->company_id;
@@ -204,11 +173,9 @@ class Guestbook extends Component
 
         SecurityMonitoringService::logFormSubmit('guestbook', $validatedData);
 
-        // Generate master QR token for backward compat
         $qrToken = GuestbookModel::generateQrToken();
         $visitorCount = (int) $validatedData['visitor_count'];
 
-        // Prepare data including auto-filled fields
         $entryData = array_merge($validatedData, [
             'date'                 => $this->date,
             'jam_in'               => $this->jam_in,
@@ -218,13 +185,10 @@ class Guestbook extends Component
             'qr_token'             => $qrToken,
             'qr_status'            => 'pending',
             'visitor_count'        => $visitorCount,
-            'scheduled_by_manager' => false, // Receptionist walk-in: NOT a Scheduled Guest
+            'scheduled_by_manager' => false, 
         ]);
 
-        // Saves data to the database
         $entry = GuestbookModel::create($entryData);
-
-        // Generate individual QR codes for each visitor
         $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
         foreach ($qrTokens as $index => $token) {
             GuestbookQrCode::create([
@@ -237,7 +201,6 @@ class Guestbook extends Component
         $emailFailed = false;
         $emailLogOnly = false;
 
-        // Send QR code email if an email address was provided
         if (!empty($validatedData['email'])) {
             if (config('mail.default') === 'log' || config('mail.default') === 'array' || config('mail.default') === null) {
                 $emailLogOnly = true;
@@ -247,7 +210,6 @@ class Guestbook extends Component
                 } catch (\Throwable $e) {}
             } else {
                 try {
-                    // Reload with qrCodes for the email
                     $entry->load('qrCodes');
                     Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry));
                 } catch (\Throwable $e) {
@@ -257,12 +219,9 @@ class Guestbook extends Component
             }
         }
 
-        // Reset form
         $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place', 'isAutoFilled', 'historyGuests']);
         $this->visitor_count = 1;
-        // Reset user list 
         $this->users_list = []; 
-
         $this->dispatch('$refresh');
         
         if ($emailFailed) {

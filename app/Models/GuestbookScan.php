@@ -11,8 +11,6 @@ class GuestbookScan extends Model
     protected $primaryKey = 'scan_id';
     public $incrementing = true;
     protected $keyType = 'int';
-
-    // scanned_at is managed via useCurrent() in DB, no Laravel timestamps needed
     public $timestamps = false;
 
     protected $fillable = [

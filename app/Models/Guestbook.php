@@ -34,33 +34,25 @@ class Guestbook extends Model
         'qr_status',
         'visitor_count',
         'storage_place',
-        'scheduled_by_manager', // true = pre-scheduled by Manager via GuestbookForm
+        'scheduled_by_manager', 
     ];
 
-    // If column `date` is DATE, this is safe. Times are left as string (TIME cast is not native Carbon).
     protected $casts = [
         'date'                 => 'date:Y-m-d',
         'visitor_count'        => 'integer',
         'scheduled_by_manager' => 'boolean',
     ];
 
-    // -----------------------------------------------------------------------
-    // Relationships
-    // -----------------------------------------------------------------------
-
-    /** Individual visitor scan records for this guestbook entry */
     public function scans(): HasMany
     {
         return $this->hasMany(GuestbookScan::class, 'guestbook_id', 'guestbook_id');
     }
 
-    /** Individual QR codes (one per visitor in the group) for checkout scanning */
     public function qrCodes(): HasMany
     {
         return $this->hasMany(GuestbookQrCode::class, 'guestbook_id', 'guestbook_id');
     }
 
-    /** Check if all individual visitor QR codes have been scanned out */
     public function allQrScanned(): bool
     {
         $total = $this->qrCodes()->count();
@@ -70,23 +62,16 @@ class Guestbook extends Model
         return $this->qrCodes()->where('is_scanned', true)->count() >= $total;
     }
 
-    /** Count how many QR codes have been scanned */
     public function scannedQrCount(): int
     {
         return $this->qrCodes()->where('is_scanned', true)->count();
     }
 
-    // -----------------------------------------------------------------------
-    // Scopes
-    // -----------------------------------------------------------------------
-
-    /** Scope: by company */
     public function scopeForCompany(Builder $q, $companyId): Builder
     {
         return $q->where('company_id', $companyId);
     }
 
-    /** Scope: fulltext-ish search */
     public function scopeSearch(Builder $q, ?string $term): Builder
     {
         if (!$term) {
@@ -103,11 +88,6 @@ class Guestbook extends Model
         });
     }
 
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
-
-    /** Generate a cryptographically random unique QR token */
     public static function generateQrToken(): string
     {
         do {
@@ -117,7 +97,6 @@ class Guestbook extends Model
         return $token;
     }
 
-    /** Human-readable QR status label */
     public function qrStatusLabel(): string
     {
         return match ($this->qr_status) {

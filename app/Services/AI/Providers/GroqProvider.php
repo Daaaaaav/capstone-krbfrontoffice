@@ -9,10 +9,6 @@ use App\Services\AI\Exceptions\AIRateLimitException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Groq provider — OpenAI-compatible endpoint.
- * Docs: https://console.groq.com/docs/openai
- */
 class GroqProvider implements AIProviderInterface
 {
     private string $apiKey;

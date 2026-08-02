@@ -75,9 +75,6 @@ class PriorityVehicleBooking extends Model
         return $query->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION]);
     }
 
-    /**
-     * Auto-expire any pending priority vehicle bookings whose scheduled time has already passed.
-     */
     public static function autoExpirePending(?int $companyId): void
     {
         static::query()

@@ -298,11 +298,6 @@ class BookingsApproval extends Component
             && !empty(config('services.zoom.client_secret', env('ZOOM_CLIENT_SECRET')));
     }
 
-    // ─────────────────── Detail Modal ────────────────────
-
-    /**
-     * Computed property to retrieve the selected BookingRoom model instance with requirements and room.
-     */
     public function getBookingDetailProperty(): ?BookingRoom
     {
         if ($this->selectedBookingId) {
@@ -312,9 +307,6 @@ class BookingsApproval extends Component
         return null;
     }
 
-    /**
-     * Open the detail modal and fetch the selected booking detail.
-     */
     public function openDetailModal(int $id): void
     {
         $this->selectedBookingId = $id;
@@ -335,17 +327,12 @@ class BookingsApproval extends Component
     }
 
 
-    /**
-     * Close the detail modal.
-     */
     public function closeDetailModal(): void
     {
         $this->showDetailModal = false;
         $this->selectedBookingId = null;
         $this->selectedBookingDetail = null;
     }
-
-    // ─────────────────── Reject ────────────────────
 
     public function openReject(int $id): void
     {
@@ -354,9 +341,6 @@ class BookingsApproval extends Component
         $this->showRejectModal = true;
     }
 
-    /**
-     * FIX: Added the missing public method.
-     */
     public function closeReject(): void
     {
         $this->showRejectModal = false;
@@ -373,10 +357,7 @@ class BookingsApproval extends Component
 
         try {
             DB::transaction(function () {
-                /** @var BookingRoom $b */
                 $b = BookingRoom::lockForUpdate()->findOrFail($this->rejectId);
-
-                // Enforce 30-minute rejection threshold
                 $now = Carbon::now($this->tz);
                 $start = $this->buildDt($b->date, $b->start_time);
                 $minutesLeft = $now->diffInMinutes($start, false);
@@ -407,16 +388,11 @@ class BookingsApproval extends Component
         $this->openReject($id);
     }
 
-    // ─────────────────── Approve ────────────────────
-
     public function approve(int $id): void
     {
         try {
             DB::transaction(function () use ($id) {
-                /** @var BookingRoom $b */
                 $b = BookingRoom::lockForUpdate()->findOrFail($id);
-
-                // OFFLINE checks
                 if (!in_array($b->booking_type, ['online_meeting', 'onlinemeeting'])) {
                     if (!$b->room_id || !$b->date || !$b->start_time || !$b->end_time) {
                         throw new \RuntimeException('Data ruangan/tanggal/waktu tidak lengkap.');
@@ -454,7 +430,6 @@ class BookingsApproval extends Component
                     }
                 }
 
-                // ONLINE: create link on approval if missing
                 if (in_array($b->booking_type, ['online_meeting','onlinemeeting']) && empty($b->online_meeting_url)) {
                     $start = $this->buildDt($b->date, $b->start_time);
                     $end   = $this->buildDt($b->date, $b->end_time);
@@ -483,20 +458,16 @@ class BookingsApproval extends Component
                         );
                         $b->online_provider = 'zoom';
                     }
-
                     $b->online_meeting_url      = $meet['url'] ?? null;
                     $b->online_meeting_code     = $meet['code'] ?? null;
                     $b->online_meeting_password = $meet['password'] ?? null;
                 }
-
-                // Approve
                 $b->status      = 'approved';
                 $b->is_approve  = 1;
                 $b->approved_by = Auth::id();
                 $b->book_reject = null;
                 $b->save();
             });
-
             $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Booking disetujui.');
             $this->resetPage('pendingPage');
             $this->resetPage('ongoingPage');
@@ -508,11 +479,8 @@ class BookingsApproval extends Component
         }
     }
 
-    // ─────────────── Cancel / Reschedule ───────────────
-
     public function openReschedule(int $id): void
     {
-        /** @var BookingRoom $b */
         $b = BookingRoom::findOrFail($id);
 
         if ($b->status !== 'approved') {
@@ -528,10 +496,8 @@ class BookingsApproval extends Component
         $this->rescheduleStart   = $start->format('H:i');
         $this->rescheduleEnd     = $end->format('H:i');
         $this->rescheduleReason  = '';
-
         $this->rescheduleRoomEnabled = !in_array($b->booking_type, ['online_meeting', 'onlinemeeting']);
         $this->rescheduleRoomId      = $b->room_id ?: null;
-
         $this->showRescheduleModal = true;
     }
 
@@ -555,7 +521,6 @@ class BookingsApproval extends Component
             'rescheduleStart'  => 'required|date_format:H:i',
             'rescheduleEnd'    => 'required|date_format:H:i|after:rescheduleStart',
             'rescheduleReason' => 'required|string|min:3|max:500',
-            // room opsional, tapi kalau diisi harus valid
             'rescheduleRoomId' => 'nullable|integer|exists:rooms,room_id',
         ];
 
@@ -563,9 +528,7 @@ class BookingsApproval extends Component
 
         try {
             DB::transaction(function () {
-                /** @var BookingRoom $b */
                 $b = BookingRoom::lockForUpdate()->findOrFail($this->rescheduleId);
-
                 $start = Carbon::createFromFormat(
                     'Y-m-d H:i',
                     "{$this->rescheduleDate} {$this->rescheduleStart}",
@@ -580,11 +543,8 @@ class BookingsApproval extends Component
                 if ($end->lte($start)) {
                     throw new \RuntimeException('Waktu tidak valid (end <= start).');
                 }
-
-                // Kalau user pilih room baru, pakai itu; kalau tidak, pakai room lama
                 $roomId = $this->rescheduleRoomId ?: $b->room_id;
 
-                // Cek bentrok hanya untuk booking offline
                 if (!in_array($b->booking_type, ['online_meeting', 'onlinemeeting']) && $roomId) {
                     $overlap = BookingRoom::query()
                         ->where('bookingroom_id', '!=', $b->bookingroom_id)
@@ -595,16 +555,13 @@ class BookingsApproval extends Component
                         ->where('start_time', '<', $end)
                         ->where('end_time', '>', $start)
                         ->exists();
-
                     if ($overlap) {
                         throw new \RuntimeException('Jadwal baru bentrok dengan booking lain di ruangan & tanggal yang sama.');
                     }
                 }
-
                 if ($roomId) {
                     $b->room_id = $roomId;
                 }
-
                 $b->date        = $this->rescheduleDate;
                 $b->start_time  = $start;
                 $b->end_time    = $end;
@@ -625,8 +582,6 @@ class BookingsApproval extends Component
         }
     }
 
-    // ─────────────── Data & render ───────────────
-
     private function applyCommonFilters($query, ?int $companyId = null): void
     {
         if ($companyId) {
@@ -641,16 +596,12 @@ class BookingsApproval extends Component
         if ($selected) {
             $query->whereDate('date', $selected);
         }
-
-        // ROOM FILTER via relation room()
         if (!is_null($this->roomFilterId)) {
             $roomId = $this->roomFilterId;
             $query->whereHas('room', function ($qr) use ($roomId) {
                 $qr->where('room_id', $roomId);
             });
         }
-
-        // Type scope filter: online / offline / all
         if ($this->typeScope === 'online') {
             $query->whereIn('booking_type', ['online_meeting', 'onlinemeeting']);
         } elseif ($this->typeScope === 'offline') {
@@ -666,15 +617,8 @@ class BookingsApproval extends Component
     public function render()
     {
         $this->autoApprovePending();
-        // NOTE: Status transitions (approved→completed, pending→rejected) are
-        // handled exclusively by the scheduler (bookings:auto-complete,
-        // bookings:auto-approve). render() is read-only — it reflects whatever
-        // the database currently contains.
 
-        // Auto-complete approved priority room bookings whose end time has passed
         PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
-
-        // Auto-approve non-clashing priority bookings (pending_receipt) once start time arrives
         PriorityRoomBooking::autoApproveNonClashing(Auth::user()->company_id ?? null);
 
         $cols = [
@@ -702,23 +646,16 @@ class BookingsApproval extends Component
             CONCAT(date, ' ', end_time)
         )";
 
-        // Pending tab: bookings with status='pending' whose booking window has NOT yet
-        // closed (end_time > now), PLUS approved bookings whose start time has NOT yet
-        // arrived (approved-but-not-started). Expired-window pending bookings are
-        // excluded here — they are auto-rejected by the scheduler (or the render-time
-        // fallback above) once their end_time passes.
         $pending = BookingRoom::query()
             ->with(['room', 'requirements', 'user.department', 'department'])
             ->where(function ($q) use ($now, $startExpr, $endExpr) {
                 $q->where(function ($q1) use ($now, $endExpr) {
-                      // Pending but end time hasn't passed yet — still actionable
                       $q1->where('status', 'pending')
                          ->whereNotNull('date')
                          ->whereNotNull('end_time')
                          ->whereRaw("$endExpr > ?", [$now]);
                   })
                   ->orWhere(function ($q2) use ($now, $startExpr) {
-                      // Approved but not yet started — show with "Approved" badge
                       $q2->where('status', 'approved')
                          ->whereNotNull('date')
                          ->whereNotNull('start_time')
@@ -728,7 +665,6 @@ class BookingsApproval extends Component
             ->tap(fn($q) => $this->applyCommonFilters($q, $companyId))
             ->paginate($this->perPending, $cols, 'pendingPage');
 
-        // Ongoing tab: only approved bookings whose start time has already arrived.
         $ongoing = BookingRoom::query()
             ->with(['room', 'requirements', 'user.department', 'department'])
             ->where('status', 'approved')
@@ -738,7 +674,6 @@ class BookingsApproval extends Component
             ->tap(fn($q) => $this->applyCommonFilters($q, $companyId))
             ->paginate($this->perOngoing, $cols, 'ongoingPage');
 
-        // Recent activity: semua status kecuali pending, approved(ongoing), dan rejected
         $recentCompletedQuery = BookingRoom::query()
             ->with('room')
             ->whereNotIn('status', ['pending', 'approved', 'rejected']);
@@ -768,9 +703,7 @@ class BookingsApproval extends Component
             'googleConnected'             => $this->googleConnected,
             'roomNotifCount'              => $this->roomNotifCount,
             'roomNotifs'                  => $this->roomNotifs,
-            // Manager priority room bookings — pending & approved stages
-            // "pending" pool: truly pending statuses PLUS approved bookings whose start time
-            // has not yet arrived (approved-but-not-started stays in Pending tab).
+        
             'priorityRoomPending'         => PriorityRoomBooking::with(['room', 'manager'])
                 ->forCompany($companyId)
                 ->where(function ($q) {
@@ -780,7 +713,6 @@ class BookingsApproval extends Component
                         PriorityRoomBooking::STATUS_PENDING_RECEIPT,
                         PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
                     ])->orWhere(function ($q2) use ($today, $timeNow) {
-                        // Approved but start datetime is still in the future
                         $q2->where('status', PriorityRoomBooking::STATUS_APPROVED)
                            ->where(function ($q3) use ($today, $timeNow) {
                                $q3->where('date', '>', $today)
@@ -793,7 +725,6 @@ class BookingsApproval extends Component
                 })
                 ->orderByDesc('created_at')
                 ->get(),
-            // "ongoing" pool: only approved bookings whose start time has already arrived
             'priorityRoomApproved'        => PriorityRoomBooking::with(['room', 'manager'])
                 ->forCompany($companyId)
                 ->where('status', PriorityRoomBooking::STATUS_APPROVED)
@@ -809,21 +740,14 @@ class BookingsApproval extends Component
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get(),
-            // Detail modal data for priority room booking
             'priorityRoomDetailBooking'   => $this->priorityRoomDetailBooking,
         ]);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Priority Room Booking — Notification handling
-    // ═══════════════════════════════════════════════════════════════════════
 
     public bool $showRoomNotifPanel          = false;
     public bool $showRoomPriorityApprovalModal = false;
     public ?int $roomPriorityNotifId          = null;
     public ?int $roomPriorityBookingId        = null;
-
-    // Read-only detail modal for priority room bookings (all statuses)
     public bool $showPriorityRoomDetailModal = false;
     public ?int $priorityRoomDetailId        = null;
 
@@ -847,17 +771,12 @@ class BookingsApproval extends Component
         $this->priorityRoomDetailId        = null;
     }
 
-    /**
-     * Called from the "Take Action" button in the read-only detail modal.
-     * Closes the detail view and opens the approval/action modal for the same booking.
-     */
     public function takeActionFromDetail(int $priorityBookingId): void
     {
         $this->closePriorityRoomDetail();
         $this->openRoomPriorityApprovalByBookingId($priorityBookingId);
     }
 
-    /** Load the PriorityRoomBooking being viewed in the detail modal (called fresh in render/blade). */
     public function getPriorityRoomDetailBookingProperty(): ?\App\Models\PriorityRoomBooking
     {
         if (!$this->priorityRoomDetailId) return null;
@@ -897,10 +816,6 @@ class BookingsApproval extends Component
         $notif->markRead();
     }
 
-    /**
-     * Open the priority approval modal directly from a priority booking card
-     * (no notification required — used by the "Accept" button on the card itself).
-     */
     public function openRoomPriorityApprovalByBookingId(int $priorityBookingId): void
     {
         $companyId = Auth::user()->company_id ?? null;
@@ -918,7 +833,6 @@ class BookingsApproval extends Component
             return;
         }
 
-        // For pending_receipt (no conflict), skip the modal and approve directly
         if ($priority->status === PriorityRoomBooking::STATUS_PENDING_RECEIPT) {
             $this->roomPriorityNotifId   = null;
             $this->roomPriorityBookingId = $priorityBookingId;
@@ -926,8 +840,7 @@ class BookingsApproval extends Component
             return;
         }
 
-        // For pending_cancellation, show the conflict resolution modal
-        $this->roomPriorityNotifId          = null; // no notification — direct card action
+        $this->roomPriorityNotifId          = null; 
         $this->roomPriorityBookingId        = $priorityBookingId;
         $this->showRoomPriorityApprovalModal = true;
         $this->showRoomNotifPanel           = false;
@@ -940,10 +853,6 @@ class BookingsApproval extends Component
         $this->roomPriorityBookingId         = null;
     }
 
-    /**
-     * Receptionist approves: cancel the conflicting offline booking (if any), approve the priority booking.
-     * Works whether opened from a notification or directly from a priority booking card.
-     */
     public function approveRoomPriority(): void
     {
         if (!$this->roomPriorityBookingId) return;
@@ -974,13 +883,11 @@ class BookingsApproval extends Component
                     'handled_by' => Auth::user()->user_id,
                 ]);
 
-                // Mark the associated notification as handled (if the modal was opened via a notification)
                 if ($this->roomPriorityNotifId) {
                     ManagerNotification::where('id', $this->roomPriorityNotifId)
                         ->update(['action_taken' => 'approved', 'is_read' => true]);
                 }
 
-                // Also mark any unresolved notifications for this booking as handled
                 ManagerNotification::where('notifiable_id', $this->roomPriorityBookingId)
                     ->whereIn('type', [
                         ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
@@ -1005,9 +912,6 @@ class BookingsApproval extends Component
         $this->resetPage('ongoingPage');
     }
 
-    /**
-     * Receptionist denies the cancellation: priority booking is conflict-denied.
-     */
     public function denyRoomPriority(): void
     {
         if (!$this->roomPriorityBookingId) return;
@@ -1029,7 +933,6 @@ class BookingsApproval extends Component
                         ->update(['action_taken' => 'denied', 'is_read' => true]);
                 }
 
-                // Also mark any unresolved notifications for this booking as handled
                 ManagerNotification::where('notifiable_id', $this->roomPriorityBookingId)
                     ->whereIn('type', [
                         ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,

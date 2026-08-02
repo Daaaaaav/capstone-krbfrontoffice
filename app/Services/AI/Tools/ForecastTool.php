@@ -6,13 +6,6 @@ use App\Services\AI\Contracts\ToolInterface;
 use App\Services\AI\LSTMClient;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Tool: get_forecast
- *
- * Calls the existing LSTMClient service to retrieve occupancy forecasts.
- * Delegates entirely to the existing forecasting infrastructure — no
- * duplicate logic here.
- */
 class ForecastTool implements ToolInterface
 {
     public function __construct(private LSTMClient $lstm) {}

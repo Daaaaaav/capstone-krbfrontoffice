@@ -16,9 +16,6 @@ class LogFailedLogin
         $this->request = $request;
     }
 
-    /**
-     * Handle the event.
-     */
     public function handle(Failed $event): void
     {
         $ip = $this->request->ip() ?? '127.0.0.1';
@@ -26,7 +23,6 @@ class LogFailedLogin
         
         $key = 'failed_login_attempts_' . $ip;
         
-        // Track the attempts in cache for 5 minutes
         $attempts = Cache::get($key, 0);
         $attempts++;
         Cache::put($key, $attempts, now()->addMinutes(5));

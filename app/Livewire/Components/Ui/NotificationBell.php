@@ -16,11 +16,6 @@ class NotificationBell extends Component
 {
     public bool $open = false;
 
-    /**
-     * On mount, fire a toast for each pending-action notification that
-     * hasn't been toasted yet this session. We track shown IDs in the
-     * PHP session so the toast only fires once per notification per login.
-     */
     public function mount(): void
     {
         $user = Auth::user();
@@ -61,7 +56,6 @@ class NotificationBell extends Component
         session([$sessionKey => array_merge($alreadySeen, $newIds)]);
     }
 
-    /** Total unread count for badge */
     public function getUnreadCountProperty(): int
     {
         $user = Auth::user();
@@ -73,7 +67,6 @@ class NotificationBell extends Component
             ->count();
     }
 
-    /** All recent notifications (read + unread, latest 30) */
     public function getNotifsProperty()
     {
         $user = Auth::user();
@@ -119,11 +112,6 @@ class NotificationBell extends Component
             ->update(['is_read' => true]);
     }
 
-    /**
-     * Single-click approve: cancel the conflicting booking and approve the
-     * priority booking — all in one transaction, directly from the bell dropdown.
-     * Works for both room and vehicle priority bookings.
-     */
     public function approveDirectly(int $notifId): void
     {
         $user = Auth::user();
@@ -205,8 +193,6 @@ class NotificationBell extends Component
         }
     }
 
-    // ── Detail modal ───────────────────────────────────────────────────────
-
     public bool   $showDetail       = false;
     public ?int   $detailNotifId    = null;
     public bool   $showDenyForm     = false;
@@ -227,7 +213,6 @@ class NotificationBell extends Component
         $this->denyReason    = '';
         $this->showDetail    = true;
 
-        // Mark as read when opened
         if (!$notif->is_read) {
             $notif->update(['is_read' => true]);
         }
@@ -307,14 +292,12 @@ class NotificationBell extends Component
         $this->closeDetail();
     }
 
-    /** Computed: the notification being viewed in the detail modal */
     public function getDetailNotifProperty(): ?ManagerNotification
     {
         if (!$this->detailNotifId) return null;
         return ManagerNotification::find($this->detailNotifId);
     }
 
-    /** Computed: the priority booking model linked to the detail notification */
     public function getDetailBookingProperty(): mixed
     {
         $notif = $this->detailNotif;

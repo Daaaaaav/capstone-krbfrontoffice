@@ -18,24 +18,20 @@ return new class extends Migration {
 
     public function down(): void
     {
-        // Drop the composite unique index
         if (\DB::table('information_schema.STATISTICS')->where('TABLE_SCHEMA', \DB::getDatabaseName())->where('TABLE_NAME', 'users')->where('INDEX_NAME', 'users_email_deleted_at_unique')->exists()) {
             \DB::statement('ALTER TABLE `users` DROP INDEX `users_email_deleted_at_unique`');
         }
 
-        // Remove duplicate emails, keeping the row with the highest user_id per email
         \DB::statement('
             DELETE u1 FROM users u1
             INNER JOIN users u2
             ON u1.email = u2.email AND u1.user_id < u2.user_id
         ');
 
-        // Restore the simple unique on email
         if (!\DB::table('information_schema.STATISTICS')->where('TABLE_SCHEMA', \DB::getDatabaseName())->where('TABLE_NAME', 'users')->where('INDEX_NAME', 'users_email_unique')->exists()) {
             \DB::statement('ALTER TABLE `users` ADD UNIQUE INDEX `users_email_unique` (`email`)');
         }
 
-        // Drop deleted_at index and column
         if (\DB::table('information_schema.STATISTICS')->where('TABLE_SCHEMA', \DB::getDatabaseName())->where('TABLE_NAME', 'users')->where('INDEX_NAME', 'users_deleted_at_index')->exists()) {
             \DB::statement('ALTER TABLE `users` DROP INDEX `users_deleted_at_index`');
         }

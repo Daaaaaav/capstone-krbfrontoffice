@@ -8,14 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // ── Sessions ─────────────────────────────────────────────
-        // One row per conversation (a new session starts when the
-        // user clicks "Clear" or opens the chat for the first time).
         Schema::create('ai_chat_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users', 'user_id')->cascadeOnDelete();
-            $table->string('role', 20);           // 'manager' | 'receptionist'
-            $table->string('title', 255)->nullable(); // auto-set from first user message
+            $table->string('role', 20);           // 'manager' | 'receptionist' | default null
+            $table->string('title', 255)->nullable(); 
             $table->timestamp('started_at')->useCurrent();
             $table->timestamp('ended_at')->nullable();
             $table->timestamps();
@@ -31,7 +28,6 @@ return new class extends Migration
                   ->cascadeOnDelete();
             $table->enum('role', ['user', 'assistant']);
             $table->text('text');
-            // booking_prefill stored as JSON (nullable — only receptionist assistant msgs)
             $table->json('booking_prefill')->nullable();
             $table->timestamp('sent_at')->useCurrent();
 

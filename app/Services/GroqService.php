@@ -6,17 +6,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\AI\AIService;
 use App\Services\AI\PromptBuilder;
 
-/**
- * GroqService — backward-compatibility shim.
- *
- * All existing code that injects GroqService continues to work unchanged.
- * This class now delegates every call to AIService (provider-agnostic) and
- * PromptBuilder (extracted prompt logic), so switching AI providers only
- * requires editing .env — no changes to callers needed.
- *
- * The original Groq HTTP logic has been removed from this class; it now
- * lives in App\Services\AI\Providers\GroqProvider.
- */
 class GroqService
 {
     private AIService     $ai;
@@ -29,13 +18,6 @@ class GroqService
         $this->builder = app(PromptBuilder::class);
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Public entry-points (unchanged signatures)
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Send a message as the Manager chatbot.
-     */
     public function managerChat(string $userMessage): string
     {
         $companyId    = Auth::user()->company_id;
@@ -47,19 +29,11 @@ class GroqService
         return $this->stripThinkBlocks($raw);
     }
 
-    /**
-     * Send a message as the Receptionist chatbot (reply only).
-     */
     public function receptionistChat(string $userMessage): string
     {
         return $this->receptionistChatWithIntent($userMessage)['reply'];
     }
 
-    /**
-     * Send a message as the Receptionist chatbot and return structured intent data.
-     *
-     * @return array{reply: string, booking_prefill: array|null, vehicle_prefill: array|null}
-     */
     public function receptionistChatWithIntent(string $userMessage): array
     {
         $companyId    = Auth::user()->company_id;
@@ -71,13 +45,6 @@ class GroqService
         return $this->parseIntentResponse($raw, $companyId);
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Response parser (preserved exactly from original)
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * @return array{reply: string, booking_prefill: array, vehicle_prefill: array}
-     */
     private function parseIntentResponse(string $raw, ?int $companyId = null): array
     {
         $empty = [
@@ -135,7 +102,6 @@ class GroqService
             }
         }
 
-        // ── vehicle_prefill ───────────────────────────────────────
         $vprefill = $decoded['vehicle_prefill'] ?? [];
         if (is_array($vprefill)) {
             if (empty($vprefill['vehicle_id']) && (! empty($vprefill['vehicle_name']) || ! empty($vprefill['plate_number']))) {
@@ -172,18 +138,11 @@ class GroqService
         ];
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────
-
     private function stripThinkBlocks(string $raw): string
     {
         return trim(preg_replace('/<think>.*?<\/think>/si', '', $raw));
     }
 
-    /**
-     * Trend label helper — kept for any code that may call it via GroqService.
-     */
     public function trendLabel(int $prev, int $curr): string
     {
         return $this->builder->trendLabel($prev, $curr);

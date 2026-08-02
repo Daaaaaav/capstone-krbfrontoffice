@@ -5,21 +5,8 @@ namespace App\Services\AI;
 use App\Services\AI\Contracts\ToolInterface;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Dispatches AI tool/function calls to the correct ToolInterface implementation.
- *
- * The dispatcher:
- *  1. Holds a registry of all available tools.
- *  2. Produces the "tools" manifest array to send to the AI provider.
- *  3. Executes a named tool with AI-extracted arguments.
- *  4. Returns a formatted result string ready to inject into the next prompt turn.
- *
- * Tools themselves contain zero business logic — they delegate to existing
- * Models, Services, and queries. See app/Services/AI/Tools/*.php.
- */
 class ToolDispatcher
 {
-    /** @var array<string, ToolInterface> name → tool */
     private array $tools = [];
 
     public function __construct()
@@ -34,31 +21,16 @@ class ToolDispatcher
         $this->register(app(\App\Services\AI\Tools\AnnouncementTool::class));
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Registry
-    // ──────────────────────────────────────────────────────────
-
     public function register(ToolInterface $tool): void
     {
         $this->tools[$tool->name()] = $tool;
     }
 
-    /** Return all registered tools (for manifest building). */
     public function all(): array
     {
         return $this->tools;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Manifest — sent to AI provider
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Build the OpenAI-compatible "tools" array for the chat completion request.
-     * Only include a subset of tool names when $only is non-empty.
-     *
-     * @param  string[]  $only  Optional whitelist of tool names to include.
-     */
     public function manifest(array $only = []): array
     {
         $manifest = [];
@@ -78,17 +50,6 @@ class ToolDispatcher
         return $manifest;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Execution
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Execute a named tool and return its plain-text result for prompt injection.
-     *
-     * @param  string  $toolName   Matches ToolInterface::name().
-     * @param  array   $arguments  Key-value pairs from the AI's function_call.
-     * @return string              Formatted result string, or an error description.
-     */
     public function dispatch(string $toolName, array $arguments): string
     {
         if (! isset($this->tools[$toolName])) {
@@ -133,13 +94,6 @@ class ToolDispatcher
         }
     }
 
-    /**
-     * Parse an AI response body for tool_calls and dispatch each one.
-     * Returns an array of [tool_name => result_string] for all calls found.
-     *
-     * Works with the standard OpenAI tool-call response format:
-     *   choices[0].message.tool_calls[].function.{name, arguments}
-     */
     public function parseAndDispatch(array $responseBody): array
     {
         $results    = [];
@@ -158,18 +112,12 @@ class ToolDispatcher
         return $results;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Formatting
-    // ──────────────────────────────────────────────────────────
-
     private function formatResult(string $toolName, array $result): string
     {
         if (empty($result)) {
             return "[{$toolName}: no data found]";
         }
 
-        // Each tool returns a 'text' key with pre-formatted output,
-        // or we fall back to a compact key: value dump.
         if (isset($result['text'])) {
             return $result['text'];
         }

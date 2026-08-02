@@ -10,26 +10,13 @@ use Illuminate\Support\Facades\Log;
 
 class AutoApproveBookings extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'bookings:auto-approve
                             {--dry-run : Preview what would be updated without making changes}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Auto-approve pending room and vehicle bookings whose start time has arrived';
 
     private string $tz = 'Asia/Jakarta';
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
         $tz      = config('app.timezone', $this->tz);
@@ -39,19 +26,6 @@ class AutoApproveBookings extends Command
 
         $this->info('[' . $now->toDateTimeString() . '] Running auto-approve check...');
 
-        // ──────────────────────────────────────────────────────────────────
-        // 1. ROOM BOOKINGS — auto-approve pending bookings whose window has
-        //    already started but not yet ended.
-        //
-        //    When a pending booking reaches its start_time without manual
-        //    receptionist approval it would otherwise sit in Pending forever.
-        //    Auto-approving at start_time lets the full lifecycle run:
-        //      pending → approved (ongoing) → completed
-        //
-        //    Guard: only bookings whose end_time has NOT yet passed are
-        //    promoted. Bookings whose window is entirely in the past are
-        //    left for AutoCompleteBookings to reject (pending → rejected).
-        // ──────────────────────────────────────────────────────────────────
         $startExpr = "COALESCE(
             CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
             CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date       END,
@@ -71,8 +45,8 @@ class AutoApproveBookings extends Command
             ->whereNotNull('end_time')
             ->whereRaw("$startExpr IS NOT NULL")
             ->whereRaw("$endExpr IS NOT NULL")
-            ->whereRaw("$startExpr <= ?", [$nowStr])   // start has arrived
-            ->whereRaw("$endExpr > ?",   [$nowStr]);    // end has not passed yet
+            ->whereRaw("$startExpr <= ?", [$nowStr])   // start time arrived
+            ->whereRaw("$endExpr > ?",   [$nowStr]);    // end time not passed yet
 
         $roomCount = $roomQuery->count();
 
@@ -100,11 +74,6 @@ class AutoApproveBookings extends Command
             $this->line('  Room bookings: none to auto-approve.');
         }
 
-        // ──────────────────────────────────────────────────────────────────
-        // 2. VEHICLE BOOKINGS — approved → on_progress
-        //    When an approved vehicle booking's start_at <= NOW()
-        //    (and end_at has NOT yet passed), mark it as on_progress.
-        // ──────────────────────────────────────────────────────────────────
         $progressQuery = DB::table('vehicle_bookings')
             ->whereNull('deleted_at')
             ->where('status', 'approved')
@@ -137,10 +106,6 @@ class AutoApproveBookings extends Command
             $this->line('  Vehicle bookings: none to mark as on_progress.');
         }
 
-        // ──────────────────────────────────────────────────────────────────
-        // 3. VEHICLE BOOKINGS — late return detection
-        //    approved/on_progress → late_return  when end_at < NOW()
-        // ──────────────────────────────────────────────────────────────────
         $lateQuery = DB::table('vehicle_bookings')
             ->whereNull('deleted_at')
             ->whereIn('status', ['approved', 'on_progress'])

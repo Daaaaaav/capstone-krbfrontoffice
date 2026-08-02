@@ -21,11 +21,8 @@ class PriorityRoomBooking extends Component
     use WithPagination;
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
+    public string $activeTab = 'form'; // form (default) | status
 
-    // ── Tabs ──────────────────────────────────────────────────────────────
-    public string $activeTab = 'form'; // form | status
-
-    // ── Form fields ───────────────────────────────────────────────────────
     public ?int $room_id = null;
     public string $meeting_title = '';
     public string $date = '';
@@ -34,21 +31,16 @@ class PriorityRoomBooking extends Component
     public int $number_of_attendees = 1;
     public string $special_notes = '';
 
-    // ── Conflict detection ────────────────────────────────────────────────
-    /** BookingRoom that conflicts (offline, approved) detected after room/date/time selection */
     public ?int $conflicting_booking_id = null;
     public bool $showConflictModal = false;
-    public bool $requestCancellation = false; // user wants to cancel the conflict
+    public bool $requestCancellation = false; 
 
-    // ── Status tab filters ────────────────────────────────────────────────
-    public string $statusFilter = 'all'; // all | pending | approved | rejected
+    public string $statusFilter = 'all'; // all (default) | pending | approved | rejected
     public int $perPage = 8;
 
-    // ── Cancel modal ──────────────────────────────────────────────────────
     public bool $showCancelModal = false;
     public ?int $cancelTargetId = null;
 
-    /** All rooms for current company */
     public array $rooms = [];
 
     public function mount(): void
@@ -69,18 +61,12 @@ class PriorityRoomBooking extends Component
         $this->date = now($this->tz)->toDateString();
     }
 
-    // ── Tab switching ──────────────────────────────────────────────────────
     public function setTab(string $tab): void
     {
         $this->activeTab = in_array($tab, ['form', 'status']) ? $tab : 'form';
         $this->resetPage();
     }
 
-    // ── Conflict detection ─────────────────────────────────────────────────
-    /**
-     * Detects ANY offline booking (pending, approved, or ongoing/completed)
-     * that overlaps the selected window — at any lifecycle stage.
-     */
     public function detectConflict(): void
     {
         $this->conflicting_booking_id = null;
@@ -111,7 +97,6 @@ class PriorityRoomBooking extends Component
             CONCAT(date, ' ', end_time)
         )";
 
-        // Match pending, approved, AND ongoing (completed/done) — all stages
         $conflict = BookingRoom::query()
             ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
             ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
@@ -127,7 +112,6 @@ class PriorityRoomBooking extends Component
         }
     }
 
-    // ── Form submission ────────────────────────────────────────────────────
     public function save(): void
     {
         $this->validate([
@@ -143,10 +127,8 @@ class PriorityRoomBooking extends Component
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
 
-        // Re-check for conflicts at save time
         $this->detectConflict();
 
-        // If there is a conflict but user didn't acknowledge, show modal
         if ($this->conflicting_booking_id && !$this->requestCancellation) {
             $this->showConflictModal = true;
             return;
@@ -173,7 +155,6 @@ class PriorityRoomBooking extends Component
                     : null,
             ]);
 
-            // Notify all receptionists
             if ($status === PriorityRoomBookingModel::STATUS_PENDING_CANCELLATION) {
                 ManagerNotification::notifyReceptionists(
                     $companyId,
@@ -199,7 +180,6 @@ class PriorityRoomBooking extends Component
             }
         });
 
-        // Reset form
         $this->reset([
             'room_id', 'meeting_title', 'start_time', 'end_time',
             'special_notes', 'conflicting_booking_id', 'requestCancellation',
@@ -212,7 +192,6 @@ class PriorityRoomBooking extends Component
         $this->dispatch('toast', type: 'success', title: 'Submitted', message: 'Priority room booking submitted.', duration: 3500);
     }
 
-    /** Called when manager confirms they want the cancellation in the conflict modal */
     public function confirmWithCancellation(): void
     {
         $this->requestCancellation = true;
@@ -220,7 +199,6 @@ class PriorityRoomBooking extends Component
         $this->save();
     }
 
-    /** Called when manager wants to proceed without cancelling (only possible if no hard conflict) */
     public function confirmWithoutCancellation(): void
     {
         $this->conflicting_booking_id = null;
@@ -235,7 +213,6 @@ class PriorityRoomBooking extends Component
         $this->requestCancellation = false;
     }
 
-    // ── Cancel own priority booking ───────────────────────────────────────
     public function openCancelModal(int $id): void
     {
         $this->cancelTargetId = $id;
@@ -270,7 +247,6 @@ class PriorityRoomBooking extends Component
         $this->dispatch('toast', type: 'info', title: 'Cancelled', message: 'Priority booking cancelled.', duration: 3000);
     }
 
-    // ── Sidebar detail modal ───────────────────────────────────────────────
     public bool   $showSidebarDetail  = false;
     public ?int   $sidebarDetailId    = null;
     public bool   $showSidebarReject  = false;
@@ -321,7 +297,6 @@ class PriorityRoomBooking extends Component
         $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Booking rejected successfully.', duration: 3000);
     }
 
-    /** Computed: the BookingRoom being viewed in the sidebar modal */
     public function getSidebarBookingProperty(): ?BookingRoom
     {
         if (!$this->sidebarDetailId) return null;
@@ -352,12 +327,10 @@ class PriorityRoomBooking extends Component
             ->orderByDesc('created_at')
             ->paginate($this->perPage);
 
-        // Conflict info for blade
         $conflictingBooking = $this->conflicting_booking_id
             ? BookingRoom::with('room')->find($this->conflicting_booking_id)
             : null;
 
-        // Sidebar: recent approved/ongoing offline room bookings for the company
         $sidebarOngoing = BookingRoom::with('room')
             ->where('company_id', $companyId)
             ->whereIn('status', ['approved', 'pending'])

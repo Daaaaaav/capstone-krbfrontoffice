@@ -17,60 +17,29 @@ use App\Models\AiChatMessage;
 use App\Models\Room;
 use App\Models\Vehicle;
 
-/**
- * AI Chatbot Livewire component — v3.
- *
- * Enhancements over v2:
- *  - Dynamic context loading via ContextRouter (RAG-style).
- *  - Tool/function calling via ToolDispatcher.
- *  - Conversation memory: $contextMemory tracks last-mentioned room,
- *    vehicle, and date across turns within the session.
- *  - Provider failover is handled transparently by AIService.
- */
 class ChatModal extends Component
 {
-    // ── UI state ──────────────────────────────────────────────
     public bool   $isOpen    = false;
     public string $message   = '';
     public bool   $isLoading = false;
     public string $userRole  = 'receptionist';
     public string $panel     = 'chat';
 
-    // ── Active conversation ───────────────────────────────────
     public array $messages        = [];
     public ?int  $activeSessionId = null;
 
-    // ── Multi-turn AI history ─────────────────────────────────
     public array $conversationHistory = [];
 
-    // ── Booking draft ─────────────────────────────────────────
     public array $bookingDraft = [];
 
-    // ── Conversation memory (cross-turn context references) ───
-    /**
-     * Tracks entities mentioned in this session so the AI can refer back
-     * to "that room" or "yesterday's meeting" without re-stating them.
-     * Shape:
-     * [
-     *   'last_room_id'    => int|null,
-     *   'last_room_name'  => string|null,
-     *   'last_vehicle_id' => int|null,
-     *   'last_date'       => string|null,  // YYYY-MM-DD
-     *   'active_domains'  => string[],     // last detected context domains
-     * ]
-     */
+   
     public array $contextMemory = [];
 
-    // ── History panel ─────────────────────────────────────────
     public array  $historySessions     = [];
     public ?int   $viewingSessionId    = null;
     public array  $viewingMessages     = [];
     public string $viewingSessionTitle = '';
     public string $viewingSessionDate  = '';
-
-    // ─────────────────────────────────────────────────────────
-    // Mount
-    // ─────────────────────────────────────────────────────────
 
     public function mount(): void
     {
@@ -83,10 +52,6 @@ class ChatModal extends Component
             ->whereNotNull('title')
             ->update(['ended_at' => now()]);
     }
-
-    // ─────────────────────────────────────────────────────────
-    // Modal lifecycle
-    // ─────────────────────────────────────────────────────────
 
     #[On('openChatModal')]
     public function openModal(): void
@@ -103,10 +68,6 @@ class ChatModal extends Component
     {
         $this->isOpen = false;
     }
-
-    // ─────────────────────────────────────────────────────────
-    // Panels
-    // ─────────────────────────────────────────────────────────
 
     public function showHistory(): void
     {
@@ -184,18 +145,11 @@ class ChatModal extends Component
         $this->dispatch('chat-scroll-bottom');
     }
 
-
-    // ─────────────────────────────────────────────────────────
-    // Chat
-    // ─────────────────────────────────────────────────────────
-
     public function sendMessage(): void
     {
         $text = trim($this->message);
         if ($text === '' || $this->isLoading) return;
 
-        // Re-hydrate any missing contextMemory keys that Livewire may have
-        // dropped when deserialising an older component snapshot.
         $this->ensureMemoryDefaults();
 
         $this->ensureSession();
@@ -263,20 +217,13 @@ class ChatModal extends Component
         $this->seedGreeting();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Manager AI call — uses ContextRouter for dynamic context
-    // ─────────────────────────────────────────────────────────
-
-    /** @return array{0: string} */
     private function callManagerAI(string $userMessage): array
     {
         $companyId = Auth::user()->company_id;
 
-        // Dynamic context: load only what's relevant to this question
         $router  = app(ContextRouter::class);
         $context = $router->route($userMessage, $companyId, 'manager', $this->getRecentHistory());
 
-        // Update memory with detected domains
         $domains = $router->detectDomains($userMessage, 'manager', $this->getRecentHistory());
         $this->contextMemory['active_domains'] = $domains;
 
@@ -291,11 +238,6 @@ class ChatModal extends Component
         return [$reply];
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Receptionist AI call — ContextRouter + draft + DirectBookingService
-    // ─────────────────────────────────────────────────────────
-
-    /** @return array{0: string, 1: array|null, 2: array|null} */
     private function callReceptionistAI(string $userMessage): array
     {
         $companyId    = Auth::user()->company_id;
@@ -303,15 +245,12 @@ class ChatModal extends Component
         $draftService = app(BookingDraftService::class);
         $router       = app(ContextRouter::class);
 
-        // ── Dynamic context ───────────────────────────────────
         $history = $this->getRecentHistory();
         $context = $router->route($userMessage, $companyId, 'receptionist', $history);
 
-        // Update memory with detected domains
         $domains = $router->detectDomains($userMessage, 'receptionist', $history);
         $this->contextMemory['active_domains'] = $domains;
 
-        // ── Inject memory hints into context ──────────────────
         $memoryHint = $this->buildMemoryHint();
         if ($memoryHint) {
             $context = $memoryHint . "\n\n" . $context;
@@ -321,18 +260,15 @@ class ChatModal extends Component
         $systemPrompt = $builder->receptionistSystemPrompt($context, $draftContext);
         $recentHistory = $this->getRecentHistory(exclude: 'last');
 
-        // ── AI call with failover ─────────────────────────────
         $ai  = app(AIService::class);
         $raw = $ai->chat($systemPrompt, $userMessage, $recentHistory);
 
-        // ── Parse AI response ─────────────────────────────────
         $parsed     = $this->parseIntentResponse($raw, $companyId);
         $reply      = $parsed['reply'];
         $prefill    = $parsed['booking_prefill']  ?? [];
         $vprefill   = $parsed['vehicle_prefill']  ?? [];
         $isComplete = $parsed['booking_complete'] ?? false;
 
-        // ── Merge into draft ──────────────────────────────────
         $prevDraft = $this->bookingDraft;
 
         $this->bookingDraft = $draftService->mergePrefill(
@@ -353,18 +289,14 @@ class ChatModal extends Component
             'vehicle_fields' => $this->bookingDraft['vehicle'],
         ]);
 
-        // ── Update conversation memory ────────────────────────
         $this->updateMemory($prefill, $vprefill);
 
-        // ── Check completeness ────────────────────────────────
         $roomReady    = $isComplete && $this->bookingDraft['type'] === 'room';
         $vehicleReady = $isComplete && $this->bookingDraft['type'] === 'vehicle';
 
-        // Also trigger on service-level completeness check (belt-and-suspenders)
         if (! $roomReady)    $roomReady    = $draftService->isRoomDraftComplete($this->bookingDraft);
         if (! $vehicleReady) $vehicleReady = $draftService->isVehicleDraftComplete($this->bookingDraft);
 
-        // ── Room booking ──────────────────────────────────────
         if ($roomReady) {
             $payload = $draftService->buildRoomPayload($this->bookingDraft);
 
@@ -389,11 +321,10 @@ class ChatModal extends Component
                     : 'the meeting room';
                 $roomLabel = $prevDraft['room']['room_name'] ?? ($payload['title'] ? '' : $roomName);
 
-                // Override the AI reply with a factual confirmation
                 $reply = "Booking saved successfully and is now **pending approval**."
                     . "\n\n**{$payload['title']}**"
                     . ($prevDraft['room']['room_name'] ? " — {$prevDraft['room']['room_name']}" : '')
-                    . "\n📅 {$payload['ymd']}  🕐 {$payload['time']}–{$payload['endTime']}"
+                    . "\n{$payload['ymd']}  {$payload['time']}-{$payload['endTime']}"
                     . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
 
                 Log::info('ChatModal: room booking confirmed', [
@@ -404,18 +335,15 @@ class ChatModal extends Component
                 return [$reply, null, null];
             }
 
-            // Creation failed — tell the user what went wrong (never claim success)
             Log::warning('ChatModal: room booking creation failed', [
                 'stage' => 'booking_failed',
                 'error' => $result['error'],
             ]);
 
             $reply = "I wasn't able to save the booking. **Reason:** {$result['error']}\n\nPlease correct the details and try again.";
-            // Keep the draft so the user can correct it
             return [$reply, null, null];
         }
 
-        // ── Vehicle booking ───────────────────────────────────
         if ($vehicleReady) {
             $payload = $draftService->buildVehiclePayload($this->bookingDraft);
 
@@ -439,7 +367,7 @@ class ChatModal extends Component
                 $reply = "Vehicle booking saved successfully and is now **pending approval**."
                     . "\n\n**{$vehicleName}**"
                     . " — {$payload['borrowerName']}"
-                    . "\n📅 {$payload['dateFrom']}  🕐 {$payload['startTime']}–{$payload['endTime']}"
+                    . "\n{$payload['dateFrom']}  {$payload['startTime']}–{$payload['endTime']}"
                     . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
 
                 Log::info('ChatModal: vehicle booking confirmed', [
@@ -459,7 +387,6 @@ class ChatModal extends Component
             return [$reply, null, null];
         }
 
-        // ── Draft still incomplete — return AI reply as-is ────
         Log::info('ChatModal: booking draft still incomplete', [
             'stage'       => 'booking_draft_updated',
             'type'        => $this->bookingDraft['type'],
@@ -478,7 +405,6 @@ class ChatModal extends Component
         return [$reply, $outPrefill, $outVprefill];
     }
 
-    /** Summarise which room fields are still null (for logs only). */
     private function missingRoomSummary(array $r): array
     {
         $missing = [];
@@ -491,7 +417,6 @@ class ChatModal extends Component
         return $missing;
     }
 
-    /** Summarise which vehicle fields are still null (for logs only). */
     private function missingVehicleSummary(array $v): array
     {
         $missing = [];
@@ -507,10 +432,6 @@ class ChatModal extends Component
         return $missing;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Conversation memory
-    // ─────────────────────────────────────────────────────────
-
     private function emptyMemory(): array
     {
         return [
@@ -522,9 +443,6 @@ class ChatModal extends Component
         ];
     }
 
-    /**
-     * Update memory from the AI's latest prefill response.
-     */
     private function updateMemory(array $prefill, array $vprefill): void
     {
         if (! empty($prefill['room_id']))   $this->contextMemory['last_room_id']   = $prefill['room_id'];
@@ -534,14 +452,6 @@ class ChatModal extends Component
         if (! empty($vprefill['date_from']))  $this->contextMemory['last_date']       = $vprefill['date_from'];
     }
 
-    /**
-     * Ensure all expected contextMemory keys exist with safe defaults.
-     *
-     * Livewire serialises public properties between requests. If the component
-     * was first mounted before emptyMemory() was introduced (or the state was
-     * partially written), some keys may be absent on re-hydration, causing
-     * "Undefined array key" errors. This guard is cheap and idempotent.
-     */
     private function ensureMemoryDefaults(): void
     {
         $defaults = $this->emptyMemory();
@@ -552,10 +462,6 @@ class ChatModal extends Component
         }
     }
 
-    /**
-     * Build a compact memory hint string to prepend to the context block.
-     * This lets the AI refer back to entities mentioned earlier in the session.
-     */
     private function buildMemoryHint(): string
     {
         $this->ensureMemoryDefaults();
@@ -579,11 +485,6 @@ class ChatModal extends Component
             . implode("\n", $lines);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Response parser (unchanged logic from v2)
-    // ─────────────────────────────────────────────────────────
-
-    /** @return array{reply: string, booking_prefill: array, vehicle_prefill: array, booking_complete: bool} */
     private function parseIntentResponse(string $raw, ?int $companyId): array
     {
         $empty = ['reply' => $raw, 'booking_prefill' => [], 'vehicle_prefill' => [], 'booking_complete' => false];
@@ -648,10 +549,6 @@ class ChatModal extends Component
         return ['reply' => $reply, 'booking_prefill' => $prefill ?? [], 'vehicle_prefill' => $vprefill ?? [], 'booking_complete' => $bookingComplete];
     }
 
-    // ─────────────────────────────────────────────────────────
-    // DB helpers (unchanged from v2)
-    // ─────────────────────────────────────────────────────────
-
     private function ensureSession(): void
     {
         if ($this->activeSessionId) return;
@@ -694,10 +591,6 @@ class ChatModal extends Component
             ->values()->toArray();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // History helpers
-    // ─────────────────────────────────────────────────────────
-
     private function appendToHistory(string $role, string $content): void
     {
         $this->conversationHistory[] = ['role' => $role, 'content' => $content];
@@ -714,10 +607,6 @@ class ChatModal extends Component
         return $history;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Export helpers (manager only — unchanged)
-    // ─────────────────────────────────────────────────────────
-
     public function exportPdf(): void
     {
         if ($this->userRole !== 'manager') return;
@@ -730,10 +619,6 @@ class ChatModal extends Component
         $this->js('window.open(' . json_encode(route('chat.export.csv')) . ", '_blank')");
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Misc helpers
-    // ─────────────────────────────────────────────────────────
-
     private function seedGreeting(): void
     {
         $role     = $this->userRole();
@@ -744,7 +629,9 @@ class ChatModal extends Component
         $this->messages[] = ['role' => 'assistant', 'text' => $greeting, 'booking_prefill' => null, 'vehicle_prefill' => null, 'sent_at' => now()->format('H:i')];
     }
 
-    private function userRole(): string { return $this->resolveUserRole(); }
+    private function userRole(): string { 
+        return $this->resolveUserRole(); 
+    }
 
     private function resolveUserRole(): string
     {

@@ -32,13 +32,11 @@ class Documents extends Model
         'updated_at' => 'datetime',
     ];
 
-    /** Scope used in your Livewire class */
     public function scopeForCompany(Builder $q, $companyId): Builder
     {
         return $q->when($companyId, fn($qq) => $qq->where('company_id', $companyId));
     }
 
-    /** Simple text search used in your Livewire class */
     public function scopeSearch(Builder $q, ?string $term): Builder
     {
         if (!$term)

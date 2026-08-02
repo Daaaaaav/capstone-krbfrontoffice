@@ -7,12 +7,6 @@ use App\Services\AI\Contracts\ToolInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-/**
- * Tool: get_delivery_data
- *
- * Queries the Delivery (document/package) model.
- * Read-only — does not modify any delivery workflow.
- */
 class DeliveryTool implements ToolInterface
 {
     public function name(): string

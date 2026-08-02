@@ -20,25 +20,14 @@ use App\Models\{
     VehicleBooking,
     VehicleBookingPhoto,
     Delivery,
-    Announcement,
-    Information,
     Guestbook,
     BookingRoom,
-    Ticket,
-    TicketAssignment,
-    TicketAttachment,
-    TicketComment,
-    // TicketHistory
 };
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Seed AI settings first (idempotent — safe to re-run)
         $this->call(AISettingsSeeder::class);
 
         DB::transaction(function () {
@@ -51,7 +40,6 @@ class DatabaseSeeder extends Seeder
                 ['Kebun Raya Purwodadi', 'krpurwodadi.id', 'https://tiketkebunraya.id/assets/images/kebun-raya-purwodadi.png'],
             ];
 
-            // Default Company
             Company::firstOrCreate(
                 ['company_id' => 1],
                 ['company_name' => 'Default Company']
@@ -60,7 +48,6 @@ class DatabaseSeeder extends Seeder
             foreach ($companies as [$companyName, $domain, $imageUrl]) {
                 echo "\n🌿 Seeding {$companyName}...\n";
 
-                // === COMPANY CREATION ===
                 $company = Company::firstOrCreate(
                     ['company_name' => $companyName],
                     [
@@ -72,13 +59,11 @@ class DatabaseSeeder extends Seeder
 
                 $companyId = $company->company_id;
 
-                // === ROLES ===
                 $roles = [];
                 foreach (['Manager', 'Receptionist'] as $r) {
                     $roles[$r] = Role::firstOrCreate(['name' => $r]);
                 }
 
-                // === DEPARTMENTS ===
                 $deptNames = [
                     'IT','Finance','HRD','Marketing','Operations',
                     'General Affairs','Executive',
@@ -94,7 +79,6 @@ class DatabaseSeeder extends Seeder
 
                 $users = collect();
 
-                // === CUSTOM USERS ===
                     $customUsers = [
                          [
                             'full_name' => 'Vani',
@@ -182,10 +166,8 @@ class DatabaseSeeder extends Seeder
                                     ]
                                 );
 
-                                // Add to system collections
                                 $users->push($user);
 
-                                // If receptionist, optionally override default receptionist
                                 if ($data['role'] === 'Receptionist') {
                                     $receptionist = $user;
                                 }
@@ -218,7 +200,6 @@ class DatabaseSeeder extends Seeder
                     ]
                 );
 
-                // === GENERAL USERS & AGENTS ===
                 $users = collect([$manager, $receptionist]);
                 $agents = collect();
 
@@ -232,15 +213,6 @@ class DatabaseSeeder extends Seeder
         mt_srand($companyId * 999);
         $daysBack = 1825; // 5 Years
 
-        $demoImages = [
-            'https://res.cloudinary.com/demo/image/upload/sample.jpg',
-            'https://res.cloudinary.com/demo/image/upload/dog.jpg',
-            'https://res.cloudinary.com/demo/image/upload/cat.jpg',
-            'https://res.cloudinary.com/demo/image/upload/girl.jpg',
-            'https://res.cloudinary.com/demo/image/upload/car.jpg',
-        ];
-
-        // ===== ROOMS & REQUIREMENTS =====
         $rooms = collect(['Garuda','Merak','Cendrawasih','Aula','Elang'])
             ->map(fn($r) => Room::firstOrCreate(['company_id'=>$companyId,'room_name'=>"Ruang {$r}"]));
 
@@ -265,7 +237,6 @@ class DatabaseSeeder extends Seeder
             ));
         }
 
-        // ===== DELIVERIES =====
         for ($i=1; $i<=50; $i++) {
             Delivery::create([
                 'company_id'=>$companyId,
@@ -300,14 +271,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ===== GUESTBOOK — dense daily visitor data for LSTM training =====
-        // Generates realistic visitor patterns across 2 years:
-        //   - Weekdays: 3–12 visitors/day  (higher Mon–Thu)
-        //   - Weekends: 0–3 visitors/day
-        //   - Indonesian public holidays: 0–1 visitors
-        //   - Monthly trend: slight growth over time
-        // This gives ~1,000+ entries with clear temporal patterns the LSTM can learn.
-
         $guestNames = [
             'Budi Santoso','Siti Rahayu','Ahmad Fauzi','Dewi Lestari','Eko Prasetyo',
             'Fitri Handayani','Gunawan Wibowo','Hana Pertiwi','Irfan Maulana','Joko Susilo',
@@ -332,46 +295,42 @@ class DatabaseSeeder extends Seeder
             'Kunjungan dinas','Seminar dan workshop','Magang mahasiswa',
         ];
 
-        // Indonesian public holidays (approximate, recurring annually)
         $holidays = [
             '01-01', // New Year
-            '02-10', // Imlek (approx)
-            '03-29', // Nyepi (approx)
-            '04-18', // Good Friday (approx)
+            '02-10', // approximate Imlek
+            '03-29', // approximate Nyepi 
+            '04-18', // approximate Good Friday 
             '05-01', // Labour Day
-            '05-29', // Ascension (approx)
+            '05-29', // approximate Ascension of Isa Almasih 
             '06-01', // Pancasila Day
             '08-17', // Independence Day
             '12-25', // Christmas
-            '12-26', // Boxing Day
+            '12-26', // Post=Christmas
         ];
 
         $guestCounter = 1;
-        $seedDays     = 730; // 2 years of daily data
+        $seedDays     = 730;
 
         for ($dayOffset = $seedDays; $dayOffset >= 0; $dayOffset--) {
             $date    = $now->copy()->subDays($dayOffset)->startOfDay();
-            $dow     = $date->dayOfWeek; // 0=Sun, 6=Sat
+            $dow     = $date->dayOfWeek; // 0=Sunday, 6=Saturday
             $mmdd    = $date->format('m-d');
             $isHoliday = in_array($mmdd, $holidays);
 
-            // Determine visitor count for this day
             if ($isHoliday) {
                 $count = rand(0, 1);
             } elseif ($dow === 0 || $dow === 6) {
-                // Weekend — very few visitors
+                // Weekend: very few visitors
                 $count = rand(0, 3);
             } elseif ($dow === 5) {
-                // Friday — slightly lower
+                // Friday: slightly lower than other weekdays
                 $count = rand(2, 7);
             } else {
-                // Mon–Thu — peak days
-                // Add a gentle upward trend over time
-                $trendBonus = (int) floor(($seedDays - $dayOffset) / 180); // +1 every ~6 months
+                // Mon–Thu: peak days; gentle upward trend over time
+                $trendBonus = (int) floor(($seedDays - $dayOffset) / 180); 
                 $count = rand(3, 10) + $trendBonus;
             }
 
-            // Create individual guestbook entries for each visitor that day
             for ($v = 0; $v < $count; $v++) {
                 $jamInHour   = rand(8, 14);
                 $jamInMin    = rand(0, 59);
@@ -400,14 +359,12 @@ class DatabaseSeeder extends Seeder
 
         echo "  ✅ Created {$guestCounter} guestbook entries over {$seedDays} days.\n";
 
-        // ===== ROOM BOOKINGS (Offline & Online) =====
         foreach (range(1, 80) as $i) {
             $booker = $users->random();
             $room = $rooms->random();
             $startDate = $now->copy()->subDays(rand(0, $daysBack));
             $endDate = $startDate->copy()->addHours(rand(1,3));
 
-            // DECIDE TYPE: Meeting or Online Meeting
             $bookingType = Arr::random(['meeting', 'online_meeting']);
             $onlineProvider = null;
             $onlineUrl = null;
@@ -443,7 +400,6 @@ class DatabaseSeeder extends Seeder
                 'status'=>'approved',
                 'approved_by' => $receptionist->user_id,
 
-                // requestinformation applies to both types
                 'requestinformation' => Arr::random(['request', null]),
 
                 'created_at' => $startDate,
@@ -460,8 +416,7 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
-
-        // ===== VEHICLE BOOKINGS =====
+        
         if ($vehicles->isNotEmpty()) {
             foreach (range(1, 80) as $i) {
                 $user = $users->random();

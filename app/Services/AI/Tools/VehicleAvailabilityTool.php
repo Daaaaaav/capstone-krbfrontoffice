@@ -8,12 +8,6 @@ use App\Services\AI\Contracts\ToolInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-/**
- * Tool: check_vehicle_availability
- *
- * Queries Vehicle and VehicleBooking models to report which vehicles
- * are free on a given date/time window. Does NOT create any booking.
- */
 class VehicleAvailabilityTool implements ToolInterface
 {
     public function name(): string
@@ -57,8 +51,6 @@ class VehicleAvailabilityTool implements ToolInterface
             $vehicleQ->where('name', 'like', '%' . $vehicleName . '%');
         }
         $vehicles = $vehicleQ->get(['vehicle_id', 'name', 'plate_number', 'category']);
-
-        // Bookings that overlap the date (buffer: 1 hour added on each end for vehicle policy)
         $dayStart = $date . ' 00:00:00';
         $dayEnd   = $date . ' 23:59:59';
 

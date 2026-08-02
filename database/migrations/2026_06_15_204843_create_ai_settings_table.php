@@ -12,10 +12,10 @@ return new class extends Migration
             $table->id();
             $table->string('key')->unique();
             $table->text('value');
-            $table->string('type')->default('float');      // int | float | string | bool
-            $table->string('group')->default('lstm');      // lstm | fallback | decision
-            $table->string('label');                       // human-readable label for UI
-            $table->text('description')->nullable();       // tooltip / help text
+            $table->string('type')->default('float');      // int | float (default) | string | bool
+            $table->string('group')->default('lstm');      // lstm (default) | fallback | decision
+            $table->string('label');                       // human-readable label in frontend
+            $table->text('description')->nullable();       // tooltip
             $table->timestamps();
         });
     }

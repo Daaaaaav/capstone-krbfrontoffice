@@ -16,8 +16,6 @@ use Carbon\Carbon;
 class GuestbookCheckout extends Component
 {
     public int $guestbookId;
-
-    // Passed to the view
     public ?string $guestName = null;
     public ?string $instansi = null;
     public ?string $keperluan = null;
@@ -26,11 +24,7 @@ class GuestbookCheckout extends Component
     public int $totalVisitors = 0;
     public int $scannedCount = 0;
     public string $qrStatus = 'pending';
-
-    /** Pre-existing scan history loaded from DB, serialized into the Alpine component. */
     public array $initialScanLog = [];
-
-    /** ISO timestamp of the newest attempt in initialScanLog — used as the polling cursor. */
     public string $latestAttemptAt = '';
 
     public function mount(int $guestbookId): void
@@ -49,12 +43,8 @@ class GuestbookCheckout extends Component
         $this->scannedCount  = $entry->scannedQrCount();
         $this->qrStatus      = $entry->qr_status ?? 'pending';
 
-        // Load all recorded attempts (success + failure) ordered newest-first.
-        // This ensures any device opening the page sees the full history.
         $tz = config('app.timezone', 'Asia/Jakarta');
 
-        // One-time backfill: if this entry pre-dates the attempts table, recover
-        // the successful checkouts from guestbook_qr_codes so old logs are not lost.
         $hasAttempts = GuestbookCheckoutAttempt::where('guestbook_id', $entry->guestbook_id)->exists();
         if (!$hasAttempts) {
             $legacy = GuestbookQrCode::where('guestbook_id', $entry->guestbook_id)
@@ -88,7 +78,6 @@ class GuestbookCheckout extends Component
             ->values()
             ->toArray();
 
-        // Set polling cursor to the newest attempt we just loaded (or 5s ago if none)
         $newest = GuestbookCheckoutAttempt::where('guestbook_id', $entry->guestbook_id)
             ->orderByDesc('attempted_at')
             ->value('attempted_at');
@@ -104,7 +93,6 @@ class GuestbookCheckout extends Component
         $prefix = 'GUESTBOOK-CHECKOUT:';
 
         if (!str_starts_with($qrContent, $prefix)) {
-            // Backward compatibility: bare 64-char hex token
             if (strlen($qrContent) === 64 && ctype_xdigit($qrContent)) {
                 $token = $qrContent;
             } else {
@@ -169,9 +157,6 @@ class GuestbookCheckout extends Component
         return $result;
     }
 
-    /**
-     * Persist a scan attempt so it survives page reloads and different devices.
-     */
     private function recordAttempt(array $result, ?string $errorType, ?int $visitorNumber, Carbon $at): void
     {
         GuestbookCheckoutAttempt::create([
@@ -184,10 +169,6 @@ class GuestbookCheckout extends Component
         ]);
     }
 
-    /**
-     * Called by Alpine polling to fetch attempts newer than the latest one
-     * already shown. Returns only the new rows so the client can prepend them.
-     */
     public function fetchNewAttempts(string $afterTimestamp): array
     {
         $tz = config('app.timezone', 'Asia/Jakarta');
@@ -209,9 +190,6 @@ class GuestbookCheckout extends Component
             ->toArray();
     }
 
-    /**
-     * Returns current scan progress so polling devices can sync their counter.
-     */
     public function getProgress(): array
     {
         $entry = GuestbookModel::where('guestbook_id', $this->guestbookId)->first();

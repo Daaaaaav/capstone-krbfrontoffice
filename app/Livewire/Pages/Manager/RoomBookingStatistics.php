@@ -38,7 +38,6 @@ class RoomBookingStatistics extends Component
 
             $since = now()->subDays($days)->startOfDay();
 
-            // ── KPI counts ────────────────────────────────────────────────────
             $base = BookingRoom::where('company_id', $companyId)->where('created_at', '>=', $since);
 
             $totalBookings     = (clone $base)->count();
@@ -47,7 +46,6 @@ class RoomBookingStatistics extends Component
             $rejectedBookings  = (clone $base)->where('status', 'rejected')->count();
             $completedBookings = (clone $base)->whereIn('status', ['completed', 'done'])->count();
 
-            // ── Daily chart — zero-filled for every day in range ──────────────
             $raw = BookingRoom::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')

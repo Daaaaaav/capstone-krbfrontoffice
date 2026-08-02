@@ -8,13 +8,10 @@ use Illuminate\Support\Facades\RateLimiter;
 
 class SecurityMonitoringService
 {
-    // Fallback values used only if the ai_settings table is not yet seeded
+    // fallback values used only if the settings table is not yet seeded
     private const FORM_SPAM_THRESHOLD_DEFAULT      = 10;
     private const FORM_SPAM_WINDOW_SECONDS_DEFAULT = 60;
 
-    /**
-     * Log form activity and inspect payload for abuse signatures.
-     */
     public static function logFormSubmit(string $form, array $data): void
     {
         $ip = (string) request()->ip();
@@ -29,9 +26,6 @@ class SecurityMonitoringService
         self::trackFormSpam($form, $ip);
     }
 
-    /**
-     * Inspect login fields for SQLi/XSS-like input patterns.
-     */
     public static function inspectLoginPayload(?string $email, ?string $password = null): void
     {
         $payload = [
@@ -42,9 +36,6 @@ class SecurityMonitoringService
         self::inspectPayload($payload, 'login');
     }
 
-    /**
-     * Inspect a payload and emit Wazuh-friendly logs when signatures match.
-     */
     public static function inspectPayload(array $payload, string $event, ?string $form = null): void
     {
         $flatPayload = self::flattenPayload($payload);

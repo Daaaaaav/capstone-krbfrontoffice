@@ -11,10 +11,7 @@ use Carbon\Carbon;
 
 class GuestbookScanController extends Controller
 {
-    /**
-     * Show the QR scan landing page.
-     * Accessible publicly (no auth required) — only a valid token is the gate.
-     */
+
     public function show(string $token)
     {
         $entry = Guestbook::where('qr_token', $token)
@@ -29,10 +26,6 @@ class GuestbookScanController extends Controller
         return view('guestbook.scan', compact('entry', 'scans'));
     }
 
-    /**
-     * Serve the QR code as a PNG image directly.
-     * Used as the <img src> in the confirmation email — avoids data: URI blocking.
-     */
     public function qrImage(string $token)
     {
         $entry = Guestbook::where('qr_token', $token)
@@ -53,17 +46,13 @@ class GuestbookScanController extends Controller
         ]);
     }
 
-    /**
-     * Record one visitor scan (legacy check-in flow).
-     * Can be called repeatedly to accumulate group members.
-     */
     public function submit(Request $request, string $token)
     {
         $entry = Guestbook::where('qr_token', $token)
             ->whereNull('deleted_at')
             ->firstOrFail();
 
-        // Once jam_out is set the visit is over — no more scans allowed
+        // no more scans allowed after toggled to already out
         if ($entry->jam_out) {
             return redirect()
                 ->route('guestbook.scan', ['token' => $token])
@@ -85,7 +74,6 @@ class GuestbookScanController extends Controller
                 'scanned_at'        => now(),
             ]);
 
-            // Increment visitor count and move status to 'ongoing' on first scan
             $entry->increment('visitor_count');
             if ($entry->qr_status === 'pending') {
                 $entry->update(['qr_status' => 'ongoing']);
@@ -97,14 +85,6 @@ class GuestbookScanController extends Controller
             ->with('scan_success', "Selamat datang, {$data['visitor_name']}!");
     }
 
-    /**
-     * API endpoint for checkout scanning.
-     * Called by the JS scanner on the receptionist checkout page.
-     *
-     * Accepts raw QR content, extracts the token, validates it,
-     * marks the QR as scanned, and auto-completes the guestbook
-     * entry when all QR codes have been scanned.
-     */
     public function checkoutScan(Request $request)
     {
         $request->validate([
@@ -113,13 +93,11 @@ class GuestbookScanController extends Controller
 
         $rawContent = $request->input('qr_content');
 
-        // Extract token from QR content format: "GUESTBOOK-CHECKOUT:{token}"
         $token = $rawContent;
         if (str_starts_with($rawContent, 'GUESTBOOK-CHECKOUT:')) {
             $token = substr($rawContent, strlen('GUESTBOOK-CHECKOUT:'));
         }
 
-        // Look up the QR code
         $qrCode = GuestbookQrCode::where('qr_token', $token)->first();
 
         if (!$qrCode) {
@@ -127,10 +105,9 @@ class GuestbookScanController extends Controller
                 'success' => false,
                 'error'   => 'invalid',
                 'message' => 'QR code tidak dikenali.',
-            ], 200); // 200 so JS can handle it cleanly
+            ], 200); 
         }
 
-        // Check if already scanned
         if ($qrCode->is_scanned) {
             return response()->json([
                 'success' => false,
@@ -139,8 +116,6 @@ class GuestbookScanController extends Controller
                 'visitor_number' => $qrCode->visitor_number,
             ], 200);
         }
-
-        // Load the parent guestbook entry
         $entry = $qrCode->guestbook;
 
         if (!$entry || $entry->deleted_at) {
@@ -151,7 +126,6 @@ class GuestbookScanController extends Controller
             ], 200);
         }
 
-        // Check if already completed
         if ($entry->qr_status === 'completed') {
             return response()->json([
                 'success' => false,
@@ -160,7 +134,6 @@ class GuestbookScanController extends Controller
             ], 200);
         }
 
-        // Check that this QR belongs to the expected guestbook entry (if guestbook_id filter is passed)
         $expectedGuestbookId = $request->input('guestbook_id');
         if ($expectedGuestbookId && (int) $qrCode->guestbook_id !== (int) $expectedGuestbookId) {
             return response()->json([
@@ -170,23 +143,19 @@ class GuestbookScanController extends Controller
             ], 200);
         }
 
-        // Mark as scanned
         $qrCode->update([
             'is_scanned' => true,
             'scanned_at' => now(),
         ]);
 
-        // Update status to ongoing if still pending
         if ($entry->qr_status === 'pending') {
             $entry->update(['qr_status' => 'ongoing']);
         }
 
-        // Check progress
         $totalQr   = $entry->qrCodes()->count();
         $scannedQr = $entry->qrCodes()->where('is_scanned', true)->count();
         $allDone   = $scannedQr >= $totalQr;
 
-        // Auto-complete if all QR codes are scanned
         if ($allDone) {
             $entry->update([
                 'jam_out'    => Carbon::now()->format('H:i'),

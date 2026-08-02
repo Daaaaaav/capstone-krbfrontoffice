@@ -38,25 +38,21 @@ class GuestbookStatistics extends Component
 
             $since = now()->subDays($days)->startOfDay();
 
-            // ── KPI counts ────────────────────────────────────────────────────
             $totalVisitors = Guestbook::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->count();
 
-            // Currently inside: checked in but not yet checked out
             $checkedIn = Guestbook::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->whereNotNull('jam_in')
                 ->whereNull('jam_out')
                 ->count();
 
-            // Already left: has a check-out time
             $checkedOut = Guestbook::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->whereNotNull('jam_out')
                 ->count();
 
-            // ── Daily chart — zero-filled for every day in range ──────────────
             $raw = Guestbook::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
@@ -72,7 +68,6 @@ class GuestbookStatistics extends Component
                 $data[]   = (int) ($raw[$date] ?? 0);
             }
 
-            // ── Visitor list ──────────────────────────────────────────────────
             $guestbooks = $this->showList
                 ? Guestbook::where('company_id', $companyId)
                     ->where('created_at', '>=', $since)

@@ -8,7 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Drop old column if it exists
         if (Schema::hasColumn('booking_rooms', 'requestinformation')) {
             Schema::table('booking_rooms', function (Blueprint $table) {
                 $table->dropColumn('requestinformation');
@@ -25,7 +24,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Revert: drop enum and restore a boolean (NOT NULL, default false)
         if (Schema::hasColumn('booking_rooms', 'requestinformation')) {
             Schema::table('booking_rooms', function (Blueprint $table) {
                 $table->dropColumn('requestinformation');

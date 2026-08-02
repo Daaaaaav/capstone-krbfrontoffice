@@ -26,8 +26,6 @@ class WazuhAlertService
             ];
         }
 
-        // Read enough lines to get accurate global totals (up to 5000 entries)
-        // while keeping the display list capped at $limit.
         $lines = $this->tailLines($source, 5000);
 
         $allAlerts = [];
@@ -35,11 +33,9 @@ class WazuhAlertService
             $allAlerts[] = $this->parseAlertLine($line);
         }
 
-        // Stats are computed from the full set for accurate cumulative counts.
         $stats = $this->buildStats($allAlerts);
         $totalCount = count($allAlerts);
 
-        // The displayed list is filtered by severity and limited for UI performance.
         $displayAlerts = [];
         foreach ($allAlerts as $alert) {
             if ($severity !== 'all' && $alert['severity'] !== $severity) {

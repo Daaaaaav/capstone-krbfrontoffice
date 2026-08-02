@@ -8,13 +8,6 @@ use App\Services\AI\Contracts\ContextProviderInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Loads room-related context: available rooms, today's bookings,
- * pending approvals, and recent bookings.
- *
- * Called only when the ContextRouter detects room-booking intent.
- * Replaces the "always load everything" approach in PromptBuilder.
- */
 class RoomContextProvider implements ContextProviderInterface
 {
     private string $tz = 'Asia/Jakarta';
@@ -35,14 +28,12 @@ class RoomContextProvider implements ContextProviderInterface
 
     private function build(?int $companyId, Carbon $now, string $today): string
     {
-        // Available rooms (always needed for booking intent)
         $availableRooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->orderBy('room_name')
             ->get(['room_id', 'room_name', 'capacity'])
             ->map(fn($r) => sprintf('  [RoomID:%d] %s | Cap:%s', $r->room_id, $r->room_name ?? '—', $r->capacity ?? '—'))
             ->join("\n") ?: '  (none)';
 
-        // Today's meetings (cap 8)
         $todayRooms = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['room', 'department'])
             ->whereDate('date', $today)
@@ -56,7 +47,6 @@ class RoomContextProvider implements ContextProviderInterface
                 ucfirst($b->status ?? '—')
             ))->join("\n") ?: '  (none)';
 
-        // Pending approvals (cap 5)
         $pending = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['room', 'department'])
             ->where('status', 'pending')
@@ -71,7 +61,6 @@ class RoomContextProvider implements ContextProviderInterface
                 $b->department?->name ?? '—'
             ))->join("\n") ?: '  (none)';
 
-        // Recent bookings last 7 days (cap 6)
         $recent = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['room'])
             ->whereBetween('date', [$now->copy()->subDays(6)->toDateString(), $today])
@@ -85,7 +74,6 @@ class RoomContextProvider implements ContextProviderInterface
                 ucfirst($b->status ?? '—')
             ))->join("\n") ?: '  (none)';
 
-        // Recent online meetings last 30 days (cap 5)
         $online = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['department'])->where('booking_type', 'online_meeting')
             ->whereBetween('date', [$now->copy()->subDays(29)->toDateString(), $today])

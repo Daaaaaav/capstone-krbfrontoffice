@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Buat "packages" hanya jika belum ada
         if (!Schema::hasTable('packages')) {
             Schema::create('packages', function (Blueprint $table) {
                 $table->id('package_id');

@@ -20,8 +20,8 @@ class DocPackForm extends Component
 {
     use WithFileUploads;
 
-    public string $direction = 'taken'; // taken | deliver
-    public string $itemType  = 'package'; // package | document
+    public string $direction = 'taken'; // taken (default) | deliver
+    public string $itemType  = 'package'; // package (default) | document
 
     public ?int   $departmentId = null;
     public ?int   $userId       = null;
@@ -157,7 +157,6 @@ class DocPackForm extends Component
     {
         $companyId = Auth::user()->company_id;
 
-        // Sidebar: recent pending & stored deliveries
         $sidebarPending = Delivery::byCompany($companyId)
             ->where('status', 'pending')
             ->orderByDesc('created_at')

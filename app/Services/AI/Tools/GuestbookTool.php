@@ -7,12 +7,6 @@ use App\Services\AI\Contracts\ToolInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-/**
- * Tool: get_guestbook_data
- *
- * Queries the Guestbook model to return visitor statistics or recent entries.
- * Read-only. Does not touch the guestbook checkout or check-in workflow.
- */
 class GuestbookTool implements ToolInterface
 {
     public function name(): string

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The LSTM (Long Short-Term Memory) service provides advanced time-series predictions using deep learning. It runs as a separate Python microservice that communicates with Laravel via HTTP API.
+The LSTM (Long Short-Term Memory) service provides advanced time-series predictions for upcoming visitors and room/vehicle occupancies using deep learning. It runs as a separate Python microservice that communicates with Laravel via HTTP API.
 
 ## Architecture
 
@@ -308,23 +308,6 @@ pm2 save
 pm2 startup
 ```
 
-### 3. Docker Deployment
-
-Create `Dockerfile`:
-
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app/Services/AI/LSTM_Service.py .
-
-CMD ["uvicorn", "LSTM_Service:app", "--host", "0.0.0.0", "--port", "8001"]
-```
-
 ## Monitoring
 
 ### Check Service Status
@@ -334,7 +317,6 @@ use App\Services\AI\LSTMClient;
 
 $client = new LSTMClient();
 if (!$client->isAvailable()) {
-    // Send alert to admin
     Log::warning('LSTM service is down');
 }
 ```
@@ -357,13 +339,10 @@ Log::info('LSTM Prediction', [
 Edit `LSTM_Service.py`:
 
 ```python
-# Increase LSTM units for more complex patterns
 model.add(LSTM(128, input_shape=input_shape))  # Default: 64
 
-# Increase training epochs for better accuracy
 model.fit(X_train, y_train, epochs=50, verbose=0)  # Default: 20
 
-# Adjust sequence window
 X, y = create_sequences(scaled, window=14)  # Default: 7
 ```
 
@@ -377,7 +356,7 @@ def create_features(df):
     df['day_of_week'] = df['date'].dt.dayofweek
     df['is_weekend'] = df['day_of_week'].isin([5, 6]).astype(int)
     df['month'] = df['date'].dt.month
-    df['is_holiday'] = df['date'].isin(holidays).astype(int)  # Add holiday detection
+    df['is_holiday'] = df['date'].isin(holidays).astype(int)  
     return df
 ```
 

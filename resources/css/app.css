@@ -7,51 +7,35 @@
 
 :root {
     --background: oklch(0.985 0.008 145);
-    /* Warm champagne cream/linen background */
     --foreground: oklch(0.22 0.04 180);
-    /* Velvet spruce indigo dark text */
     --card: oklch(0.995 0.005 145);
-    /* Pure milky sage white card background */
     --card-foreground: oklch(0.22 0.04 180);
     --popover: oklch(0.995 0.005 145);
     --popover-foreground: oklch(0.22 0.04 180);
     --primary: oklch(0.42 0.065 165);
-    /* Premium Eucalyptus Mint green */
     --primary-foreground: oklch(0.99 0.005 140);
-    /* Crispy cream white */
+
     --secondary: oklch(0.95 0.015 145);
-    /* Soft sage */
     --secondary-foreground: oklch(0.22 0.04 180);
     --muted: oklch(0.96 0.015 145);
     --muted-foreground: oklch(0.52 0.06 145);
-    /* Sage green midtone */
+
     --accent: oklch(0.76 0.08 55);
-    /* Curated Terracotta Rose gold */
     --accent-foreground: oklch(0.22 0.04 180);
     --destructive: oklch(0.55 0.18 28);
-    /* Elegant dark red */
     --success: #4E653D;
-    /* Forest green — matches Approved badge */
     --border: oklch(0.92 0.02 145);
-    /* Soft sage border */
     --input: oklch(0.92 0.02 145);
     --ring: oklch(0.42 0.065 165);
     --radius: 1rem;
-    /* Curvaceous organic rounding */
     --sbw: 16rem;
 
     --sidebar: #4E653D;
-    /* Warm forest green background */
     --sidebar-foreground: #D7C9B8;
-    /* Warm cream/sand text color */
     --sidebar-primary: #CDDEA7;
-    /* Active green text color */
     --sidebar-accent: #4A2F24;
-    /* Active state reddish-brown background */
     --sidebar-accent-foreground: #CDDEA7;
-    /* Active state green text */
     --sidebar-border: #354C2B;
-    /* Soft dark green border */
 
     --chart-1: oklch(0.42 0.065 165);
     --chart-2: oklch(0.76 0.08 55);
@@ -96,8 +80,7 @@
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
     --font-sans: 'Outfit', 'Inter', ui-sans-serif, system-ui, sans-serif;
-
-    /* COMPILATION-LEVEL GLOBAL REDESIGN OVERRIDES: Maps standard Tailwind classes */
+/
     --color-gray-50: oklch(0.985 0.008 145);
     --color-gray-100: oklch(0.96 0.015 145);
     --color-gray-200: oklch(0.92 0.02 145);
@@ -120,7 +103,6 @@
     --color-zinc-800: oklch(0.18 0.035 145);
     --color-zinc-900: oklch(0.12 0.03 145);
 
-    /* Clean natural black and white replacements */
     --color-black: oklch(0.10 0.03 145);
     --color-white: oklch(0.995 0.005 145);
 }
@@ -136,7 +118,6 @@
         background-attachment: fixed;
     }
 
-    /* Modern sleek organic scrollbar */
     ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -156,7 +137,6 @@
     }
 }
 
-/* Glassmorphism utility */
 .bg-glass {
     background-color: rgba(254, 254, 253, 0.65);
     backdrop-filter: blur(12px) saturate(110%);
@@ -167,9 +147,6 @@
     backdrop-filter: blur(12px) saturate(110%);
 }
 
-/* Elegant entrance animation
-   NOTE: Do NOT use `transform` here — it creates a new containing block
-   that breaks `position: fixed` on all descendant modals (CSS spec). */
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -183,12 +160,6 @@
 .animate-fade-in-up {
     animation: fadeInUp 0.4s ease-out forwards;
 }
-
-
-
-/* ==========================================================================
-   UNIFIED EXPANDABLE SIDEBAR
-   ========================================================================== */
 
 .sidebar-root {
     display: contents;
@@ -226,7 +197,6 @@
     box-shadow: 4px 0 24px rgba(0,0,0,0.1);
 }
 
-/* States */
 .sidebar-unified.desktop-collapsed {
     width: 64px;
 }
@@ -249,19 +219,18 @@
 }
 
 .sidebar-unified-inner {
-    width: 280px; /* Force inner width to prevent text wrap during animation */
+    width: 280px; 
     height: 100%;
     display: flex;
     flex-direction: column;
 }
 
-/* Header */
 .sidebar-unified-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem;
-    height: 64px; /* fixed height for header */
+    height: 64px; 
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
 }
@@ -274,7 +243,7 @@
     padding: 0.25rem;
     border-radius: 0.5rem;
     transition: all 0.2s;
-    width: 40px; /* Collapsed state space */
+    width: 40px;
     overflow: hidden;
 }
 .sidebar-unified-logo.expanded {
@@ -324,7 +293,6 @@
     background: rgba(205, 222, 167, 0.15);
 }
 
-/* Search */
 .sidebar-unified-search {
     padding: 0.75rem;
     flex-shrink: 0;
@@ -350,7 +318,6 @@
     color: rgba(255,255,255,0.4);
 }
 
-/* Navigation */
 .sidebar-unified-nav {
     flex: 1;
     overflow-y: auto;
@@ -371,7 +338,6 @@
     border-radius: 4px;
 }
 
-/* Items */
 .sidebar-unified-item {
     position: relative;
     display: flex;
@@ -384,7 +350,7 @@
     text-decoration: none;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    width: 48px; /* Collapsed width */
+    width: 48px; 
 }
 .sidebar-unified-item.expanded {
     width: 100%;
@@ -434,7 +400,6 @@
     box-shadow: 0 0 8px rgba(205,222,167,0.6);
 }
 
-/* Tooltip (only shows when collapsed) */
 .tooltip {
     position: absolute;
     left: 4.5rem;
@@ -460,7 +425,6 @@
     transform: translateY(-50%) translateX(0);
 }
 
-/* Groups */
 .sidebar-unified-group {
     display: flex;
     flex-direction: column;
@@ -521,7 +485,6 @@
     margin-top: 0.125rem;
 }
 
-/* Footer & User Card */
 .sidebar-unified-footer {
     padding: 0.5rem;
     display: flex;
@@ -605,58 +568,53 @@
     z-index: 100;
 }
 .sidebar-profile-popover:not(.expanded) {
-    left: 4rem; /* Place next to avatar if collapsed */
+    left: 4rem; 
     bottom: 0;
     margin-bottom: 0;
 }
 
-
-/* ==========================================================================
-   RESPONSIVE SIDEBAR - Height-based Media Queries
-   ========================================================================== */
-
 @media (max-height: 800px) {
     .sidebar-unified-nav {
-        gap: 0.0625rem; /* Reduce gap between items */
-        padding: 0.375rem 0.5rem; /* Reduce vertical padding */
+        gap: 0.0625rem; 
+        padding: 0.375rem 0.5rem; /
     }
     .sidebar-unified-item {
-        height: 2rem; /* Reduce height from 2.25rem */
+        height: 2rem; 
     }
     .sidebar-unified-group {
-        margin-bottom: 0.125rem; /* Reduce spacing */
+        margin-bottom: 0.125rem; 
     }
     .group-heading {
-        padding: 0.125rem 0.5rem; /* Reduce padding */
-        font-size: 0.625rem; /* Slightly smaller */
+        padding: 0.125rem 0.5rem;
+        font-size: 0.625rem; 
     }
     .item-label {
-        font-size: 0.75rem; /* Slightly smaller */
+        font-size: 0.75rem; 
     }
     .group-items {
-        gap: 0.0625rem; /* Reduce gap */
-        margin-top: 0.0625rem; /* Reduce margin */
+        gap: 0.0625rem; 
+        margin-top: 0.0625rem; 
     }
 }
 
 @media (max-height: 700px) {
     .sidebar-unified-header {
-        height: 56px; /* Reduce from 64px */
-        padding: 0.5rem 0.75rem; /* Reduce padding */
+        height: 56px; 
+        padding: 0.5rem 0.75rem;
     }
     .sidebar-unified-nav {
-        gap: 0; /* Remove gap between items */
-        padding: 0.25rem 0.5rem; /* Further reduce padding */
+        gap: 0; 
+        padding: 0.25rem 0.5rem; 
     }
     .sidebar-unified-item {
-        height: 1.875rem; /* Further reduce height */
+        height: 1.875rem; 
     }
     .item-icon {
-        width: 1.5rem; /* Smaller icons */
+        width: 1.5rem; 
         height: 1.5rem;
     }
     .item-label {
-        font-size: 0.6875rem; /* Smaller text */
+        font-size: 0.6875rem; 
     }
     .sidebar-unified-group {
         margin-bottom: 0;
@@ -670,13 +628,13 @@
         font-size: 0.5625rem;
     }
     .sidebar-unified-footer {
-        padding: 0.375rem 0.5rem; /* Reduce footer padding */
+        padding: 0.375rem 0.5rem; 
     }
     .sidebar-unified-user-card {
-        height: 2.5rem; /* Reduce from 3rem */
+        height: 2.5rem; 
     }
     .user-avatar {
-        width: 1.75rem; /* Smaller avatar */
+        width: 1.75rem; 
         height: 1.75rem;
         font-size: 0.75rem;
     }
@@ -690,11 +648,11 @@
 
 @media (max-height: 600px) {
     .sidebar-unified-header {
-        height: 52px; /* Even smaller header */
+        height: 52px; 
         padding: 0.375rem 0.75rem;
     }
     .logo-text {
-        font-size: 0.875rem; /* Smaller logo text */
+        font-size: 0.875rem; 
     }
     .sidebar-unified-nav {
         padding: 0.25rem 0.375rem;

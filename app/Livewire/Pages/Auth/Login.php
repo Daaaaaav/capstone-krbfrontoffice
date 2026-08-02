@@ -25,7 +25,6 @@ class Login extends Component
     public bool $remember = false;
     public string $captcha = '';
 
-    // OTP fields
     public string $otpCode = '';
     public bool $otpSent = false;
     public bool $showOtpInput = false;
@@ -48,7 +47,6 @@ class Login extends Component
             if (in_array($role, ['Manager', 'Receptionist'])) {
                 return redirect()->route('home');
             }
-            // Unknown role — log out so they can re-authenticate cleanly
             Auth::logout();
             request()->session()->invalidate();
             request()->session()->regenerateToken();
@@ -91,16 +89,12 @@ class Login extends Component
             'email' => $this->email,
         ]);
 
-        // Accept captcha token passed directly from JS to avoid race conditions
-        // with $wire.set() + $wire.login() being batched separately.
         if ($this->isCaptchaEnabled() && $captchaToken !== '') {
             $this->captcha = $captchaToken;
         }
 
-        // Validate input
         $this->validate();
 
-        // Rate limiting
         $key = 'login:' . Str::lower($this->email) . '|' . request()->ip();
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
@@ -123,7 +117,6 @@ class Login extends Component
         }
 
         try {
-            // Check credentials (but don't log in yet)
             $user = User::where('email', Str::lower($this->email))->first();
 
             if (!$user || !\Hash::check($this->password, $user->password)) {
@@ -172,10 +165,9 @@ class Login extends Component
                 ]);
             }
 
-            // Show OTP input
             $this->showOtpInput = true;
             $this->otpSent = true;
-            $this->otpExpiresIn = 300; // 5 minutes in seconds
+            $this->otpExpiresIn = 300; 
 
             session()->flash('message', 'OTP code sent to your email. Please check your inbox.');
 
@@ -214,7 +206,6 @@ class Login extends Component
             ]);
         }
 
-        // OTP verified, now log in the user
         if (Auth::attempt(['email' => Str::lower($this->email), 'password' => $this->password], $this->remember)) {
             $key = 'login:' . Str::lower($this->email) . '|' . request()->ip();
             RateLimiter::clear($key);

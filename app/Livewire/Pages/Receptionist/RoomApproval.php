@@ -26,29 +26,18 @@ class RoomApproval extends Component
     public int $perPending = 6;
     public int $perOngoing = 6;
 
-    // Priority booking detail modal
     public bool  $showPriorityDetailModal = false;
     public ?int  $priorityDetailId        = null;
 
-    /** Poller */
     public function tick(): void
     {
-        // No action needed; Livewire will automatically re-render and re-query
+        // No action needed; Livewire automatic re-render and re-query
     }
 
-    // ─────────────── Auto-progress helpers ───────────────
-
-    /**
-     * Promote approved room bookings to 'completed' once their end_time has passed.
-     * Uses the same COALESCE expression as AutoCompleteBookings so behaviour is identical.
-     * Called on every render so transitions happen without waiting for the scheduler.
-     */
     private function autoProgressToCompleted(): void
     {
         $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'));
 
-        // 1-minute tolerance: a booking ending at 11:00 is completed at 11:01,
-        // identical to AutoCompleteBookings::handle().
         $threshold = $now->copy()->subMinute()->toDateTimeString();
 
         $endExpr = "COALESCE(
@@ -58,7 +47,7 @@ class RoomApproval extends Component
         )";
 
         DB::transaction(function () use ($threshold, $endExpr) {
-            // 1. Approved bookings whose end time has passed → completed
+            // 1. Approved bookings whose end time has passed would have completed mark
             BookingRoom::query()
                 ->where('status', 'approved')
                 ->whereNotNull('date')
@@ -71,7 +60,7 @@ class RoomApproval extends Component
                 ]);
 
             // 2. Pending bookings whose end time has already passed will never be
-            //    approved — reject them automatically so they leave the active view.
+            //    approved: reject them automatically so they leave the active view.
             BookingRoom::query()
                 ->where('status', 'pending')
                 ->whereNotNull('date')
@@ -122,9 +111,6 @@ class RoomApproval extends Component
 
     public function render()
     {
-        // NOTE: Status transitions are handled exclusively by the scheduler
-        // (bookings:auto-approve, bookings:auto-complete). render() is
-        // read-only — it reflects whatever the database currently contains.
         PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
 
         $cid = Auth::user()?->company_id;
@@ -142,21 +128,17 @@ class RoomApproval extends Component
             CONCAT(date, ' ', end_time)
         )";
 
-        // Pending tab: pending bookings whose window has NOT yet closed (end > now),
-        // PLUS approved bookings not yet started. Expired-window pending rows are
-        // excluded here — the render-time fallback above already rejected them.
         $pending = BookingRoom::with('room')
             ->company($cid)
             ->where(function ($q) use ($now, $startExpr, $endExpr) {
                 $q->where(function ($q1) use ($now, $endExpr) {
-                      // Still-actionable pending: end time hasn't passed yet
+
                       $q1->pending()
                          ->whereNotNull('date')
                          ->whereNotNull('end_time')
                          ->whereRaw("$endExpr > ?", [$now]);
                   })
                   ->orWhere(function ($q2) use ($now, $startExpr) {
-                      // Approved but not yet started — show with "Approved" badge
                       $q2->approved()
                          ->whereNotNull('date')
                          ->whereNotNull('start_time')
@@ -168,7 +150,6 @@ class RoomApproval extends Component
             ->paginate($this->perPending, pageName: 'pendingPage')
             ->through(fn($r) => $this->uiMap($r));
 
-        // Ongoing tab: approved bookings whose start time has arrived.
         $ongoing = BookingRoom::with('room')
             ->company($cid)
             ->approved()
@@ -180,7 +161,6 @@ class RoomApproval extends Component
             ->paginate($this->perOngoing, pageName: 'ongoingPage')
             ->through(fn($r) => $this->uiMap($r));
 
-        // Priority room bookings — pending + approved (all active statuses)
         $priorityRoomBookings = PriorityRoomBooking::with(['room', 'manager'])
             ->forCompany($cid)
             ->whereIn('status', [

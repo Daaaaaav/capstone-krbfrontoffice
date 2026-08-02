@@ -6,14 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Add a flag to distinguish Manager-scheduled guestbook entries
-     * (created via the Manager → Guestbook Form) from walk-in entries
-     * recorded by the Receptionist at the front desk.
-     *
-     * Only Manager-scheduled entries should display the "Scheduled Guest"
-     * banner on the Guestbook Status page.
-     */
     public function up(): void
     {
         Schema::table('guestbooks', function (Blueprint $table) {

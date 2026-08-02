@@ -19,15 +19,10 @@ class Manageroom extends Component
     protected string $paginationTheme = 'tailwind';
 
     public int $companyId = 0;
-
-    // Filters
     public string $search = '';
-
-    // Create form
     public string $room_name = '';
     public $capacity = null;
 
-    // Modal state
     public bool $showModal = false;
     public bool $editMode = false;
     public ?int $edit_id = null;
@@ -44,11 +39,6 @@ class Manageroom extends Component
         $this->resetPage(pageName: 'roomsPage');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | MODAL CONTROL
-    |--------------------------------------------------------------------------
-    */
     public function openCreateModal(): void
     {
         $this->resetForm();
@@ -89,11 +79,6 @@ class Manageroom extends Component
         $this->edit_capacity  = null;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION RULES
-    |--------------------------------------------------------------------------
-    */
     protected function createRules(): array
     {
         return [
@@ -119,11 +104,6 @@ class Manageroom extends Component
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | SAVE (CREATE / UPDATE)
-    |--------------------------------------------------------------------------
-    */
     public function save(): void
     {
         try {
@@ -158,11 +138,6 @@ class Manageroom extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | APPROVAL TIME VALIDATION TOGGLE
-    |--------------------------------------------------------------------------
-    */
     public function toggleEarlyApproval(int $id): void
     {
         try {
@@ -183,11 +158,6 @@ class Manageroom extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE (soft delete)
-    |--------------------------------------------------------------------------
-    */
     public function delete(int $id): void
     {
         try {
@@ -201,11 +171,6 @@ class Manageroom extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | RENDER
-    |--------------------------------------------------------------------------
-    */
     public function render()
     {
         $rooms = Room::query()

@@ -1,8 +1,6 @@
 <?php
 
 return [
-
-    // ── General ──────────────────────────────────────────────────────────────
     'language'          => 'Bahasa',
     'english'           => 'Inggris',
     'indonesian'        => 'Indonesia',
@@ -105,7 +103,6 @@ return [
     'login_register'    => 'Masuk / Daftar',
     'login'             => 'Masuk',
 
-    // ── Sidebar (Receptionist) ────────────────────────────────────────────────
     'home'                  => 'Beranda',
     'room_management'       => 'Manajemen Ruangan',
     'booking_room'          => 'Pesan Ruangan',
@@ -125,7 +122,6 @@ return [
     'docpac_history'        => 'Riwayat DocPac',
     'search_modules'        => 'Cari modul...',
 
-    // Sidebar (Manager)
     'user_management'       => 'Manajemen Pengguna',
     'receptionists'         => 'Resepsionis',
     'analytics'             => 'Analitik',
@@ -137,7 +133,6 @@ return [
     'occupancy_forecast'    => 'Prakiraan Hunian',
     'security_reports'      => 'Laporan Keamanan',
 
-    // ── Dashboard (Receptionist) ──────────────────────────────────────────────
     'dashboard_subtitle'        => 'Ringkasan 7 hari terakhir di semua modul.',
     'room_bookings_label'       => 'Pemesanan Ruangan',
     'vehicle_bookings_label'    => 'Pemesanan Kendaraan',
@@ -162,7 +157,6 @@ return [
     'no_documents'              => 'Tidak ada dokumen',
     'no_docs_recorded'          => 'Tidak ada dokumen atau paket yang tercatat.',
 
-    // ── Booking History ───────────────────────────────────────────────────────
     'booking_history_title'     => 'Riwayat Ruangan',
     'booking_history_subtitle'  => 'Lihat dan kelola riwayat pemesanan ruangan yang sudah selesai atau ditolak.',
     'history'                   => 'Riwayat',
@@ -176,7 +170,6 @@ return [
     'requester'                 => 'Pemohon',
     'join_link'                 => 'Tautan bergabung',
 
-    // ── Bookings Approval ─────────────────────────────────────────────────────
     'bookings_approval_title'   => 'Persetujuan Pemesanan (Resepsionis)',
     'bookings_approval_subtitle'=> 'Kelola permintaan booking ruangan (online/offline): setujui, tolak (wajib isi alasan), atau jadwal ulang.',
     'approval_queue'            => 'Antrian Persetujuan',
@@ -186,7 +179,6 @@ return [
     'not_selected'              => 'Belum dipilih',
     'created'                   => 'Dibuat',
 
-    // ── Vehicle Booking ───────────────────────────────────────────────────────
     'vehicle_booking_title'     => 'Pemesanan Kendaraan',
     'vehicle_booking_subtitle'  => 'Isi form di bawah untuk mengajukan peminjaman kendaraan.',
     'booking_form_title'        => 'Formulir Pemesanan Kendaraan',
@@ -229,7 +221,6 @@ return [
     'terms_agree'               => 'Saya menyetujui syarat & ketentuan peminjaman kendaraan.',
     'submit_booking'            => 'Kirim Pemesanan',
 
-    // ── Guestbook ─────────────────────────────────────────────────────────────
     'guestbook_title'           => 'Buku Tamu',
     'guestbook_subtitle'        => 'Formulir Entri Kunjungan & Tamu Hari Ini.',
     'add_new_entry'             => 'Tambah Entri Baru',
@@ -258,14 +249,12 @@ return [
     'guest_email_placeholder'   => 'email@tamu.com',
     'guest_email_hint'          => 'QR code akan dikirim ke email ini.',
 
-    // Manager Dashboard
     'manager_analytics'      => 'Analitik Manager',
     'interactive_insights'      => 'Wawasan sistem interaktif untuk',
     'booking_trends'            => 'Tren Reservasi',
     'bookings_axis'             => 'Reservasi',
     'month_axis'                => 'Bulan',
 
-    // ── Receptionist Users ────────────────────────────────────────────────────
     'receptionist_users_title'  => 'Pengguna Resepsionis',
     'manage_receptionists'      => 'Kelola akun resepsionis',
     'add_receptionist'          => '+ Tambah Resepsionis',
@@ -279,7 +268,6 @@ return [
     'delete_confirm'            => 'Apakah Anda yakin ingin menghapus resepsionis ini?',
     'delete_confirm_title'      => 'Hapus Resepsionis',
 
-    // ── Guestbook History ─────────────────────────────────────────────────────
     'guestbook_history_title'   => 'Riwayat Buku Tamu',
     'guestbook_history_subtitle'=> 'Lihat dan kelola riwayat kunjungan tamu yang aktif atau sudah selesai.',
     'visit_list'                => 'Daftar Kunjungan',
@@ -287,7 +275,6 @@ return [
     'recent_visits'             => 'Kunjungan Terbaru',
     'all_officers'              => 'Semua Petugas',
 
-    // ── Guestbook Status ──────────────────────────────────────────────────────
     'guestbook_status_title'        => 'Status Buku Tamu',
     'guestbook_status_subtitle'     => 'Tamu yang menunggu konfirmasi QR atau sedang berada di lokasi',
     'add_guest_btn'                 => 'Tambah Tamu',
@@ -334,12 +321,10 @@ return [
     'no_visitors_found'         => 'Tidak ada pengunjung ditemukan',
     'no_deliveries_found'       => 'Tidak ada pengiriman ditemukan',
 
-    // ── Vehicle Booking Statistics ────────────────────────────────────────────
     'vehicle_booking_stats_title' => 'Statistik Reservasi Kendaraan',
     'vehicle_booking_stats_sub'   => 'Pantau aktivitas dan tren reservasi kendaraan',
     'vehicle_booking_items'       => 'Daftar Reservasi Kendaraan',
 
-    // ── Delivery Statistics ───────────────────────────────────────────────────
     'delivery_stats_title'      => 'Statistik Pengiriman',
     'delivery_stats_sub'        => 'Lacak tren pengiriman paket dan dokumen',
     'total_deliveries'          => 'Total Pengiriman',
@@ -347,7 +332,6 @@ return [
     'recent_deliveries'         => 'Pengiriman Terbaru',
     'recipient'                 => 'Penerima',
 
-    // ── Guestbook Statistics ──────────────────────────────────────────────────
     'guestbook_stats_title'     => 'Statistik Buku Tamu',
     'guestbook_stats_sub'       => 'Lacak aktivitas dan tren pengunjung',
     'total_visitors'            => 'Total Pengunjung',
@@ -361,7 +345,6 @@ return [
     'in_building'               => 'Di Dalam Gedung',
     'registered_status'         => 'Terdaftar',
 
-    // ── AI Security Reports ───────────────────────────────────────────────────
     'security_reports_title'    => 'Laporan Keamanan Wazuh',
     'security_reports_sub'      => 'Peringatan langsung dari log manajer Wazuh',
     'live'                      => '● Langsung',
@@ -383,7 +366,6 @@ return [
     'live_entry'                => 'Entri langsung',
     'severity_label'            => 'keparahan',
 
-    // ── LSTM Predictions ──────────────────────────────────────────────────────
     'lstm_title'                => 'Prediksi Lalu Lintas Pengunjung',
     'lstm_subtitle'             => 'Prakiraan pengunjung berbasis AI dari data buku tamu historis',
     'lstm_model'                => 'Jaringan Saraf LSTM',
@@ -403,7 +385,6 @@ return [
     'no_prediction_data'        => 'Tidak ada data prediksi tersedia',
     'select_different_period'   => 'Pilih tipe prediksi atau periode prakiraan yang berbeda.',
 
-    // ── LSTM Training Data Source ─────────────────────────────────────────────
     'training_data_source'      => 'Sumber Data Pelatihan',
     'training_data_source_sub'  => 'Pilih data historis yang digunakan model LSTM untuk pelatihan.',
     'source_csv_server'         => 'CSV Server',
@@ -426,14 +407,10 @@ return [
     'csv_upload_success'        => 'CSV ":name" berhasil diunggah dan kini aktif digunakan.',
     'csv_upload_failed'         => 'Pengunggahan gagal. Periksa file dan coba lagi.',
     'csv_upload_failed_detail'  => 'Pengunggahan gagal: :detail',
-
-    // ── Pesan validasi CSV ────────────────────────────────────────────────────
     'csv_error_no_file'         => 'Silakan pilih file CSV sebelum mengunggah.',
     'csv_error_not_file'        => 'Item yang dipilih bukan file yang valid.',
     'csv_error_wrong_type'      => 'Hanya file .csv atau .txt yang diterima.',
     'csv_error_too_large'       => 'File melebihi batas ukuran 10 MB.',
-
-    // ── Panduan format CSV ────────────────────────────────────────────────────
     'csv_format_guide_title'    => 'Persyaratan Format CSV',
     'csv_guide_header_required' => 'Baris pertama harus berisi nama kolom (tidak membedakan huruf besar/kecil).',
     'csv_guide_columns'         => 'Kolom yang diperlukan (urutan bebas)',
@@ -446,7 +423,6 @@ return [
     'csv_guide_max_size'        => 'ukuran maks',
     'csv_guide_example'         => 'Contoh',
 
-    // ── Occupancy Forecasting ─────────────────────────────────────────────────
     'occupancy_title'           => 'Prakiraan Hunian',
     'occupancy_subtitle'        => 'Prediksi hunian reservasi berbasis AI',
     'forecast_type'             => 'Jenis Prakiraan',
@@ -468,18 +444,6 @@ return [
     'click_hourly'              => 'Klik untuk detail per jam',
     'hourly_forecast'           => 'Prakiraan Per Jam',
 
-    // ── Weather Dashboard ─────────────────────────────────────────────────────
-    'weather_title'             => 'Dasbor Cuaca',
-    'weather_unavailable'       => 'Tidak dapat mengambil data cuaca dari BMKG.',
-    'weather_check_connection'  => 'Periksa koneksi internet Anda dan coba refresh.',
-    'refresh'                   => 'Refresh',
-    'condition'                 => 'Kondisi',
-    'temp'                      => 'Suhu',
-    'wind'                      => 'Angin',
-    'rain'                      => 'Hujan',
-    'visibility'                => 'Jarak Pandang',
-
-    // ── Help ──────────────────────────────────────────────────────────────────
     'help_title'                => 'Bantuan & Dukungan',
     'help_subtitle'             => 'Temukan jawaban dan dapatkan bantuan',
     'help_find_answers'         => 'Temukan jawaban atas pertanyaan umum tentang penggunaan sistem.',
@@ -487,7 +451,6 @@ return [
     'still_need_help_sub'       => 'Jika tidak menemukan jawaban di atas, hubungi administrator sistem Anda.',
     'email_admin'               => 'Email Admin',
 
-    // ── Settings ─────────────────────────────────────────────────────────────
     'settings_title'            => 'Pengaturan',
     'settings_subtitle'         => 'Kelola preferensi akun Anda',
     'settings_manage_sub'       => 'Kelola profil akun dan preferensi keamanan Anda.',
@@ -504,7 +467,6 @@ return [
     'confirm_new_password'      => 'Konfirmasi Kata Sandi Baru',
     'update_password'           => 'Perbarui Kata Sandi',
 
-    // ── Meeting Schedule ──────────────────────────────────────────────────────
     'meeting_schedule_title'    => 'Jadwal Rapat',
     'meeting_schedule_sub'      => 'Formulir Booking Ruangan & Online Meeting.',
     'add_booking_offline'       => 'Tambah Booking Ruangan (Offline)',
@@ -524,7 +486,6 @@ return [
     'google_connected'          => 'Google terhubung',
     'google_not_connected'      => 'Google TIDAK terhubung',
 
-    // ── Room Approval ─────────────────────────────────────────────────────────
     'room_approval_title'       => 'Persetujuan Ruangan',
     'room_approval_sub'         => 'Setujui permintaan booking & pantau rapat berjalan.',
     'pending_approval'          => 'Menunggu Persetujuan',
@@ -536,7 +497,6 @@ return [
     'reject_reason_ph'          => 'Alasan penolakan (opsional)',
     'send_rejection'            => 'Kirim Penolakan',
 
-    // ── Vehicle Status ────────────────────────────────────────────────────────
     'vehicle_status_title'      => 'Status Kendaraan',
     'vehicle_status_sub'        => 'Kelola peminjaman: Pending / Disetujui / Dalam Proses / Dikembalikan / Terlambat Kembali.',
     'vehicle_bookings_list'     => 'Pemesanan Kendaraan',
@@ -555,7 +515,6 @@ return [
     'filter_by_vehicle'         => 'Filter berdasarkan Kendaraan',
     'all_vehicles'              => 'Semua Kendaraan',
 
-    // ── Vehicle History ───────────────────────────────────────────────────────
     'vehicle_history_title'     => 'Riwayat Kendaraan',
     'vehicle_history_sub_done'  => 'Riwayat peminjaman kendaraan yang sudah Selesai (Done).',
     'vehicle_history_sub_rej'   => 'Riwayat peminjaman yang ditolak (Rejected).',
@@ -567,7 +526,6 @@ return [
     'rejected_records'          => 'Data Ditolak',
     'completed_records'         => 'Data Selesai',
 
-    // ── DocPac Form ───────────────────────────────────────────────────────────
     'docpac_form_title'         => 'Formulir Dok/Paket',
     'docpac_form_sub'           => 'Input paket/dokumen dengan alur masuk/keluar',
     'add_data'                  => 'Tambah Data',
@@ -579,7 +537,6 @@ return [
     'reason'                    => 'Alasan',
     'all_officers'              => 'Semua Petugas',
 
-    // ── DocPac Status ─────────────────────────────────────────────────────────
     'docpac_status_title'       => 'Dokumen & Paket — Status',
     'docpac_status_sub'         => 'Pantau item pending & tersimpan sebelum diambil/terkirim.',
     'items_list'                => 'Daftar Item',
@@ -589,7 +546,6 @@ return [
     'delivered'                 => 'Terkirim',
     'deliver'                   => 'Titip Kirim',
 
-    // ── DocPac Form extra ─────────────────────────────────────────────────────
     'incoming'                  => 'Masuk untuk internal',
     'outgoing'                  => 'Titip untuk dikirim',
     'storage_location'          => 'Tempat Penyimpanan',
@@ -614,13 +570,11 @@ return [
     'no_pending_items'          => 'Tidak ada data pending.',
     'no_stored_items'           => 'Tidak ada data tersimpan.',
 
-    // ── DocPac History ────────────────────────────────────────────────────────
     'docpac_history_title'      => 'Dokumen & Paket — Riwayat',
     'docpac_history_sub'        => 'Pantau status dokumen & paket yang sudah selesai.',
     'completed_items'           => 'Item Selesai',
     'completed_items_sub'       => 'Daftar dokumen & paket yang sudah diambil/terkirim.',
 
-    // ── Documents (legacy) ────────────────────────────────────────────────────
     'document_name_label'       => 'Nama Dokumen',
     'document_name_ph'          => 'Contoh: Surat Perintah',
     'sender_name'               => 'Nama Pengirim',
@@ -650,13 +604,11 @@ return [
     'tips_label'                => 'Tips:',
     'tips_sent_realtime'        => 'Klik <b>Sudah dikirim</b> di daftar Pending/Taken untuk pakai waktu real-time pengiriman.',
 
-    // ── Item type labels (DB values) ─────────────────────────────────────────
     'type_package'              => 'Paket',
     'type_document'             => 'Dokumen',
     'type_invoice'              => 'Invoice',
     'type_etc'                  => 'Lainnya',
 
-    // ── Status / tab labels ───────────────────────────────────────────────────
     'tab_all'                   => 'Semua',
     'tab_pending'               => 'Menunggu',
     'tab_stored'                => 'Tersimpan',
@@ -676,7 +628,6 @@ return [
     'are_you_sure_delete'       => 'Apakah Anda yakin ingin menghapus item ini?',
     'lihat_bukti_foto'          => 'Lihat Bukti Foto',
 
-    // ── Packages (legacy) ─────────────────────────────────────────────────────
     'package_name'              => 'Nama Paket',
     'package_name_ph'           => 'Contoh: Paket Dokumen PT ABC',
     'add_package'               => 'Tambah Paket',
@@ -688,7 +639,6 @@ return [
     'loading_label'             => 'Memuat…',
     'deleting_label'            => 'Menghapus…',
 
-    // ── Shared filter/sidebar strings ─────────────────────────────────────────
     'filter_by_dept_user'       => 'Filter berdasarkan department & user.',
     'all_departments'           => 'Semua Department',
     'all_users'                 => 'Semua User',
@@ -707,7 +657,6 @@ return [
     'sort_newest_opt'           => 'Terbaru',
     'sort_oldest_opt'           => 'Terlama',
 
-    // ── Room Requirement Names ────────────────────────────────────────────────
     'req_projector_screen'      => 'Proyektor & Layar',
     'req_whiteboard'            => 'Papan Tulis',
     'req_coffee_break'          => 'Coffee Break',
@@ -717,7 +666,6 @@ return [
     'req_video_conference'      => 'Video Conference',
     'req_catering'              => 'Katering',
 
-    // ── Quick Book Modal ──────────────────────────────────────────────────────
     'quick_book_title'          => 'Pesan Ruangan Cepat',
     'quick_book_room'           => 'Ruangan',
     'quick_book_date'           => 'Tanggal',
@@ -732,7 +680,6 @@ return [
     'quick_book_cancel'         => 'Batal',
     'quick_book_confirm'        => 'Konfirmasi Pemesanan',
 
-    // ── Meeting Schedule extra ────────────────────────────────────────────────
     'dept_label'                => 'Departemen',
     'search_dept_offline_ph'    => 'Cari departemen…',
     'select_dept_ph'            => 'Pilih departemen',
@@ -748,7 +695,6 @@ return [
     'user_filtered_optional'    => 'User (difilter berdasarkan departemen, Opsional)',
     'search_user_online_ph'     => 'Cari user…',
 
-    // ── Guestbook History extra ───────────────────────────────────────────────
     'name_col'                  => 'Nama',
     'institution_col'           => 'Instansi',
     'purpose_col'               => 'Keperluan',
@@ -775,7 +721,6 @@ return [
     'toast_perm_deleted_title'  => 'Hapus Permanen',
     'toast_perm_deleted_message'=> 'Tamu dihapus permanen.',
 
-    // ── Vehicle Status extra ──────────────────────────────────────────────────
     'borrower_col'              => 'Peminjam',
     'vehicle_col'               => 'Kendaraan',
     'destination_col'           => 'Tujuan',
@@ -790,8 +735,6 @@ return [
     'reject_booking_title'      => 'Tolak Booking',
     'reject_vehicle_reason'     => 'Silakan masukkan alasan penolakan peminjaman kendaraan ini. Alasan ini bersifat wajib.',
     'reject_reason_example'     => 'Contoh: Kendaraan sedang perbaikan, atau jadwal bentrok.',
-
-    // ── Bookings Approval extra ───────────────────────────────────────────────
     'reject_reason_required'    => 'Silakan berikan alasan penolakan. Field ini wajib diisi.',
     'reschedule_reason_required'=> 'Atur ulang jadwal dan ruangan. Alasan reschedule wajib diisi.',
     'start_time_label'          => 'Jam Mulai',
@@ -834,11 +777,7 @@ return [
     'booking_room_option'       => 'Pesan Ruangan',
     'meeting_option'            => 'Rapat',
     'online_meeting_option'     => 'Rapat Online',
-
-    // ── Booking History extra ─────────────────────────────────────────────────
     'delete_booking_confirm'    => 'Yakin ingin menghapus data booking ini?',
-
-    // ── Filters / Search (Help page) ──────────────────────────────────────────
     'search_questions'          => 'Cari Pertanyaan',
     'clear_search'              => 'Hapus pencarian',
     'no_results_for'            => 'Tidak ada hasil untuk',
@@ -847,7 +786,6 @@ return [
     'sort_nearest'              => 'Paling dekat sekarang',
     'advanced_filters'          => 'Filter Lanjutan',
 
-    // ── FAQ Categories ────────────────────────────────────────────────────────
     'faq_cat_user_management'   => 'Manajemen Pengguna',
     'faq_cat_analytics'         => 'Analitik',
     'faq_cat_ai_security'       => 'AI & Keamanan',
@@ -856,12 +794,8 @@ return [
     'faq_cat_vehicle'           => 'Kendaraan',
     'faq_cat_guestbook'         => 'Buku Tamu',
     'faq_cat_docpac'            => 'DocPac',
-
-    // ── FAQ Shared ────────────────────────────────────────────────────────────
     'faq_shared_q_password'     => 'Bagaimana cara mengubah kata sandi?',
     'faq_shared_a_password'     => 'Buka Pengaturan (ikon roda gigi di sidebar). Perluas bagian Ubah Kata Sandi, masukkan kata sandi saat ini dan kata sandi baru, lalu simpan.',
-
-    // FAQ Manager
     'faq_sa_q1'  => 'Bagaimana cara mengelola akun resepsionis?',
     'faq_sa_a1'  => 'Buka Manajemen Pengguna → Resepsionis. Anda dapat membuat, mengedit, atau menonaktifkan akun resepsionis dari halaman tersebut.',
     'faq_sa_q2'  => 'Bagaimana cara melihat statistik reservasi ruangan?',
@@ -879,7 +813,6 @@ return [
     'faq_sa_q8'  => 'Apa itu Laporan Keamanan?',
     'faq_sa_a8'  => 'Laporan Keamanan (Sistem AI & Keamanan → Laporan Keamanan) menampilkan anomali dan kejadian yang ditandai oleh lapisan pemantauan AI.',
 
-    // ── Model Performance Card ────────────────────────────────────────────────
     'model_performance_title'   => 'Performa Model',
     'model_performance_subtitle'=> 'Metrik evaluasi dari sesi pelatihan LSTM terakhir',
     'mp_last_trained'           => 'Terakhir Dilatih',
@@ -903,7 +836,6 @@ return [
     'mp_visitors_unit'          => 'pengunjung (terskalakan)',
     'mp_bookings_unit'          => 'reservasi (terskalakan)',
 
-    // ── FAQ Receptionist ──────────────────────────────────────────────────────
     'faq_rec_q1' => 'Bagaimana cara memesan ruang rapat?',
     'faq_rec_a1' => 'Buka Manajemen Ruangan → Pesan Ruangan. Isi judul rapat, pilih ruangan, tentukan tanggal dan waktu, lalu kirim. Pemesanan Anda akan menunggu persetujuan.',
     'faq_rec_q2' => 'Bagaimana cara menyetujui atau menolak pemesanan ruangan?',

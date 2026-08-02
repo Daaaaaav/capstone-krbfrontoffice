@@ -18,21 +18,12 @@ class GuestbookStatus extends Component
 
     protected string $paginationTheme = 'tailwind';
 
-    // Filters
     public string $q = '';
     public int $perPage = 9;
-
-    // Officer filter (sidebar)
     public ?string $petugasFilter = null;
-
-    // Additional filters
     public ?string $filter_date = null;
     public string $dateMode = 'semua';
-
-    // View mode (card/table)
     public string $viewMode = 'card';
-
-    // Edit modal
     public bool $showEdit = false;
     public ?int $editId = null;
     public array $edit = [
@@ -58,10 +49,6 @@ class GuestbookStatus extends Component
         ];
     }
 
-    // -----------------------------------------------------------------------
-    // Helpers
-    // -----------------------------------------------------------------------
-
     private function companyId(): ?int
     {
         return Auth::user()?->company_id;
@@ -73,10 +60,6 @@ class GuestbookStatus extends Component
             ->where('company_id', $this->companyId())
             ->firstOrFail();
     }
-
-    // -----------------------------------------------------------------------
-    // Filter reactivity
-    // -----------------------------------------------------------------------
 
     public function updatingQ(): void
     {
@@ -104,13 +87,6 @@ class GuestbookStatus extends Component
         $this->viewMode = in_array($mode, ['card', 'table']) ? $mode : 'card';
     }
 
-    // -----------------------------------------------------------------------
-    // Computed properties
-    // -----------------------------------------------------------------------
-
-    /**
-     * All active entries (jam_out is null).
-     */
     public function getActiveEntriesProperty()
     {
         $q = GuestbookModel::query()
@@ -145,10 +121,6 @@ class GuestbookStatus extends Component
         return $q->paginate($this->perPage, ['*'], 'activePage');
     }
 
-    // -----------------------------------------------------------------------
-    // Counts for badges (unpaginated, fast)
-    // -----------------------------------------------------------------------
-
     public function getActiveCountProperty(): int
     {
         return GuestbookModel::where('company_id', $this->companyId())
@@ -157,11 +129,6 @@ class GuestbookStatus extends Component
             ->count();
     }
 
-    // -----------------------------------------------------------------------
-    // Actions
-    // -----------------------------------------------------------------------
-
-    /** Open edit modal */
     public function openEdit(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
@@ -201,12 +168,9 @@ class GuestbookStatus extends Component
 
         $this->showEdit = false;
 
-        // If visitor count changed, we need new QR codes
         if ($oldVisitorCount !== $newVisitorCount) {
-            // Delete old QRs
             GuestbookQrCode::where('guestbook_id', $row->guestbook_id)->delete();
 
-            // Generate new QRs
             $qrTokens = GuestbookQrCode::generateTokenBatch($newVisitorCount);
             foreach ($qrTokens as $index => $token) {
                 GuestbookQrCode::create([
@@ -215,8 +179,6 @@ class GuestbookStatus extends Component
                     'visitor_number' => $index + 1,
                 ]);
             }
-
-            // Show warning toast that user must resend QR
             $this->dispatch('toast', type: 'warning', title: 'Perhatian!', message: 'Jumlah pengunjung berubah. QR Code baru telah dibuat. Harap klik Resend QR.', duration: 7000);
         } else {
             $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
@@ -224,7 +186,6 @@ class GuestbookStatus extends Component
         $this->dispatch('$refresh');
     }
 
-    /** Manually check out a visitor right now */
     public function checkOutNow(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
@@ -232,8 +193,6 @@ class GuestbookStatus extends Component
             'jam_out'    => Carbon::now()->format('H:i'),
             'qr_status'  => 'completed',
         ]);
-
-        // Also mark all individual QR codes as scanned (manual override)
         $row->qrCodes()
             ->where('is_scanned', false)
             ->update([
@@ -245,7 +204,6 @@ class GuestbookStatus extends Component
         $this->dispatch('$refresh');
     }
 
-    /** Resend QR email for a pending entry */
     public function resendQr(int $id): void
     {
         $row = $this->findOwnedOrFail($id);

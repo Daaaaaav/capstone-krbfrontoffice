@@ -5,14 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>QR Code Kunjungan</title>
-    <!--[if mso]>
     <style type="text/css">
-        table { border-collapse: collapse; }
-        td { font-family: Arial, sans-serif; }
-    </style>
-    <![endif]-->
-    <style type="text/css">
-        /* Reset */
         body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
         table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
         img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
@@ -36,15 +29,10 @@
     </style>
 </head>
 <body style="margin:0; padding:0; background-color:#f4f6f8;">
-    <!-- Outer wrapper table for centering -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f6f8;">
         <tr>
             <td align="center" style="padding: 20px 10px;">
-
-                <!-- Main content table -->
                 <table role="presentation" class="wrapper-table" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-
-                    {{-- ===== HEADER ===== --}}
                     <tr>
                         <td class="header-cell" align="center" style="background-color:#4A2F24; padding:32px 40px;">
                             <p style="color:#CDDEA7; font-size:22px; font-weight:700; letter-spacing:0.3px; margin:0 0 6px 0;">&#128210; Konfirmasi Kunjungan</p>
@@ -59,11 +47,8 @@
                         </td>
                     </tr>
 
-                    {{-- ===== BODY ===== --}}
                     <tr>
                         <td class="body-cell" style="padding:36px 40px;">
-
-                            {{-- Greeting --}}
                             <p style="font-size:16px; font-weight:600; color:#1a1a1a; margin:0 0 8px 0;">Halo, {{ $entry->name }}!</p>
                             <p style="font-size:14px; color:#555; line-height:1.6; margin:0 0 28px 0;">
                                 Pendaftaran kunjungan Anda telah berhasil dicatat oleh resepsionis kami.
@@ -109,7 +94,6 @@
                                 </tr>
                             </table>
 
-                            {{-- Instructions --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f5ea; border:1px solid #c3d9a8; border-radius:10px; margin-bottom:28px;">
                                 <tr>
                                     <td style="padding:16px 20px;">
@@ -124,11 +108,9 @@
                                 </tr>
                             </table>
 
-                            {{-- QR Code Section Title --}}
                             <p style="font-size:14px; font-weight:700; color:#1a1a1a; margin:0 0 6px 0; text-align:center;">QR Code Checkout</p>
                             <p style="font-size:12px; color:#6b7280; margin:0 0 20px 0; text-align:center;">Bagikan satu QR code ke setiap anggota rombongan</p>
 
-                            {{-- QR Code Cards - stacked vertically for max compatibility --}}
                             @foreach($qrItems as $item)
                             <table role="presentation" class="qr-card-table" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px auto; max-width:320px;">
                                 <tr>
@@ -151,7 +133,6 @@
                             </table>
                             @endforeach
 
-                            {{-- PDF Note --}}
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef6ff; border:1px solid #bdd7f5; border-radius:10px; margin-bottom:28px; margin-top:12px;">
                                 <tr>
                                     <td style="padding:14px 20px;">
@@ -163,7 +144,6 @@
                                 </tr>
                             </table>
 
-                            {{-- Footer Note --}}
                             <p style="font-size:12px; color:#9ca3af; line-height:1.6; border-top:1px solid #f3f4f6; padding-top:20px; margin:0;">
                                 Email ini dikirim otomatis oleh sistem. Harap simpan QR code ini hingga kunjungan selesai.
                                 Setiap QR code hanya dapat digunakan sekali untuk proses checkout.
@@ -172,16 +152,12 @@
                         </td>
                     </tr>
 
-                    {{-- ===== FOOTER ===== --}}
                     <tr>
                         <td align="center" style="background:#f9fafb; border-top:1px solid #f3f4f6; padding:20px 40px; font-size:11px; color:#9ca3af;">
                             &copy; {{ date('Y') }} {{ config('app.name') }} &mdash; Buku Tamu Digital
                         </td>
                     </tr>
-
                 </table>
-                <!-- /Main content table -->
-
             </td>
         </tr>
     </table>

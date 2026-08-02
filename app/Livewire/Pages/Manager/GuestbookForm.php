@@ -24,10 +24,7 @@ class GuestbookForm extends Component
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
-    // ── Tabs ───────────────────────────────────────────────────────────────
-    public string $activeTab = 'form'; // form | upcoming
-
-    // ── Form fields ────────────────────────────────────────────────────────
+    public string $activeTab = 'form'; // form (default) | upcoming
     public string $name          = '';
     public string $email         = '';
     public string $phone_number  = '';
@@ -35,20 +32,12 @@ class GuestbookForm extends Component
     public string $keperluan     = '';
     public int    $visitor_count = 1;
     public ?int   $storage_place = null;
-
-    // Scheduled arrival (manager can set a future date & time)
     public string $scheduled_date = '';
     public string $scheduled_time = '';
-
-    // Optional target department / user inside the company
     public ?int $department_id = null;
     public ?int $user_id       = null;
-
-    // ── Dropdown data ──────────────────────────────────────────────────────
     public array $departments_list = [];
     public array $users_list       = [];
-
-    // ── Upcoming list filters ──────────────────────────────────────────────
     public string $q = '';
     public int $perPage = 8;
 
@@ -117,12 +106,6 @@ class GuestbookForm extends Component
 
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
-
-        // For manager-scheduled entries:
-        //  - date  = scheduled_date (could be future)
-        //  - jam_in = scheduled_time
-        //  - jam_out = null  (will be filled when visitor actually checks out)
-        //  - petugas_penjaga = manager name
         $qrToken = GuestbookModel::generateQrToken();
         $visitorCount = (int) $validated['visitor_count'];
 
@@ -143,10 +126,9 @@ class GuestbookForm extends Component
             'visitor_count'        => $visitorCount,
             'qr_token'             => $qrToken,
             'qr_status'            => 'pending',
-            'scheduled_by_manager' => true, // Manager-scheduled: shown as "Scheduled Guest"
+            'scheduled_by_manager' => true,  // only for visual display of "Scheduled Guest" in status
         ]);
 
-        // Generate individual QR codes
         $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
         foreach ($qrTokens as $index => $token) {
             GuestbookQrCode::create([
@@ -156,7 +138,6 @@ class GuestbookForm extends Component
             ]);
         }
 
-        // Send QR email
         if (!empty($validated['email'])) {
             try {
                 $entry->load('qrCodes');
@@ -193,7 +174,7 @@ class GuestbookForm extends Component
         $companyId = Auth::user()->company_id ?? null;
         $today = now($this->tz)->toDateString();
 
-        // Upcoming scheduled visitors (future dates, not yet checked out)
+        // for upcoming scheduled visitors
         $upcoming = GuestbookModel::query()
             ->where('company_id', $companyId)
             ->whereNull('jam_out')
@@ -208,7 +189,6 @@ class GuestbookForm extends Component
             ->orderBy('jam_in')
             ->paginate($this->perPage);
 
-        // Sidebar: currently active visitors (checked in today, not yet checked out)
         $activeToday = GuestbookModel::query()
             ->where('company_id', $companyId)
             ->whereNull('jam_out')
@@ -217,7 +197,6 @@ class GuestbookForm extends Component
             ->limit(20)
             ->get();
 
-        // Sidebar: upcoming scheduled (next 7 days) - compact list
         $sidebarUpcoming = GuestbookModel::query()
             ->where('company_id', $companyId)
             ->whereNull('jam_out')

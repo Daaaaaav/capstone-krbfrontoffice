@@ -7,10 +7,6 @@ use App\Services\AI\Contracts\ContextProviderInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Loads guestbook context: today's visitors and recent entry summary.
- * Called only when the ContextRouter detects a guestbook/visitor query.
- */
 class GuestbookContextProvider implements ContextProviderInterface
 {
     private string $tz = 'Asia/Jakarta';

@@ -19,37 +19,17 @@ class LSTMPredictions extends Component
 {
     use WithFileUploads;
 
-    // ── Forecast controls ─────────────────────────────────────────────────────
     public int $forecastDays = 21;
-
-    /**
-     * Active training-data source:
-     *   'csv_server'  – bundled historical CSV (default)
-     *   'csv_upload'  – user-uploaded CSV
-     *   'live_db'     – live guestbook records from the database
-     */
     public string $trainingSource = 'csv_server';
-
-    // ── Upload state ──────────────────────────────────────────────────────────
-    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null */
     public $uploadedCsv = null;
-
-    /** Stored path of the validated upload (relative to the private disk). */
+    
     public ?string $uploadedCsvPath = null;
-
-    /** Human-readable name of the last accepted upload. */
     public ?string $uploadedCsvName = null;
-
-    /** Validation / upload error message shown to the user. */
     public ?string $uploadError = null;
-
-    /** Success message shown after a successful upload. */
     public ?string $uploadSuccess = null;
 
-    // ── Status flags ──────────────────────────────────────────────────────────
     public bool $isRetraining = false;
 
-    // ── Validation ────────────────────────────────────────────────────────────
     protected function rules(): array
     {
         return [
@@ -57,12 +37,10 @@ class LSTMPredictions extends Component
                 'required',
                 'file',
                 'mimes:csv,txt',
-                'max:10240', // 10 MB
+                'max:10240', // 10 MB 
             ],
         ];
     }
-
-    // ── Actions ───────────────────────────────────────────────────────────────
 
     public function setForecastDays(int $days): void
     {
@@ -75,23 +53,17 @@ class LSTMPredictions extends Component
             return;
         }
 
-        // Switching away from upload doesn't delete the stored file — the user
-        // can switch back to it without re-uploading.
+
         $this->trainingSource = $source;
         $this->uploadError    = null;
         $this->uploadSuccess  = null;
     }
 
-    /**
-     * Handle CSV upload, validate columns, store the file, and switch the
-     * training source to 'csv_upload' automatically on success.
-     */
     public function uploadCsv(): void
     {
         $this->uploadError   = null;
         $this->uploadSuccess = null;
 
-        // Validate file presence, type, and size with descriptive messages
         $this->validate($this->rules(), [
             'uploadedCsv.required' => __('app.csv_error_no_file'),
             'uploadedCsv.file'     => __('app.csv_error_not_file'),
@@ -100,7 +72,6 @@ class LSTMPredictions extends Component
         ]);
 
         try {
-            // Ensure the upload directory exists (guards against missing dir after deploy)
             $uploadDir = Storage::disk(CsvDataReader::DISK)->path(CsvDataReader::UPLOAD_PATH);
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
@@ -108,7 +79,6 @@ class LSTMPredictions extends Component
 
             $reader = new CsvDataReader();
 
-            // Store to a temp path first so we can inspect the headers
             $tmpPath = $this->uploadedCsv->store(
                 CsvDataReader::UPLOAD_PATH,
                 CsvDataReader::DISK
@@ -121,7 +91,6 @@ class LSTMPredictions extends Component
             $missing = $reader->validateColumns($tmpPath);
 
             if (!empty($missing)) {
-                // Remove invalid file and report the problem
                 Storage::disk(CsvDataReader::DISK)->delete($tmpPath);
                 $this->uploadError = __('app.csv_missing_columns', [
                     'columns' => implode(', ', $missing),
@@ -130,7 +99,6 @@ class LSTMPredictions extends Component
                 return;
             }
 
-            // Delete any previously uploaded file
             if ($this->uploadedCsvPath) {
                 Storage::disk(CsvDataReader::DISK)->delete($this->uploadedCsvPath);
             }
@@ -157,10 +125,6 @@ class LSTMPredictions extends Component
         }
     }
 
-    /**
-     * Force a full model retrain using the current training source.
-     * The LSTM service's fingerprint cache is bypassed.
-     */
     public function retrain(): void
     {
         $this->isRetraining = true;
@@ -170,7 +134,6 @@ class LSTMPredictions extends Component
             $client     = new LSTMClient();
 
             if ($client->isAvailable() && !empty($timeSeries)) {
-                // POST to /retrain which sets force_retrain=true server-side
                 $client->forceRetrain($timeSeries, $this->forecastDays);
             }
         } catch (\Throwable $e) {
@@ -180,21 +143,15 @@ class LSTMPredictions extends Component
         $this->isRetraining = false;
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
-
     public function render()
     {
         try {
             $lstmClient      = new LSTMClient();
             $isLSTMAvailable = $lstmClient->isAvailable();
 
-            // ── Build time series and reuse the same CsvDataReader instance ───
-            // Pass $csvReader by reference so buildTimeSeries() can populate it,
-            // avoiding a second instantiation just for serverCsvInfo() below.
             $csvReader  = new CsvDataReader();
             $timeSeries = $this->buildTimeSeries($csvReader);
 
-            // ── Get predictions ───────────────────────────────────────────────
             $result = null;
 
             if ($isLSTMAvailable && !empty($timeSeries)) {
@@ -203,7 +160,6 @@ class LSTMPredictions extends Component
                     : $lstmClient->predict($timeSeries, $this->forecastDays, false);
             }
 
-            // ── Fallback to statistical model ─────────────────────────────────
             if (!$result || empty($result['predictions'])) {
                 $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
                 $result   = array_merge($fallback, [
@@ -214,12 +170,6 @@ class LSTMPredictions extends Component
                 ]);
             }
 
-            // ── Build chart arrays and enrich predictions in a single pass ───────
-            // Previously four separate array_map() passes traversed $predictions
-            // four times.  One foreach produces the same four arrays, accumulates
-            // the confidence sum for the stats card, and pre-computes the day name
-            // for each row so the Blade table does not call Carbon::parse() per row
-            // (up to 21 instantiations per render).
             $rawPredictions  = $result['predictions'];
             $predictions     = [];
             $dailyLabels     = [];
@@ -236,15 +186,13 @@ class LSTMPredictions extends Component
                 $dailyUpperBound[] = round($p['upper_bound'], 1);
                 $confidenceSum    += $p['confidence'];
 
-                // Attach the pre-computed day name; Blade reads $pred['day_name']
-                // instead of calling \Carbon\Carbon::parse($pred['date'])->isoFormat('dddd').
                 $p['day_name'] = \Carbon\Carbon::parse($p['date'])->isoFormat('dddd');
                 $predictions[] = $p;
             }
 
             $predCount = count($predictions);
 
-            // ── Weekly summary ────────────────────────────────────────────────
+    
             $weeklyData = null;
             if (!empty($result['weekly_summary'])) {
                 $weeklyData = [
@@ -254,9 +202,6 @@ class LSTMPredictions extends Component
                 ];
             }
 
-            // ── Stats cards ───────────────────────────────────────────────────
-            // $dailyPredicted and $confidenceSum were already built in the loop
-            // above — no extra array traversal needed here.
             $totalPredicted = array_sum($dailyPredicted);
             $avgDaily       = $totalPredicted / max(1, $predCount);
             $avgConfidence  = $predCount > 0 ? $confidenceSum / $predCount : 0;
@@ -269,14 +214,6 @@ class LSTMPredictions extends Component
                 ['label' => __('app.confidence'),       'value' => number_format($avgConfidence * 100, 1) . '%', 'color' => 'purple', 'icon' => 'check-badge'],
             ];
 
-            // ── CSV server metadata (shown in the UI) ─────────────────────────
-            // Re-use the $csvReader already created above instead of instantiating
-            // a second CsvDataReader just for this one call.
-            $csvInfo = $csvReader->serverCsvInfo();
-
-            // ── Model performance metrics (display-only, no re-training) ──────
-            // getModelMetrics() calls GET /model-metrics which reads the persisted
-            // JSON file — it never triggers training or prediction.
             $modelMetrics = $isLSTMAvailable ? $lstmClient->getModelMetrics() : null;
 
             Log::info('LSTMPredictions: metrics pipeline trace', [
@@ -328,15 +265,6 @@ class LSTMPredictions extends Component
         }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Build the time-series array from whichever source is currently active.
-     * Falls back to the server CSV when the upload path is missing.
-     *
-     * Accepts an optional $reader so the caller can pass in an already-created
-     * CsvDataReader and avoid a second instantiation within the same request.
-     */
     private function buildTimeSeries(?CsvDataReader $reader = null): array
     {
         $reader = $reader ?? new CsvDataReader();
@@ -351,10 +279,9 @@ class LSTMPredictions extends Component
                         Log::warning('LSTMPredictions: uploaded CSV unreadable, falling back to server CSV', [
                             'error' => $e->getMessage(),
                         ]);
-                        // Fall through to server CSV
                     }
                 }
-                // No valid upload → fall through to server CSV
+                
                 $this->trainingSource = 'csv_server';
                 return $reader->readServerCsv('visitors');
 

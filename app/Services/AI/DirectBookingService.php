@@ -9,32 +9,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-/**
- * DirectBookingService — server-side booking creation for the AI chat pipeline.
- *
- * Mirrors the validation and business-logic of QuickBookModal::submit() and
- * QuickVehicleBookModal::submit(), but runs entirely server-side so that
- * ChatModal can return an accurate reply based on the real DB outcome rather
- * than speculatively claiming success.
- *
- * All existing validation rules, overlap checks, approval workflows
- * (status=pending, is_approve=0), and notification hooks are preserved.
- * Nothing here bypasses or changes business rules.
- */
 class DirectBookingService
 {
     private string $tz = 'Asia/Jakarta';
 
-    // ──────────────────────────────────────────────────────────
-    // Room booking
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Create a room booking from a complete draft payload.
-     *
-     * @param  array  $payload  As returned by BookingDraftService::buildRoomPayload()
-     * @return array{ok: bool, booking_id: int|null, error: string|null}
-     */
     public function createRoomBooking(array $payload): array
     {
         $tag = ['stage' => 'booking_validation', 'source' => 'DirectBookingService'];
@@ -43,7 +21,6 @@ class DirectBookingService
             'payload' => $payload,
         ]));
 
-        // ── Field validation ───────────────────────────────────
         $isOnline = ($payload['bookingType'] ?? 'meeting') === 'online_meeting';
 
         $title      = trim((string) ($payload['title']     ?? ''));
@@ -88,14 +65,12 @@ class DirectBookingService
         $startDt = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$startRaw}", $this->tz);
         $endDt   = Carbon::createFromFormat('Y-m-d H:i', "{$date} {$endRaw}",   $this->tz);
 
-        // end must be after start
         if ($endDt->lte($startDt)) {
             Log::warning('DirectBookingService: end_time not after start_time', $tag);
             return ['ok' => false, 'booking_id' => null,
                     'error' => 'end_time must be after start_time.'];
         }
 
-        // No past bookings
         if ($date < $now->toDateString()) {
             Log::warning('DirectBookingService: booking date is in the past', $tag);
             return ['ok' => false, 'booking_id' => null,
@@ -107,7 +82,6 @@ class DirectBookingService
                     'error' => 'Start time cannot be in the past.'];
         }
 
-        // ── Overlap check (room bookings only) ─────────────────
         if (! $isOnline && $roomId) {
             $overlap = BookingRoom::query()
                 ->where('room_id', $roomId)
@@ -130,7 +104,6 @@ class DirectBookingService
             }
         }
 
-        // ── Create ─────────────────────────────────────────────
         Log::info('DirectBookingService: room booking passed validation — creating record', array_merge($tag, [
             'stage'      => 'booking_create_started',
             'room_id'    => $roomId,
@@ -170,7 +143,6 @@ class DirectBookingService
                 } else {
                     $data['online_provider'] = in_array($provider, ['google_meet', 'zoom'], true)
                         ? $provider : 'google_meet';
-                    // Meeting URL is created on approval, same as the manual QuickBookModal flow
                 }
 
                 $booking   = BookingRoom::create($data);
@@ -200,16 +172,6 @@ class DirectBookingService
         }
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Vehicle booking
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Create a vehicle booking from a complete draft payload.
-     *
-     * @param  array  $payload  As returned by BookingDraftService::buildVehiclePayload()
-     * @return array{ok: bool, booking_id: int|null, error: string|null}
-     */
     public function createVehicleBooking(array $payload): array
     {
         $tag = ['stage' => 'booking_validation', 'source' => 'DirectBookingService'];
@@ -283,7 +245,6 @@ class DirectBookingService
                     'error' => 'end_time must be after start_time.'];
         }
 
-        // ── Late-return blocker ────────────────────────────────
         $blocker = VehicleBooking::findLateReturnBlocker((int) $vehicleId);
         if ($blocker) {
             Log::warning('DirectBookingService: vehicle has unresolved late return', array_merge($tag, [
@@ -294,7 +255,6 @@ class DirectBookingService
                     'error' => 'Vehicle unavailable — unresolved late return (Booking #' . $blocker->vehiclebooking_id . ').'];
         }
 
-        // ── Overlap check with 1-hour buffer ──────────────────
         $conflict = VehicleBooking::where('vehicle_id', $vehicleId)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])
             ->where(function ($q) use ($startAt, $endAt) {
@@ -314,7 +274,6 @@ class DirectBookingService
                         . '. (1-hour buffer required)'];
         }
 
-        // ── Create ─────────────────────────────────────────────
         Log::info('DirectBookingService: vehicle booking passed validation — creating record', array_merge($tag, [
             'stage'      => 'booking_create_started',
             'vehicle_id' => $vehicleId,

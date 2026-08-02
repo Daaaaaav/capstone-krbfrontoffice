@@ -28,7 +28,6 @@ class AISecurityReports extends Component
     public function render()
     {
         try {
-            // Service now handles: stats from full log, display list filtered by severity + capped at 25.
             $report = app(WazuhAlertService::class)
                 ->getRecentAlerts(25, $this->selectedSeverity);
 

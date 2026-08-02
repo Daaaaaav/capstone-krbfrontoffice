@@ -8,10 +8,6 @@ use App\Services\AI\Contracts\ContextProviderInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
-/**
- * Loads vehicle-related context: fleet list, today's trips, recent bookings.
- * Called only when the ContextRouter detects vehicle-booking intent.
- */
 class VehicleContextProvider implements ContextProviderInterface
 {
     private string $tz = 'Asia/Jakarta';
@@ -32,7 +28,6 @@ class VehicleContextProvider implements ContextProviderInterface
 
     private function build(?int $companyId, Carbon $now, string $today): string
     {
-        // Active fleet
         $fleet = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->where('is_active', 1)->orderBy('name')
             ->get(['vehicle_id', 'name', 'plate_number', 'category'])
@@ -41,7 +36,6 @@ class VehicleContextProvider implements ContextProviderInterface
                 $v->vehicle_id, $v->name ?? '—', $v->plate_number ?? '—', $v->category ?? '—'
             ))->join("\n") ?: '  (none)';
 
-        // Today's trips (cap 6)
         $todayTrips = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['vehicle', 'department'])
             ->whereDate('start_at', $today)->orderBy('start_at')->take(6)->get()
@@ -55,7 +49,6 @@ class VehicleContextProvider implements ContextProviderInterface
                 ucfirst($v->status ?? '—')
             ))->join("\n") ?: '  (none)';
 
-        // Recent trips last 60 days (cap 8)
         $recent = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->with(['vehicle', 'department'])
             ->where('start_at', '>=', $now->copy()->subDays(59)->startOfDay())

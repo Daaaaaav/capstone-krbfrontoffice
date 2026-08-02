@@ -26,7 +26,6 @@ class DocPackHistory extends Component
 
     protected string $paginationTheme = 'tailwind';
 
-    // Filters
     public string $q = '';
     public ?string $selectedDate = null;
     public string $dateMode = 'semua';
@@ -36,18 +35,11 @@ class DocPackHistory extends Component
     public ?int $userId = null;
     public ?int $departmentId = null;
     public string $userQ = '';
-
-    // Pagination
     public int $perDone = 6;
-
-    // Mobile filter modal
     public bool $showFilterModal = false;
     public bool $withTrashed = false;
-
-    // Edit & Delete (soft)
     public bool $showEdit = false;
     public ?int $editId = null;
-    
     public ?int $deletingId = null;
     public string $deletingSummary = '';
     public bool $showDeleteModal = false;
@@ -80,7 +72,6 @@ class DocPackHistory extends Component
         }
     }
 
-    // ───────── Mobile Filter Modal ─────────
     public function openFilterModal(): void
     {
         $this->showFilterModal = true;
@@ -204,7 +195,6 @@ class DocPackHistory extends Component
         $this->editCurrentImage = $row->image;
         $this->editPhoto = null;
         
-        // Generate pseudo-logs based on timestamps
         $logs = [];
         if ($row->created_at) {
             $logs[] = ['status' => 'Arrived at Receptionist', 'time' => $row->created_at, 'type' => 'info'];
@@ -219,7 +209,6 @@ class DocPackHistory extends Component
             $logs[] = ['status' => 'Deleted', 'time' => $row->deleted_at, 'type' => 'danger'];
         }
         
-        // Sort logs by time
         usort($logs, function($a, $b) {
             return \Carbon\Carbon::parse($a['time'])->timestamp <=> \Carbon\Carbon::parse($b['time'])->timestamp;
         });

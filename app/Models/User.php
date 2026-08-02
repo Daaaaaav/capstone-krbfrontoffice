@@ -7,7 +7,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany; // <--- DITAMBAHKAN
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -20,14 +20,9 @@ class User extends Authenticatable
     protected $primaryKey = 'user_id';
     public $incrementing = true;
     protected $keyType = 'int';
-
-    /**
-     * department_id TETAP ADA di fillable untuk menjaga
-     * kompatibilitas dengan kode lama Anda.
-     */
     protected $fillable = [
         'company_id',
-        'department_id', // <--- TETAP ADA
+        'department_id',
         'role_id',
         'full_name',
         'email',
@@ -47,9 +42,6 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Simpan email lowercase.
-     */
     protected function email(): Attribute
     {
         return Attribute::make(
@@ -57,9 +49,6 @@ class User extends Authenticatable
         );
     }
 
-    /**
-     * Virtual "name" -> full_name.
-     */
     protected function name(): Attribute
     {
         return Attribute::make(
@@ -68,42 +57,28 @@ class User extends Authenticatable
         );
     }
 
-    /**
-     * Gunakan user_id sebagai auth identifier.
-     */
     public function getAuthIdentifierName()
     {
         return 'user_id';
     }
 
-    // ===== RELATIONS =====
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class, 'company_id', 'company_id');
     }
 
-    // <--- RELASI LAMA (TETAP DISIMPAN) --->
-    /**
-     * Relasi untuk "Departemen Utama" user (dari kolom users.department_id).
-     * Kode lama Anda ($user->department) akan tetap berfungsi.
-     */
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
     }
 
-    // <--- RELASI BARU (UNTUK MULTI-DEPT) --->
-    /**
-     * Relasi untuk SEMUA departemen yang bisa diakses user (dari tabel pivot user_departments).
-     * Gunakan ini untuk fitur baru: $user->departments
-     */
     public function departments(): BelongsToMany
     {
         return $this->belongsToMany(
-            Department::class,    // Model tujuan
-            'user_departments',   // Nama tabel pivot
-            'user_id',            // Foreign key untuk User di tabel pivot
-            'department_id'       // Foreign key untuk Department di tabel pivot
+            Department::class,   
+            'user_departments',  
+            'user_id',           
+            'department_id'       
         );
     }
 
@@ -117,24 +92,9 @@ class User extends Authenticatable
         return $this->hasMany(TicketCommentRead::class, 'user_id', 'user_id');
     }
 
-    // <--- FUNGSI HELPER BARU (Opsional tapi sangat berguna) --->
-    /**
-     * Helper untuk mengecek apakah user ada di departemen tertentu (via pivot).
-     *
-     * @param int $departmentId
-     * @return bool
-     */
     public function isInDepartment(int $departmentId): bool
     {
-        // Cek di relasi 'departments' (jamak) apakah ada department_id yang cocok
         return $this->departments()->where('departments.department_id', $departmentId)->exists();
-    }
-
-    // <--- Relasi Users dengan tickets, ruang bookings, dan Vehicle bookings -->
-
-    public function tickets()
-    {
-        return $this->hasMany(\App\Models\Ticket::class, 'user_id', 'user_id');
     }
 
     public function rooms()

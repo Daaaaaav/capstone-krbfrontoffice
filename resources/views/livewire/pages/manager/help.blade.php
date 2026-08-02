@@ -1,12 +1,10 @@
 <div>
     <main class="max-w-3xl mx-auto py-8 space-y-8">
 
-        {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.help_title') }}"
             subtitle="{{ __('app.help_find_answers') }}" />
 
-        {{-- ===== SEARCH ===== --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-4 shadow-sm">
             <div class="relative flex items-center">
                 <div class="absolute left-3 text-[#9aaa8a]">
@@ -31,7 +29,6 @@
             </div>
         </div>
 
-        {{-- ===== FAQ LIST ===== --}}
         @if(count($filteredFaqs) > 0)
             <div class="space-y-3" x-data="{ open: null }">
                 @foreach($filteredFaqs as $index => $faq)
@@ -72,7 +69,6 @@
             </div>
         @endif
 
-        {{-- ===== CONTACT CARD ===== --}}
         <div class="bg-gray-900 text-white rounded-2xl px-6 py-6 shadow-sm">
             <h3 class="text-base font-semibold mb-1">{{ __('app.still_need_help') }}</h3>
             <p class="text-sm text-gray-300 mb-4">

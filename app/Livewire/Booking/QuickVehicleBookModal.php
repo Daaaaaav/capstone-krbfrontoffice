@@ -14,9 +14,8 @@ use App\Services\SecurityMonitoringService;
 class QuickVehicleBookModal extends Component
 {
     public bool   $show = false;
-    public string $mode = 'create'; // create|rebook
+    public string $mode = 'create'; 
 
-    // ── form fields ───────────────────────────────────────────
     public ?int    $vehicle_id    = null;
     public string  $borrower_name = '';
     public ?string $date_from     = null;
@@ -25,19 +24,15 @@ class QuickVehicleBookModal extends Component
     public ?string $end_time      = null;
     public string  $purpose       = '';
     public ?string $destination   = null;
-    public ?string $purpose_type  = null;  // dinas|operasional|antar_jemput|lainnya
+    public ?string $purpose_type  = null;  
     public string  $odd_even_area = 'tidak';
 
-    // ── display-only context from AI (not written to DB) ─────
     public ?string $ai_department     = null;
     public ?string $ai_historical_user = null;
 
-    // ── dropdown data ─────────────────────────────────────────
     public array $vehicles = [];
 
     protected string $tz = 'Asia/Jakarta';
-
-    // ──────────────────────────────────────────────────────────
 
     public function mount(): void
     {
@@ -54,8 +49,6 @@ class QuickVehicleBookModal extends Component
             ->values()
             ->all();
     }
-
-    // ──────────────────────────────────────────────────────────
 
     #[On('open-quick-vehicle-book')]
     public function open(array $payload = []): void
@@ -88,7 +81,6 @@ class QuickVehicleBookModal extends Component
         $this->show = false;
     }
 
-    // ──────────────────────────────────────────────────────────
 
     public function submit(): void
     {
@@ -114,7 +106,6 @@ class QuickVehicleBookModal extends Component
             return;
         }
 
-        // Block if vehicle has an unresolved late return
         $blocker = VehicleBooking::findLateReturnBlocker((int) $this->vehicle_id);
         if ($blocker) {
             $this->dispatch('toast', type: 'error',
@@ -122,7 +113,6 @@ class QuickVehicleBookModal extends Component
             return;
         }
 
-        // ── Overlapping booking check with 1-hour buffer ───────────────────
         $conflict = VehicleBooking::where('vehicle_id', $this->vehicle_id)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])
             ->where(function($q) use ($startAt, $endAt) {
@@ -136,7 +126,6 @@ class QuickVehicleBookModal extends Component
                 message: 'This vehicle is already booked from ' . $conflict->start_at->format('H:i') . ' to ' . $conflict->end_at->format('H:i') . '. (1-hour buffer required)');
             return;
         }
-        // ── end overlapping booking check ──────────────────────────────────
 
         SecurityMonitoringService::logFormSubmit('quick_vehicle_booking', [
             'vehicle_id'   => $this->vehicle_id,
@@ -174,8 +163,6 @@ class QuickVehicleBookModal extends Component
         $this->dispatch('vehicle-booking-created');
         $this->close();
     }
-
-    // ──────────────────────────────────────────────────────────
 
     protected function resetForm(): void
     {

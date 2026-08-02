@@ -12,13 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Tool: get_analytics
- *
- * Returns summarised booking/operational statistics for a given period.
- * Reads only — no writes. Results are cached briefly to avoid repeated
- * queries when the AI calls this multiple times in one session.
- */
 class AnalyticsTool implements ToolInterface
 {
     public function name(): string

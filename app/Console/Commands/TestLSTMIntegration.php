@@ -22,7 +22,6 @@ class TestLSTMIntegration extends Command
         $this->info('===========================================');
         $this->newLine();
 
-        // Test 1: Check LSTM Service Availability
         $this->info('Test 1: Checking LSTM Service...');
         $lstmClient = new LSTMClient();
         $isAvailable = $lstmClient->isAvailable();
@@ -34,7 +33,6 @@ class TestLSTMIntegration extends Command
         }
         $this->newLine();
 
-        // Test 2: Data Preprocessing
         $this->info('Test 2: Testing Data Preprocessing...');
         $preprocessor = new DataPreprocessor();
         
@@ -50,7 +48,6 @@ class TestLSTMIntegration extends Command
         }
         $this->newLine();
 
-        // Test 3: Make Prediction
         $this->info('Test 3: Making Predictions...');
         $predictionService = new PredictionService();
         
@@ -83,7 +80,6 @@ class TestLSTMIntegration extends Command
         }
         $this->newLine();
 
-        // Test 4: Anomaly Detection
         $this->info('Test 4: Testing Anomaly Detection...');
         
         try {
@@ -104,7 +100,6 @@ class TestLSTMIntegration extends Command
         }
         $this->newLine();
 
-        // Test 5: Feature Extraction
         $this->info('Test 5: Testing Feature Extraction...');
         
         try {
@@ -119,7 +114,6 @@ class TestLSTMIntegration extends Command
         }
         $this->newLine();
 
-        // Summary
         $this->info('===========================================');
         $this->info('Test Summary');
         $this->info('===========================================');

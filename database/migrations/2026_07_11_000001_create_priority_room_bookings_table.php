@@ -16,7 +16,6 @@ return new class extends Migration
             $table->unsignedBigInteger('room_id');
             $table->foreign('room_id')->references('room_id')->on('rooms')->cascadeOnDelete();
 
-            // Booking details
             $table->string('meeting_title');
             $table->date('date');
             $table->string('start_time', 10);   // HH:MM
@@ -24,15 +23,10 @@ return new class extends Migration
             $table->unsignedSmallInteger('number_of_attendees')->default(1);
             $table->text('special_notes')->nullable();
 
-            // Status: pending_receipt (just created) | pending_cancellation (waiting receptionist approval to cancel conflicting booking)
-            //         approved | rejected | cancelled_conflict_denied (receptionist denied the cancellation request)
             $table->string('status', 40)->default('pending_receipt');
-
-            // If this priority booking wants to cancel an existing offline booking
-            $table->unsignedBigInteger('cancels_booking_id')->nullable(); // FK to booking_rooms.bookingroom_id
+            $table->unsignedBigInteger('cancels_booking_id')->nullable(); 
             $table->foreign('cancels_booking_id')->references('bookingroom_id')->on('booking_rooms')->nullOnDelete();
 
-            // Who handled this (receptionist who approved/denied)
             $table->unsignedBigInteger('handled_by')->nullable();
             $table->foreign('handled_by')->references('user_id')->on('users')->nullOnDelete();
             $table->text('rejection_reason')->nullable();

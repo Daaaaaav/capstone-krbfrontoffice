@@ -6,27 +6,18 @@ trait HasViewMode
 {
     public string $viewMode = 'card';
 
-    /**
-     * Livewire lifecycle hook that automatically runs on boot.
-     */
     public function bootHasViewMode(): void
     {
         $this->viewMode = session('viewMode', 'card');
         $this->updatePerPageLimits();
     }
 
-    /**
-     * Livewire lifecycle hook that automatically runs on initial mount.
-     */
     public function mountHasViewMode(): void
     {
         $this->viewMode = session('viewMode', 'card');
         $this->updatePerPageLimits();
     }
 
-    /**
-     * Update the active view mode, persist it in session, adjust limits, and reset pagination.
-     */
     public function setViewMode(string $mode): void
     {
         if (in_array($mode, ['card', 'table'])) {
@@ -34,7 +25,6 @@ trait HasViewMode
             session(['viewMode' => $mode]);
             $this->updatePerPageLimits();
 
-            // Safely reset all common page names back to 1
             if (method_exists($this, 'resetPage')) {
                 $pages = [
                     'page', 'pageDone', 'pageRejected', 'pendingPage', 
@@ -52,9 +42,6 @@ trait HasViewMode
         }
     }
 
-    /**
-     * Dynamically synchronize per-page properties of the host component.
-     */
     protected function updatePerPageLimits(): void
     {
         $limit = $this->viewMode === 'card' ? 6 : 10;

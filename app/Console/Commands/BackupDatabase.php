@@ -7,11 +7,6 @@ use Illuminate\Support\Facades\DB;
 
 class BackupDatabase extends Command
 {
-    /**
-     * Usage:
-     *   php artisan db:backup                    → full dump
-     *   php artisan db:backup --tables=deliveries,storages,guestbooks
-     */
     protected $signature = 'db:backup
                             {--tables= : Comma-separated list of tables to back up (default: all)}
                             {--dir=    : Output directory (default: storage/app/backups)}';
@@ -45,7 +40,6 @@ class BackupDatabase extends Command
 
         $tableArgs = implode(' ', $tableList);
 
-        // Build the mysqldump command
         $passArg = $password ? "-p" . escapeshellarg($password) : '';
         $cmd = sprintf(
             'mysqldump -h %s -P %s -u %s %s --single-transaction --skip-lock-tables %s > %s',

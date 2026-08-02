@@ -19,16 +19,10 @@ class Storage extends Component
     protected string $paginationTheme = 'tailwind';
 
     public int $company_id = 0;
-
-    // Filters
     public string $search = '';
-
-    // Create form
     public string $code      = '';
     public string $name      = '';
     public bool   $is_active = true;
-
-    // Modal state
     public bool   $showModal      = false;
     public bool   $editMode       = false;
     public ?int   $edit_id        = null;
@@ -46,11 +40,6 @@ class Storage extends Component
         $this->resetPage(pageName: 'storagesPage');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | MODAL CONTROL
-    |--------------------------------------------------------------------------
-    */
     public function openCreateModal(): void
     {
         $this->resetForm();
@@ -97,11 +86,6 @@ class Storage extends Component
         $this->edit_is_active = true;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION RULES
-    |--------------------------------------------------------------------------
-    */
     protected function createRules(): array
     {
         return [
@@ -142,11 +126,6 @@ class Storage extends Component
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | SAVE (CREATE / UPDATE)
-    |--------------------------------------------------------------------------
-    */
     public function save(): void
     {
         try {
@@ -184,11 +163,6 @@ class Storage extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE (soft delete)
-    |--------------------------------------------------------------------------
-    */
     public function delete(int $id): void
     {
         try {
@@ -202,11 +176,6 @@ class Storage extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | RENDER
-    |--------------------------------------------------------------------------
-    */
     public function render()
     {
         $rows = StorageModel::query()

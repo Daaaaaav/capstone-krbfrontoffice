@@ -51,13 +51,9 @@ class Dashboard extends Component
     {
         $companyId = optional(Auth::user())->company_id;
 
-        // Range 7 hari terakhir (hari ini + 6 hari ke belakang)
         $startOfRange = Carbon::now($this->tz)->subDays(6)->startOfDay();
         $endOfRange = Carbon::now($this->tz)->endOfDay();
 
-        /**
-         * Weekly totals (7 hari terakhir) per modul
-         */
         $weeklyRoomBookingsCount = BookingRoom::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereBetween('created_at', [$startOfRange, $endOfRange])
@@ -78,9 +74,6 @@ class Dashboard extends Component
             ->whereBetween('created_at', [$startOfRange, $endOfRange])
             ->count();
 
-        /**
-         * Newest Booking Room (limit 5)
-         */
         $latestBookingRooms = BookingRoom::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')
@@ -95,9 +88,6 @@ class Dashboard extends Component
                 'status' => ucfirst($br->status ?? '—'),
             ]);
 
-        /**
-         * Newest Vehicle Bookings (limit 5)
-         */
         $latestVehicleBookings = VehicleBooking::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')
@@ -113,9 +103,6 @@ class Dashboard extends Component
                 'status' => ucfirst($vb->status ?? '—'),
             ]);
 
-        /**
-         * Newest Guestbook Entries (limit 5)
-         */
         $latestGuests = Guestbook::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')
@@ -129,9 +116,6 @@ class Dashboard extends Component
                 'date' => $this->fmtDate($g->date),
             ]);
 
-        /**
-         * Newest Document / Package Deliveries (limit 5)
-         */
         $latestDocs = Delivery::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')

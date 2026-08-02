@@ -10,8 +10,6 @@ class AISettingsSeeder extends Seeder
     public function run(): void
     {
         $settings = [
-
-            // ── LSTM Model Hyperparameters ────────────────────────────────────
             [
                 'key'         => 'lstm_units',
                 'value'       => '64',
@@ -109,7 +107,6 @@ class AISettingsSeeder extends Seeder
                 'description' => 'Maximum allowed confidence score returned to the UI (0.0–1.0).',
             ],
 
-            // ── Fallback Moving Average ───────────────────────────────────────
             [
                 'key'         => 'ma_window',
                 'value'       => '7',
@@ -260,8 +257,6 @@ class AISettingsSeeder extends Seeder
                 'label'       => 'Approval Improvement Threshold (%)',
                 'description' => 'Approval rates below this generate a process-improvement recommendation.',
             ],
-
-            // ── Occupancy Fallback MA (extra params) ──────────────────────────
             [
                 'key'         => 'ma_noise_factor',
                 'value'       => '0.1',

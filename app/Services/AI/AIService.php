@@ -13,28 +13,11 @@ use App\Services\AI\Providers\SiliconFlowProvider;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Central AI service — v2.
- *
- * Enhancements over v1:
- *  - Automatic provider failover through AI_PROVIDER_PRIORITY chain.
- *  - Per-provider health cache: unhealthy providers are skipped temporarily.
- *  - Logical model alias resolution (e.g. "qwen_32b" → provider-specific slug).
- *  - Non-retryable auth errors skip directly to the next provider.
- *  - All existing callers (ChatModal, GroqService shim) continue to work unchanged.
- */
 class AIService
 {
-    /** Seconds to cache a provider as "unhealthy" after a hard failure. */
     private int $healthTtl;
-
-    /** Seconds between per-provider retry attempts. */
     private int $retryDelay;
-
-    /** Attempts per provider before moving to the next one. */
     private int $maxAttempts;
-
-    /** Ordered list of provider names to try. */
     private array $priorityList;
 
     public function __construct()
@@ -45,18 +28,6 @@ class AIService
         $this->priorityList = $this->buildPriorityList();
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Public API (identical signature to v1)
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Send a chat completion request with automatic provider failover.
-     *
-     * @param  string  $systemPrompt
-     * @param  string  $userPrompt
-     * @param  array   $history       Multi-turn history: [['role'=>'user'|'assistant','content'=>string]]
-     * @return string  Raw model reply text.
-     */
     public function chat(string $systemPrompt, string $userPrompt, array $history = []): string
     {
         Log::info('AIService: chat() called', [
@@ -68,7 +39,6 @@ class AIService
         ]);
 
         foreach ($this->priorityList as $providerName) {
-            // Skip providers currently marked unhealthy
             if ($this->isUnhealthy($providerName)) {
                 Log::info('AIService: skipping unhealthy provider', [
                     'stage'    => 'provider_selection',
@@ -91,10 +61,8 @@ class AIService
             if ($result !== null) {
                 return $result;
             }
-            // null means this provider failed — continue to next in chain
         }
 
-        // All providers exhausted
         Log::error('AIService: all providers in the failover chain failed', [
             'stage'         => 'provider_selection',
             'priority_list' => $this->priorityList,
@@ -102,9 +70,6 @@ class AIService
         return $this->genericErrorMessage();
     }
 
-    /**
-     * Return the name of the first healthy provider in the priority list.
-     */
     public function getProviderName(): string
     {
         foreach ($this->priorityList as $name) {
@@ -115,10 +80,6 @@ class AIService
         return ucfirst($this->priorityList[0] ?? 'unknown');
     }
 
-    /**
-     * Return current health status of all configured providers.
-     * Useful for admin dashboards / health endpoints.
-     */
     public function getProviderHealth(): array
     {
         $status = [];
@@ -128,14 +89,6 @@ class AIService
         return $status;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Per-provider attempt loop
-    // ──────────────────────────────────────────────────────────
-
-    /**
-     * Attempt up to $maxAttempts calls on a single provider.
-     * Returns the reply string on success, or null to signal "try next provider".
-     */
     private function attemptProvider(
         AIProviderInterface $provider,
         string              $providerName,
@@ -248,10 +201,6 @@ class AIService
         return null;
     }
 
-    // ──────────────────────────────────────────────────────────
-    // Provider construction
-    // ──────────────────────────────────────────────────────────
-
     private function buildProvider(string $name): AIProviderInterface
     {
         $creds   = config("ai.credentials.{$name}", []);
@@ -275,27 +224,16 @@ class AIService
         };
     }
 
-    /**
-     * Resolve the model slug for a specific provider.
-     * Handles logical aliases (e.g. "qwen_32b") and raw slugs.
-     */
     private function resolveModel(string $providerName): string
     {
         $modelConfig = (string) config('ai.model', 'qwen/qwen3-32b');
         $aliases     = (array)  config('ai.model_aliases', []);
 
-        // Check if the configured model is a logical alias
         if (isset($aliases[$modelConfig][$providerName])) {
             return $aliases[$modelConfig][$providerName];
         }
-
-        // Not an alias — use the raw slug as-is for all providers
         return $modelConfig;
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Priority list
-    // ──────────────────────────────────────────────────────────
 
     private function buildPriorityList(): array
     {
@@ -303,10 +241,6 @@ class AIService
         $list = array_filter(array_map('strtolower', array_map('trim', $list)));
         return array_values($list ?: ['groq']);
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Health cache
-    // ──────────────────────────────────────────────────────────
 
     private function healthKey(string $provider): string
     {
@@ -339,20 +273,12 @@ class AIService
         Cache::forget($this->healthKey($provider));
     }
 
-    // ──────────────────────────────────────────────────────────
-    // User-facing messages
-    // ──────────────────────────────────────────────────────────
-
     private function genericErrorMessage(): string
     {
         return "Sorry, I could not reach the AI service right now. "
              . "Please check your connection and try again in a moment.";
     }
 
-    /**
-     * Attempt to extract an HTTP status code from an exception message.
-     * Providers format their exception messages as "ProviderName API error 429: ...".
-     */
     private function extractHttpStatus(\Throwable $e): ?int
     {
         if (preg_match('/\b(4\d{2}|5\d{2})\b/', $e->getMessage(), $m)) {

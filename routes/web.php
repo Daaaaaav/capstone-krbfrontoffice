@@ -4,14 +4,12 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
-// ========== Controllers ==========
 use App\Http\Controllers\GuestbookScanController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\VehicleAttachmentController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ChatExportController;
 
-// ========== Livewire Pages (Manager) ==========
 use App\Livewire\Pages\Manager\Dashboard as ManagerDashboard;
 use App\Livewire\Pages\Manager\ReceptionistUsers as ReceptionistUsers;
 use App\Livewire\Pages\Manager\RoomBookingStatistics as RoomBookingStatistics;

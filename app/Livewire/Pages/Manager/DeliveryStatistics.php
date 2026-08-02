@@ -38,15 +38,11 @@ class DeliveryStatistics extends Component
 
             $since = now()->subDays($days)->startOfDay();
 
-            // ── KPI counts ────────────────────────────────────────────────────
-            // Delivery statuses: pending | stored | done
-            // "done" covers both delivered and taken (direction field distinguishes them)
             $totalDeliveries     = Delivery::where('company_id', $companyId)->where('created_at', '>=', $since)->count();
             $pendingDeliveries   = Delivery::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'pending')->count();
             $storedDeliveries    = Delivery::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'stored')->count();
             $completedDeliveries = Delivery::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'done')->count();
 
-            // ── Daily chart — zero-filled for every day in range ──────────────
             $raw = Delivery::where('company_id', $companyId)
                 ->where('created_at', '>=', $since)
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
@@ -62,7 +58,6 @@ class DeliveryStatistics extends Component
                 $data[]   = (int) ($raw[$date] ?? 0);
             }
 
-            // ── Delivery list ─────────────────────────────────────────────────
             $deliveries = $this->showList
                 ? Delivery::where('company_id', $companyId)
                     ->where('created_at', '>=', $since)
