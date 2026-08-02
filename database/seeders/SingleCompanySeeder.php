@@ -18,7 +18,6 @@ use App\Models\{
     Storage,
     Vehicle,
     VehicleBooking,
-    VehicleBookingPhoto, 
     Delivery,
     Announcement,
     Information,
@@ -206,25 +205,6 @@ class SingleCompanySeeder extends Seeder
                     'created_at'   => $start,
                     'updated_at'   => $start,
                 ]);
-
-                if (in_array($status, ['on_progress', 'returned', 'completed', 'late_return'])) {
-                    VehicleBookingPhoto::create([
-                        'vehiclebooking_id' => $booking->vehiclebooking_id,
-                        'user_id'           => $user->user_id,
-                        'photo_type'        => 'before',
-                        'photo_path'        => 'vehicle_photos/demo_sample_before_' . $i . '.jpg',
-                        'created_at'        => $start,
-                    ]);
-                }
-                if ($status === 'completed') {
-                    VehicleBookingPhoto::create([
-                        'vehiclebooking_id' => $booking->vehiclebooking_id,
-                        'user_id'           => $user->user_id,
-                        'photo_type'        => 'after',
-                        'photo_path'        => 'vehicle_photos/demo_sample_after_' . $i . '.jpg',
-                        'created_at'        => $end,
-                    ]);
-                }
             }
         }
         echo "  ✅ Seeded Vehicle Bookings\n";

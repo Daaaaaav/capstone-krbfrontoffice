@@ -55,11 +55,6 @@ class VehicleBooking extends Model
         return $this->belongsTo(\App\Models\User::class, 'user_id', 'user_id');
     }
 
-    public function photos()
-    {
-        return $this->hasMany(\App\Models\VehicleBookingPhoto::class, 'vehiclebooking_id', 'vehiclebooking_id');
-    }
-
     public static function findLateReturnBlocker(int $vehicleId, ?int $excludeBookingId = null): ?static
     {
         return static::query()
