@@ -24,10 +24,10 @@ class OccupancyForecasting extends Component
 {
     use WithFileUploads;
     public string $forecastType     = 'combined';   // room | vehicle | combined (default)
-    public int    $forecastDays     = 21;      // 7 | 14 | 21 (default) 
+    public int    $forecastDays     = 21;      // 7 | 14 | 21 (default)
     public string $trainingSource   = 'csv_server'; // csv_server (default) | csv_upload | live_db
     public        $uploadedCsv      = null;
-    public ?string $uploadedCsvPath = null;   
+    public ?string $uploadedCsvPath = null;
     public ?string $uploadedCsvName = null;
     public ?string $uploadError     = null;
     public ?string $uploadSuccess   = null;
@@ -114,16 +114,11 @@ class OccupancyForecasting extends Component
 
     public function render()
     {
-        $companyId = Auth::user()->company_id;
-
         $reader = new CsvDataReader();
-
         $this->csvInfo = $reader->serverCsvInfo();
-
         $roomHistory    = $this->buildTimeSeries('room',    $reader);
         $vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
-
-        $lstm        = new LSTMClient();
+        $lstm        = app(LSTMClient::class);
         $isAvailable = $lstm->isAvailable();
 
         $roomForecast    = null;
@@ -139,7 +134,6 @@ class OccupancyForecasting extends Component
                 $vehicleForecast = $result['predictions'] ?? null;
             }
         } else {
-            // fallback simple moving-average projection
             if (in_array($this->forecastType, ['room', 'combined'])) {
                 $roomForecast = $this->movingAverageForecast($roomHistory, $this->forecastDays);
             }
@@ -149,8 +143,7 @@ class OccupancyForecasting extends Component
         }
 
         $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
-
-        $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
+        $stats     = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
         $modelMetrics = $isAvailable ? $lstm->getModelMetrics() : null;
 
@@ -187,7 +180,7 @@ class OccupancyForecasting extends Component
         $reader = $reader ?? new CsvDataReader();
 
         $csvMetric = match($type) {
-            'room'    => 'combined_rooms', 
+            'room'    => 'combined_rooms',
             'vehicle' => 'vehicle_bookings',
             default   => 'visitors',
         };
@@ -303,7 +296,7 @@ class OccupancyForecasting extends Component
             $avg   = array_sum(array_column($slice, 'count')) / count($slice);
         }
 
-        $dowTotals = array_fill(0, 7, 0.0);   
+        $dowTotals = array_fill(0, 7, 0.0);
         $dowCounts = array_fill(0, 7, 0);
 
         foreach ($history as $row) {
@@ -325,8 +318,6 @@ class OccupancyForecasting extends Component
             $dowMultiplier[$d] = $dowAvg[$d] / $overallHistAvg;
         }
 
-        // Always anchor to today so forecast dates are never stale relative
-        // to the historical CSV end date.
         $today    = date('Y-m-d');
         $forecast = [];
 
@@ -357,8 +348,8 @@ class OccupancyForecasting extends Component
         $hasVehicle  = $vehicle !== null;
 
         foreach ($base as $i => $p) {
-            $labels[]    = date('d/m', strtotime($p['date']));
-            $roomData[]  = $hasRoom    ? round($p['predicted'], 1) : null;
+            $labels[]      = date('d/m', strtotime($p['date']));
+            $roomData[]    = $hasRoom    ? round($p['predicted'], 1) : null;
             $vehicleData[] = $hasVehicle ? round($vehicle[$i]['predicted'], 1) : null;
         }
 

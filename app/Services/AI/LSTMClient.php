@@ -3,11 +3,17 @@
 namespace App\Services\AI;
 
 use App\Models\AISettings;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class LSTMClient
 {
+    private const CSV_INFO_TTL  = 3600;  
+    private const METRICS_TTL   = 3600;  
+    private const PREDICT_TTL   = 1800;
+    private const AVAIL_TTL     = 10; 
+
     private string $baseUrl;
     private int    $timeout;
     private int    $minimumDataPoints;
@@ -19,27 +25,75 @@ class LSTMClient
         $this->minimumDataPoints = AISettings::get('min_data_points', 45);
     }
 
+    // ── Internal helpers ────────────────────────────────────────────
+
     private function http(): \Illuminate\Http\Client\PendingRequest
     {
-        $headers = ['Accept' => 'application/json'];
-
-        // if (str_contains($this->baseUrl, 'ngrok')) {
-        //     $headers['ngrok-skip-browser-warning'] = '1';
-        // }
-
-        return \Illuminate\Support\Facades\Http::timeout($this->timeout)
-            ->withHeaders($headers);
+        return Http::timeout($this->timeout)
+            ->withHeaders(['Accept' => 'application/json']);
     }
+
+    /**
+     * Build a compact, stable hash for a time-series array so it can
+     * be used as part of a cache key without serialising the whole
+     * dataset into the key string.
+     */
+    private function datasetHash(array $timeSeries): string
+    {
+        if (empty($timeSeries)) {
+            return 'empty';
+        }
+        $first = $timeSeries[0]['date'] ?? '';
+        $last  = $timeSeries[count($timeSeries) - 1]['date'] ?? '';
+        $n     = count($timeSeries);
+        $sum   = array_sum(array_column($timeSeries, 'count'));
+        return md5("{$first}|{$last}|{$n}|{$sum}");
+    }
+
+    /**
+     * Fetch the model fingerprint from FastAPI (used for cache key
+     * scoping).  Falls back to a static string if the service is
+     * unavailable.
+     */
+    private function modelFingerprint(): string
+    {
+        return Cache::remember('lstm.model_fingerprint', 60, function () {
+            try {
+                $resp = $this->http()->timeout(3)->get($this->baseUrl . '/model-info');
+                if ($resp->successful()) {
+                    return $resp->json('fingerprint') ?? 'no-fingerprint';
+                }
+            } catch (\Exception $e) {
+                // ignore — fall through to default
+            }
+            return 'unavailable';
+        });
+    }
+
+    /** Invalidate every cache entry that depends on the trained model. */
+    private function bustModelCache(): void
+    {
+        Cache::forget('lstm.model_fingerprint');
+        Cache::forget('lstm.model_metrics');
+        // Prediction cache entries are keyed per fingerprint; forgetting
+        // the fingerprint key causes all subsequent lookups to miss and
+        // rebuild with the new fingerprint automatically.
+        Log::info('LSTMClient: model cache busted (post-retrain).');
+    }
+
+    // ── Public API ──────────────────────────────────────────────────
 
     public function isAvailable(): bool
     {
-        try {
-            $response = $this->http()->timeout(2)->get($this->baseUrl . '/');
-            return $response->successful();
-        } catch (\Exception $e) {
-            Log::warning('LSTM service unavailable', ['error' => $e->getMessage()]);
-            return false;
-        }
+        return Cache::remember('lstm.is_available', self::AVAIL_TTL, function () {
+            try {
+                $response = $this->http()->timeout(2)->get($this->baseUrl . '/');
+                return $response->successful();
+            } catch (\Exception $e) {
+                Log::warning('LSTM service unavailable', ['error' => $e->getMessage()]);
+                return false;
+            }
+        });
     }
 
     public function predict(array $timeSeries, int $forecastDays = 7, bool $useDummyData = false): ?array
@@ -53,48 +107,53 @@ class LSTMClient
                 return null;
             }
 
-            $data = array_map(fn ($p) => [
-                'date'  => $p['date'],
-                'count' => (float) $p['count'],
-            ], $timeSeries);
+            $fp       = $this->modelFingerprint();
+            $dhash    = $this->datasetHash($timeSeries);
+            $cacheKey = "lstm.predict.{$fp}.{$dhash}.{$forecastDays}." . ($useDummyData ? 'dummy' : 'real');
 
-            $payload = [
-                'data'           => $data,
-                'forecast_days'  => $forecastDays,
-                'lstm_config'    => AISettings::group('lstm'),
-            ];
+            return Cache::remember($cacheKey, self::PREDICT_TTL, function () use ($timeSeries, $forecastDays, $useDummyData) {
+                $data = array_map(fn ($p) => [
+                    'date'  => $p['date'],
+                    'count' => (float) $p['count'],
+                ], $timeSeries);
 
-            $response = $this->http()
-                ->post($this->baseUrl . '/predict', $payload);
+                $payload = [
+                    'data'           => $data,
+                    'forecast_days'  => $forecastDays,
+                    'lstm_config'    => AISettings::group('lstm'),
+                ];
 
-            if (!$response->successful()) {
-                Log::warning('LSTM service returned unsuccessful response', [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
+                $response = $this->http()->post($this->baseUrl . '/predict', $payload);
+
+                if (!$response->successful()) {
+                    Log::warning('LSTM service returned unsuccessful response', [
+                        'status' => $response->status(),
+                        'body'   => $response->body(),
+                    ]);
+                    return null;
+                }
+
+                $result = $response->json();
+
+                Log::info('LSTM prediction generated', [
+                    'model'            => $result['model'] ?? 'unknown',
+                    'rmse'             => $result['metrics']['rmse'] ?? null,
+                    'training_samples' => $result['training_samples'] ?? null,
                 ]);
-                return null;
-            }
 
-            $result = $response->json();
-
-            Log::info('LSTM prediction generated', [
-                'model'            => $result['model'] ?? 'unknown',
-                'rmse'             => $result['metrics']['rmse'] ?? null,
-                'training_samples' => $result['training_samples'] ?? null,
-            ]);
-
-            return [
-                'method'           => 'lstm',
-                'model'            => $result['model'] ?? 'Improved LSTM Forecast Model',
-                'rmse'             => $result['metrics']['rmse'] ?? $result['rmse'] ?? 0,
-                'metrics'          => $result['metrics'] ?? ['rmse' => 0, 'mae' => 0, 'mape' => 0],
-                'features_used'    => $result['features_used'] ?? [],
-                'predictions'      => $result['predictions'] ?? [],
-                'data_source'      => $result['data_source'] ?? 'unknown',
-                'weekly_summary'   => $result['weekly_summary'] ?? null,
-                'training_samples' => $result['training_samples'] ?? 0,
-                'test_samples'     => $result['test_samples'] ?? 0,
-            ];
+                return [
+                    'method'           => 'lstm',
+                    'model'            => $result['model'] ?? 'Improved LSTM Forecast Model',
+                    'rmse'             => $result['metrics']['rmse'] ?? $result['rmse'] ?? 0,
+                    'metrics'          => $result['metrics'] ?? ['rmse' => 0, 'mae' => 0, 'mape' => 0],
+                    'features_used'    => $result['features_used'] ?? [],
+                    'predictions'      => $result['predictions'] ?? [],
+                    'data_source'      => $result['data_source'] ?? 'unknown',
+                    'weekly_summary'   => $result['weekly_summary'] ?? null,
+                    'training_samples' => $result['training_samples'] ?? 0,
+                    'test_samples'     => $result['test_samples'] ?? 0,
+                ];
+            });
 
         } catch (\Exception $e) {
             Log::error('LSTM prediction failed', [
@@ -114,30 +173,35 @@ class LSTMClient
                 $timeSeries   = [['date' => date('Y-m-d'), 'count' => 0]];
             }
 
-            $data = array_map(fn ($p) => [
-                'date'  => $p['date'],
-                'count' => (float) $p['count'],
-            ], $timeSeries);
+            $fp       = $this->modelFingerprint();
+            $dhash    = $this->datasetHash($timeSeries);
+            $cacheKey = "lstm.predict3w.{$fp}.{$dhash}." . ($useDummyData ? 'dummy' : 'real');
 
-            $payload = [
-                'data'           => $data,
-                'forecast_days'  => 21,
-                'use_dummy_data' => $useDummyData,
-                'lstm_config'    => AISettings::group('lstm'),
-            ];
+            return Cache::remember($cacheKey, self::PREDICT_TTL, function () use ($timeSeries, $useDummyData) {
+                $data = array_map(fn ($p) => [
+                    'date'  => $p['date'],
+                    'count' => (float) $p['count'],
+                ], $timeSeries);
 
-            $response = $this->http()
-                ->post($this->baseUrl . '/predict-3weeks', $payload);
+                $payload = [
+                    'data'           => $data,
+                    'forecast_days'  => 21,
+                    'use_dummy_data' => $useDummyData,
+                    'lstm_config'    => AISettings::group('lstm'),
+                ];
 
-            if (!$response->successful()) {
-                Log::warning('3-week forecast request failed', [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-                return null;
-            }
+                $response = $this->http()->post($this->baseUrl . '/predict-3weeks', $payload);
 
-            return $response->json();
+                if (!$response->successful()) {
+                    Log::warning('3-week forecast request failed', [
+                        'status' => $response->status(),
+                        'body'   => $response->body(),
+                    ]);
+                    return null;
+                }
+
+                return $response->json();
+            });
 
         } catch (\Exception $e) {
             Log::error('LSTM 3-week prediction failed', ['error' => $e->getMessage()]);
@@ -147,35 +211,37 @@ class LSTMClient
 
     public function getModelMetrics(): ?array
     {
-        try {
-            Log::info('LSTMClient: calling GET /model-metrics', ['url' => $this->baseUrl . '/model-metrics']);
+        return Cache::remember('lstm.model_metrics', self::METRICS_TTL, function () {
+            try {
+                Log::info('LSTMClient: calling GET /model-metrics', ['url' => $this->baseUrl . '/model-metrics']);
 
-            $response = $this->http()->timeout(5)->get($this->baseUrl . '/model-metrics');
+                $response = $this->http()->timeout(5)->get($this->baseUrl . '/model-metrics');
 
-            if (!$response->successful()) {
-                Log::warning('LSTM /model-metrics returned non-200', [
-                    'status' => $response->status(),
-                    'body'   => substr($response->body(), 0, 500),
+                if (!$response->successful()) {
+                    Log::warning('LSTM /model-metrics returned non-200', [
+                        'status' => $response->status(),
+                        'body'   => substr($response->body(), 0, 500),
+                    ]);
+                    return null;
+                }
+
+                $data = $response->json();
+
+                Log::info('LSTMClient: /model-metrics response received', [
+                    'available'  => $data['available'] ?? false,
+                    'trained_at' => $data['trained_at'] ?? 'null',
+                    'mae'        => $data['mae'] ?? 'null',
+                    'rmse'       => $data['rmse'] ?? 'null',
+                    'epochs_run' => $data['epochs_run'] ?? 'null',
                 ]);
+
+                return $data;
+
+            } catch (\Exception $e) {
+                Log::warning('LSTM getModelMetrics failed', ['error' => $e->getMessage()]);
                 return null;
             }
-
-            $data = $response->json();
-
-            Log::info('LSTMClient: /model-metrics response received', [
-                'available'  => $data['available'] ?? false,
-                'trained_at' => $data['trained_at'] ?? 'null',
-                'mae'        => $data['mae'] ?? 'null',
-                'rmse'       => $data['rmse'] ?? 'null',
-                'epochs_run' => $data['epochs_run'] ?? 'null',
-            ]);
-
-            return $data;
-
-        } catch (\Exception $e) {
-            Log::warning('LSTM getModelMetrics failed', ['error' => $e->getMessage()]);
-            return null;
-        }
+        });
     }
 
     public function getDemo(): ?array
@@ -225,6 +291,9 @@ class LSTMClient
             }
 
             Log::info('LSTM model retrained successfully');
+
+            $this->bustModelCache();
+
             return $response->json();
 
         } catch (\Exception $e) {
@@ -256,10 +325,10 @@ class LSTMClient
             ];
         }
 
-        $windowSize     = AISettings::get('ma_window', 7);
-        $weekendFactor  = AISettings::get('ma_weekend_factor', 0.9);
-        $lowerMult      = AISettings::get('ma_lower_bound', 0.8);
-        $upperMult      = AISettings::get('ma_upper_bound', 1.2);
+        $windowSize      = AISettings::get('ma_window', 7);
+        $weekendFactor   = AISettings::get('ma_weekend_factor', 0.9);
+        $lowerMult       = AISettings::get('ma_lower_bound', 0.8);
+        $upperMult       = AISettings::get('ma_upper_bound', 1.2);
         $fixedConfidence = AISettings::get('ma_confidence', 0.60);
 
         $windowSize = min((int) $windowSize, count($timeSeries));

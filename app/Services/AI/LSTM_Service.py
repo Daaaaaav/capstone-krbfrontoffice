@@ -58,6 +58,21 @@ SCALER_PATH      = os.path.join(MODEL_DIR, "scaler.pkl")
 FINGERPRINT_PATH = os.path.join(MODEL_DIR, "fingerprint.json")
 METRICS_PATH     = os.path.join(MODEL_DIR, "model_metrics.json")
 
+_model_singleton  = None   
+_scaler_singleton = None   
+_prediction_cache: dict = {}
+
+
+def _clear_prediction_cache() -> None:
+    global _prediction_cache
+    _prediction_cache = {}
+    logger.info("Prediction response cache cleared.")
+
+
+def _prediction_cache_key(model_fp: str, data_sig: str, forecast_days: int) -> str:
+    return f"{model_fp}|{data_sig}|{forecast_days}"
+
+
 @app.get("/")
 def health_check():
     return {
@@ -90,7 +105,7 @@ class RequestData(BaseModel):
     forecast_days: int = 7
     use_dummy_data: bool = False
     lstm_config: Optional[LSTMConfig] = None
-    force_retrain: bool = False  # set True to skip cache and retrain
+    force_retrain: bool = False  # set True to skip cache and retrain (takes long time, better not default lol)
 
     def get_config(self) -> LSTMConfig:
         return self.lstm_config if self.lstm_config is not None else LSTMConfig()
@@ -190,6 +205,19 @@ def load_model_and_scaler():
     except Exception as e:
         logger.warning("Failed to load cached model: %s", e)
         return None, None
+
+
+def _get_singleton_model():
+    global _model_singleton, _scaler_singleton
+    if _model_singleton is None:
+        _model_singleton, _scaler_singleton = load_model_and_scaler()
+    return _model_singleton, _scaler_singleton
+
+
+def _set_singleton_model(model, scaler) -> None:
+    global _model_singleton, _scaler_singleton
+    _model_singleton  = model
+    _scaler_singleton = scaler
 
 def create_features(df):
     df['date'] = pd.to_datetime(df['date'])
@@ -322,17 +350,18 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         and os.path.exists(SCALER_PATH)
     )
 
-    df_feat        = create_features(df.copy())
-    scaled, scaler_fit = preprocess(df_feat) 
-    X, y           = create_sequences(scaled, window=cfg.sequence_window)
-    split          = int(len(X) * 0.8)
-    X_train, X_test = X[:split], X[split:]
-    y_train, y_test = y[:split], y[split:]
+    df_feat            = create_features(df.copy())
+    scaled, scaler_fit = preprocess(df_feat)
+    X, y               = create_sequences(scaled, window=cfg.sequence_window)
+    split              = int(len(X) * 0.8)
+    X_train, X_test    = X[:split], X[split:]
+    y_train, y_test    = y[:split], y[split:]
 
     if use_cache:
-        model, scaler = load_model_and_scaler()
+        # Use in-memory singleton — no disk I/O on cache hit
+        model, scaler = _get_singleton_model()
         if model is not None:
-            logger.info("Cache hit — skipping training.")
+            logger.info("Cache hit — using in-memory model singleton (no disk load).")
             return model, scaler, scaled, X_train, y_train, X_test, y_test, True, None, None
 
     logger.info("Training new LSTM model (force=%s)…", force_retrain)
@@ -368,6 +397,9 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
     trained_at = datetime.now().isoformat()
     save_fingerprint(current_fp, trained_at, int(len(X_train)))
 
+    _set_singleton_model(model, scaler_fit)
+    _clear_prediction_cache()
+
     return model, scaler_fit, scaled, X_train, y_train, X_test, y_test, False, history, training_time
 
 @app.post("/predict")
@@ -391,6 +423,15 @@ def predict(request: RequestData):
             "predictions": []
         }
 
+    # --- Prediction response cache check ---
+    current_fp  = compute_fingerprint(cfg, df)
+    data_sig    = _data_signature(df)
+    cache_key   = _prediction_cache_key(current_fp, data_sig, request.forecast_days)
+
+    if not request.force_retrain and cache_key in _prediction_cache:
+        logger.info("Prediction cache hit — returning cached response (key=%s…)", cache_key[:16])
+        return _prediction_cache[cache_key]
+
     model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache, history, training_time = \
         _get_or_train_model(df, cfg, force_retrain=request.force_retrain)
 
@@ -401,8 +442,8 @@ def predict(request: RequestData):
     rmse  = float(np.sqrt(mean_squared_error(y_test, preds)))
     mae   = float(mean_absolute_error(y_test, preds))
     r2    = float(r2_score(y_test, preds))
-    smape = compute_smape(y_test, preds)  
-    wape  = compute_wape(y_test, preds) 
+    smape = compute_smape(y_test, preds)
+    wape  = compute_wape(y_test, preds)
 
     mape_compat = smape
 
@@ -437,6 +478,7 @@ def predict(request: RequestData):
             "upper_bound": round(upper, 2),
             "confidence":  confidence_score,
         })
+
 
     loss_history      = None
     val_loss_history  = None
@@ -499,9 +541,9 @@ def predict(request: RequestData):
         "mae":                 round(mae,   4),
         "rmse":                round(rmse,  4),
         "r2":                  round(r2,    4),
-        "mape":                round(smape, 4), 
-        "smape":               round(smape, 4),  
-        "wape":                round(wape,  4),  
+        "mape":                round(smape, 4),
+        "smape":               round(smape, 4),
+        "wape":                round(wape,  4),
         "trainable_params":    trainable_params,
         "training_samples":    len(X_train),
         "validation_samples":  val_samples,
@@ -529,7 +571,8 @@ def predict(request: RequestData):
         from_cache, mae, rmse, smape, wape, r2,
     )
 
-    return {
+
+    response = {
         "model":            "Improved LSTM Forecast Model",
         "features_used":    FEATURE_COLUMNS,
         "config_used":      cfg.dict(),
@@ -537,7 +580,7 @@ def predict(request: RequestData):
         "metrics": {
             "rmse":  round(rmse,  4),
             "mae":   round(mae,   4),
-            "mape":  round(smape, 4), 
+            "mape":  round(smape, 4),
             "smape": round(smape, 4),
             "wape":  round(wape,  4),
             "r2":    round(r2,    4),
@@ -548,6 +591,13 @@ def predict(request: RequestData):
         "training_samples": len(X_train),
         "test_samples":     len(X_test),
     }
+
+    # Store in prediction response cache (only for non-forced requests)
+    if not request.force_retrain:
+        _prediction_cache[cache_key] = response
+        logger.info("Prediction response cached (key=%s…)", cache_key[:16])
+
+    return response
 
 @app.post("/predict-3weeks")
 def predict_three_weeks(request: RequestData):
@@ -635,6 +685,22 @@ def force_retrain(request: RequestData):
 
 @app.on_event("startup")
 async def bootstrap_metrics_on_startup():
+    """
+    On startup: warm the in-memory singleton from disk so the first
+    prediction request never pays the disk-load penalty.
+    """
+    global _model_singleton, _scaler_singleton
+
+    if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+        logger.info("Startup: warming in-memory model singleton from disk…")
+        _model_singleton, _scaler_singleton = load_model_and_scaler()
+        if _model_singleton is not None:
+            logger.info("Startup: model singleton ready — first request will use in-memory model.")
+        else:
+            logger.warning("Startup: failed to load model into singleton.")
+    else:
+        logger.info("Startup: no trained model found — singleton will be populated after first train.")
+
     if os.path.exists(METRICS_PATH):
         logger.info("Startup: metrics file already present — no bootstrap needed.")
         return
@@ -701,7 +767,7 @@ def model_metrics():
             "mae":                 stored.get("mae"),
             "rmse":                stored.get("rmse"),
             "r2":                  stored.get("r2"),
-            "mape":                stored.get("mape"),      
+            "mape":                stored.get("mape"),
             "smape":               stored.get("smape"),
             "wape":                stored.get("wape"),
             "trainable_params":    stored.get("trainable_params"),

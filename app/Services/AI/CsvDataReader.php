@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,6 +22,8 @@ class CsvDataReader
     public const DISK = 'local';
     public const UPLOAD_PATH = 'lstm/uploads';
 
+    private const PARSE_TTL = 3600;
+
     public function readServerCsv(string $metric = 'visitors'): array
     {
         $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
@@ -32,7 +35,7 @@ class CsvDataReader
             );
         }
 
-        return $this->parseCsv($path, $metric);
+        return $this->parseCsvCached($path, $metric);
     }
 
     public function readUploadedCsv(string $storagePath, string $metric = 'visitors'): array
@@ -43,7 +46,7 @@ class CsvDataReader
             throw new \RuntimeException('Uploaded CSV not found: ' . $storagePath);
         }
 
-        return $this->parseCsv($path, $metric);
+        return $this->parseCsvCached($path, $metric);
     }
 
     public function readServerCsvColumnsSummed(array $metrics): array
@@ -57,7 +60,7 @@ class CsvDataReader
             );
         }
 
-        return $this->parseCsvMultiColumn($path, $metrics);
+        return $this->parseCsvMultiColumnCached($path, $metrics);
     }
 
     public function readUploadedCsvColumnsSummed(string $storagePath, array $metrics): array
@@ -68,7 +71,7 @@ class CsvDataReader
             throw new \RuntimeException('Uploaded CSV not found: ' . $storagePath);
         }
 
-        return $this->parseCsvMultiColumn($path, $metrics);
+        return $this->parseCsvMultiColumnCached($path, $metrics);
     }
 
     public function validateColumns(string $storagePath): array
@@ -120,6 +123,36 @@ class CsvDataReader
         }
     }
 
+    private function parseCsvCached(string $absolutePath, string $metric): array
+    {
+        $mtime    = (int) filemtime($absolutePath);
+        $cacheKey = 'csv.' . md5($absolutePath) . '.' . $metric . '.' . $mtime;
+
+        return Cache::remember($cacheKey, self::PARSE_TTL, function () use ($absolutePath, $metric) {
+            Log::info('CsvDataReader: cache miss — parsing CSV', [
+                'path'   => basename($absolutePath),
+                'metric' => $metric,
+            ]);
+            return $this->parseCsv($absolutePath, $metric);
+        });
+    }
+
+    private function parseCsvMultiColumnCached(string $absolutePath, array $metrics): array
+    {
+        sort($metrics);
+        $mtime    = (int) filemtime($absolutePath);
+        $metaKey  = implode('+', $metrics);
+        $cacheKey = 'csv.' . md5($absolutePath) . '.' . md5($metaKey) . '.' . $mtime;
+
+        return Cache::remember($cacheKey, self::PARSE_TTL, function () use ($absolutePath, $metrics) {
+            Log::info('CsvDataReader: cache miss — parsing CSV (multi-column)', [
+                'path'    => basename($absolutePath),
+                'metrics' => implode('+', $metrics),
+            ]);
+            return $this->parseCsvMultiColumn($absolutePath, $metrics);
+        });
+    }
+
     private function parseCsv(string $absolutePath, string $metric): array
     {
         if (!in_array($metric, self::REQUIRED_COLUMNS, true) || $metric === 'date') {
@@ -162,7 +195,7 @@ class CsvDataReader
 
         while (($row = fgetcsv($handle)) !== false) {
             if (count($row) <= max($dateIdx, $metricIdx)) {
-                continue; 
+                continue;
             }
 
             $date  = trim($row[$dateIdx]);
@@ -180,12 +213,6 @@ class CsvDataReader
 
         fclose($handle);
         usort($timeSeries, fn($a, $b) => strcmp($a['date'], $b['date']));
-
-        Log::info('CsvDataReader: parsed CSV', [
-            'path'   => basename($absolutePath),
-            'metric' => $metric,
-            'rows'   => count($timeSeries),
-        ]);
 
         return $timeSeries;
     }
@@ -226,17 +253,17 @@ class CsvDataReader
             );
         }
 
-        $dateIdx = array_search('date', $headers, true);
+        $dateIdx    = array_search('date', $headers, true);
         $metricIdxs = [];
         foreach ($metrics as $m) {
             $metricIdxs[] = array_search($m, $headers, true);
         }
-        $maxIdx = max($dateIdx, ...$metricIdxs);
+        $maxIdx     = max($dateIdx, ...$metricIdxs);
         $timeSeries = [];
 
         while (($row = fgetcsv($handle)) !== false) {
             if (count($row) <= $maxIdx) {
-                continue; 
+                continue;
             }
 
             $date = trim($row[$dateIdx]);
@@ -258,12 +285,6 @@ class CsvDataReader
 
         fclose($handle);
         usort($timeSeries, fn($a, $b) => strcmp($a['date'], $b['date']));
-
-        Log::info('CsvDataReader: parsed CSV (multi-column)', [
-            'path'    => basename($absolutePath),
-            'metrics' => implode('+', $metrics),
-            'rows'    => count($timeSeries),
-        ]);
 
         return $timeSeries;
     }

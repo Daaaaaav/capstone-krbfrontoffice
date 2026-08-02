@@ -22,7 +22,7 @@ class LSTMPredictions extends Component
     public int $forecastDays = 21;
     public string $trainingSource = 'csv_server';
     public $uploadedCsv = null;
-    
+
     public ?string $uploadedCsvPath = null;
     public ?string $uploadedCsvName = null;
     public ?string $uploadError = null;
@@ -39,7 +39,7 @@ class LSTMPredictions extends Component
                 'required',
                 'file',
                 'mimes:csv,txt',
-                'max:10240', // 10 MB 
+                'max:10240', // 10 MB
             ],
         ];
     }
@@ -54,7 +54,6 @@ class LSTMPredictions extends Component
         if (!in_array($source, ['csv_server', 'csv_upload', 'live_db'], true)) {
             return;
         }
-
 
         $this->trainingSource = $source;
         $this->uploadError    = null;
@@ -132,8 +131,9 @@ class LSTMPredictions extends Component
         $this->isRetraining = true;
 
         try {
+            // Resolve via the container so the singleton instance is reused
+            $client     = app(LSTMClient::class);
             $timeSeries = $this->buildTimeSeries();
-            $client     = new LSTMClient();
 
             if ($client->isAvailable() && !empty($timeSeries)) {
                 $client->forceRetrain($timeSeries, $this->forecastDays);
@@ -148,12 +148,16 @@ class LSTMPredictions extends Component
     public function render()
     {
         try {
-            $lstmClient      = new LSTMClient();
+            // ── Single LSTMClient instance for this entire render ──────────
+            /** @var LSTMClient $lstmClient */
+            $lstmClient      = app(LSTMClient::class);
             $isLSTMAvailable = $lstmClient->isAvailable();
 
-            $csvReader  = new CsvDataReader();
-            $this->csvInfo = $csvReader->serverCsvInfo();
-            $timeSeries = $this->buildTimeSeries($csvReader);
+            // ── Single CsvDataReader + one CSV parse shared by both
+            //    serverCsvInfo() and buildTimeSeries() ──────────────────────
+            $csvReader       = new CsvDataReader();
+            $this->csvInfo   = $csvReader->serverCsvInfo();   // uses cached parse
+            $timeSeries      = $this->buildTimeSeries($csvReader); // reuses same cache entry
 
             $result = null;
 
@@ -195,7 +199,6 @@ class LSTMPredictions extends Component
 
             $predCount = count($predictions);
 
-    
             $weeklyData = null;
             if (!empty($result['weekly_summary'])) {
                 $weeklyData = [
@@ -205,6 +208,7 @@ class LSTMPredictions extends Component
                 ];
             }
 
+            // ── Stats computed once from already-built arrays ─────────────
             $totalPredicted = array_sum($dailyPredicted);
             $avgDaily       = $totalPredicted / max(1, $predCount);
             $avgConfidence  = $predCount > 0 ? $confidenceSum / $predCount : 0;
@@ -217,6 +221,7 @@ class LSTMPredictions extends Component
                 ['label' => __('app.confidence'),       'value' => number_format($avgConfidence * 100, 1) . '%', 'color' => 'purple', 'icon' => 'check-badge'],
             ];
 
+            // ── Single getModelMetrics() call per render ──────────────────
             $modelMetrics = $isLSTMAvailable ? $lstmClient->getModelMetrics() : null;
 
             Log::info('LSTMPredictions: metrics pipeline trace', [
@@ -284,7 +289,7 @@ class LSTMPredictions extends Component
                         ]);
                     }
                 }
-                
+
                 $this->trainingSource = 'csv_server';
                 return $reader->readServerCsv('visitors');
 
