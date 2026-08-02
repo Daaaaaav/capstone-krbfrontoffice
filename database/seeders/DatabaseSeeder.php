@@ -251,26 +251,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ===== ANNOUNCEMENTS =====
-        for ($i = 1; $i <= 30; $i++) {
-            $randomDate = $now->copy()->subDays(rand(0, $daysBack));
-
-            Announcement::create([
-                'company_id'  => $companyId,
-                'description' => "📢 Pengumuman {$companyName} #{$i}",
-                'event_at'    => $randomDate->copy()->addDays(rand(2, 10)),
-                'created_at'  => $randomDate,
-            ]);
-
-            Information::create([
-                'company_id'    => $companyId,
-                'department_id' => Arr::random($depts)->department_id,
-                'description'   => "📰 Info khusus {$companyName} #{$i}",
-                'event_at'      => $randomDate->copy()->addDays(rand(1, 5)),
-                'created_at'    => $randomDate,
-            ]);
-        }
-
         $guestNames = [
             'Budi Santoso','Siti Rahayu','Ahmad Fauzi','Dewi Lestari','Eko Prasetyo',
             'Fitri Handayani','Gunawan Wibowo','Hana Pertiwi','Irfan Maulana','Joko Susilo',
