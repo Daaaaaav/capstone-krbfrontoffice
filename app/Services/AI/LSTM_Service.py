@@ -423,7 +423,6 @@ def predict(request: RequestData):
             "predictions": []
         }
 
-    # --- Prediction response cache check ---
     current_fp  = compute_fingerprint(cfg, df)
     data_sig    = _data_signature(df)
     cache_key   = _prediction_cache_key(current_fp, data_sig, request.forecast_days)
@@ -439,13 +438,22 @@ def predict(request: RequestData):
 
     preds = model.predict(X_test, verbose=0)
 
-    rmse  = float(np.sqrt(mean_squared_error(y_test, preds)))
-    mae   = float(mean_absolute_error(y_test, preds))
-    r2    = float(r2_score(y_test, preds))
-    smape = compute_smape(y_test, preds)
-    wape  = compute_wape(y_test, preds)
+    dummy_true = np.zeros((len(y_test), len(FEATURE_COLUMNS)))
+    dummy_true[:, 0] = y_test
+    y_test_real = scaler.inverse_transform(dummy_true)[:, 0]
 
-    mape_compat = smape
+    dummy_pred = np.zeros((len(preds), len(FEATURE_COLUMNS)))
+    dummy_pred[:, 0] = preds.flatten()
+    preds_real = scaler.inverse_transform(dummy_pred)[:, 0]
+
+    y_test_real = np.maximum(y_test_real, 0.0)
+    preds_real  = np.maximum(preds_real,  0.0)
+
+    rmse  = float(np.sqrt(mean_squared_error(y_test_real, preds_real)))
+    mae   = float(mean_absolute_error(y_test_real, preds_real))
+    r2    = float(r2_score(y_test_real, preds_real))
+    smape = compute_smape(y_test_real, preds_real)
+    wape  = compute_wape(y_test_real, preds_real)
 
     future = forecast(
         model, scaled, scaler, df_feat,
@@ -457,20 +465,15 @@ def predict(request: RequestData):
     nonzero   = recent[recent > 0]
     hist_floor = float(nonzero.mean()) if len(nonzero) > 0 else 0.0
 
-    confidence_score = compute_confidence(rmse, y_test, cfg)
-
-    count_min   = scaler.data_min_[0]
-    count_max   = scaler.data_max_[0]
-    count_range = count_max - count_min if count_max > count_min else 1.0
-    rmse_real   = float(rmse) * count_range
+    confidence_score = compute_confidence(rmse, y_test_real, cfg)
 
     final = []
     for item in future:
         raw_pred = item["predicted"]
         if raw_pred < hist_floor * 0.1 and hist_floor > 0:
             raw_pred = hist_floor * 0.5
-        lower = max(0.0, raw_pred - 1.96 * rmse_real)
-        upper = raw_pred + 1.96 * rmse_real
+        lower = max(0.0, raw_pred - 1.96 * rmse)
+        upper = raw_pred + 1.96 * rmse
         final.append({
             "date":        item["date"],
             "predicted":   round(raw_pred, 2),
