@@ -14,11 +14,8 @@
             </x-slot:actions>
         </x-page-header>
 
-        {{-- CONTROLS --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {{-- Forecast Type --}}
                 <div>
                     <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_type') }}</label>
                     <div class="flex gap-2">
@@ -214,7 +211,6 @@
                     </div>
                 @endif
 
-                {{-- Active source badge --}}
                 <div class="mt-3 flex items-center gap-2 text-xs text-[#7a8f6a]">
                     <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
                     {{ __('app.currently_using') }}:
@@ -229,7 +225,6 @@
             </div>
         </div>
 
-        {{-- STATS CARDS --}}
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="bg-white border border-[#d4dfc8] rounded-2xl p-5 shadow-sm hover:shadow-lg transition">
                 <p class="text-sm font-medium text-[#7a8f6a] mb-2">{{ __('app.avg_room_occupancy') }}</p>
@@ -525,9 +520,20 @@
             window.occupancyChart.destroy();
         }
 
-        const datasets = [];
-        const roomData = @json($chartData['roomData']);
+        const labels      = @json($chartData['labels']);
+        const roomData    = @json($chartData['roomData']);
         const vehicleData = @json($chartData['vehicleData']);
+
+        console.group('[OccupancyForecasting Debug] Chart vs Prediction data');
+        console.log('Label count   :', labels.length);
+        console.log('First label   :', labels[0] ?? 'none');
+        console.log('Last label    :', labels[labels.length - 1] ?? 'none');
+        console.log('Labels sample :', labels.slice(0, 5));
+        console.log('Room data pts :', roomData ? roomData.filter(v => v !== null).length : 0);
+        console.log('Veh data pts  :', vehicleData ? vehicleData.filter(v => v !== null).length : 0);
+        console.groupEnd();
+
+        const datasets = [];
 
         if (roomData && roomData.some(v => v !== null)) {
             datasets.push({
@@ -557,7 +563,7 @@
 
         window.occupancyChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: @json($chartData['labels']), datasets },
+            data: { labels: labels, datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,

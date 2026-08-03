@@ -33,11 +33,6 @@ class LSTMClient
             ->withHeaders(['Accept' => 'application/json']);
     }
 
-    /**
-     * Build a compact, stable hash for a time-series array so it can
-     * be used as part of a cache key without serialising the whole
-     * dataset into the key string.
-     */
     private function datasetHash(array $timeSeries): string
     {
         if (empty($timeSeries)) {
@@ -50,11 +45,15 @@ class LSTMClient
         return md5("{$first}|{$last}|{$n}|{$sum}");
     }
 
-    /**
-     * Fetch the model fingerprint from FastAPI (used for cache key
-     * scoping).  Falls back to a static string if the service is
-     * unavailable.
-     */
+    private function predictionStartDate(array $timeSeries): string
+    {
+        if (empty($timeSeries)) {
+            return date('Y-m-d');
+        }
+        $lastHistoricalDate = $timeSeries[count($timeSeries) - 1]['date'] ?? date('Y-m-d');
+        return date('Y-m-d', strtotime($lastHistoricalDate . ' +1 day'));
+    }
+
     private function modelFingerprint(): string
     {
         return Cache::remember('lstm.model_fingerprint', 60, function () {
@@ -70,14 +69,35 @@ class LSTMClient
         });
     }
 
-    /** Invalidate every cache entry that depends on the trained model. */
+    private function isPredictionStale(?array $cached): bool
+    {
+        if ($cached === null) {
+            return true;
+        }
+        $predictions = $cached['predictions'] ?? [];
+        if (empty($predictions)) {
+            return true;
+        }
+        $firstPredictionDate = $predictions[0]['date'] ?? null;
+        if ($firstPredictionDate === null) {
+            return true;
+        }
+        $today = date('Y-m-d');
+        if ($firstPredictionDate < $today) {
+            Log::warning('LSTMClient: stale prediction detected, invalidating cache', [
+                'first_prediction_date' => $firstPredictionDate,
+                'today'                 => $today,
+            ]);
+            return true;
+        }
+        return false;
+    }
+
     private function bustModelCache(): void
     {
         Cache::forget('lstm.model_fingerprint');
         Cache::forget('lstm.model_metrics');
-        // Prediction cache entries are keyed per fingerprint; forgetting
-        // the fingerprint key causes all subsequent lookups to miss and
-        // rebuild with the new fingerprint automatically.
+        Cache::forget('lstm.predict.all');
         Log::info('LSTMClient: model cache busted (post-retrain).');
     }
 
@@ -107,11 +127,40 @@ class LSTMClient
                 return null;
             }
 
-            $fp       = $this->modelFingerprint();
-            $dhash    = $this->datasetHash($timeSeries);
-            $cacheKey = "lstm.predict.{$fp}.{$dhash}.{$forecastDays}." . ($useDummyData ? 'dummy' : 'real');
+            $fp           = $this->modelFingerprint();
+            $dhash        = $this->datasetHash($timeSeries);
+            $startDate    = $this->predictionStartDate($timeSeries);
+            $cacheKey     = "lstm.predict.{$fp}.{$dhash}.{$forecastDays}.{$startDate}." . ($useDummyData ? 'dummy' : 'real');
 
-            return Cache::remember($cacheKey, self::PREDICT_TTL, function () use ($timeSeries, $forecastDays, $useDummyData) {
+            $cached = Cache::get($cacheKey);
+
+            if ($cached !== null && $this->isPredictionStale($cached)) {
+                Cache::forget($cacheKey);
+                Log::info('LSTMClient: predict() cache invalidated due to stale dates', [
+                    'cache_key'  => $cacheKey,
+                    'start_date' => $startDate,
+                ]);
+                $cached = null;
+            }
+
+            if ($cached !== null) {
+                $firstDate = $cached['predictions'][0]['date'] ?? 'unknown';
+                $lastDate  = $cached['predictions'][count($cached['predictions']) - 1]['date'] ?? 'unknown';
+                Log::info('LSTMClient: predict() cache HIT', [
+                    'cache_key'        => $cacheKey,
+                    'first_prediction' => $firstDate,
+                    'last_prediction'  => $lastDate,
+                    'model_fingerprint'=> $fp,
+                ]);
+                return $cached;
+            }
+
+            Log::info('LSTMClient: predict() cache MISS — calling FastAPI', [
+                'cache_key'  => $cacheKey,
+                'start_date' => $startDate,
+            ]);
+
+            $result = (function () use ($timeSeries, $forecastDays, $useDummyData) {
                 $data = array_map(fn ($p) => [
                     'date'  => $p['date'],
                     'count' => (float) $p['count'],
@@ -153,7 +202,21 @@ class LSTMClient
                     'training_samples' => $result['training_samples'] ?? 0,
                     'test_samples'     => $result['test_samples'] ?? 0,
                 ];
-            });
+            })();
+
+            if ($result !== null) {
+                Cache::put($cacheKey, $result, self::PREDICT_TTL);
+                $firstDate = $result['predictions'][0]['date'] ?? 'unknown';
+                $lastDate  = $result['predictions'][count($result['predictions']) - 1]['date'] ?? 'unknown';
+                Log::info('LSTMClient: predict() fresh result cached', [
+                    'cache_key'        => $cacheKey,
+                    'first_prediction' => $firstDate,
+                    'last_prediction'  => $lastDate,
+                    'model_fingerprint'=> $fp,
+                ]);
+            }
+
+            return $result;
 
         } catch (\Exception $e) {
             Log::error('LSTM prediction failed', [
@@ -173,11 +236,41 @@ class LSTMClient
                 $timeSeries   = [['date' => date('Y-m-d'), 'count' => 0]];
             }
 
-            $fp       = $this->modelFingerprint();
-            $dhash    = $this->datasetHash($timeSeries);
-            $cacheKey = "lstm.predict3w.{$fp}.{$dhash}." . ($useDummyData ? 'dummy' : 'real');
+            $fp        = $this->modelFingerprint();
+            $dhash     = $this->datasetHash($timeSeries);
+            $startDate = $this->predictionStartDate($timeSeries);
+            $cacheKey  = "lstm.predict3w.{$fp}.{$dhash}.{$startDate}." . ($useDummyData ? 'dummy' : 'real');
 
-            return Cache::remember($cacheKey, self::PREDICT_TTL, function () use ($timeSeries, $useDummyData) {
+            $cached = Cache::get($cacheKey);
+
+            if ($cached !== null && $this->isPredictionStale($cached)) {
+                Cache::forget($cacheKey);
+                Log::info('LSTMClient: predict3Weeks() cache invalidated due to stale dates', [
+                    'cache_key'  => $cacheKey,
+                    'start_date' => $startDate,
+                ]);
+                $cached = null;
+            }
+
+            if ($cached !== null) {
+                $predictions = $cached['predictions'] ?? [];
+                $firstDate   = $predictions[0]['date'] ?? 'unknown';
+                $lastDate    = $predictions[count($predictions) - 1]['date'] ?? 'unknown';
+                Log::info('LSTMClient: predict3Weeks() cache HIT', [
+                    'cache_key'        => $cacheKey,
+                    'first_prediction' => $firstDate,
+                    'last_prediction'  => $lastDate,
+                    'model_fingerprint'=> $fp,
+                ]);
+                return $cached;
+            }
+
+            Log::info('LSTMClient: predict3Weeks() cache MISS — calling FastAPI', [
+                'cache_key'  => $cacheKey,
+                'start_date' => $startDate,
+            ]);
+
+            $result = (function () use ($timeSeries, $useDummyData) {
                 $data = array_map(fn ($p) => [
                     'date'  => $p['date'],
                     'count' => (float) $p['count'],
@@ -201,7 +294,22 @@ class LSTMClient
                 }
 
                 return $response->json();
-            });
+            })();
+
+            if ($result !== null) {
+                Cache::put($cacheKey, $result, self::PREDICT_TTL);
+                $predictions = $result['predictions'] ?? [];
+                $firstDate   = $predictions[0]['date'] ?? 'unknown';
+                $lastDate    = $predictions[count($predictions) - 1]['date'] ?? 'unknown';
+                Log::info('LSTMClient: predict3Weeks() fresh result cached', [
+                    'cache_key'        => $cacheKey,
+                    'first_prediction' => $firstDate,
+                    'last_prediction'  => $lastDate,
+                    'model_fingerprint'=> $fp,
+                ]);
+            }
+
+            return $result;
 
         } catch (\Exception $e) {
             Log::error('LSTM 3-week prediction failed', ['error' => $e->getMessage()]);

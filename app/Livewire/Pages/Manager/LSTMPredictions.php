@@ -161,7 +161,10 @@ class LSTMPredictions extends Component
                     : $lstmClient->predict($timeSeries, $this->forecastDays, false);
             }
 
+            $weeklySummarySource = 'fastapi';
+
             if (!$result || empty($result['predictions'])) {
+                $weeklySummarySource = 'local_fallback';
                 $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
                 $result   = array_merge($fallback, [
                     'data_source'    => 'statistical',
@@ -169,11 +172,27 @@ class LSTMPredictions extends Component
                     'description'    => null,
                     'weekly_summary' => $this->buildWeeklySummary($fallback['predictions'] ?? []),
                 ]);
+            } elseif (empty($result['weekly_summary'])) {
+                $weeklySummarySource = 'local_rebuild';
+                $result['weekly_summary'] = $this->buildWeeklySummary($result['predictions']);
             }
 
-            $rawPredictions = $result['predictions'];
-            $predictions    = [];
-            $confidenceSum  = 0.0;
+            $rawPredictions  = $result['predictions'];
+            $firstPredDate   = $rawPredictions[0]['date'] ?? 'unknown';
+            $lastPredDate    = $rawPredictions[count($rawPredictions) - 1]['date'] ?? 'unknown';
+
+            Log::info('LSTMPredictions: prediction dataset received', [
+                'source'              => $result['data_source'] ?? 'unknown',
+                'weekly_summary_from' => $weeklySummarySource,
+                'total_predictions'   => count($rawPredictions),
+                'first_prediction'    => $firstPredDate,
+                'last_prediction'     => $lastPredDate,
+                'forecast_days'       => $this->forecastDays,
+                'training_source'     => $this->trainingSource,
+            ]);
+
+            $predictions   = [];
+            $confidenceSum = 0.0;
 
             foreach ($rawPredictions as $p) {
                 $p['predicted']    = round($p['predicted'], 1);
@@ -186,12 +205,30 @@ class LSTMPredictions extends Component
 
             $predCount = count($predictions);
 
+            $firstTableDate = $predictions[0]['date'] ?? 'unknown';
+            $lastTableDate  = $predictions[$predCount - 1]['date'] ?? 'unknown';
+
             $weeklyData = null;
             if (!empty($result['weekly_summary'])) {
+                $weeklySummary = $result['weekly_summary'];
+
+                $firstWeekStart = $weeklySummary[0]['start_date'] ?? 'unknown';
+                $lastWeekEnd    = $weeklySummary[count($weeklySummary) - 1]['end_date'] ?? 'unknown';
+
+                Log::info('LSTMPredictions: weekly summary alignment check', [
+                    'weekly_summary_source' => $weeklySummarySource,
+                    'week_count'            => count($weeklySummary),
+                    'first_week_start'      => $firstWeekStart,
+                    'last_week_end'         => $lastWeekEnd,
+                    'first_table_date'      => $firstTableDate,
+                    'last_table_date'       => $lastTableDate,
+                    'dates_aligned'         => ($firstWeekStart === $firstTableDate),
+                ]);
+
                 $weeklyData = [
-                    'labels'   => array_map(fn($w) => __('app.week_label') . ' ' . $w['week'], $result['weekly_summary']),
-                    'totals'   => array_map(fn($w) => round($w['total_predicted'], 0), $result['weekly_summary']),
-                    'averages' => array_map(fn($w) => round($w['avg_predicted'], 1), $result['weekly_summary']),
+                    'labels'   => array_map(fn($w) => __('app.week_label') . ' ' . $w['week'], $weeklySummary),
+                    'totals'   => array_map(fn($w) => round($w['total_predicted'], 0), $weeklySummary),
+                    'averages' => array_map(fn($w) => round($w['avg_predicted'], 1), $weeklySummary),
                 ];
             }
 
@@ -219,6 +256,9 @@ class LSTMPredictions extends Component
                 'metrics_mae'          => $modelMetrics['mae'] ?? 'null',
                 'metrics_rmse'         => $modelMetrics['rmse'] ?? 'null',
                 'metrics_epochs'       => $modelMetrics['epochs_run'] ?? 'null',
+                'first_table_date'     => $firstTableDate,
+                'last_table_date'      => $lastTableDate,
+                'daily_chart_labels_from' => 'prediction.date via JS split',
             ]);
 
             return view('livewire.pages.manager.lstm-predictions', [

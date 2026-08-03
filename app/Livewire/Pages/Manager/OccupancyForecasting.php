@@ -147,6 +147,25 @@ class OccupancyForecasting extends Component
 
         $modelMetrics = $isAvailable ? $lstm->getModelMetrics() : null;
 
+        $firstRoomPred    = $roomForecast    ? ($roomForecast[0]['date'] ?? 'none')                                        : 'n/a';
+        $lastRoomPred     = $roomForecast    ? ($roomForecast[count($roomForecast) - 1]['date'] ?? 'none')                  : 'n/a';
+        $firstVehiclePred = $vehicleForecast ? ($vehicleForecast[0]['date'] ?? 'none')                                     : 'n/a';
+        $lastVehiclePred  = $vehicleForecast ? ($vehicleForecast[count($vehicleForecast) - 1]['date'] ?? 'none')            : 'n/a';
+        $firstChartLabel  = $chartData['labels'][0] ?? 'none';
+        $lastChartLabel   = $chartData['labels'][count($chartData['labels']) - 1] ?? 'none';
+
+        Log::info('OccupancyForecasting: single source of truth audit', [
+            'first_room_prediction'    => $firstRoomPred,
+            'last_room_prediction'     => $lastRoomPred,
+            'first_vehicle_prediction' => $firstVehiclePred,
+            'last_vehicle_prediction'  => $lastVehiclePred,
+            'first_chart_label'        => $firstChartLabel,
+            'last_chart_label'         => $lastChartLabel,
+            'chart_label_count'        => count($chartData['labels']),
+            'room_forecast_count'      => $roomForecast    ? count($roomForecast)    : 0,
+            'vehicle_forecast_count'   => $vehicleForecast ? count($vehicleForecast) : 0,
+        ]);
+
         Log::info('OccupancyForecasting: metrics pipeline trace', [
             'lstm_available'       => $isAvailable,
             'model_metrics_null'   => is_null($modelMetrics),
@@ -348,10 +367,24 @@ class OccupancyForecasting extends Component
         $hasVehicle  = $vehicle !== null;
 
         foreach ($base as $i => $p) {
-            $labels[]      = date('d/m', strtotime($p['date']));
+            $labels[]      = Carbon::parse($p['date'])->format('d/m');
             $roomData[]    = $hasRoom    ? round($p['predicted'], 1) : null;
-            $vehicleData[] = $hasVehicle ? round($vehicle[$i]['predicted'], 1) : null;
+            $vehicleData[] = $hasVehicle ? round(($vehicle[$i]['predicted'] ?? 0), 1) : null;
         }
+
+        $firstLabel = $labels[0] ?? 'none';
+        $lastLabel  = $labels[count($labels) - 1] ?? 'none';
+        $firstRoomDate    = $room    ? ($room[0]['date'] ?? 'none')    : 'n/a';
+        $firstVehicleDate = $vehicle ? ($vehicle[0]['date'] ?? 'none') : 'n/a';
+
+        Log::info('OccupancyForecasting: buildChartData() labels derived from prediction.date', [
+            'total_labels'       => count($labels),
+            'first_label'        => $firstLabel,
+            'last_label'         => $lastLabel,
+            'first_room_date'    => $firstRoomDate,
+            'first_vehicle_date' => $firstVehicleDate,
+            'labels_sample'      => array_slice($labels, 0, 5),
+        ]);
 
         return compact('labels', 'roomData', 'vehicleData');
     }
