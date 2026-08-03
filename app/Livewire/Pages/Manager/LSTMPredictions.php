@@ -171,24 +171,17 @@ class LSTMPredictions extends Component
                 ]);
             }
 
-            $rawPredictions  = $result['predictions'];
-            $predictions     = [];
-            $dailyLabels     = [];
-            $dailyPredicted  = [];
-            $dailyLowerBound = [];
-            $dailyUpperBound = [];
-            $confidenceSum   = 0.0;
+            $rawPredictions = $result['predictions'];
+            $predictions    = [];
+            $confidenceSum  = 0.0;
 
             foreach ($rawPredictions as $p) {
-                $dailyLabels[]     = date('d/m', strtotime($p['date']));
-                $rounded           = round($p['predicted'], 1);
-                $dailyPredicted[]  = $rounded;
-                $dailyLowerBound[] = round($p['lower_bound'], 1);
-                $dailyUpperBound[] = round($p['upper_bound'], 1);
+                $p['predicted']    = round($p['predicted'], 1);
+                $p['lower_bound']  = round($p['lower_bound'], 1);
+                $p['upper_bound']  = round($p['upper_bound'], 1);
+                $p['day_name']     = \Carbon\Carbon::parse($p['date'])->isoFormat('dddd');
                 $confidenceSum    += $p['confidence'];
-
-                $p['day_name'] = \Carbon\Carbon::parse($p['date'])->isoFormat('dddd');
-                $predictions[] = $p;
+                $predictions[]     = $p;
             }
 
             $predCount = count($predictions);
@@ -202,11 +195,11 @@ class LSTMPredictions extends Component
                 ];
             }
 
-            // ── Stats computed once from already-built arrays ─────────────
-            $totalPredicted = array_sum($dailyPredicted);
+            $dailyPredictedValues = array_column($predictions, 'predicted');
+            $totalPredicted = array_sum($dailyPredictedValues);
             $avgDaily       = $totalPredicted / max(1, $predCount);
             $avgConfidence  = $predCount > 0 ? $confidenceSum / $predCount : 0;
-            $maxDay         = !empty($dailyPredicted) ? max($dailyPredicted) : 0;
+            $maxDay         = !empty($dailyPredictedValues) ? max($dailyPredictedValues) : 0;
 
             $stats = [
                 ['label' => __('app.total_predicted'), 'value' => number_format($totalPredicted, 0), 'color' => 'blue',   'icon' => 'chart-bar'],
@@ -232,10 +225,6 @@ class LSTMPredictions extends Component
                 'isLSTMAvailable' => $isLSTMAvailable,
                 'predictions'     => $predictions,
                 'weeklyData'      => $weeklyData,
-                'dailyLabels'     => $dailyLabels,
-                'dailyPredicted'  => $dailyPredicted,
-                'dailyLowerBound' => $dailyLowerBound,
-                'dailyUpperBound' => $dailyUpperBound,
                 'stats'           => $stats,
                 'rmse'            => $result['rmse'] ?? ($result['metrics']['rmse'] ?? 0),
                 'activeSource'    => $result['data_source'] ?? 'statistical',
@@ -252,10 +241,6 @@ class LSTMPredictions extends Component
                 'isLSTMAvailable' => false,
                 'predictions'     => [],
                 'weeklyData'      => null,
-                'dailyLabels'     => [],
-                'dailyPredicted'  => [],
-                'dailyLowerBound' => [],
-                'dailyUpperBound' => [],
                 'stats'           => $this->getEmptyStats(),
                 'rmse'            => 0,
                 'activeSource'    => 'error',

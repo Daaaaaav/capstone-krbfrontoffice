@@ -555,26 +555,51 @@
         if (!ctx) return;
         if (window.dailyChart && typeof window.dailyChart.destroy === 'function') window.dailyChart.destroy();
 
+        const predictions = @json($predictions);
+        const labels      = predictions.map(p => {
+            const parts = p.date.split('-');
+            return parts[2] + '/' + parts[1];
+        });
+        const predicted   = predictions.map(p => p.predicted);
+        const upperBound  = predictions.map(p => p.upper_bound);
+        const lowerBound  = predictions.map(p => p.lower_bound);
+
+        console.group('[LSTM Debug] Daily chart vs Detailed Predictions table');
+        console.log('Rows :', predictions.length);
+        console.table(predictions.map(p => ({
+            date:        p.date,
+            day_name:    p.day_name,
+            predicted:   p.predicted,
+            lower_bound: p.lower_bound,
+            upper_bound: p.upper_bound,
+            confidence:  p.confidence,
+        })));
+        console.log('Chart labels     :', labels);
+        console.log('Chart predicted  :', predicted);
+        console.log('Chart upperBound :', upperBound);
+        console.log('Chart lowerBound :', lowerBound);
+        console.groupEnd();
+
         window.dailyChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: @json($dailyLabels),
+                labels: labels,
                 datasets: [
                     {
                         label: '{{ __('app.predicted') }}',
-                        data: @json($dailyPredicted),
+                        data: predicted,
                         borderColor: '#4E653D', backgroundColor: 'rgba(78,101,61,0.1)',
                         borderWidth: 3, fill: false, tension: 0.4, pointRadius: 4, pointHoverRadius: 6,
                     },
                     {
                         label: '{{ __('app.upper_bound') }}',
-                        data: @json($dailyUpperBound),
+                        data: upperBound,
                         borderColor: '#9aaa8a', borderWidth: 1.5, borderDash: [5,5],
                         fill: false, tension: 0.4, pointRadius: 0,
                     },
                     {
                         label: '{{ __('app.lower_bound') }}',
-                        data: @json($dailyLowerBound),
+                        data: lowerBound,
                         borderColor: '#9aaa8a', backgroundColor: 'rgba(154,170,138,0.1)',
                         borderWidth: 1.5, borderDash: [5,5], fill: '-1', tension: 0.4, pointRadius: 0,
                     }
