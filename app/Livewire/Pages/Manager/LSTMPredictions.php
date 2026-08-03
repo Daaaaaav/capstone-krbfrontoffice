@@ -131,7 +131,6 @@ class LSTMPredictions extends Component
         $this->isRetraining = true;
 
         try {
-            // Resolve via the container so the singleton instance is reused
             $client     = app(LSTMClient::class);
             $timeSeries = $this->buildTimeSeries();
 
@@ -148,16 +147,11 @@ class LSTMPredictions extends Component
     public function render()
     {
         try {
-            // ── Single LSTMClient instance for this entire render ──────────
-            /** @var LSTMClient $lstmClient */
             $lstmClient      = app(LSTMClient::class);
             $isLSTMAvailable = $lstmClient->isAvailable();
-
-            // ── Single CsvDataReader + one CSV parse shared by both
-            //    serverCsvInfo() and buildTimeSeries() ──────────────────────
             $csvReader       = new CsvDataReader();
-            $this->csvInfo   = $csvReader->serverCsvInfo();   // uses cached parse
-            $timeSeries      = $this->buildTimeSeries($csvReader); // reuses same cache entry
+            $this->csvInfo   = $csvReader->serverCsvInfo();  
+            $timeSeries      = $this->buildTimeSeries($csvReader);
 
             $result = null;
 
