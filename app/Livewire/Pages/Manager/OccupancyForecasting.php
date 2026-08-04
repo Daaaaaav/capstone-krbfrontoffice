@@ -86,7 +86,7 @@ class OccupancyForecasting extends Component
                 $this->uploadedCsv = null;
                 return;
             }
-            
+
             if ($this->uploadedCsvPath) {
                 Storage::disk(CsvDataReader::DISK)->delete($this->uploadedCsvPath);
             }
@@ -284,9 +284,12 @@ class OccupancyForecasting extends Component
         foreach ($rows as $row) {
             $indexed[$row['date']] = $row['count'];
         }
-        $start   = !empty($rows) ? Carbon::parse($rows[0]['date']) : Carbon::today()->subDays(90);
-        $end     = Carbon::today();
-        $result  = [];
+        $minLookback  = max(90, (int) AISettings::get('min_data_points', 45) + 30);
+        $lookbackDate = Carbon::today()->subDays($minLookback);
+        $earliestDate = !empty($rows) ? Carbon::parse($rows[0]['date']) : $lookbackDate;
+        $start        = $earliestDate->lt($lookbackDate) ? $earliestDate : $lookbackDate;
+        $end          = Carbon::today();
+        $result       = [];
 
         for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
             $dateStr  = $d->format('Y-m-d');
@@ -310,9 +313,12 @@ class OccupancyForecasting extends Component
         foreach ($rows as $row) {
             $indexed[$row['date']] = $row['count'];
         }
-        $start   = !empty($rows) ? Carbon::parse($rows[0]['date']) : Carbon::today()->subDays(90);
-        $end     = Carbon::today();
-        $result  = [];
+        $minLookback  = max(90, (int) AISettings::get('min_data_points', 45) + 30);
+        $lookbackDate = Carbon::today()->subDays($minLookback);
+        $earliestDate = !empty($rows) ? Carbon::parse($rows[0]['date']) : $lookbackDate;
+        $start        = $earliestDate->lt($lookbackDate) ? $earliestDate : $lookbackDate;
+        $end          = Carbon::today();
+        $result       = [];
 
         for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
             $dateStr  = $d->format('Y-m-d');
