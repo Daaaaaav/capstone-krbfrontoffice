@@ -156,10 +156,67 @@ class OccupancyForecasting extends Component
             if (in_array($this->forecastType, ['room', 'combined'])) {
                 $result = $lstm->predict($roomHistory, $this->forecastDays, false);
                 $roomForecast = $result['predictions'] ?? null;
+                
+                if (config('app.debug')) {
+                    Log::info('OccupancyForecasting: room forecast extraction', [
+                        'result_is_null'     => is_null($result),
+                        'result_keys'        => is_array($result) ? array_keys($result) : 'n/a',
+                        'predictions_count'  => is_array($roomForecast) ? count($roomForecast) : 'null',
+                        'first_prediction'   => is_array($roomForecast) && count($roomForecast) > 0 ? $roomForecast[0] : 'empty',
+                        'history_count'      => count($roomHistory),
+                    ]);
+                }
             }
             if (in_array($this->forecastType, ['vehicle', 'combined'])) {
                 $result = $lstm->predict($vehicleHistory, $this->forecastDays, false);
                 $vehicleForecast = $result['predictions'] ?? null;
+                
+                if (config('app.debug')) {
+                    Log::info('OccupancyForecasting: vehicle forecast extraction', [
+                        'result_is_null'     => is_null($result),
+                        'result_keys'        => is_array($result) ? array_keys($result) : 'n/a',
+                        'predictions_count'  => is_array($vehicleForecast) ? count($vehicleForecast) : 'null',
+                        'first_prediction'   => is_array($vehicleForecast) && count($vehicleForecast) > 0 ? $vehicleForecast[0] : 'empty',
+                        'history_count'      => count($vehicleHistory),
+                    ]);
+                }
+            }
+            
+            // Fallback to moving average if LSTM returns no predictions due to insufficient data
+            if (($roomForecast === null || empty($roomForecast)) && in_array($this->forecastType, ['room', 'combined'])) {
+                $maSettings = AISettings::getMultiple([
+                    'ma_window'      => 7,
+                    'ma_lower_bound' => 0.8,
+                    'ma_upper_bound' => 1.2,
+                    'ma_confidence'  => 0.60,
+                    'ma_floor_avg'   => 3.0,
+                ]);
+                $roomForecast = $this->movingAverageForecast($roomHistory, $this->forecastDays, $maSettings);
+                
+                if (config('app.debug')) {
+                    Log::info('OccupancyForecasting: falling back to MA for room forecast', [
+                        'reason' => 'LSTM returned null or empty',
+                        'ma_forecast_count' => count($roomForecast),
+                    ]);
+                }
+            }
+            
+            if (($vehicleForecast === null || empty($vehicleForecast)) && in_array($this->forecastType, ['vehicle', 'combined'])) {
+                $maSettings = AISettings::getMultiple([
+                    'ma_window'      => 7,
+                    'ma_lower_bound' => 0.8,
+                    'ma_upper_bound' => 1.2,
+                    'ma_confidence'  => 0.60,
+                    'ma_floor_avg'   => 3.0,
+                ]);
+                $vehicleForecast = $this->movingAverageForecast($vehicleHistory, $this->forecastDays, $maSettings);
+                
+                if (config('app.debug')) {
+                    Log::info('OccupancyForecasting: falling back to MA for vehicle forecast', [
+                        'reason' => 'LSTM returned null or empty',
+                        'ma_forecast_count' => count($vehicleForecast),
+                    ]);
+                }
             }
         } else {
             // Read MA settings once for this render cycle
@@ -483,6 +540,22 @@ class OccupancyForecasting extends Component
         
         $roomPredictions    = ($roomFcCount    > 0) ? array_column($roomFc,    'predicted') : [];
         $vehiclePredictions = ($vehicleFcCount > 0) ? array_column($vehicleFc, 'predicted') : [];
+        
+        $roomPredictions    = array_filter($roomPredictions, fn($v) => $v !== null);
+        $vehiclePredictions = array_filter($vehiclePredictions, fn($v) => $v !== null);
+        
+        if (config('app.debug')) {
+            Log::info('OccupancyForecasting: buildStats() prediction extraction', [
+                'room_fc_is_array'        => is_array($roomFc),
+                'room_fc_count'           => $roomFcCount,
+                'room_predictions_count'  => count($roomPredictions),
+                'room_predictions_sample' => array_slice($roomPredictions, 0, 3),
+                'vehicle_fc_is_array'        => is_array($vehicleFc),
+                'vehicle_fc_count'           => $vehicleFcCount,
+                'vehicle_predictions_count'  => count($vehiclePredictions),
+                'vehicle_predictions_sample' => array_slice($vehiclePredictions, 0, 3),
+            ]);
+        }
         
         $avgRoomFc      = !empty($roomPredictions)    ? $this->avg($roomPredictions)    : null;
         $avgVehicleFc   = !empty($vehiclePredictions) ? $this->avg($vehiclePredictions) : null;

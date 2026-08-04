@@ -100,9 +100,7 @@ class LSTMClient
         Cache::forget('lstm.predict.all');
         Log::info('LSTMClient: model cache busted (post-retrain).');
     }
-
-    // ── Public API ──────────────────────────────────────────────────
-
+    
     public function isAvailable(): bool
     {
         return Cache::remember('lstm.is_available', self::AVAIL_TTL, function () {
