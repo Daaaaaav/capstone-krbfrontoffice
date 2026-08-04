@@ -32,6 +32,17 @@ class OccupancyForecasting extends Component
     public ?string $uploadError     = null;
     public ?string $uploadSuccess   = null;
     public ?array  $csvInfo         = null;
+    public bool    $isLSTMAvailable = false;
+    public ?array  $modelMetrics    = null;
+
+    public function mount(): void
+    {
+        $reader               = new CsvDataReader();
+        $this->csvInfo        = $reader->serverCsvInfo();
+        $lstm                 = app(LSTMClient::class);
+        $this->isLSTMAvailable = $lstm->isAvailable();
+        $this->modelMetrics   = $this->isLSTMAvailable ? $lstm->getModelMetrics() : null;
+    }
 
     public function setForecastType(string $type): void
     {
@@ -113,17 +124,18 @@ class OccupancyForecasting extends Component
 
     public function render()
     {
-        $reader = new CsvDataReader();
-        $this->csvInfo = $reader->serverCsvInfo();
+        $reader         = new CsvDataReader();
         $roomHistory    = $this->buildTimeSeries('room',    $reader);
         $vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
-        $lstm        = app(LSTMClient::class);
-        $isAvailable = $lstm->isAvailable();
+
+        $isAvailable  = $this->isLSTMAvailable;
+        $modelMetrics = $this->modelMetrics;
 
         $roomForecast    = null;
         $vehicleForecast = null;
 
         if ($isAvailable) {
+            $lstm = app(LSTMClient::class);
             if (in_array($this->forecastType, ['room', 'combined'])) {
                 $result = $lstm->predict($roomHistory, $this->forecastDays, false);
                 $roomForecast = $result['predictions'] ?? null;
@@ -143,8 +155,6 @@ class OccupancyForecasting extends Component
 
         $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
         $stats     = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
-
-        $modelMetrics = $isAvailable ? $lstm->getModelMetrics() : null;
 
         $firstRoomPred    = $roomForecast    ? ($roomForecast[0]['date'] ?? 'none')                                        : 'n/a';
         $lastRoomPred     = $roomForecast    ? ($roomForecast[count($roomForecast) - 1]['date'] ?? 'none')                  : 'n/a';
