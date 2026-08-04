@@ -86,8 +86,7 @@ class OccupancyForecasting extends Component
                 $this->uploadedCsv = null;
                 return;
             }
-
-            // remove old upload if one exists
+            
             if ($this->uploadedCsvPath) {
                 Storage::disk(CsvDataReader::DISK)->delete($this->uploadedCsvPath);
             }
@@ -278,10 +277,13 @@ class OccupancyForecasting extends Component
             ->groupByRaw('DATE(created_at)')
             ->orderByRaw('DATE(created_at)')
             ->get()
-            ->map(fn($r) => ['date' => $r->date, 'count' => (int) $r->count])
+            ->map(fn($r) => ['date' => Carbon::parse((string) $r->date)->format('Y-m-d'), 'count' => (int) $r->count])
             ->toArray();
 
-        $indexed = array_column($rows, 'count', 'date');
+        $indexed = [];
+        foreach ($rows as $row) {
+            $indexed[$row['date']] = $row['count'];
+        }
         $start   = !empty($rows) ? Carbon::parse($rows[0]['date']) : Carbon::today()->subDays(90);
         $end     = Carbon::today();
         $result  = [];
@@ -301,10 +303,13 @@ class OccupancyForecasting extends Component
             ->groupByRaw('DATE(created_at)')
             ->orderByRaw('DATE(created_at)')
             ->get()
-            ->map(fn($r) => ['date' => $r->date, 'count' => (int) $r->count])
+            ->map(fn($r) => ['date' => Carbon::parse((string) $r->date)->format('Y-m-d'), 'count' => (int) $r->count])
             ->toArray();
 
-        $indexed = array_column($rows, 'count', 'date');
+        $indexed = [];
+        foreach ($rows as $row) {
+            $indexed[$row['date']] = $row['count'];
+        }
         $start   = !empty($rows) ? Carbon::parse($rows[0]['date']) : Carbon::today()->subDays(90);
         $end     = Carbon::today();
         $result  = [];
