@@ -35,10 +35,12 @@ class OccupancyForecasting extends Component
     public bool    $isLSTMAvailable = false;
     public ?array  $modelMetrics    = null;
 
+    private CsvDataReader $csvReader;
+
     public function mount(): void
     {
-        $reader               = new CsvDataReader();
-        $this->csvInfo        = $reader->serverCsvInfo();
+        $this->csvReader      = new CsvDataReader();
+        $this->csvInfo        = $this->csvReader->serverCsvInfo();
         $lstm                 = app(LSTMClient::class);
         $this->isLSTMAvailable = $lstm->isAvailable();
         $this->modelMetrics   = $this->isLSTMAvailable ? $lstm->getModelMetrics() : null;
@@ -82,7 +84,7 @@ class OccupancyForecasting extends Component
                 mkdir($uploadDir, 0755, true);
             }
 
-            $reader  = new CsvDataReader();
+            $reader  = $this->csvReader ?? new CsvDataReader();
             $tmpPath = $this->uploadedCsv->store(CsvDataReader::UPLOAD_PATH, CsvDataReader::DISK);
 
             if (!$tmpPath) {
@@ -124,7 +126,7 @@ class OccupancyForecasting extends Component
 
     public function render()
     {
-        $reader         = new CsvDataReader();
+        $reader         = $this->csvReader ?? new CsvDataReader();
         $roomHistory    = $this->buildTimeSeries('room',    $reader);
         $vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
 
@@ -203,10 +205,8 @@ class OccupancyForecasting extends Component
         ]);
     }
 
-    private function buildTimeSeries(string $type, ?CsvDataReader $reader = null): array
+    private function buildTimeSeries(string $type, CsvDataReader $reader): array
     {
-        $reader = $reader ?? new CsvDataReader();
-
         $csvMetric = match($type) {
             'room'    => 'combined_rooms',
             'vehicle' => 'vehicle_bookings',
@@ -248,9 +248,8 @@ class OccupancyForecasting extends Component
         }
     }
 
-    private function readRoomHistoryFromServerCsv(?CsvDataReader $reader = null): array
+    private function readRoomHistoryFromServerCsv(CsvDataReader $reader): array
     {
-        $reader = $reader ?? new CsvDataReader();
         try {
             return $reader->readServerCsvColumnsSummed([
                 'offline_room_bookings',
@@ -264,9 +263,8 @@ class OccupancyForecasting extends Component
         }
     }
 
-    private function readRoomHistoryFromCsv(string $storagePath, ?CsvDataReader $reader = null): array
+    private function readRoomHistoryFromCsv(string $storagePath, CsvDataReader $reader): array
     {
-        $reader = $reader ?? new CsvDataReader();
         try {
             return $reader->readUploadedCsvColumnsSummed($storagePath, [
                 'offline_room_bookings',

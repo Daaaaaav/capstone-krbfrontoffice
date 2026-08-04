@@ -32,6 +32,9 @@ class LSTMPredictions extends Component
 
     public bool $isRetraining = false;
 
+    /** Reused across render() → buildTimeSeries() within the same request. Not serialized by Livewire. */
+    private CsvDataReader $csvReader;
+
     protected function rules(): array
     {
         return [
@@ -78,7 +81,7 @@ class LSTMPredictions extends Component
                 mkdir($uploadDir, 0755, true);
             }
 
-            $reader = new CsvDataReader();
+            $reader = $this->csvReader ?? new CsvDataReader();
 
             $tmpPath = $this->uploadedCsv->store(
                 CsvDataReader::UPLOAD_PATH,
@@ -149,9 +152,25 @@ class LSTMPredictions extends Component
         try {
             $lstmClient      = app(LSTMClient::class);
             $isLSTMAvailable = $lstmClient->isAvailable();
-            $csvReader       = new CsvDataReader();
-            $this->csvInfo   = $csvReader->serverCsvInfo();  
+            $csvReader       = $this->csvReader ?? new CsvDataReader();
             $timeSeries      = $this->buildTimeSeries($csvReader);
+
+            // Derive csvInfo from the already-loaded timeSeries when using the server CSV,
+            // so we don't call serverCsvInfo() (which re-reads the CSV) separately.
+            if ($this->trainingSource === 'csv_server' || $this->trainingSource === 'csv_upload') {
+                if (!empty($timeSeries)) {
+                    $this->csvInfo = [
+                        'rows'  => count($timeSeries),
+                        'start' => $timeSeries[0]['date'],
+                        'end'   => $timeSeries[count($timeSeries) - 1]['date'],
+                    ];
+                } else {
+                    $this->csvInfo = ['rows' => 0, 'start' => null, 'end' => null];
+                }
+            } else {
+                // live_db path: timeSeries came from DB, still need CSV info from the server file
+                $this->csvInfo = $csvReader->serverCsvInfo();
+            }
 
             $result = null;
 
@@ -294,7 +313,7 @@ class LSTMPredictions extends Component
 
     private function buildTimeSeries(?CsvDataReader $reader = null): array
     {
-        $reader = $reader ?? new CsvDataReader();
+        $reader = $reader ?? ($this->csvReader ?? new CsvDataReader());
 
         switch ($this->trainingSource) {
 
