@@ -393,16 +393,16 @@ class OccupancyForecasting extends Component
     {
         $avgRoomHist    = $this->avg(array_column($roomHist, 'count'));
         $avgVehicleHist = $this->avg(array_column($vehicleHist, 'count'));
-        $avgRoomFc      = $roomFc    ? $this->avg(array_column($roomFc, 'predicted'))    : null;
-        $avgVehicleFc   = $vehicleFc ? $this->avg(array_column($vehicleFc, 'predicted')) : null;
+        $avgRoomFc      = (is_array($roomFc)    && count($roomFc)    > 0) ? $this->avg(array_column($roomFc,    'predicted')) : null;
+        $avgVehicleFc   = (is_array($vehicleFc) && count($vehicleFc) > 0) ? $this->avg(array_column($vehicleFc, 'predicted')) : null;
 
-        $roomTrend    = ($avgRoomFc && $avgRoomHist > 0)
+        $roomTrend    = ($avgRoomFc !== null && $avgRoomHist > 0)
             ? round(($avgRoomFc - $avgRoomHist) / $avgRoomHist * 100, 1) : 0;
-        $vehicleTrend = ($avgVehicleFc && $avgVehicleHist > 0)
+        $vehicleTrend = ($avgVehicleFc !== null && $avgVehicleHist > 0)
             ? round(($avgVehicleFc - $avgVehicleHist) / $avgVehicleHist * 100, 1) : 0;
 
         $peakDay = null;
-        if ($roomFc) {
+        if (is_array($roomFc) && count($roomFc) > 0) {
             $max = max(array_column($roomFc, 'predicted'));
             foreach ($roomFc as $p) {
                 if (round($p['predicted'], 1) === round($max, 1)) {
@@ -415,13 +415,13 @@ class OccupancyForecasting extends Component
         return [
             'avg_room_hist'    => round($avgRoomHist, 1),
             'avg_vehicle_hist' => round($avgVehicleHist, 1),
-            'avg_room_fc'      => $avgRoomFc    ? round($avgRoomFc, 1)    : '—',
-            'avg_vehicle_fc'   => $avgVehicleFc ? round($avgVehicleFc, 1) : '—',
+            'avg_room_fc'      => $avgRoomFc    !== null ? round($avgRoomFc, 1)    : '—',
+            'avg_vehicle_fc'   => $avgVehicleFc !== null ? round($avgVehicleFc, 1) : '—',
             'room_trend'       => $roomTrend,
             'vehicle_trend'    => $vehicleTrend,
             'peak_day'         => $peakDay ?? '—',
-            'total_room_fc'    => $roomFc    ? round(array_sum(array_column($roomFc, 'predicted')))    : '—',
-            'total_vehicle_fc' => $vehicleFc ? round(array_sum(array_column($vehicleFc, 'predicted'))) : '—',
+            'total_room_fc'    => (is_array($roomFc)    && count($roomFc)    > 0) ? round(array_sum(array_column($roomFc,    'predicted'))) : '—',
+            'total_vehicle_fc' => (is_array($vehicleFc) && count($vehicleFc) > 0) ? round(array_sum(array_column($vehicleFc, 'predicted'))) : '—',
         ];
     }
 

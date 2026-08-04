@@ -185,6 +185,9 @@ def load_model_metrics() -> Optional[dict]:
     except Exception:
         return None
 
+
+_MAPE_SANE_BOUND = 1000.0  
+
 def save_model_and_scaler(model, scaler: MinMaxScaler) -> None:
     os.makedirs(MODEL_DIR, exist_ok=True)
     model.save(MODEL_PATH)
@@ -688,10 +691,7 @@ def force_retrain(request: RequestData):
 
 @app.on_event("startup")
 async def bootstrap_metrics_on_startup():
-    """
-    On startup: warm the in-memory singleton from disk so the first
-    prediction request never pays the disk-load penalty.
-    """
+
     global _model_singleton, _scaler_singleton
 
     if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
@@ -758,6 +758,17 @@ def model_metrics():
     stored = load_model_metrics()
     if stored is not None:
         logger.info("Serving model metrics from %s", METRICS_PATH)
+        stored_smape = stored.get("smape")
+        stored_mape  = stored.get("mape")
+        if stored_smape is None and stored_mape is not None:
+            if stored_mape > _MAPE_SANE_BOUND:
+                logger.warning(
+                    "/model-metrics: legacy mape value %.4f exceeds sane bound "
+                    "(%s) — returning mape=null to suppress corrupted data.",
+                    stored_mape, _MAPE_SANE_BOUND,
+                )
+                stored_mape = None
+
         return {
             "available":           True,
             "trained_at":          stored.get("trained_at"),
@@ -770,8 +781,8 @@ def model_metrics():
             "mae":                 stored.get("mae"),
             "rmse":                stored.get("rmse"),
             "r2":                  stored.get("r2"),
-            "mape":                stored.get("mape"),
-            "smape":               stored.get("smape"),
+            "mape":                stored_mape,
+            "smape":               stored_smape,
             "wape":                stored.get("wape"),
             "trainable_params":    stored.get("trainable_params"),
             "training_samples":    stored.get("training_samples"),
