@@ -273,24 +273,48 @@ class OccupancyForecasting extends Component
 
     private function getRoomHistory(int $companyId): array
     {
-        return BookingRoom::where('company_id', $companyId)
+        $rows = BookingRoom::where('company_id', $companyId)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupByRaw('DATE(created_at)')
             ->orderByRaw('DATE(created_at)')
             ->get()
             ->map(fn($r) => ['date' => $r->date, 'count' => (int) $r->count])
             ->toArray();
+
+        $indexed = array_column($rows, 'count', 'date');
+        $start   = !empty($rows) ? Carbon::parse($rows[0]['date']) : Carbon::today()->subDays(90);
+        $end     = Carbon::today();
+        $result  = [];
+
+        for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+            $dateStr  = $d->format('Y-m-d');
+            $result[] = ['date' => $dateStr, 'count' => $indexed[$dateStr] ?? 0];
+        }
+
+        return $result;
     }
 
     private function getVehicleHistory(int $companyId): array
     {
-        return VehicleBooking::where('company_id', $companyId)
+        $rows = VehicleBooking::where('company_id', $companyId)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupByRaw('DATE(created_at)')
             ->orderByRaw('DATE(created_at)')
             ->get()
             ->map(fn($r) => ['date' => $r->date, 'count' => (int) $r->count])
             ->toArray();
+
+        $indexed = array_column($rows, 'count', 'date');
+        $start   = !empty($rows) ? Carbon::parse($rows[0]['date']) : Carbon::today()->subDays(90);
+        $end     = Carbon::today();
+        $result  = [];
+
+        for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+            $dateStr  = $d->format('Y-m-d');
+            $result[] = ['date' => $dateStr, 'count' => $indexed[$dateStr] ?? 0];
+        }
+
+        return $result;
     }
 
     private function movingAverageForecast(array $history, int $days): array
