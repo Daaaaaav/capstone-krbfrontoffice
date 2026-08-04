@@ -32,38 +32,46 @@ class ContextRouter
         $domains = $this->detect($message, $role, $history);
         $params  = $this->extractParams($message);
 
-        Log::info('ContextRouter: routing message', [
-            'stage'           => 'context_routing',
-            'role'            => $role,
-            'detected_domains'=> $domains,
-            'extracted_params'=> $params,
-            'message_preview' => mb_substr($message, 0, 80),
-        ]);
+        if (config('app.debug')) {
+            Log::info('ContextRouter: routing message', [
+                'stage'           => 'context_routing',
+                'role'            => $role,
+                'detected_domains'=> $domains,
+                'extracted_params'=> $params,
+                'message_preview' => mb_substr($message, 0, 80),
+            ]);
+        }
 
         $blocks = [];
         foreach ($domains as $domain) {
             if (isset($this->providers[$domain])) {
-                Log::info('ContextRouter: loading provider', [
-                    'stage'    => 'context_routing',
-                    'provider' => get_class($this->providers[$domain]),
-                    'domain'   => $domain,
-                    'params'   => $params,
-                ]);
+                if (config('app.debug')) {
+                    Log::info('ContextRouter: loading provider', [
+                        'stage'    => 'context_routing',
+                        'provider' => get_class($this->providers[$domain]),
+                        'domain'   => $domain,
+                        'params'   => $params,
+                    ]);
+                }
 
                 try {
                     $block = $this->providers[$domain]->load($companyId, $params);
                     if ($block !== '') {
                         $blocks[] = $block;
-                        Log::info('ContextRouter: provider loaded', [
-                            'stage'    => 'context_routing',
-                            'domain'   => $domain,
-                            'chars'    => strlen($block),
-                        ]);
+                        if (config('app.debug')) {
+                            Log::info('ContextRouter: provider loaded', [
+                                'stage'    => 'context_routing',
+                                'domain'   => $domain,
+                                'chars'    => strlen($block),
+                            ]);
+                        }
                     } else {
-                        Log::info('ContextRouter: provider returned empty block', [
-                            'stage'  => 'context_routing',
-                            'domain' => $domain,
-                        ]);
+                        if (config('app.debug')) {
+                            Log::info('ContextRouter: provider returned empty block', [
+                                'stage'  => 'context_routing',
+                                'domain' => $domain,
+                            ]);
+                        }
                     }
                 } catch (\Throwable $e) {
                     Log::error('ContextRouter: provider threw an exception', [
@@ -79,20 +87,24 @@ class ContextRouter
         }
 
         if (empty($blocks)) {
-            Log::info('ContextRouter: no domains matched — loading fallback (rooms + vehicles)', [
-                'stage' => 'context_routing',
-            ]);
+            if (config('app.debug')) {
+                Log::info('ContextRouter: no domains matched — loading fallback (rooms + vehicles)', [
+                    'stage' => 'context_routing',
+                ]);
+            }
             $blocks[] = $this->providers['rooms']->load($companyId, $params);
             $blocks[] = $this->providers['vehicles']->load($companyId, $params);
         }
 
         $assembled = "=== CONTEXT ({$this->now()}) ===\n\n" . implode("\n\n", $blocks);
 
-        Log::info('ContextRouter: context assembled', [
-            'stage'        => 'context_routing',
-            'total_chars'  => strlen($assembled),
-            'blocks_count' => count($blocks),
-        ]);
+        if (config('app.debug')) {
+            Log::info('ContextRouter: context assembled', [
+                'stage'        => 'context_routing',
+                'total_chars'  => strlen($assembled),
+                'blocks_count' => count($blocks),
+            ]);
+        }
 
         return $assembled;
     }

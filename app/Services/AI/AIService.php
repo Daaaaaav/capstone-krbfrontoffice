@@ -30,30 +30,36 @@ class AIService
 
     public function chat(string $systemPrompt, string $userPrompt, array $history = []): string
     {
-        Log::info('AIService: chat() called', [
-            'stage'          => 'provider_selection',
-            'priority_list'  => $this->priorityList,
-            'history_turns'  => count($history),
-            'system_chars'   => strlen($systemPrompt),
-            'user_chars'     => strlen($userPrompt),
-        ]);
+        if (config('app.debug')) {
+            Log::info('AIService: chat() called', [
+                'stage'          => 'provider_selection',
+                'priority_list'  => $this->priorityList,
+                'history_turns'  => count($history),
+                'system_chars'   => strlen($systemPrompt),
+                'user_chars'     => strlen($userPrompt),
+            ]);
+        }
 
         foreach ($this->priorityList as $providerName) {
             if ($this->isUnhealthy($providerName)) {
-                Log::info('AIService: skipping unhealthy provider', [
-                    'stage'    => 'provider_selection',
-                    'provider' => $providerName,
-                    'reason'   => 'health_cache_hit',
-                ]);
+                if (config('app.debug')) {
+                    Log::info('AIService: skipping unhealthy provider', [
+                        'stage'    => 'provider_selection',
+                        'provider' => $providerName,
+                        'reason'   => 'health_cache_hit',
+                    ]);
+                }
                 continue;
             }
 
             $model    = $this->resolveModel($providerName);
-            Log::info('AIService: selected provider', [
-                'stage'    => 'provider_selection',
-                'provider' => $providerName,
-                'model'    => $model,
-            ]);
+            if (config('app.debug')) {
+                Log::info('AIService: selected provider', [
+                    'stage'    => 'provider_selection',
+                    'provider' => $providerName,
+                    'model'    => $model,
+                ]);
+            }
 
             $provider = $this->buildProvider($providerName);
             $result   = $this->attemptProvider($provider, $providerName, $model, $systemPrompt, $userPrompt, $history);
@@ -102,25 +108,29 @@ class AIService
         while ($attempt < $this->maxAttempts) {
             $attempt++;
 
-            Log::info('AIService: sending request', [
-                'stage'         => 'api_request',
-                'provider'      => $providerName,
-                'model'         => $resolvedModel,
-                'attempt'       => "{$attempt}/{$this->maxAttempts}",
-                'system_chars'  => strlen($systemPrompt),
-                'user_chars'    => strlen($userPrompt),
-                'history_turns' => count($history),
-            ]);
+            if (config('app.debug')) {
+                Log::info('AIService: sending request', [
+                    'stage'         => 'api_request',
+                    'provider'      => $providerName,
+                    'model'         => $resolvedModel,
+                    'attempt'       => "{$attempt}/{$this->maxAttempts}",
+                    'system_chars'  => strlen($systemPrompt),
+                    'user_chars'    => strlen($userPrompt),
+                    'history_turns' => count($history),
+                ]);
+            }
 
             try {
                 $reply = $provider->chat($systemPrompt, $userPrompt, $history);
 
-                Log::info('AIService: request succeeded', [
-                    'stage'       => 'api_request',
-                    'provider'    => $providerName,
-                    'model'       => $resolvedModel,
-                    'reply_chars' => strlen($reply),
-                ]);
+                if (config('app.debug')) {
+                    Log::info('AIService: request succeeded', [
+                        'stage'       => 'api_request',
+                        'provider'    => $providerName,
+                        'model'       => $resolvedModel,
+                        'reply_chars' => strlen($reply),
+                    ]);
+                }
 
                 $this->clearUnhealthy($providerName);
                 return $reply;
@@ -165,11 +175,13 @@ class AIService
                     return null;
                 }
 
-                Log::info('AIService: waiting before retry', [
-                    'stage'    => 'api_request',
-                    'provider' => $providerName,
-                    'delay_s'  => $this->retryDelay,
-                ]);
+                if (config('app.debug')) {
+                    Log::info('AIService: waiting before retry', [
+                        'stage'    => 'api_request',
+                        'provider' => $providerName,
+                        'delay_s'  => $this->retryDelay,
+                    ]);
+                }
 
                 if ($this->retryDelay > 0) {
                     sleep($this->retryDelay);
@@ -209,12 +221,14 @@ class AIService
         $model   = $this->resolveModel($name);
         $timeout = (int) config('ai.timeout', 30);
 
-        Log::info('AIService: resolved model', [
-            'stage'    => 'model_resolution',
-            'provider' => $name,
-            'model'    => $model,
-            'api_key_set' => $apiKey !== '',
-        ]);
+        if (config('app.debug')) {
+            Log::info('AIService: resolved model', [
+                'stage'    => 'model_resolution',
+                'provider' => $name,
+                'model'    => $model,
+                'api_key_set' => $apiKey !== '',
+            ]);
+        }
 
         return match ($name) {
             'openrouter'  => new OpenRouterProvider($apiKey,  $model, $baseUrl ?: 'https://openrouter.ai/api/v1',                           $timeout),

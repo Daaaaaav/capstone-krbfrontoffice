@@ -34,16 +34,22 @@ class OccupancyForecasting extends Component
     public ?array  $csvInfo         = null;
     public bool    $isLSTMAvailable = false;
     public ?array  $modelMetrics    = null;
+    public array   $roomHistory     = [];
+    public array   $vehicleHistory  = [];
+    public ?string $historySourceKey = null;
 
     private CsvDataReader $csvReader;
 
     public function mount(): void
     {
-        $this->csvReader      = new CsvDataReader();
-        $this->csvInfo        = $this->csvReader->serverCsvInfo();
-        $lstm                 = app(LSTMClient::class);
+        $this->csvReader       = new CsvDataReader();
+        $this->csvInfo         = $this->csvReader->serverCsvInfo();
+        $lstm                  = app(LSTMClient::class);
         $this->isLSTMAvailable = $lstm->isAvailable();
-        $this->modelMetrics   = $this->isLSTMAvailable ? $lstm->getModelMetrics() : null;
+        $this->modelMetrics    = $this->isLSTMAvailable ? $lstm->getModelMetrics() : null;
+
+        // Build history once on initial mount.
+        $this->rebuildHistory();
     }
 
     public function setForecastType(string $type): void
@@ -61,6 +67,8 @@ class OccupancyForecasting extends Component
         $this->trainingSource = $source;
         $this->uploadError   = null;
         $this->uploadSuccess = null;
+        // Source changed — rebuild history immediately so forecasts use fresh data.
+        $this->rebuildHistory();
     }
 
     public function uploadCsv(): void
@@ -110,10 +118,14 @@ class OccupancyForecasting extends Component
             $this->trainingSource  = 'csv_upload';
             $this->uploadSuccess   = __('app.csv_upload_success', ['name' => $this->uploadedCsvName]);
 
-            Log::info('OccupancyForecasting: CSV uploaded', [
-                'path' => $tmpPath,
-                'name' => $this->uploadedCsvName,
-            ]);
+            if (config('app.debug')) {
+                Log::info('OccupancyForecasting: CSV uploaded', [
+                    'path' => $tmpPath,
+                    'name' => $this->uploadedCsvName,
+                ]);
+            }
+
+            $this->rebuildHistory();
 
         } catch (\Throwable $e) {
             Log::error('OccupancyForecasting: CSV upload failed', ['error' => $e->getMessage()]);
@@ -126,9 +138,12 @@ class OccupancyForecasting extends Component
 
     public function render()
     {
-        $reader         = $this->csvReader ?? new CsvDataReader();
-        $roomHistory    = $this->buildTimeSeries('room',    $reader);
-        $vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
+        if ($this->getHistorySourceKey() !== $this->historySourceKey) {
+            $this->rebuildHistory();
+        }
+
+        $roomHistory    = $this->roomHistory;
+        $vehicleHistory = $this->vehicleHistory;
 
         $isAvailable  = $this->isLSTMAvailable;
         $modelMetrics = $this->modelMetrics;
@@ -147,11 +162,19 @@ class OccupancyForecasting extends Component
                 $vehicleForecast = $result['predictions'] ?? null;
             }
         } else {
+            // Read MA settings once for this render cycle
+            $maSettings = AISettings::getMultiple([
+                'ma_window'      => 7,
+                'ma_lower_bound' => 0.8,
+                'ma_upper_bound' => 1.2,
+                'ma_confidence'  => 0.60,
+                'ma_floor_avg'   => 3.0,
+            ]);
             if (in_array($this->forecastType, ['room', 'combined'])) {
-                $roomForecast = $this->movingAverageForecast($roomHistory, $this->forecastDays);
+                $roomForecast = $this->movingAverageForecast($roomHistory, $this->forecastDays, $maSettings);
             }
             if (in_array($this->forecastType, ['vehicle', 'combined'])) {
-                $vehicleForecast = $this->movingAverageForecast($vehicleHistory, $this->forecastDays);
+                $vehicleForecast = $this->movingAverageForecast($vehicleHistory, $this->forecastDays, $maSettings);
             }
         }
 
@@ -165,27 +188,29 @@ class OccupancyForecasting extends Component
         $firstChartLabel  = $chartData['labels'][0] ?? 'none';
         $lastChartLabel   = $chartData['labels'][count($chartData['labels']) - 1] ?? 'none';
 
-        Log::info('OccupancyForecasting: single source of truth audit', [
-            'first_room_prediction'    => $firstRoomPred,
-            'last_room_prediction'     => $lastRoomPred,
-            'first_vehicle_prediction' => $firstVehiclePred,
-            'last_vehicle_prediction'  => $lastVehiclePred,
-            'first_chart_label'        => $firstChartLabel,
-            'last_chart_label'         => $lastChartLabel,
-            'chart_label_count'        => count($chartData['labels']),
-            'room_forecast_count'      => $roomForecast    ? count($roomForecast)    : 0,
-            'vehicle_forecast_count'   => $vehicleForecast ? count($vehicleForecast) : 0,
-        ]);
+        if (config('app.debug')) {
+            Log::info('OccupancyForecasting: single source of truth audit', [
+                'first_room_prediction'    => $firstRoomPred,
+                'last_room_prediction'     => $lastRoomPred,
+                'first_vehicle_prediction' => $firstVehiclePred,
+                'last_vehicle_prediction'  => $lastVehiclePred,
+                'first_chart_label'        => $firstChartLabel,
+                'last_chart_label'         => $lastChartLabel,
+                'chart_label_count'        => count($chartData['labels']),
+                'room_forecast_count'      => $roomForecast    ? count($roomForecast)    : 0,
+                'vehicle_forecast_count'   => $vehicleForecast ? count($vehicleForecast) : 0,
+            ]);
 
-        Log::info('OccupancyForecasting: metrics pipeline trace', [
-            'lstm_available'       => $isAvailable,
-            'model_metrics_null'   => is_null($modelMetrics),
-            'metrics_available'    => $modelMetrics['available'] ?? false,
-            'metrics_trained_at'   => $modelMetrics['trained_at'] ?? 'null',
-            'metrics_mae'          => $modelMetrics['mae'] ?? 'null',
-            'metrics_rmse'         => $modelMetrics['rmse'] ?? 'null',
-            'metrics_epochs'       => $modelMetrics['epochs_run'] ?? 'null',
-        ]);
+            Log::info('OccupancyForecasting: metrics pipeline trace', [
+                'lstm_available'       => $isAvailable,
+                'model_metrics_null'   => is_null($modelMetrics),
+                'metrics_available'    => $modelMetrics['available'] ?? false,
+                'metrics_trained_at'   => $modelMetrics['trained_at'] ?? 'null',
+                'metrics_mae'          => $modelMetrics['mae'] ?? 'null',
+                'metrics_rmse'         => $modelMetrics['rmse'] ?? 'null',
+                'metrics_epochs'       => $modelMetrics['epochs_run'] ?? 'null',
+            ]);
+        }
 
         return view('livewire.pages.manager.occupancy-forecasting', [
             'isLSTMAvailable' => $isAvailable,
@@ -203,6 +228,32 @@ class OccupancyForecasting extends Component
             'uploadSuccess'   => $this->uploadSuccess,
             'modelMetrics'    => $modelMetrics,
         ]);
+    }
+
+    private function getHistorySourceKey(): string
+    {
+        return match ($this->trainingSource) {
+            'csv_upload' => 'csv_upload:' . ($this->uploadedCsvPath ?? ''),
+            'live_db'    => 'live_db:' . (Auth::id() ?? ''),
+            default      => 'csv_server',
+        };
+    }
+
+    private function rebuildHistory(): void
+    {
+        $reader               = $this->csvReader ?? new CsvDataReader();
+        $this->roomHistory    = $this->buildTimeSeries('room',    $reader);
+        $this->vehicleHistory = $this->buildTimeSeries('vehicle', $reader);
+        $this->historySourceKey = $this->getHistorySourceKey();
+
+        if (config('app.debug')) {
+            Log::info('OccupancyForecasting: history rebuilt', [
+                'source'     => $this->trainingSource,
+                'source_key' => $this->historySourceKey,
+                'room_rows'  => count($this->roomHistory),
+                'vehicle_rows' => count($this->vehicleHistory),
+            ]);
+        }
     }
 
     private function buildTimeSeries(string $type, CsvDataReader $reader): array
@@ -292,19 +343,8 @@ class OccupancyForecasting extends Component
         foreach ($rows as $row) {
             $indexed[$row['date']] = $row['count'];
         }
-        $minLookback  = max(90, (int) AISettings::get('min_data_points', 45) + 30);
-        $lookbackDate = Carbon::today()->subDays($minLookback);
-        $earliestDate = !empty($rows) ? Carbon::parse($rows[0]['date']) : $lookbackDate;
-        $start        = $earliestDate->lt($lookbackDate) ? $earliestDate : $lookbackDate;
-        $end          = Carbon::today();
-        $result       = [];
-
-        for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
-            $dateStr  = $d->format('Y-m-d');
-            $result[] = ['date' => $dateStr, 'count' => $indexed[$dateStr] ?? 0];
-        }
-
-        return $result;
+        
+        return $this->fillHistoryGaps($rows, $indexed);
     }
 
     private function getVehicleHistory(int $companyId): array
@@ -321,6 +361,12 @@ class OccupancyForecasting extends Component
         foreach ($rows as $row) {
             $indexed[$row['date']] = $row['count'];
         }
+        
+        return $this->fillHistoryGaps($rows, $indexed);
+    }
+
+    private function fillHistoryGaps(array $rows, array $indexed): array
+    {
         $minLookback  = max(90, (int) AISettings::get('min_data_points', 45) + 30);
         $lookbackDate = Carbon::today()->subDays($minLookback);
         $earliestDate = !empty($rows) ? Carbon::parse($rows[0]['date']) : $lookbackDate;
@@ -336,15 +382,8 @@ class OccupancyForecasting extends Component
         return $result;
     }
 
-    private function movingAverageForecast(array $history, int $days): array
+    private function movingAverageForecast(array $history, int $days, array $settings): array
     {
-        $settings   = AISettings::getMultiple([
-            'ma_window'      => 7,
-            'ma_lower_bound' => 0.8,
-            'ma_upper_bound' => 1.2,
-            'ma_confidence'  => 0.60,
-            'ma_floor_avg'   => 3.0,
-        ]);
         $window     = (int)   $settings['ma_window'];
         $lowerMult  = (float) $settings['ma_lower_bound'];
         $upperMult  = (float) $settings['ma_upper_bound'];
@@ -420,14 +459,16 @@ class OccupancyForecasting extends Component
         $firstRoomDate    = $room    ? ($room[0]['date'] ?? 'none')    : 'n/a';
         $firstVehicleDate = $vehicle ? ($vehicle[0]['date'] ?? 'none') : 'n/a';
 
-        Log::info('OccupancyForecasting: buildChartData() labels derived from prediction.date', [
-            'total_labels'       => count($labels),
-            'first_label'        => $firstLabel,
-            'last_label'         => $lastLabel,
-            'first_room_date'    => $firstRoomDate,
-            'first_vehicle_date' => $firstVehicleDate,
-            'labels_sample'      => array_slice($labels, 0, 5),
-        ]);
+        if (config('app.debug')) {
+            Log::info('OccupancyForecasting: buildChartData() labels derived from prediction.date', [
+                'total_labels'       => count($labels),
+                'first_label'        => $firstLabel,
+                'last_label'         => $lastLabel,
+                'first_room_date'    => $firstRoomDate,
+                'first_vehicle_date' => $firstVehicleDate,
+                'labels_sample'      => array_slice($labels, 0, 5),
+            ]);
+        }
 
         return compact('labels', 'roomData', 'vehicleData');
     }
@@ -436,8 +477,15 @@ class OccupancyForecasting extends Component
     {
         $avgRoomHist    = $this->avg(array_column($roomHist, 'count'));
         $avgVehicleHist = $this->avg(array_column($vehicleHist, 'count'));
-        $avgRoomFc      = (is_array($roomFc)    && count($roomFc)    > 0) ? $this->avg(array_column($roomFc,    'predicted')) : null;
-        $avgVehicleFc   = (is_array($vehicleFc) && count($vehicleFc) > 0) ? $this->avg(array_column($vehicleFc, 'predicted')) : null;
+        
+        $roomFcCount    = is_array($roomFc)    ? count($roomFc)    : 0;
+        $vehicleFcCount = is_array($vehicleFc) ? count($vehicleFc) : 0;
+        
+        $roomPredictions    = ($roomFcCount    > 0) ? array_column($roomFc,    'predicted') : [];
+        $vehiclePredictions = ($vehicleFcCount > 0) ? array_column($vehicleFc, 'predicted') : [];
+        
+        $avgRoomFc      = !empty($roomPredictions)    ? $this->avg($roomPredictions)    : null;
+        $avgVehicleFc   = !empty($vehiclePredictions) ? $this->avg($vehiclePredictions) : null;
 
         $roomTrend    = ($avgRoomFc !== null && $avgRoomHist > 0)
             ? round(($avgRoomFc - $avgRoomHist) / $avgRoomHist * 100, 1) : 0;
@@ -445,8 +493,8 @@ class OccupancyForecasting extends Component
             ? round(($avgVehicleFc - $avgVehicleHist) / $avgVehicleHist * 100, 1) : 0;
 
         $peakDay = null;
-        if (is_array($roomFc) && count($roomFc) > 0) {
-            $max = max(array_column($roomFc, 'predicted'));
+        if (!empty($roomPredictions)) {
+            $max = max($roomPredictions);
             foreach ($roomFc as $p) {
                 if (round($p['predicted'], 1) === round($max, 1)) {
                     $peakDay = Carbon::parse($p['date'])->isoFormat('ddd, D MMM');
@@ -463,8 +511,8 @@ class OccupancyForecasting extends Component
             'room_trend'       => $roomTrend,
             'vehicle_trend'    => $vehicleTrend,
             'peak_day'         => $peakDay ?? '—',
-            'total_room_fc'    => (is_array($roomFc)    && count($roomFc)    > 0) ? round(array_sum(array_column($roomFc,    'predicted'))) : '—',
-            'total_vehicle_fc' => (is_array($vehicleFc) && count($vehicleFc) > 0) ? round(array_sum(array_column($vehicleFc, 'predicted'))) : '—',
+            'total_room_fc'    => !empty($roomPredictions)    ? round(array_sum($roomPredictions))    : '—',
+            'total_vehicle_fc' => !empty($vehiclePredictions) ? round(array_sum($vehiclePredictions)) : '—',
         ];
     }
 

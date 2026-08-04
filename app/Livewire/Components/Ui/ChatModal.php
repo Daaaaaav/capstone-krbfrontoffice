@@ -280,14 +280,16 @@ class ChatModal extends Component
         $this->bookingDraft = $draftService->resolveRoomId($this->bookingDraft, $companyId);
         $this->bookingDraft = $draftService->resolveVehicleId($this->bookingDraft, $companyId);
 
-        Log::info('ChatModal: booking draft updated', [
-            'stage'          => 'booking_draft_updated',
-            'type'           => $this->bookingDraft['type'],
-            'turns'          => $this->bookingDraft['turns'],
-            'ai_complete'    => $isComplete,
-            'room_fields'    => $this->bookingDraft['room'],
-            'vehicle_fields' => $this->bookingDraft['vehicle'],
-        ]);
+        if (config('app.debug')) {
+            Log::info('ChatModal: booking draft updated', [
+                'stage'          => 'booking_draft_updated',
+                'type'           => $this->bookingDraft['type'],
+                'turns'          => $this->bookingDraft['turns'],
+                'ai_complete'    => $isComplete,
+                'room_fields'    => $this->bookingDraft['room'],
+                'vehicle_fields' => $this->bookingDraft['vehicle'],
+            ]);
+        }
 
         $this->updateMemory($prefill, $vprefill);
 
@@ -300,16 +302,18 @@ class ChatModal extends Component
         if ($roomReady) {
             $payload = $draftService->buildRoomPayload($this->bookingDraft);
 
-            Log::info('ChatModal: room draft complete — attempting direct creation', [
-                'stage'   => 'booking_draft_complete',
-                'type'    => 'room',
-                'payload' => $payload,
-            ]);
+            if (config('app.debug')) {
+                Log::info('ChatModal: room draft complete — attempting direct creation', [
+                    'stage'   => 'booking_draft_complete',
+                    'type'    => 'room',
+                    'payload' => $payload,
+                ]);
 
-            Log::info('ChatModal: dispatching to DirectBookingService', [
-                'stage' => 'booking_dispatch_started',
-                'type'  => 'room',
-            ]);
+                Log::info('ChatModal: dispatching to DirectBookingService', [
+                    'stage' => 'booking_dispatch_started',
+                    'type'  => 'room',
+                ]);
+            }
 
             $result = app(DirectBookingService::class)->createRoomBooking($payload);
 
@@ -327,10 +331,12 @@ class ChatModal extends Component
                     . "\n{$payload['ymd']}  {$payload['time']}-{$payload['endTime']}"
                     . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
 
-                Log::info('ChatModal: room booking confirmed', [
-                    'stage'      => 'booking_created',
-                    'booking_id' => $result['booking_id'],
-                ]);
+                if (config('app.debug')) {
+                    Log::info('ChatModal: room booking confirmed', [
+                        'stage'      => 'booking_created',
+                        'booking_id' => $result['booking_id'],
+                    ]);
+                }
 
                 return [$reply, null, null];
             }
@@ -347,16 +353,18 @@ class ChatModal extends Component
         if ($vehicleReady) {
             $payload = $draftService->buildVehiclePayload($this->bookingDraft);
 
-            Log::info('ChatModal: vehicle draft complete — attempting direct creation', [
-                'stage'   => 'booking_draft_complete',
-                'type'    => 'vehicle',
-                'payload' => $payload,
-            ]);
+            if (config('app.debug')) {
+                Log::info('ChatModal: vehicle draft complete — attempting direct creation', [
+                    'stage'   => 'booking_draft_complete',
+                    'type'    => 'vehicle',
+                    'payload' => $payload,
+                ]);
 
-            Log::info('ChatModal: dispatching to DirectBookingService', [
-                'stage' => 'booking_dispatch_started',
-                'type'  => 'vehicle',
-            ]);
+                Log::info('ChatModal: dispatching to DirectBookingService', [
+                    'stage' => 'booking_dispatch_started',
+                    'type'  => 'vehicle',
+                ]);
+            }
 
             $result = app(DirectBookingService::class)->createVehicleBooking($payload);
 
@@ -370,10 +378,12 @@ class ChatModal extends Component
                     . "\n{$payload['dateFrom']}  {$payload['startTime']}–{$payload['endTime']}"
                     . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
 
-                Log::info('ChatModal: vehicle booking confirmed', [
-                    'stage'      => 'booking_created',
-                    'booking_id' => $result['booking_id'],
-                ]);
+                if (config('app.debug')) {
+                    Log::info('ChatModal: vehicle booking confirmed', [
+                        'stage'      => 'booking_created',
+                        'booking_id' => $result['booking_id'],
+                    ]);
+                }
 
                 return [$reply, null, null];
             }
@@ -387,17 +397,19 @@ class ChatModal extends Component
             return [$reply, null, null];
         }
 
-        Log::info('ChatModal: booking draft still incomplete', [
-            'stage'       => 'booking_draft_updated',
-            'type'        => $this->bookingDraft['type'],
-            'turns'       => $this->bookingDraft['turns'],
-            'missing_room'    => $this->bookingDraft['type'] === 'room'
-                ? $this->missingRoomSummary($this->bookingDraft['room'])
-                : [],
-            'missing_vehicle' => $this->bookingDraft['type'] === 'vehicle'
-                ? $this->missingVehicleSummary($this->bookingDraft['vehicle'])
-                : [],
-        ]);
+        if (config('app.debug')) {
+            Log::info('ChatModal: booking draft still incomplete', [
+                'stage'       => 'booking_draft_updated',
+                'type'        => $this->bookingDraft['type'],
+                'turns'       => $this->bookingDraft['turns'],
+                'missing_room'    => $this->bookingDraft['type'] === 'room'
+                    ? $this->missingRoomSummary($this->bookingDraft['room'])
+                    : [],
+                'missing_vehicle' => $this->bookingDraft['type'] === 'vehicle'
+                    ? $this->missingVehicleSummary($this->bookingDraft['vehicle'])
+                    : [],
+            ]);
+        }
 
         $outPrefill  = $this->hasAnyValue($prefill)  ? $prefill  : null;
         $outVprefill = $this->hasAnyValue($vprefill) ? $vprefill : null;

@@ -109,14 +109,68 @@ class CsvDataReader
     public function serverCsvInfo(): array
     {
         try {
-            $rows = $this->readServerCsv('visitors');
-            if (empty($rows)) {
+            $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
+
+            if (!file_exists($path)) {
+                throw new \RuntimeException(
+                    'Server CSV not found at: ' . $path . '. ' .
+                    'Run docs/generate_historical_csv.py and copy the output to storage/app/private/lstm/.'
+                );
+            }
+
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
+                throw new \RuntimeException("Cannot open CSV: {$path}");
+            }
+
+            $rawHeaders = fgetcsv($handle);
+            if ($rawHeaders === false) {
+                fclose($handle);
                 return ['rows' => 0, 'start' => null, 'end' => null];
             }
+
+            $headers = array_map('trim', array_map('strtolower', $rawHeaders));
+            $dateIdx = array_search('date', $headers, true);
+
+            if ($dateIdx === false) {
+                fclose($handle);
+                return ['rows' => 0, 'start' => null, 'end' => null];
+            }
+
+            $rowCount  = 0;
+            $firstDate = null;
+            $lastDate  = null;
+
+            while (($row = fgetcsv($handle)) !== false) {
+                if (!isset($row[$dateIdx])) {
+                    continue;
+                }
+
+                $date = trim($row[$dateIdx]);
+
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    continue;
+                }
+
+                $rowCount++;
+
+                if ($firstDate === null) {
+                    $firstDate = $date;
+                }
+
+                $lastDate = $date;
+            }
+
+            fclose($handle);
+
+            if ($rowCount === 0) {
+                return ['rows' => 0, 'start' => null, 'end' => null];
+            }
+
             return [
-                'rows'  => count($rows),
-                'start' => $rows[0]['date'],
-                'end'   => $rows[count($rows) - 1]['date'],
+                'rows'  => $rowCount,
+                'start' => $firstDate,
+                'end'   => $lastDate,
             ];
         } catch (\Throwable $e) {
             return ['rows' => 0, 'start' => null, 'end' => null, 'error' => $e->getMessage()];
