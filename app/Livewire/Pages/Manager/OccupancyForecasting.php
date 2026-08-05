@@ -180,8 +180,7 @@ class OccupancyForecasting extends Component
                     ]);
                 }
             }
-            
-            // Fallback to moving average if LSTM returns no predictions due to insufficient data
+    
             if (($roomForecast === null || empty($roomForecast)) && in_array($this->forecastType, ['room', 'combined'])) {
                 $maSettings = AISettings::getMultiple([
                     'ma_window'      => 7,
