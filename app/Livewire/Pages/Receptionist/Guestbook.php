@@ -158,6 +158,8 @@ class Guestbook extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'));
         $this->date   = $now->toDateString();
         $this->jam_in = $now->format('H:i');

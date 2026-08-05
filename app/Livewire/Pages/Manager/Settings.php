@@ -119,6 +119,8 @@ class Settings extends Component
      */
     public function saveAISettings(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         // Basic validation: all values must be present and numeric (int/float/bool)
         $rules = [];
         foreach ($this->aiSettings as $key => $value) {

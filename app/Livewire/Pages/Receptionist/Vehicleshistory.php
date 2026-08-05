@@ -229,6 +229,8 @@ class Vehicleshistory extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'edit.borrower_name' => 'required|string|max:255',
             'edit.purpose'       => 'nullable|string|max:255',
@@ -334,6 +336,8 @@ class Vehicleshistory extends Component
 
     public function savePriorityEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'priorityEdit.borrower_name' => 'required|string|max:255',
             'priorityEdit.purpose'       => 'nullable|string|max:255',

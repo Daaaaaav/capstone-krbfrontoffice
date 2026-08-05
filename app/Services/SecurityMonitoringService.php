@@ -56,6 +56,12 @@ class SecurityMonitoringService
                     'field' => $field,
                     'payload' => $value,
                 ]);
+                \App\Models\WazuhAlert::create([
+                    'rule_level' => 12, 
+                    'description' => 'SQLI_DETECTED', 
+                    'agent_name' => 'laravel-app', 
+                    'raw_log' => json_encode(['ip' => $ip, 'path' => $path, 'event' => $event, 'form' => $form, 'field' => $field, 'payload' => $value])
+                ]);
             }
 
             if (self::looksLikeXss($value)) {
@@ -66,6 +72,12 @@ class SecurityMonitoringService
                     'form' => $form,
                     'field' => $field,
                     'payload' => $value,
+                ]);
+                \App\Models\WazuhAlert::create([
+                    'rule_level' => 12, 
+                    'description' => 'XSS_DETECTED', 
+                    'agent_name' => 'laravel-app', 
+                    'raw_log' => json_encode(['ip' => $ip, 'path' => $path, 'event' => $event, 'form' => $form, 'field' => $field, 'payload' => $value])
                 ]);
             }
         }
@@ -87,6 +99,7 @@ class SecurityMonitoringService
                 'attempts'       => $attempts,
                 'window_seconds' => $windowSeconds,
             ]);
+            \App\Models\WazuhAlert::create(['rule_level' => 10, 'description' => 'FORM_SPAM_DETECTED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, form: $form, attempts: $attempts"]);
         }
     }
 

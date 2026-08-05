@@ -190,6 +190,8 @@ class Vehiclestatus extends Component
 
     public function submitReject(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'rejectNote' => 'required|string|min:5|max:2000',
             'rejectId'   => 'required|integer',
@@ -420,6 +422,8 @@ class Vehiclestatus extends Component
 
     public function submitPriorityVehicleReject(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'priorityVehicleRejectReason' => 'required|string|min:5|max:1000',
         ]);

@@ -109,6 +109,12 @@ class Login extends Component
                 'email' => $this->email,
                 'reason' => 'captcha_failed',
             ]);
+            \App\Models\WazuhAlert::create([
+                'rule_level' => 5, 
+                'description' => 'LOGIN_FAILED', 
+                'agent_name' => 'laravel-app', 
+                'raw_log' => json_encode(['ip' => request()->ip(), 'email' => $this->email, 'reason' => 'captcha_failed'])
+            ]);
             $this->dispatch('captcha-error');
             $this->captcha = '';
             throw ValidationException::withMessages([
@@ -130,6 +136,12 @@ class Login extends Component
                     'email' => $this->email,
                     'reason' => 'invalid_credentials',
                 ]);
+                \App\Models\WazuhAlert::create([
+                    'rule_level' => 5, 
+                    'description' => 'LOGIN_FAILED', 
+                    'agent_name' => 'laravel-app', 
+                    'raw_log' => json_encode(['ip' => request()->ip(), 'email' => $this->email, 'reason' => 'invalid_credentials'])
+                ]);
                 throw ValidationException::withMessages([
                     'email' => 'These credentials do not match our records.',
                 ]);
@@ -145,6 +157,12 @@ class Login extends Component
                         'ip' => request()->ip(),
                         'email' => $this->email,
                         'user_id' => Auth::id(),
+                    ]);
+                    \App\Models\WazuhAlert::create([
+                        'rule_level' => 3, 
+                        'description' => 'LOGIN_SUCCESS', 
+                        'agent_name' => 'laravel-app', 
+                        'raw_log' => json_encode(['ip' => request()->ip(), 'email' => $this->email])
                     ]);
 
                     return redirect()->route('home');
@@ -217,6 +235,12 @@ class Login extends Component
                 'email' => $this->email,
                 'user_id' => Auth::id(),
                 'otp' => true,
+            ]);
+            \App\Models\WazuhAlert::create([
+                'rule_level' => 3, 
+                'description' => 'LOGIN_SUCCESS', 
+                'agent_name' => 'laravel-app', 
+                'raw_log' => json_encode(['ip' => request()->ip(), 'email' => $this->email, 'otp' => true])
             ]);
 
             return redirect()->route('home');

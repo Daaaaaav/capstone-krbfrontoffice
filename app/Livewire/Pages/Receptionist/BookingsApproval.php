@@ -515,6 +515,8 @@ class BookingsApproval extends Component
 
     public function submitReschedule(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $rules = [
             'rescheduleId'     => 'required|integer|exists:booking_rooms,bookingroom_id',
             'rescheduleDate'   => 'required|date',
