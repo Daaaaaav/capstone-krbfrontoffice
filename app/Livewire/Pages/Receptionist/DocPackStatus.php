@@ -59,6 +59,10 @@ class DocPackStatus extends Component
             $this->userId = null;
         }
 
+        if ($name === 'editPhoto') {
+            $this->validateOnly('editPhoto');
+        }
+
         if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'departmentId', 'userId', 'departmentQ', 'userQ'], true)) {
             $this->resetPage('pendingPage');
         }

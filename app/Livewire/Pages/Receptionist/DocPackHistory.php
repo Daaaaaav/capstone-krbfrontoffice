@@ -67,6 +67,10 @@ class DocPackHistory extends Component
             $this->userId = null;
         }
 
+        if ($name === 'editPhoto') {
+            $this->validateOnly('editPhoto');
+        }
+
         if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'filterSender', 'filterReceiver', 'userId', 'departmentId', 'userQ', 'withTrashed'], true)) {
             $this->resetPage('donePage');
         }

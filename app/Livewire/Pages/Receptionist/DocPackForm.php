@@ -103,6 +103,11 @@ class DocPackForm extends Component
         $this->users        = [];
     }
 
+    public function updatedPhoto(): void
+    {
+        $this->validateOnly('photo');
+    }
+
     public function save(): void
     {
         \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);

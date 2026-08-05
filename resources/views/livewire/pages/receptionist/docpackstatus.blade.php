@@ -777,7 +777,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Document Photo</label>
                         <div class="flex gap-4">
                             <div class="w-32 h-40 shrink-0 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden relative flex items-center justify-center">
-                                @if($editPhoto)
+                                @if($editPhoto && method_exists($editPhoto, 'temporaryUrl') && in_array($editPhoto->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']))
                                     <img src="{{ $editPhoto->temporaryUrl() }}" class="w-full h-full object-cover">
                                 @elseif($editImageUrl && Storage::disk('public')->exists($editImageUrl))
                                     <img src="{{ asset('storage/' . $editImageUrl) }}" class="w-full h-full object-cover">
