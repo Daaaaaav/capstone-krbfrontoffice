@@ -133,6 +133,8 @@ class DocPackStatus extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         if (!$this->editId) return;
         $this->validate();
 
@@ -162,6 +164,8 @@ class DocPackStatus extends Component
 
     public function storeItem(int $id): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $row = $this->base()->where('status', 'pending')->findOrFail($id);
         $row->status = 'stored';
         $row->save();

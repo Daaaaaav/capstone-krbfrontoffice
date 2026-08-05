@@ -107,6 +107,8 @@ class Documents extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $data = $this->validate();
 
         SecurityMonitoringService::logFormSubmit('documents', $data);
@@ -171,6 +173,8 @@ class Documents extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate($this->rulesEdit());
         $row = $this->findOwnedOrFail($this->editId);
 

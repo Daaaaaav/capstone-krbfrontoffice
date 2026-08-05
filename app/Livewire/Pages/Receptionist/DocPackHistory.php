@@ -220,6 +220,8 @@ class DocPackHistory extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         if (!$this->editId) {
             return;
         }

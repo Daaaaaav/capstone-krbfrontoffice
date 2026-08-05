@@ -114,6 +114,8 @@ class PriorityRoomBooking extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'room_id'             => ['required', 'integer', 'exists:rooms,room_id'],
             'meeting_title'       => ['required', 'string', 'max:255'],
@@ -274,6 +276,8 @@ class PriorityRoomBooking extends Component
 
     public function submitSidebarReject(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'sidebarRejectReason' => 'required|string|min:3|max:500',
         ]);

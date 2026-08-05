@@ -106,6 +106,8 @@ class Manageroom extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         try {
             if ($this->editMode) {
                 $this->validate($this->editRules());

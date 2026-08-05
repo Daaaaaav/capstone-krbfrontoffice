@@ -119,6 +119,8 @@ class Bookingvehicle extends Component
 
     public function submit()
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         try {
             $this->validate();
         } catch (\Illuminate\Validation\ValidationException $e) {

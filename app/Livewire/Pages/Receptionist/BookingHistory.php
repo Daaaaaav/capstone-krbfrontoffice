@@ -254,6 +254,8 @@ class BookingHistory extends Component
 
     public function savePriorityEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'priorityEdit.meeting_title'       => 'required|string|max:255',
             'priorityEdit.date'                => 'required|date',
@@ -315,6 +317,8 @@ class BookingHistory extends Component
 
     public function create(string $bookingType = 'meeting', string $status = 'completed'): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->modalMode = 'create';
         $this->editingId = null;
         $this->editLastEdited = null;
@@ -408,6 +412,8 @@ class BookingHistory extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $data        = $this->validateForm();
         $statusForDb = $data['status'];
         $bookingType = $this->normalizeBookingType($data['booking_type'] ?? null);

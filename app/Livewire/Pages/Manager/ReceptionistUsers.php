@@ -113,6 +113,8 @@ class ReceptionistUsers extends Component
 
     public function save()
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate();
 
         try {

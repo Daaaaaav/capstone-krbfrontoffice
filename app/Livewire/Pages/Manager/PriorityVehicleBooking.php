@@ -134,6 +134,8 @@ class PriorityVehicleBooking extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'vehicle_id'    => ['required', 'integer', 'exists:vehicles,vehicle_id'],
             'borrower_name' => ['required', 'string', 'max:255'],
@@ -308,6 +310,8 @@ class PriorityVehicleBooking extends Component
 
     public function submitVehicleSidebarReject(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'vehicleSidebarRejectReason' => 'required|string|min:5|max:2000',
         ]);

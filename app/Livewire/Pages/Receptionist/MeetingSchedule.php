@@ -373,6 +373,8 @@ class MeetingSchedule extends Component
 
     public function saveOffline(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate();
         $this->validateNotesIfOther();
         $roomsForValidation = $this->loadRooms();
@@ -493,6 +495,8 @@ class MeetingSchedule extends Component
 
     public function saveOnline(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $data = $this->validate([
             'online_meeting_title' => ['required', 'string', 'max:255'],
             'online_platform'      => ['required', Rule::in(['google_meet', 'zoom'])],
