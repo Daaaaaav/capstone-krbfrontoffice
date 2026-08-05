@@ -67,7 +67,6 @@ class OccupancyForecasting extends Component
         $this->trainingSource = $source;
         $this->uploadError   = null;
         $this->uploadSuccess = null;
-        // Source changed — rebuild history immediately so forecasts use fresh data.
         $this->rebuildHistory();
     }
 
