@@ -163,7 +163,6 @@
                     </div>
                 </div>
 
-                {{-- LIST (2-COLUMN GRID LAYOUT) --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50/50">
                     @if($viewMode === 'card')
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
