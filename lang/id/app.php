@@ -851,4 +851,8 @@ return [
     'faq_rec_q7' => 'Bagaimana cara melacak status DocPac?',
     'faq_rec_a7' => 'Buka Manajemen DocPac → Status DocPac untuk melihat status pemrosesan terkini semua paket dokumen yang telah dikirimkan.',
 
+    'start_date' => 'Tanggal Mulai',
+    'end_date' => 'Tanggal Akhir',
+    'apply' => 'Terapkan',
+    'select_date_range' => 'Pilih Rentang Tanggal',
 ];

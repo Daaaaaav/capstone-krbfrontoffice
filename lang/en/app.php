@@ -858,4 +858,8 @@ return [
     'faq_rec_q7' => 'How do I track a DocPac status?',
     'faq_rec_a7' => 'Go to DocPac Management → DocPac Status to see the current processing status of all submitted document packages.',
 
+    'start_date' => 'Start Date',
+    'end_date' => 'End Date',
+    'apply' => 'Apply',
+    'select_date_range' => 'Select Date Range',
 ];

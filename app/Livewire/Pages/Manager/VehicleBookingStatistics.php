@@ -7,17 +7,39 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use App\Models\VehicleBooking;
+use Carbon\Carbon;
 
 #[Layout('layouts.manager')]
 #[Title('Vehicle Booking Statistics')]
 class VehicleBookingStatistics extends Component
 {
-    public string $timeRange = '90days';
-    public bool   $showList  = false;
+    public string $startDate;
+    public string $endDate;
+    public bool $showList = false;
 
-    public function setTimeRange(string $range): void
+    public function mount(): void
     {
-        $this->timeRange = $range;
+        $this->startDate = now()->startOfMonth()->format('Y-m-d');
+        $this->endDate = now()->format('Y-m-d');
+    }
+
+    public function updated($propertyName): void
+    {
+        if (in_array($propertyName, ['startDate', 'endDate'])) {
+            $this->validateDateRange();
+        }
+    }
+
+    protected function validateDateRange(): void
+    {
+        if ($this->startDate && $this->endDate) {
+            $start = Carbon::parse($this->startDate);
+            $end = Carbon::parse($this->endDate);
+            
+            if ($start->greaterThan($end)) {
+                $this->endDate = $this->startDate;
+            }
+        }
     }
 
     public function toggleList(): void
@@ -30,48 +52,46 @@ class VehicleBookingStatistics extends Component
         try {
             $companyId = Auth::user()->company_id;
 
-            $days = match($this->timeRange) {
-                '30days' => 30,
-                '90days' => 90,
-                default  => 7,
-            };
+            $since = Carbon::parse($this->startDate)->startOfDay();
+            $until = Carbon::parse($this->endDate)->endOfDay();
 
-            $since = now()->subDays($days)->startOfDay();
-
-            $totalBookings      = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->count();
-            $pendingBookings    = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'pending')->count();
-            $approvedBookings   = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->where('status', 'approved')->count();
-            $onProgressBookings = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->whereIn('status', ['on_progress', 'late_return'])->count();
-            $completedBookings  = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->whereIn('status', ['completed', 'returned'])->count();
-            $rejectedBookings   = VehicleBooking::where('company_id', $companyId)->where('created_at', '>=', $since)->whereIn('status', ['rejected', 'cancelled'])->count();
+            $totalBookings = VehicleBooking::where('company_id', $companyId)->whereBetween('created_at', [$since, $until])->count();
+            $pendingBookings = VehicleBooking::where('company_id', $companyId)->whereBetween('created_at', [$since, $until])->where('status', 'pending')->count();
+            $approvedBookings = VehicleBooking::where('company_id', $companyId)->whereBetween('created_at', [$since, $until])->where('status', 'approved')->count();
+            $onProgressBookings = VehicleBooking::where('company_id', $companyId)->whereBetween('created_at', [$since, $until])->whereIn('status', ['on_progress', 'late_return'])->count();
+            $completedBookings = VehicleBooking::where('company_id', $companyId)->whereBetween('created_at', [$since, $until])->whereIn('status', ['completed', 'returned'])->count();
+            $rejectedBookings = VehicleBooking::where('company_id', $companyId)->whereBetween('created_at', [$since, $until])->whereIn('status', ['rejected', 'cancelled'])->count();
 
             $raw = VehicleBooking::where('company_id', $companyId)
-                ->where('created_at', '>=', $since)
+                ->whereBetween('created_at', [$since, $until])
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                 ->groupByRaw('DATE(created_at)')
                 ->orderByRaw('DATE(created_at)')
                 ->pluck('count', 'date');
 
             $labels = [];
-            $data   = [];
-            for ($i = $days - 1; $i >= 0; $i--) {
-                $date     = now()->subDays($i)->format('Y-m-d');
-                $labels[] = now()->subDays($i)->format('d/m');
-                $data[]   = (int) ($raw[$date] ?? 0);
+            $data = [];
+            $currentDate = $since->copy();
+            
+            while ($currentDate->lessThanOrEqualTo($until)) {
+                $dateKey = $currentDate->format('Y-m-d');
+                $labels[] = $currentDate->format('d/m');
+                $data[] = (int) ($raw[$dateKey] ?? 0);
+                $currentDate->addDay();
             }
 
             $kpis = [
-                ['label' => __('app.total_bookings'), 'value' => $totalBookings,      'color' => 'blue',   'icon' => 'truck'],
-                ['label' => __('app.pending'),         'value' => $pendingBookings,    'color' => 'yellow', 'icon' => 'clock'],
-                ['label' => __('app.approved'),        'value' => $approvedBookings,   'color' => 'green',  'icon' => 'check-circle'],
-                ['label' => __('app.in_progress'),     'value' => $onProgressBookings, 'color' => 'purple', 'icon' => 'arrow-path'],
-                ['label' => __('app.completed'),       'value' => $completedBookings,  'color' => 'gray',   'icon' => 'check-badge'],
-                ['label' => __('app.rejected'),        'value' => $rejectedBookings,   'color' => 'red',    'icon' => 'x-circle'],
+                ['label' => __('app.total_bookings'), 'value' => $totalBookings, 'color' => 'blue', 'icon' => 'truck'],
+                ['label' => __('app.pending'), 'value' => $pendingBookings, 'color' => 'yellow', 'icon' => 'clock'],
+                ['label' => __('app.approved'), 'value' => $approvedBookings, 'color' => 'green', 'icon' => 'check-circle'],
+                ['label' => __('app.in_progress'), 'value' => $onProgressBookings, 'color' => 'purple', 'icon' => 'arrow-path'],
+                ['label' => __('app.completed'), 'value' => $completedBookings, 'color' => 'gray', 'icon' => 'check-badge'],
+                ['label' => __('app.rejected'), 'value' => $rejectedBookings, 'color' => 'red', 'icon' => 'x-circle'],
             ];
 
             $bookings = $this->showList
                 ? VehicleBooking::where('company_id', $companyId)
-                    ->where('created_at', '>=', $since)
+                    ->whereBetween('created_at', [$since, $until])
                     ->with(['vehicle', 'user', 'department'])
                     ->orderBy('created_at', 'desc')
                     ->get()
