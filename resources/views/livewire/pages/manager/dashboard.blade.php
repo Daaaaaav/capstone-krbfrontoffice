@@ -1,7 +1,6 @@
 <div class="min-h-screen bg-background">
     <main class="px-4 sm:px-6 py-6 space-y-6">
 
-        {{-- Page header --}}
         <x-page-header title="{{ __('app.manager_analytics') }}" subtitle="{{ __('app.interactive_insights') }} {{ $selectedYear }}">
             <x-slot:actions>
                 <button wire:click="setFilter('all')"
@@ -11,45 +10,126 @@
             </x-slot:actions>
         </x-page-header>
 
-        {{-- Year Selector --}}
-        <div class="bg-card border border-border rounded-lg p-4">
-            <div class="flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                    <p class="text-sm font-medium text-muted-foreground">{{ __('app.select_year') }}</p>
-                    <p class="text-xs text-muted-foreground/70">{{ __('app.viewing_data_for') }} {{ $selectedYear }}</p>
-                </div>
-                @if(empty($availableYears))
-                    <span class="text-sm text-muted-foreground">{{ __('app.no_data_available') }}</span>
-                @else
-                    @php
-                        $yearOptions = array_map(
-                            fn($y) => ['value' => (string) $y, 'label' => (string) $y],
-                            array_reverse($availableYears)
-                        );
-                    @endphp
-                    <x-custom-select wire:model.live="selectedYear" :options="$yearOptions" />
-                @endif
-            </div>
-        </div>
-
-        {{-- KPI Cards --}}
-        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            @foreach($stats as $s)
-                @php $isActive = $activeFilter === $s['key']; $isUp = $s['direction'] === 'up'; @endphp
-                <div wire:click="setFilter('{{ $s['key'] }}')"
-                    class="cursor-pointer bg-card border rounded-lg p-5 transition-all duration-150 hover:bg-accent/50
-                           {{ $isActive ? 'border-foreground ring-1 ring-foreground' : 'border-border' }}">
-                    <div class="flex justify-between items-start">
-                        <p class="text-sm font-medium text-muted-foreground">{{ $s['label'] }}</p>
-                        <span class="text-xs px-2 py-0.5 rounded-md font-medium
-                            {{ $isUp ? 'text-success bg-success/10' : 'text-destructive bg-destructive/10' }}">
-                            {{ $isUp ? '+' : '' }}{{ $s['trend'] }}%
-                        </span>
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            @php
+                $totalRoom = $pendingRoomBookings->count() + $ongoingRoomBookings->count();
+                $previewRoomBookings = $pendingRoomBookings->concat($ongoingRoomBookings)->take(3);
+            @endphp
+            <button @click="open('room')"
+                class="group text-left bg-card border border-[#4E653D]/40 rounded-xl p-5 hover:border-[#4E653D] hover:shadow-md transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4E653D]">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-9 h-9 rounded-lg bg-[#4E653D]/10 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-[#4E653D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/>
+                        </svg>
                     </div>
-                    <h2 class="text-2xl font-semibold mt-3 text-card-foreground tracking-tight">{{ number_format($s['value']) }}</h2>
-                    <p class="mt-2 text-xs text-muted-foreground/60">{{ __('app.click_filter_chart') }}</p>
+                    <span class="text-2xl font-bold text-[#4E653D]">{{ $totalRoom }}</span>
                 </div>
-            @endforeach
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">Daily Room Bookings</p>
+                <div class="flex items-center gap-3 mt-2">
+                    <span class="text-[11px] text-amber-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>{{ $pendingRoomBookings->count() }} pending
+                    </span>
+                    <span class="text-[11px] text-emerald-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>{{ $ongoingRoomBookings->count() }} ongoing
+                    </span>
+                </div>
+
+                @if($previewRoomBookings->isNotEmpty())
+                <div class="mt-3 space-y-1.5 border-t border-[#4E653D]/20 pt-2.5">
+                    @foreach($previewRoomBookings as $rb)
+                    @php
+                        $rbStatus   = $rb->status;
+                        $rbIsPending = in_array($rbStatus, ['pending', '0', 0]);
+                        $rbDate     = \Carbon\Carbon::parse($rb->date)->format('d M Y');
+                        $rbStart    = $rb->start_time ? substr($rb->start_time, 0, 5) : null;
+                        $rbEnd      = $rb->end_time   ? substr($rb->end_time,   0, 5) : null;
+                    @endphp
+                    <div class="flex items-start gap-1.5">
+                        <span class="mt-1 w-1.5 h-1.5 rounded-full shrink-0 {{ $rbIsPending ? 'bg-amber-400' : 'bg-emerald-500' }}"></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[11px] font-medium text-foreground truncate leading-tight">
+                                {{ $rb->meeting_title ?? '—' }}
+                            </p>
+                            <p class="text-[10px] text-muted-foreground truncate leading-tight">
+                                {{ $rb->room?->room_name ?? '—' }}
+                            </p>
+                            <p class="text-[10px] text-[#4E653D]/80 leading-tight flex items-center gap-1 flex-wrap">
+                                <span>{{ $rbDate }}</span>
+                                @if($rbStart)
+                                <span class="text-muted-foreground/50">&middot;</span>
+                                <span>{{ $rbStart }}{{ $rbEnd ? '–' . $rbEnd : '' }}</span>
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    @endforeach
+                    @if($totalRoom > 3)
+                    <p class="text-[10px] text-muted-foreground/50 pl-3">+{{ $totalRoom - 3 }} more</p>
+                    @endif
+                </div>
+                @endif
+
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">Click to view details &rarr;</p>
+            </button>
+
+            @php $totalVehicle = $pendingVehicleBookings->count() + $ongoingVehicleBookings->count(); @endphp
+            <button @click="open('vehicle')"
+                class="group text-left bg-card border border-[#4A2F24]/40 rounded-xl p-5 hover:border-[#4A2F24] hover:shadow-md transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4A2F24]">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-9 h-9 rounded-lg bg-[#4A2F24]/10 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-[#4A2F24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/>
+                            <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-[#4A2F24]">{{ $totalVehicle }}</span>
+                </div>
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">Daily Vehicle Bookings</p>
+                <div class="flex items-center gap-3 mt-2">
+                    <span class="text-[11px] text-amber-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>{{ $pendingVehicleBookings->count() }} pending
+                    </span>
+                    <span class="text-[11px] text-blue-600 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>{{ $ongoingVehicleBookings->count() }} on road
+                    </span>
+                </div>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">Click to view details &rarr;</p>
+            </button>
+
+            <button @click="open('docpack')"
+                class="group text-left bg-card border border-amber-400/40 rounded-xl p-5 hover:border-amber-500 hover:shadow-md transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-amber-700">{{ $pendingDocpacks->count() }}</span>
+                </div>
+                <p class="text-xs font-bold uppercase tracking-wider text-amber-800">Daily Doc/Package</p>
+                <p class="text-[11px] text-amber-600/70 mt-2">Document & package deliveries</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-amber-600 transition-colors">Click to view details &rarr;</p>
+            </button>
+
+            <button @click="open('visitor')"
+                class="group text-left bg-card border border-violet-400/40 rounded-xl p-5 hover:border-violet-500 hover:shadow-md transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                            <circle cx="9" cy="7" r="4" stroke-width="2"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M23 21v-2a4 4 0 00-3-3.87"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 3.13a4 4 0 010 7.75"/>
+                        </svg>
+                    </div>
+                    <span class="text-2xl font-bold text-violet-700">{{ $todayVisitors->count() }}</span>
+                </div>
+                <p class="text-xs font-bold uppercase tracking-wider text-violet-800">Visitors Today</p>
+                <p class="text-[11px] text-violet-600/70 mt-2">Guestbook entries today</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-violet-600 transition-colors">Click to view details &rarr;</p>
+            </button>
         </section>
 
         {{-- Priority Bookings Alert (only when present) --}}
@@ -132,6 +212,60 @@
             </div>
         </div>
         @endif
+
+        <div class="bg-card border border-border rounded-xl p-6 space-y-6">
+            <div>
+                <h2 class="text-lg font-semibold text-card-foreground">Yearly Booking Trends</h2>
+                <p class="text-xs text-muted-foreground mt-1">Overview of all booking activities for the selected year</p>
+            </div>
+
+            <div class="bg-muted/30 border border-border/50 rounded-lg p-4">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <p class="text-sm font-medium text-muted-foreground">{{ __('app.select_year') }}</p>
+                        <p class="text-xs text-muted-foreground/70">{{ __('app.viewing_data_for') }} {{ $selectedYear }}</p>
+                    </div>
+                    @if(empty($availableYears))
+                        <span class="text-sm text-muted-foreground">{{ __('app.no_data_available') }}</span>
+                    @else
+                        @php
+                            $yearOptions = array_map(
+                                fn($y) => ['value' => (string) $y, 'label' => (string) $y],
+                                array_reverse($availableYears)
+                            );
+                        @endphp
+                        <x-custom-select wire:model.live="selectedYear" :options="$yearOptions" />
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-muted/20 border border-border/50 rounded-lg p-4">
+                <p class="text-xs font-medium text-muted-foreground mb-3">Filter by booking type</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    @foreach($stats as $s)
+                        @php $isActive = $activeFilter === $s['key']; $isUp = $s['direction'] === 'up'; @endphp
+                        <button wire:click="setFilter('{{ $s['key'] }}')"
+                            class="text-left bg-card border rounded-lg p-4 transition-all duration-150 hover:bg-accent/50 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20
+                                   {{ $isActive ? 'border-foreground ring-2 ring-foreground/20 shadow-sm' : 'border-border' }}">
+                            <div class="flex justify-between items-start">
+                                <p class="text-xs font-medium text-muted-foreground">{{ $s['label'] }}</p>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded font-medium
+                                    {{ $isUp ? 'text-success bg-success/10' : 'text-destructive bg-destructive/10' }}">
+                                    {{ $isUp ? '+' : '' }}{{ $s['trend'] }}%
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-semibold mt-2 text-card-foreground tracking-tight">{{ number_format($s['value']) }}</h3>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="bg-background border border-border rounded-lg p-5">
+                <div wire:ignore style="position: relative; height: 480px;">
+                    <canvas id="chart"></canvas>
+                </div>
+            </div>
+        </div>
 
         {{-- Status Summary Cards Row --}}
         <div
@@ -446,15 +580,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>{{-- end status cards + modal x-data --}}
-         {{-- Full-width Chart --}}
-        <div class="bg-card border border-border p-6 rounded-lg">
-            <h3 class="text-sm font-semibold text-card-foreground mb-4">
-                {{ __('app.booking_trends') }} — {{ $selectedYear }}
-            </h3>
-            <div wire:ignore style="position: relative; height: 520px;">
-                <canvas id="chart"></canvas>
             </div>
         </div>
     </main>
