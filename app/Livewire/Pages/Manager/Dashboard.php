@@ -58,34 +58,43 @@ class Dashboard extends Component
             $roomTrendKpi = $this->calcTrend($prevRooms, $totalRooms);
             $vehTrendKpi  = $this->calcTrend($prevVehicles, $totalVehicles);
 
+            $totalVisitors = Guestbook::where('company_id', $companyId)->whereBetween('created_at', [$yearStart, $yearEnd])->count();
+            $totalDocpacks = Delivery::where('company_id', $companyId)->whereBetween('created_at', [$yearStart, $yearEnd])->count();
+
+            $prevVisitors = Guestbook::where('company_id', $companyId)->whereBetween('created_at', [$prevStart, $prevEnd])->count();
+            $prevDocpacks = Delivery::where('company_id', $companyId)->whereBetween('created_at', [$prevStart, $prevEnd])->count();
+
+            $visitorTrendKpi = $this->calcTrend($prevVisitors, $totalVisitors);
+            $docpackTrendKpi = $this->calcTrend($prevDocpacks, $totalDocpacks);
+
             $stats = [
                 [
                     'key'       => 'all',
-                    'label'     => __('app.all'),
-                    'value'     => $totalRooms + $totalVehicles,
+                    'label'     => 'All Bookings',
+                    'value'     => $totalRooms + $totalVehicles + $totalDocpacks,
                     'trend'     => abs($allTrend),
                     'direction' => $allTrend >= 0 ? 'up' : 'down',
                 ],
                 [
                     'key'       => 'room',
-                    'label'     => __('app.room_bookings_label'),
+                    'label'     => 'Room Bookings',
                     'value'     => $totalRooms,
                     'trend'     => abs($roomTrendKpi),
                     'direction' => $roomTrendKpi >= 0 ? 'up' : 'down',
                 ],
                 [
                     'key'       => 'vehicle',
-                    'label'     => __('app.vehicle_bookings_label'),
+                    'label'     => 'Vehicle Bookings',
                     'value'     => $totalVehicles,
                     'trend'     => abs($vehTrendKpi),
                     'direction' => $vehTrendKpi >= 0 ? 'up' : 'down',
                 ],
                 [
-                    'key'       => 'users',
-                    'label'     => __('app.receptionists'),
-                    'value'     => $totalUsers,
-                    'trend'     => 0,
-                    'direction' => 'up',
+                    'key'       => 'docpack',
+                    'label'     => 'Doc/Pack Deliveries',
+                    'value'     => $totalDocpacks,
+                    'trend'     => abs($docpackTrendKpi),
+                    'direction' => $docpackTrendKpi >= 0 ? 'up' : 'down',
                 ],
             ];
 
@@ -132,18 +141,22 @@ class Dashboard extends Component
 
             if ($this->activeFilter === 'room') {
                 $datasets = [
-                    ['type' => 'room',    'label' => __('app.room_bookings_label'),    'data' => $room],
+                    ['type' => 'room',    'label' => 'Room Bookings',    'data' => $room],
                 ];
             } elseif ($this->activeFilter === 'vehicle') {
                 $datasets = [
-                    ['type' => 'vehicle', 'label' => __('app.vehicle_bookings_label'), 'data' => $vehicle],
+                    ['type' => 'vehicle', 'label' => 'Vehicle Bookings', 'data' => $vehicle],
+                ];
+            } elseif ($this->activeFilter === 'docpack') {
+                $datasets = [
+                    ['type' => 'docpack', 'label' => 'Doc/Pack Deliveries', 'data' => $docpack],
                 ];
             } else {
                 $datasets = [
-                    ['type' => 'room',    'label' => __('app.room_bookings_label'),    'data' => $room],
-                    ['type' => 'vehicle', 'label' => __('app.vehicle_bookings_label'), 'data' => $vehicle],
-                    ['type' => 'visitor', 'label' => 'Visitors',                       'data' => $visitor],
-                    ['type' => 'docpack', 'label' => 'Doc / Package',                  'data' => $docpack],
+                    ['type' => 'room',    'label' => 'Room Bookings',       'data' => $room],
+                    ['type' => 'vehicle', 'label' => 'Vehicle Bookings',    'data' => $vehicle],
+                    ['type' => 'visitor', 'label' => 'Visitors',            'data' => $visitor],
+                    ['type' => 'docpack', 'label' => 'Doc/Pack Deliveries', 'data' => $docpack],
                 ];
             }
 
