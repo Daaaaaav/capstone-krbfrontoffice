@@ -203,7 +203,7 @@
                     <label class="drp-label">{{ __('app.end_date') ?? 'End Date' }}</label>
                     <x-custom-calendar 
                         id="{{ $uid }}-end-cal"
-                        :min-date="tempStart"
+                        x-bind:min-date="tempStart"
                         :max-date="now()->format('Y-m-d')"
                         @date-selected="onEndDateSelected($event)"
                         @click.stop
