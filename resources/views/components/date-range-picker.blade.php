@@ -86,6 +86,7 @@
      x-data="{
          open: false,
          triggerRect: {},
+         portalPosition: { top: 0, left: 0 },
          tempStart: $wire.entangle('{{ $startKey }}'),
          tempEnd: $wire.entangle('{{ $endKey }}'),
          selectingStart: true,
@@ -101,24 +102,60 @@
              return s.toLocaleDateString('en-US', fmt) + ' - ' + e.toLocaleDateString('en-US', fmt);
          },
          toggle() {
-             const el = document.getElementById('{{ $uid }}');
-             const btn = el.querySelector('.drp-trigger');
-             const r = btn.getBoundingClientRect();
-             this.triggerRect = { 
-                 top: r.bottom + window.scrollY + 4, 
-                 left: r.left + window.scrollX, 
-                 width: Math.max(r.width, 320) 
-             };
+             if (this.open) {
+                 this.close();
+                 return;
+             }
+             
              this.tempStart = $wire.{{ $startKey }};
              this.tempEnd = $wire.{{ $endKey }};
              this.selectingStart = true;
-             this.open = !this.open;
+             this.open = true;
              
              this.$nextTick(() => {
-                 if (this.open) {
-                     this.syncCalendars();
-                 }
+                 this.calculatePosition();
+                 this.syncCalendars();
              });
+         },
+         calculatePosition() {
+             const el = document.getElementById('{{ $uid }}');
+             const btn = el.querySelector('.drp-trigger');
+             const portal = document.querySelector('#{{ $uid }}-portal');
+             
+             if (!btn || !portal) return;
+             
+             const btnRect = btn.getBoundingClientRect();
+             const portalRect = portal.getBoundingClientRect();
+             
+             const viewportWidth = window.innerWidth;
+             const viewportHeight = window.innerHeight;
+             const scrollX = window.scrollX;
+             const scrollY = window.scrollY;
+             
+             const gap = 4;
+             const padding = 16;
+             
+             let top = btnRect.bottom + scrollY + gap;
+             let left = btnRect.left + scrollX;
+             
+             if (left + portalRect.width > viewportWidth - padding) {
+                 left = Math.max(padding, viewportWidth - portalRect.width - padding + scrollX);
+             }
+             
+             if (left < padding + scrollX) {
+                 left = padding + scrollX;
+             }
+             
+             if (btnRect.bottom + portalRect.height > viewportHeight - padding) {
+                 const spaceAbove = btnRect.top;
+                 const spaceBelow = viewportHeight - btnRect.bottom;
+                 
+                 if (spaceAbove > spaceBelow && spaceAbove > portalRect.height + gap) {
+                     top = btnRect.top + scrollY - portalRect.height - gap;
+                 }
+             }
+             
+             this.portalPosition = { top, left };
          },
          close() { 
              this.open = false; 
@@ -169,6 +206,7 @@
          }
      }"
      @keydown.escape.window="if (open) close()"
+     @resize.window="if (open) $nextTick(() => calculatePosition())"
      class="drp-wrap"
 >
     <button type="button" class="drp-trigger" @click.stop="toggle()">
@@ -179,13 +217,14 @@
     </button>
 
     <template x-teleport="body">
-        <div class="drp-portal"
+        <div 
+            id="{{ $uid }}-portal"
+            class="drp-portal"
             x-show="open"
             x-cloak
             @click.outside="close()"
             @mousedown.stop
-            :style="`top:${triggerRect.top}px; left:${triggerRect.left}px;`"
-            style="display:none;">
+            :style="`top: ${portalPosition.top}px; left: ${portalPosition.left}px;`">
             
             <div class="drp-calendars">
                 <div class="drp-calendar-section">
