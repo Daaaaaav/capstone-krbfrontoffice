@@ -117,7 +117,6 @@
             x-show="open"
             x-cloak
             :style="`top:${triggerRect.top}px; left:${triggerRect.left}px; min-width:${triggerRect.width}px;`"
-            @click.outside="close()"
             style="display:none;">
             
             <div class="drp-input-group">
@@ -127,6 +126,8 @@
                            x-model="tempStart"
                            class="drp-input"
                            :max="tempEnd || ''"
+                           @click.stop
+                           @mousedown.stop
                     />
                 </div>
                 <div>
@@ -136,6 +137,8 @@
                            class="drp-input"
                            :min="tempStart || ''"
                            :max="new Date().toISOString().split('T')[0]"
+                           @click.stop
+                           @mousedown.stop
                     />
                 </div>
             </div>
