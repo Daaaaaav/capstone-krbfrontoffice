@@ -30,18 +30,28 @@
     position: fixed; z-index: 99999;
     border-radius: 12px; border: 1px solid #e5e7eb;
     background: #ffffff; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    padding: 20px; min-width: 320px;
+    padding: 20px; min-width: 640px;
 }
-.drp-input-group { display: flex; flex-direction: column; gap: 12px; }
-.drp-label { font-size: 0.75rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
-.drp-input {
-    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #d1d5db;
-    font-size: 0.875rem; color: #111827; background: #ffffff;
-    transition: all 0.15s; outline: none;
+.drp-calendars { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px; 
+    margin-bottom: 20px;
 }
-.drp-input:focus { border-color: #4E653D; box-shadow: 0 0 0 3px rgba(78, 101, 61, 0.1); }
-.drp-input:hover { border-color: #9ca3af; }
-.drp-actions { display: flex; gap: 8px; margin-top: 16px; }
+.drp-calendar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.drp-label { 
+    font-size: 0.75rem; 
+    font-weight: 600; 
+    color: #6b7280; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    padding: 0 4px;
+}
+.drp-actions { display: flex; gap: 8px; }
 .drp-btn {
     flex: 1; padding: 10px 16px; border-radius: 8px;
     font-size: 0.875rem; font-weight: 600; cursor: pointer;
@@ -55,6 +65,20 @@
     background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;
 }
 .drp-btn-secondary:hover { background: #e5e7eb; }
+
+@media (max-width: 768px) {
+    .drp-portal {
+        min-width: 320px;
+        max-width: calc(100vw - 32px);
+        left: 16px !important;
+        right: 16px;
+        width: auto;
+    }
+    .drp-calendars {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
 </style>
 
 <div {{ $attributes->only('class') }}
@@ -64,6 +88,9 @@
          triggerRect: {},
          tempStart: $wire.entangle('{{ $startKey }}'),
          tempEnd: $wire.entangle('{{ $endKey }}'),
+         selectingStart: true,
+         startCalendarRef: null,
+         endCalendarRef: null,
          get displayRange() {
              const start = this.tempStart || $wire.{{ $startKey }};
              const end = this.tempEnd || $wire.{{ $endKey }};
@@ -84,12 +111,20 @@
              };
              this.tempStart = $wire.{{ $startKey }};
              this.tempEnd = $wire.{{ $endKey }};
+             this.selectingStart = true;
              this.open = !this.open;
+             
+             this.$nextTick(() => {
+                 if (this.open) {
+                     this.syncCalendars();
+                 }
+             });
          },
          close() { 
              this.open = false; 
              this.tempStart = $wire.{{ $startKey }};
              this.tempEnd = $wire.{{ $endKey }};
+             this.selectingStart = true;
          },
          apply() {
              if (this.tempStart && this.tempEnd) {
@@ -99,10 +134,41 @@
                      this.close();
                  }
              }
+         },
+         onStartDateSelected(event) {
+             this.tempStart = event.detail.date;
+             this.selectingStart = false;
+             this.syncCalendars();
+         },
+         onEndDateSelected(event) {
+             this.tempEnd = event.detail.date;
+             if (this.tempStart && new Date(this.tempEnd) < new Date(this.tempStart)) {
+                 [this.tempStart, this.tempEnd] = [this.tempEnd, this.tempStart];
+             }
+             this.syncCalendars();
+         },
+         syncCalendars() {
+             this.$nextTick(() => {
+                 const startCal = document.getElementById('{{ $uid }}-start-cal');
+                 const endCal = document.getElementById('{{ $uid }}-end-cal');
+                 
+                 if (startCal && startCal.__x) {
+                     startCal.__x.$data.selectedDate = this.tempStart;
+                     startCal.__x.$data.rangeStart = this.tempStart;
+                     startCal.__x.$data.rangeEnd = this.tempEnd;
+                     startCal.__x.$data.generateCalendar();
+                 }
+                 
+                 if (endCal && endCal.__x) {
+                     endCal.__x.$data.selectedDate = this.tempEnd;
+                     endCal.__x.$data.rangeStart = this.tempStart;
+                     endCal.__x.$data.rangeEnd = this.tempEnd;
+                     endCal.__x.$data.generateCalendar();
+                 }
+             });
          }
      }"
-     @keydown.escape.window="close()"
-     @click.outside="close()"
+     @keydown.escape.window="if (open) close()"
      class="drp-wrap"
 >
     <button type="button" class="drp-trigger" @click.stop="toggle()">
@@ -116,29 +182,32 @@
         <div class="drp-portal"
             x-show="open"
             x-cloak
-            :style="`top:${triggerRect.top}px; left:${triggerRect.left}px; min-width:${triggerRect.width}px;`"
+            @click.outside="close()"
+            @mousedown.stop
+            :style="`top:${triggerRect.top}px; left:${triggerRect.left}px;`"
             style="display:none;">
             
-            <div class="drp-input-group">
-                <div>
+            <div class="drp-calendars">
+                <div class="drp-calendar-section">
                     <label class="drp-label">{{ __('app.start_date') ?? 'Start Date' }}</label>
-                    <input type="date" 
-                           x-model="tempStart"
-                           class="drp-input"
-                           :max="tempEnd || ''"
-                           @click.stop
-                           @mousedown.stop
+                    <x-custom-calendar 
+                        id="{{ $uid }}-start-cal"
+                        :max-date="now()->format('Y-m-d')"
+                        @date-selected="onStartDateSelected($event)"
+                        @click.stop
+                        @mousedown.stop
                     />
                 </div>
-                <div>
+                
+                <div class="drp-calendar-section">
                     <label class="drp-label">{{ __('app.end_date') ?? 'End Date' }}</label>
-                    <input type="date" 
-                           x-model="tempEnd"
-                           class="drp-input"
-                           :min="tempStart || ''"
-                           :max="new Date().toISOString().split('T')[0]"
-                           @click.stop
-                           @mousedown.stop
+                    <x-custom-calendar 
+                        id="{{ $uid }}-end-cal"
+                        :min-date="tempStart"
+                        :max-date="now()->format('Y-m-d')"
+                        @date-selected="onEndDateSelected($event)"
+                        @click.stop
+                        @mousedown.stop
                     />
                 </div>
             </div>
