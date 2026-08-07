@@ -862,14 +862,11 @@ return [
     'end_date' => 'End Date',
     'apply' => 'Apply',
     'select_date_range' => 'Select Date Range',
-];
 
     'select_forecast_period'    => 'Select Forecast Period',
     'forecast_start'            => 'Forecast Start',
     'forecast_end'              => 'Forecast End',
     'forecasting'               => 'Forecasting',
     'days'                      => 'days',
-    'apply'                     => 'Apply',
     'quick_select'              => 'Quick Select',
-    'select_date_range'         => 'Select Date Range',
 ];
