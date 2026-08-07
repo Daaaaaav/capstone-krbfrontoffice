@@ -4,7 +4,7 @@ namespace App\Services\AI\Context;
 
 use App\Models\Delivery;
 use App\Services\AI\Contracts\ContextProviderInterface;
-use Carbon\Carbon;
+use App\Services\AI\Enums\ContextDetailLevel;
 use Illuminate\Support\Facades\Cache;
 
 class DeliveryContextProvider implements ContextProviderInterface
@@ -16,13 +16,38 @@ class DeliveryContextProvider implements ContextProviderInterface
         return 'deliveries';
     }
 
-    public function load(?int $companyId, array $params = []): string
+    public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
-        $cacheKey = "ctx_deliveries_{$companyId}";
-        return Cache::remember($cacheKey, 90, fn() => $this->build($companyId));
+        $level = $detailLevel ?? ContextDetailLevel::DETAILED;
+        $cacheKey = "ctx_deliveries_{$companyId}_{$level->value}";
+        return Cache::remember($cacheKey, 90, fn() => $this->build($companyId, $level));
     }
 
-    private function build(?int $companyId): string
+    private function build(?int $companyId, ContextDetailLevel $level): string
+    {
+        return match ($level) {
+            ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId),
+            ContextDetailLevel::NORMAL => $this->buildNormal($companyId),
+            ContextDetailLevel::BOOKING => $this->buildNormal($companyId),
+            ContextDetailLevel::DETAILED => $this->buildDetailed($companyId),
+        };
+    }
+
+    private function buildMinimal(?int $companyId): string
+    {
+        $q = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $pending = (clone $q)->where('status', 'pending')->count();
+        $stored  = (clone $q)->where('status', 'stored')->count();
+
+        return "DELIVERIES: pending:{$pending} stored:{$stored}";
+    }
+
+    private function buildNormal(?int $companyId): string
+    {
+        return $this->buildMinimal($companyId);
+    }
+
+    private function buildDetailed(?int $companyId): string
     {
         $q = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId));
 

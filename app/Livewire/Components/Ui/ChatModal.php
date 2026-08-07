@@ -246,10 +246,22 @@ class ChatModal extends Component
         $router       = app(ContextRouter::class);
 
         $history = $this->getRecentHistory();
-        $context = $router->route($userMessage, $companyId, 'receptionist', $history);
+        $routingResult = $router->routeWithMetadata($userMessage, $companyId, 'receptionist', $history);
 
-        $domains = $router->detectDomains($userMessage, 'receptionist', $history);
+        $domains = $routingResult->domains;
         $this->contextMemory['active_domains'] = $domains;
+
+        $context = $routingResult->assembledContext;
+        $isBookingIntent = $routingResult->isBookingIntent;
+
+        if (config('app.debug')) {
+            Log::info('ChatModal: receptionist AI routing complete', [
+                'stage'              => 'receptionist_ai_call',
+                'is_booking_intent'  => $isBookingIntent,
+                'detected_domains'   => $domains,
+                'context_chars'      => strlen($context),
+            ]);
+        }
 
         $memoryHint = $this->buildMemoryHint();
         if ($memoryHint) {
@@ -257,8 +269,23 @@ class ChatModal extends Component
         }
 
         $draftContext = $draftService->buildDraftContext($this->bookingDraft);
-        $systemPrompt = $builder->receptionistSystemPrompt($context, $draftContext);
+        
+        $systemPrompt = $isBookingIntent
+            ? $builder->receptionistBookingPrompt($context, $draftContext)
+            : $builder->receptionistGeneralPrompt($context);
+        
         $recentHistory = $this->getRecentHistory(exclude: 'last');
+
+        if (config('app.debug')) {
+            $promptType = $isBookingIntent ? 'booking' : 'general';
+            Log::info('ChatModal: prompt selected', [
+                'stage'          => 'receptionist_ai_call',
+                'prompt_type'    => $promptType,
+                'system_chars'   => strlen($systemPrompt),
+                'has_draft'      => !empty($draftContext),
+                'history_turns'  => count($recentHistory),
+            ]);
+        }
 
         $ai  = app(AIService::class);
         $raw = $ai->chat($systemPrompt, $userMessage, $recentHistory);
@@ -616,7 +643,91 @@ class ChatModal extends Component
     {
         $history = $this->conversationHistory;
         if ($exclude === 'last' && ! empty($history)) array_pop($history);
-        return $history;
+        
+        return $this->compressHistory($history);
+    }
+
+    private function compressHistory(array $history): array
+    {
+        if (count($history) <= 4) {
+            return $history;
+        }
+
+        $compressed = [];
+        
+        $recent = array_slice($history, -4);
+        
+        $older = array_slice($history, 0, -4);
+        
+        if (!empty($older)) {
+            $summary = $this->summarizeOlderTurns($older);
+            if ($summary) {
+                $compressed[] = [
+                    'role' => 'system',
+                    'content' => $summary
+                ];
+            }
+        }
+        
+        foreach ($recent as $turn) {
+            $compressed[] = $turn;
+        }
+        
+        if (config('app.debug')) {
+            Log::info('ChatModal: history compressed', [
+                'stage' => 'history_compression',
+                'original_turns' => count($history),
+                'compressed_turns' => count($compressed),
+                'older_turns_summarized' => count($older),
+            ]);
+        }
+        
+        return $compressed;
+    }
+
+    private function summarizeOlderTurns(array $older): ?string
+    {
+        if (empty($older)) {
+            return null;
+        }
+
+        $topics = [];
+        $hasBookingDiscussion = false;
+        $roomMentions = [];
+        $vehicleMentions = [];
+
+        foreach ($older as $turn) {
+            $content = mb_strtolower($turn['content'] ?? '');
+            
+            if (preg_match('/\b(book|reserve|booking|pesan)\b/i', $content)) {
+                $hasBookingDiscussion = true;
+            }
+            
+            if (preg_match('/room\s*([a-z0-9]+)/i', $content, $m)) {
+                $roomMentions[] = $m[0];
+            }
+            
+            if (preg_match('/vehicle|kendaraan|mobil/i', $content)) {
+                $vehicleMentions[] = 'vehicle';
+            }
+        }
+
+        $summary = "Earlier conversation context:";
+        
+        if ($hasBookingDiscussion) {
+            $summary .= " Discussed booking.";
+        }
+        
+        if (!empty($roomMentions)) {
+            $uniqueRooms = array_unique(array_slice($roomMentions, 0, 2));
+            $summary .= " Mentioned: " . implode(', ', $uniqueRooms) . ".";
+        }
+        
+        if (!empty($vehicleMentions)) {
+            $summary .= " Discussed vehicles.";
+        }
+
+        return strlen($summary) > 30 ? $summary : null;
     }
 
     public function exportPdf(): void

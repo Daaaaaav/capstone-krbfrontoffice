@@ -31,12 +31,15 @@ class AIService
     public function chat(string $systemPrompt, string $userPrompt, array $history = []): string
     {
         if (config('app.debug')) {
+            $estimatedTokens = $this->estimateTokens($systemPrompt, $userPrompt, $history);
+            
             Log::info('AIService: chat() called', [
-                'stage'          => 'provider_selection',
-                'priority_list'  => $this->priorityList,
-                'history_turns'  => count($history),
-                'system_chars'   => strlen($systemPrompt),
-                'user_chars'     => strlen($userPrompt),
+                'stage'             => 'provider_selection',
+                'priority_list'     => $this->priorityList,
+                'history_turns'     => count($history),
+                'system_chars'      => strlen($systemPrompt),
+                'user_chars'        => strlen($userPrompt),
+                'estimated_tokens'  => $estimatedTokens,
             ]);
         }
 
@@ -109,14 +112,17 @@ class AIService
             $attempt++;
 
             if (config('app.debug')) {
+                $estimatedTokens = $this->estimateTokens($systemPrompt, $userPrompt, $history);
+                
                 Log::info('AIService: sending request', [
-                    'stage'         => 'api_request',
-                    'provider'      => $providerName,
-                    'model'         => $resolvedModel,
-                    'attempt'       => "{$attempt}/{$this->maxAttempts}",
-                    'system_chars'  => strlen($systemPrompt),
-                    'user_chars'    => strlen($userPrompt),
-                    'history_turns' => count($history),
+                    'stage'            => 'api_request',
+                    'provider'         => $providerName,
+                    'model'            => $resolvedModel,
+                    'attempt'          => "{$attempt}/{$this->maxAttempts}",
+                    'system_chars'     => strlen($systemPrompt),
+                    'user_chars'       => strlen($userPrompt),
+                    'history_turns'    => count($history),
+                    'estimated_tokens' => $estimatedTokens,
                 ]);
             }
 
@@ -299,5 +305,16 @@ class AIService
             return (int) $m[1];
         }
         return null;
+    }
+
+    private function estimateTokens(string $systemPrompt, string $userPrompt, array $history): int
+    {
+        $totalChars = strlen($systemPrompt) + strlen($userPrompt);
+        
+        foreach ($history as $turn) {
+            $totalChars += strlen($turn['content'] ?? '');
+        }
+        
+        return (int) ceil($totalChars / 4);
     }
 }

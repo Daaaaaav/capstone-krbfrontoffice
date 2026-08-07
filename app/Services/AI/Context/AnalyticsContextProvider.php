@@ -7,6 +7,7 @@ use App\Models\Delivery;
 use App\Models\Guestbook;
 use App\Models\VehicleBooking;
 use App\Services\AI\Contracts\ContextProviderInterface;
+use App\Services\AI\Enums\ContextDetailLevel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +21,61 @@ class AnalyticsContextProvider implements ContextProviderInterface
         return 'analytics';
     }
 
-    public function load(?int $companyId, array $params = []): string
+    public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
         $period   = $params['period'] ?? 'this_week_and_ytd';
-        $cacheKey = "ctx_analytics_{$companyId}_{$period}";
-        return Cache::remember($cacheKey, 180, fn() => $this->build($companyId));
+        $level = $detailLevel ?? ContextDetailLevel::DETAILED;
+        $cacheKey = "ctx_analytics_{$companyId}_{$period}_{$level->value}";
+        return Cache::remember($cacheKey, 180, fn() => $this->build($companyId, $level));
     }
 
-    private function build(?int $companyId): string
+    private function build(?int $companyId, ContextDetailLevel $level): string
+    {
+        return match ($level) {
+            ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId),
+            ContextDetailLevel::NORMAL => $this->buildNormal($companyId),
+            ContextDetailLevel::BOOKING => $this->buildNormal($companyId),
+            ContextDetailLevel::DETAILED => $this->buildDetailed($companyId),
+        };
+    }
+
+    private function buildMinimal(?int $companyId): string
+    {
+        $now = Carbon::now($this->tz);
+        $today = $now->toDateString();
+
+        $rQ = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $rToday = (clone $rQ)->whereDate('date', $today)->count();
+        $vQ = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $vToday = (clone $vQ)->whereDate('start_at', $today)->count();
+
+        return "TODAY: Rooms:{$rToday} | Vehicles:{$vToday}";
+    }
+
+    private function buildNormal(?int $companyId): string
+    {
+        $now = Carbon::now($this->tz);
+        $weekStart = $now->copy()->startOfWeek()->toDateString();
+        $weekEnd = $now->copy()->endOfWeek()->toDateString();
+        $today = $now->toDateString();
+
+        $rQ = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $rWeek = (clone $rQ)->whereBetween('date', [$weekStart, $weekEnd])->count();
+        $rToday = (clone $rQ)->whereDate('date', $today)->count();
+        $rPending = (clone $rQ)->where('status', 'pending')->count();
+
+        $vQ = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $vWeek = (clone $vQ)->whereBetween('start_at', [$weekStart . ' 00:00:00', $weekEnd . ' 23:59:59'])->count();
+        $vPending = (clone $vQ)->where('status', 'pending')->count();
+
+        return <<<BLOCK
+        WEEK ({$weekStart}–{$weekEnd}): Rooms:{$rWeek} | Vehicles:{$vWeek}
+        TODAY: Rooms:{$rToday} | pending:{$rPending}
+        Vehicles: pending:{$vPending}
+        BLOCK;
+    }
+
+    private function buildDetailed(?int $companyId): string
     {
         $now       = Carbon::now($this->tz);
         $yearStart = $now->copy()->startOfYear()->toDateTimeString();
