@@ -20,6 +20,8 @@ class LSTMPredictions extends Component
     use WithFileUploads;
 
     public int $forecastDays = 21;
+    public ?string $forecastStartDate = null;
+    public ?string $forecastEndDate = null;
     public string $trainingSource = 'csv_server';
     public $uploadedCsv = null;
 
@@ -47,9 +49,40 @@ class LSTMPredictions extends Component
         ];
     }
 
+    public function mount(): void
+    {
+        $this->initializeForecastDates();
+    }
+
+    public function updated($propertyName): void
+    {
+        if ($propertyName === 'forecastStartDate' || $propertyName === 'forecastEndDate') {
+            $this->syncForecastDaysFromDates();
+        }
+    }
+
+    private function initializeForecastDates(): void
+    {
+        if (!$this->forecastStartDate || !$this->forecastEndDate) {
+            $this->forecastStartDate = now()->addDay()->format('Y-m-d');
+            $this->forecastEndDate = now()->addDays($this->forecastDays)->format('Y-m-d');
+        }
+    }
+
+    private function syncForecastDaysFromDates(): void
+    {
+        if ($this->forecastStartDate && $this->forecastEndDate) {
+            $start = \Carbon\Carbon::parse($this->forecastStartDate);
+            $end = \Carbon\Carbon::parse($this->forecastEndDate);
+            $this->forecastDays = max(1, $start->diffInDays($end));
+        }
+    }
+
     public function setForecastDays(int $days): void
     {
         $this->forecastDays = $days;
+        $this->forecastStartDate = now()->addDay()->format('Y-m-d');
+        $this->forecastEndDate = now()->addDays($days)->format('Y-m-d');
     }
 
     public function setTrainingSource(string $source): void

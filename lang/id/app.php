@@ -856,3 +856,13 @@ return [
     'apply' => 'Terapkan',
     'select_date_range' => 'Pilih Rentang Tanggal',
 ];
+
+    'select_forecast_period'    => 'Pilih Periode Prakiraan',
+    'forecast_start'            => 'Mulai Prakiraan',
+    'forecast_end'              => 'Akhir Prakiraan',
+    'forecasting'               => 'Memprakirakan',
+    'days'                      => 'hari',
+    'apply'                     => 'Terapkan',
+    'quick_select'              => 'Pilih Cepat',
+    'select_date_range'         => 'Pilih Rentang Tanggal',
+];

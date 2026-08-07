@@ -17,16 +17,37 @@
 
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm space-y-6">
             <div>
-                <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_period') }}</label>
-                <div class="flex gap-2 max-w-xs">
-                    @foreach([7, 14, 21] as $d)
-                        <button wire:click="setForecastDays({{ $d }})"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition
-                                {{ $forecastDays === $d ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.' . $d . '_days') }}
-                        </button>
-                    @endforeach
+                <label class="block text-sm font-medium text-[#4E653D] mb-3">{{ __('app.forecast_period') }}</label>
+                
+                <div class="flex flex-col sm:flex-row gap-4 items-start">
+                    <div class="flex-1 max-w-md">
+                        <x-forecast-date-picker 
+                            wire:model.live="forecastStartDate"
+                            class="w-full"
+                        />
+                    </div>
+                    
+                    <div class="flex items-center gap-2 pt-2">
+                        <span class="text-xs text-[#7a8f6a]">{{ __('app.quick_select') ?? 'Quick Select' }}:</span>
+                        <div class="flex gap-2">
+                            @foreach([7, 14, 21] as $d)
+                                <button wire:click="setForecastDays({{ $d }})"
+                                    type="button"
+                                    class="px-3 py-1.5 rounded-lg text-xs font-medium transition
+                                        {{ $forecastDays === $d ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                    {{ $d }}d
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
                 </div>
+
+                @if($forecastStartDate && $forecastEndDate)
+                    <p class="text-xs text-[#7a8f6a] mt-2">
+                        {{ __('app.forecasting') ?? 'Forecasting' }} {{ $forecastDays }} {{ $forecastDays === 1 ? __('app.day') : __('app.days') }}
+                        ({{ \Carbon\Carbon::parse($forecastStartDate)->format('M d') }} - {{ \Carbon\Carbon::parse($forecastEndDate)->format('M d, Y') }})
+                    </p>
+                @endif
             </div>
 
             <div class="border-t border-[#e8ede2]"></div>

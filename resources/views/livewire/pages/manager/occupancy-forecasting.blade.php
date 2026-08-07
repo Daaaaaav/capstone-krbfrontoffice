@@ -36,20 +36,37 @@
 
                 <div>
                     <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_period') }}</label>
-                    <div class="flex gap-2">
-                        <button wire:click="setForecastDays(7)"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition {{ $forecastDays === 7 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.7_days') }}
-                        </button>
-                        <button wire:click="setForecastDays(14)"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition {{ $forecastDays === 14 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.14_days') }}
-                        </button>
-                        <button wire:click="setForecastDays(21)"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition {{ $forecastDays === 21 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.21_days') }}
-                        </button>
+                    <div class="flex flex-col sm:flex-row gap-2 items-start">
+                        <div class="flex-1 w-full">
+                            <x-forecast-date-picker 
+                                wire:model.live="forecastStartDate"
+                                class="w-full"
+                            />
+                        </div>
+                        <div class="flex gap-2">
+                            <button wire:click="setForecastDays(7)"
+                                type="button"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition {{ $forecastDays === 7 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                7d
+                            </button>
+                            <button wire:click="setForecastDays(14)"
+                                type="button"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition {{ $forecastDays === 14 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                14d
+                            </button>
+                            <button wire:click="setForecastDays(21)"
+                                type="button"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition {{ $forecastDays === 21 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                21d
+                            </button>
+                        </div>
                     </div>
+                    @if($forecastStartDate && $forecastEndDate)
+                        <p class="text-xs text-[#7a8f6a] mt-2">
+                            {{ __('app.forecasting') ?? 'Forecasting' }} {{ $forecastDays }} {{ $forecastDays === 1 ? __('app.day') : __('app.days') }}
+                            ({{ \Carbon\Carbon::parse($forecastStartDate)->format('M d') }} - {{ \Carbon\Carbon::parse($forecastEndDate)->format('M d, Y') }})
+                        </p>
+                    @endif
                 </div>
             </div>
 
