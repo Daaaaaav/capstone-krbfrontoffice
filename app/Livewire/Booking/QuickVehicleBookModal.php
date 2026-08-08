@@ -106,17 +106,9 @@ class QuickVehicleBookModal extends Component
             return;
         }
 
-        // Check vehicle's advance booking requirement setting
-        $selectedVehicle = Vehicle::select('vehicle_id', 'requires_advance_booking')
-            ->find((int) $this->vehicle_id);
-        $requiresAdvanceBooking = $selectedVehicle?->requires_advance_booking ?? true;
-
-        if ($requiresAdvanceBooking) {
-            $minAdvanceDate = $now->copy()->addMinutes(30);
-            if ($startAt->lessThan($minAdvanceDate)) {
-                $this->dispatch('toast', type: 'error', message: 'Bookings must be made at least 30 minutes in advance.');
-                return;
-            }
+        if ($startAt->greaterThanOrEqualTo($endAt)) {
+            $this->dispatch('toast', type: 'error', message: 'The start time must be before the end time.');
+            return;
         }
 
         $blocker = VehicleBooking::findLateReturnBlocker((int) $this->vehicle_id);

@@ -855,19 +855,16 @@ return [
     'end_date' => 'Tanggal Akhir',
     'apply' => 'Terapkan',
     'select_date_range' => 'Pilih Rentang Tanggal',
-];
 
     'select_forecast_period'    => 'Pilih Periode Prakiraan',
     'forecast_start'            => 'Mulai Prakiraan',
     'forecast_end'              => 'Akhir Prakiraan',
     'forecasting'               => 'Memprakirakan',
     'days'                      => 'hari',
-    'apply'                     => 'Terapkan',
     'quick_select'              => 'Pilih Cepat',
-    'select_date_range'         => 'Pilih Rentang Tanggal',
-];
 
     'error'                             => 'Kesalahan',
     'priority_booking_cancel_min_3_hours' => 'Pemesanan prioritas harus dibatalkan minimal 3 jam sebelum waktu mulai yang dijadwalkan.',
     'priority_booking_reject_min_3_hours' => 'Pemesanan prioritas harus ditolak minimal 3 jam sebelum waktu mulai yang dijadwalkan.',
     'invalid_booking_time'              => 'Format waktu pemesanan tidak valid.',
+];

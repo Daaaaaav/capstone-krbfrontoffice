@@ -371,6 +371,25 @@
                                                     <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->notes }}
                                                 </div>
                                             @endif
+
+                                            <div class="flex flex-wrap gap-2 mt-3">
+                                                @if($b->handover_photo && Storage::disk('public')->exists($b->handover_photo))
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
+                                                        <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                        Approve Photo
+                                                    </button>
+                                                @endif
+                                                @if($b->return_photo && Storage::disk('public')->exists($b->return_photo))
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs font-semibold transition">
+                                                        <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                        Mark Done Photo
+                                                    </button>
+                                                @endif
+                                            </div>
                                             
                                         </div>
                                     </div>
@@ -472,6 +491,20 @@
                                             </td>
                                             <td class="h-12 px-4 py-0">
                                                 <div class="flex items-center justify-end gap-2">
+                                                    @if($b->handover_photo && Storage::disk('public')->exists($b->handover_photo))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition inline-flex items-center gap-1.5" title="Approve Photo">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                        </button>
+                                                    @endif
+                                                    @if($b->return_photo && Storage::disk('public')->exists($b->return_photo))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition inline-flex items-center gap-1.5" title="Mark Done Photo">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                        </button>
+                                                    @endif
                                                     @if(!$isTrashed)
                                                         <button type="button"
                                                             class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm"
@@ -990,4 +1023,25 @@
             </div>
         </div>
     @endif
+    {{-- IMAGE LIGHTBOX --}}
+    <div
+        x-data="{ open: false, src: '' }"
+        @open-lightbox.window="open = true; src = $event.detail.src"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="open = false"
+        style="display:none">
+        <button type="button" @click="open = false"
+            class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img :src="src" alt="Bukti foto" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain">
+    </div>
 </div>
