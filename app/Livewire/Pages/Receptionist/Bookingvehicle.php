@@ -157,6 +157,17 @@ class Bookingvehicle extends Component
             $startAt = Carbon::parse($this->date_from.' '.$this->start_time, $this->tz);
             $endAt   = Carbon::parse($this->date_to.' '.$this->end_time, $this->tz);
 
+            if ($startAt->greaterThanOrEqualTo($endAt)) {
+                $this->dispatch(
+                    'toast',
+                    type: 'error',
+                    title: 'Invalid Booking Time',
+                    message: 'The start time must be before the end time.',
+                    duration: 7000
+                );
+                return;
+            }
+
             $borrowerName = $this->borrower_name;
             if ($this->borrower_user_id) {
                 $u = \App\Models\User::find($this->borrower_user_id);

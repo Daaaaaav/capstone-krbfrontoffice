@@ -31,6 +31,8 @@ class VehicleBooking extends Model
         'has_sim_a',   
         'status',
         'notes',
+        'handover_photo',
+        'return_photo',
     ];
 
     protected $casts = [

@@ -106,6 +106,11 @@ class QuickVehicleBookModal extends Component
             return;
         }
 
+        if ($startAt->greaterThanOrEqualTo($endAt)) {
+            $this->dispatch('toast', type: 'error', message: 'The start time must be before the end time.');
+            return;
+        }
+
         $blocker = VehicleBooking::findLateReturnBlocker((int) $this->vehicle_id);
         if ($blocker) {
             $this->dispatch('toast', type: 'error',
