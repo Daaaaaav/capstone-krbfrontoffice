@@ -167,14 +167,16 @@
                             <div class="user-avatar">
                                 {{ strtoupper($initials) }}
                             </div>
-                            <div class="user-info" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'opacity-100' : 'opacity-0 hidden'">
-                                <div class="user-name">{{ $fullName }}</div>
-                                <div class="user-role">IT Officer</div>
+                            <div class="user-info">
+                                <p class="user-name">{{ $fullName }}</p>
+                                <p class="user-role">IT Officer</p>
                             </div>
-                            <svg class="user-chevron" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            <svg class="user-chevron w-4 h-4 text-white/40 shrink-0 transition-transform duration-200" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                            <div class="tooltip">{{ $fullName }}</div>
                         </button>
-                        <div x-show="open" x-transition @click.outside="open = false" style="display:none;" class="absolute left-0 right-0 bottom-full mb-1.5 bg-[#2a1f1a] border border-white/10 rounded-xl shadow-2xl z-[9999] overflow-hidden">
-                            <button type="submit" form="logout-form" class="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2.5">
+                        
+                        <div x-show="open" @click.outside="open = false" class="sidebar-profile-popover" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''" style="display:none;" x-cloak>
+                            <button type="submit" form="logout-form" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                                     <polyline points="16 17 21 12 16 7"/>
