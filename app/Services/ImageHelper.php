@@ -33,6 +33,27 @@ class ImageHelper
             $fallback = $prefix . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.' . $ext;
             return $file->storeAs($directory, $fallback, $disk);
         }
+
+        // Convert palette/indexed images to true-color for WebP compatibility
+        if (!imageistruecolor($source)) {
+            $width  = imagesx($source);
+            $height = imagesy($source);
+            $trueColor = imagecreatetruecolor($width, $height);
+
+            // Preserve transparency
+            imagealphablending($trueColor, false);
+            imagesavealpha($trueColor, true);
+            $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
+            imagefill($trueColor, 0, 0, $transparent);
+
+            // Copy palette image to true-color image
+            imagealphablending($trueColor, true);
+            imagecopy($trueColor, $source, 0, 0, 0, 0, $width, $height);
+
+            imagedestroy($source);
+            $source = $trueColor;
+        }
+
         // preserve alpha channel for image sources
         imagealphablending($source, true);
         imagesavealpha($source, true);

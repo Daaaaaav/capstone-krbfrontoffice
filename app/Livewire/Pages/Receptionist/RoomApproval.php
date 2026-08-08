@@ -47,7 +47,6 @@ class RoomApproval extends Component
         )";
 
         DB::transaction(function () use ($threshold, $endExpr) {
-            // 1. Approved bookings whose end time has passed would have completed mark
             BookingRoom::query()
                 ->where('status', 'approved')
                 ->whereNotNull('date')
@@ -59,8 +58,6 @@ class RoomApproval extends Component
                     'updated_at' => now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString(),
                 ]);
 
-            // 2. Pending bookings whose end time has already passed will never be
-            //    approved: reject them automatically so they leave the active view.
             BookingRoom::query()
                 ->where('status', 'pending')
                 ->whereNotNull('date')
@@ -87,7 +84,6 @@ class RoomApproval extends Component
         $this->priorityDetailId        = null;
     }
 
-    /** Computed: load the PriorityRoomBooking being viewed */
     public function getPriorityDetailBookingProperty(): ?PriorityRoomBooking
     {
         if (!$this->priorityDetailId) return null;
