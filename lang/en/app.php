@@ -869,8 +869,7 @@ return [
     'forecasting'               => 'Forecasting',
     'days'                      => 'days',
     'quick_select'              => 'Quick Select',
-];
-
-    'error'                             => 'Error',
+    'error'                     => 'Error',
     'priority_booking_cancel_min_3_hours' => 'Priority bookings must be cancelled at least 3 hours before the scheduled start time.',
-    'invalid_booking_time'              => 'Invalid booking time format.',
+    'invalid_booking_time'      => 'Invalid booking time format.',
+];
