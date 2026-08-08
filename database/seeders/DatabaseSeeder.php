@@ -95,7 +95,7 @@ class DatabaseSeeder extends Seeder
                         ],
                          [
                             'full_name' => 'John IT',
-                            'email' => 'itaofficerkrb@gmail.com',
+                            'email' => 'itofficerkrb@gmail.com',
                             'phone_number' => '081234567893',
                             'role' => 'IT Officer',
                             'department' => 'IT',
