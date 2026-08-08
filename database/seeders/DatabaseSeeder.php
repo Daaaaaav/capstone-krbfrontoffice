@@ -59,7 +59,7 @@ class DatabaseSeeder extends Seeder
                 $companyId = $company->company_id;
 
                 $roles = [];
-                foreach (['Manager', 'Receptionist'] as $r) {
+                foreach (['Manager', 'Receptionist', 'IT Officer'] as $r) {
                     $roles[$r] = Role::firstOrCreate(['name' => $r]);
                 }
 
@@ -79,13 +79,6 @@ class DatabaseSeeder extends Seeder
                 $users = collect();
 
                     $customUsers = [
-                         [
-                            'full_name' => 'Vani',
-                            'email' => 'arvani527@gmail.com',
-                            'phone_number' => '081234567891',
-                            'role' => 'Receptionist',
-                            'department' => 'Administration',
-                        ],
                         [
                             'full_name' => 'Davina Amarina',
                             'email' => 'davina.managerkrb@gmail.com',
@@ -93,7 +86,7 @@ class DatabaseSeeder extends Seeder
                             'role' => 'Manager',
                             'department' => 'IT',
                         ],
-                         [
+                        [
                             'full_name' => 'Clania Elmymora',
                             'email' => 'clania.receptionist@gmail.com',
                             'phone_number' => '081234567892',
@@ -101,17 +94,10 @@ class DatabaseSeeder extends Seeder
                             'department' => 'IT',
                         ],
                          [
-                            'full_name' => 'Gilang Receptionist',
-                            'email' => 'gilangatha999@gmail.com',
-                            'phone_number' => '081234567891',
-                            'role' => 'Receptionist',
-                            'department' => 'Administration',
-                        ],
-                        [
-                            'full_name' => 'Gilang Manager',
-                            'email' => 'gilangatha@gmail.com',
-                            'phone_number' => '081234567891',
-                            'role' => 'Manager',
+                            'full_name' => 'John IT',
+                            'email' => 'itaofficerkrb@gmail.com',
+                            'phone_number' => '081234567893',
+                            'role' => 'IT Officer',
                             'department' => 'IT',
                         ],
                         [
@@ -143,8 +129,8 @@ class DatabaseSeeder extends Seeder
                             'department' => 'Executive',
                         ],
                         [
-                            'full_name' => 'Izumi Katsuragi 2',
-                            'email' => 'izumikatsuragi@gmail.com',
+                            'full_name' => 'Setsuna Yuki',
+                            'email' => 'experteasesolutionsmail@gmail.com',
                             'phone_number' => '08000000000',
                             'role' => 'Manager',
                             'department' => 'Executive',
@@ -172,7 +158,6 @@ class DatabaseSeeder extends Seeder
                                 }
                             }
 
-                // === CORE USERS ===
                 $manager = User::firstOrCreate(
                     ['email' => "manager@{$domain}"],
                     [
@@ -220,7 +205,6 @@ class DatabaseSeeder extends Seeder
             $requirementsList->push(Requirement::firstOrCreate(['company_id'=>$companyId,'name'=>$req]));
         }
 
-        // ===== STORAGES & VEHICLES =====
         foreach ([['S-01','Rak Dokumen'],['S-02','Loker Paket'],['S-03','Gudang ATK']] as [$code,$name]) {
             Storage::firstOrCreate(['company_id'=>$companyId,'code'=>$code],['name'=>$name]);
         }
