@@ -233,15 +233,50 @@ class PriorityRoomBooking extends Component
             return;
         }
 
-        $companyId = Auth::user()->company_id ?? null;
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
         $booking = PriorityRoomBookingModel::where('id', $this->cancelTargetId)
             ->where('company_id', $companyId)
-            ->where('manager_id', Auth::user()->user_id)
+            ->where('manager_id', $user->user_id)
             ->first();
 
-        if ($booking && $booking->isActionable()) {
-            $booking->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by manager.']);
+        if (!$booking || !$booking->isActionable()) {
+            $this->showCancelModal = false;
+            $this->cancelTargetId  = null;
+            return;
         }
+
+        try {
+            $scheduledStart = Carbon::parse($booking->date . ' ' . $booking->start_time, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->showCancelModal = false;
+                $this->cancelTargetId  = null;
+                $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.priority_booking_cancel_min_3_hours'), duration: 5000);
+                return;
+            }
+        } catch (\Throwable) {
+            $this->showCancelModal = false;
+            $this->cancelTargetId  = null;
+            $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.invalid_booking_time'), duration: 3000);
+            return;
+        }
+
+        DB::transaction(function () use ($booking, $user, $companyId) {
+            $booking->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by manager.']);
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+                'Priority Room Booking Cancelled',
+                'Manager "' . ($user->full_name ?? $user->name) . '" has cancelled priority room booking for "' .
+                    $booking->meeting_title . '" scheduled on ' . $booking->date . ' at ' . $booking->start_time . '.',
+                $booking,
+                actionRequired: false
+            );
+        });
 
         $this->showCancelModal = false;
         $this->cancelTargetId  = null;

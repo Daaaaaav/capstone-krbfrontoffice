@@ -266,15 +266,54 @@ class PriorityVehicleBooking extends Component
             return;
         }
 
-        $companyId = Auth::user()->company_id ?? null;
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
         $booking = PriorityVehicleBookingModel::where('id', $this->cancelTargetId)
             ->where('company_id', $companyId)
-            ->where('manager_id', Auth::user()->user_id)
+            ->where('manager_id', $user->user_id)
             ->first();
 
-        if ($booking && $booking->isActionable()) {
-            $booking->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by manager.']);
+        if (!$booking || !$booking->isActionable()) {
+            $this->showCancelModal = false;
+            $this->cancelTargetId  = null;
+            return;
         }
+
+        try {
+            $scheduledStart = Carbon::parse($booking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->showCancelModal = false;
+                $this->cancelTargetId  = null;
+                $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.priority_booking_cancel_min_3_hours'), duration: 5000);
+                return;
+            }
+        } catch (\Throwable) {
+            $this->showCancelModal = false;
+            $this->cancelTargetId  = null;
+            $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.invalid_booking_time'), duration: 3000);
+            return;
+        }
+
+        DB::transaction(function () use ($booking, $user, $companyId) {
+            $booking->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by manager.']);
+
+            $vehicleLabel = $booking->vehicle 
+                ? ($booking->vehicle->name ?? 'Vehicle') . ($booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '')
+                : 'Vehicle #' . $booking->vehicle_id;
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_PRIORITY_VEHICLE_DIRECT,
+                'Priority Vehicle Booking Cancelled',
+                'Manager "' . ($user->full_name ?? $user->name) . '" has cancelled priority vehicle booking for "' .
+                    $vehicleLabel . '" scheduled on ' . $booking->start_at->format('d M Y H:i') . '.',
+                $booking,
+                actionRequired: false
+            );
+        });
 
         $this->showCancelModal = false;
         $this->cancelTargetId  = null;
