@@ -5,8 +5,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 use App\Http\Controllers\GuestbookScanController;
-use App\Http\Controllers\AttachmentController;
-use App\Http\Controllers\VehicleAttachmentController;
+// use App\Http\Controllers\AttachmentController;
+// use App\Http\Controllers\VehicleAttachmentController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ChatExportController;
 
@@ -187,14 +187,14 @@ Route::middleware(['auth'])->group(function () {
     })->where('path', '.*')->name('delivery.image');
 
     // ---------- Attachments API (Local Storage) ----------
-    Route::prefix('attachments')->group(function () {
-        Route::post('/temp', [AttachmentController::class, 'tempUpload'])
-            ->name('attachments.temp');
-        Route::delete('/temp', [AttachmentController::class, 'deleteTemp'])
-            ->name('attachments.temp.delete');
-        Route::post('/finalize', [AttachmentController::class, 'finalizeTemp'])
-            ->name('attachments.finalize');
-    });
+    // Route::prefix('attachments')->group(function () {
+    //     Route::post('/temp', [AttachmentController::class, 'tempUpload'])
+    //         ->name('attachments.temp');
+    //     Route::delete('/temp', [AttachmentController::class, 'deleteTemp'])
+    //         ->name('attachments.temp.delete');
+    //     Route::post('/finalize', [AttachmentController::class, 'finalizeTemp'])
+    //         ->name('attachments.finalize');
+    // });
 
     // ---------- Notifications UI (Static View) ----------
     Route::get('/notifications', function () {
