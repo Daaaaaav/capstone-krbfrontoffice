@@ -232,6 +232,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/it-officer-dashboard', \App\Livewire\Pages\ItOfficer\Dashboard::class)->name('it-officer.dashboard');
         Route::get('/it-officer-receptionists', \App\Livewire\Pages\ItOfficer\ReceptionistUsers::class)->name('it-officer.receptionists');
         Route::get('/it-officer-managers', \App\Livewire\Pages\ItOfficer\ManagerUsers::class)->name('it-officer.managers');
+        Route::get('/it-officer-users-per-department', \App\Livewire\Pages\ItOfficer\UsersPerDepartment::class)->name('it-officer.users-per-department');
         Route::get('/it-officer-manage-rooms', \App\Livewire\Pages\ItOfficer\Manageroom::class)->name('it-officer.manageroom');
         Route::get('/it-officer-manage-vehicles', \App\Livewire\Pages\ItOfficer\Vehicle::class)->name('it-officer.managevehicle');
         Route::get('/it-officer-manage-storages', \App\Livewire\Pages\ItOfficer\Storage::class)->name('it-officer.managestorage');

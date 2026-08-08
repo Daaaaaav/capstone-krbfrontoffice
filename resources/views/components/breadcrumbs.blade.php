@@ -79,6 +79,10 @@ $routeMappings = [
         ['label' => __('app.user_management')],
         ['label' => __('app.managers'), 'url' => route('it-officer.managers')]
     ],
+    'it-officer.users-per-department' => [
+        ['label' => __('app.user_management')],
+        ['label' => 'Users per Department', 'url' => route('it-officer.users-per-department')]
+    ],
     'it-officer.manageroom' => [
         ['label' => __('app.resource_management')],
         ['label' => __('app.manage_rooms'), 'url' => route('it-officer.manageroom')]

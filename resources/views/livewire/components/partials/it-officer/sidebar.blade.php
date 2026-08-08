@@ -41,7 +41,7 @@
                 </a>
 
                 {{-- User Management --}}
-                @php $userGroupActiveState = request()->routeIs('it-officer.receptionists', 'it-officer.managers'); @endphp
+                @php $userGroupActiveState = request()->routeIs('it-officer.receptionists', 'it-officer.managers', 'it-officer.users-per-department'); @endphp
                 <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_user') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_user', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">{{ __('app.user_management') }}</span>
@@ -76,6 +76,22 @@
                             </div>
                             <span class="item-label">Managers</span>
                             <div class="tooltip">Manager Users</div>
+                        </a>
+
+                        @php $perDeptActive = request()->routeIs('it-officer.users-per-department'); @endphp
+                        <a href="{{ route('it-officer.users-per-department') }}" class="sidebar-unified-item {{ $perDeptActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($perDeptActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    <path d="M3 9h18M3 15h12"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">Users per Department</span>
+                            <div class="tooltip">Manage Users per Department</div>
                         </a>
                     </div>
                 </div>
