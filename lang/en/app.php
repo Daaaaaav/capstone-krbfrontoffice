@@ -873,7 +873,6 @@ return [
     'priority_booking_cancel_min_3_hours' => 'Priority bookings must be cancelled at least 3 hours before the scheduled start time.',
     'priority_booking_reject_min_3_hours' => 'Priority bookings must be rejected at least 3 hours before the scheduled start time.',
     'invalid_booking_time'      => 'Invalid booking time format.',
-];
 
     // IT Officer - Users per Department
     'users_per_department_title'    => 'Users per Department',
