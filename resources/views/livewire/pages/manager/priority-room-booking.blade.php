@@ -251,10 +251,14 @@
                 <p class="text-muted-foreground">{{ $conflictingBooking->room?->room_name }} · {{ \Carbon\Carbon::parse($conflictingBooking->date)->format('d M Y') }} · {{ $conflictingBooking->start_time }} – {{ $conflictingBooking->end_time }}</p>
             </div>
             @endif
-            <p class="text-sm text-foreground">Do you want to <strong>request cancellation</strong> of the conflicting booking — even if it is currently ongoing — requiring receptionist approval, or go back?</p>
+            <p class="text-sm text-foreground">An existing regular booking conflicts with your Priority Booking. <strong>Cancel the conflicting booking immediately</strong> and continue with your Priority Booking?</p>
+            <p class="text-xs text-muted-foreground mt-2">
+                <svg class="w-3.5 h-3.5 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Note: The conflicting booking can only be cancelled if it starts at least 3 hours from now. No Receptionist approval required.
+            </p>
             <div class="flex flex-col sm:flex-row gap-2 pt-1">
                 <button wire:click="confirmWithCancellation" class="{{ $btnPrimary }} flex-1 bg-orange-500 hover:bg-orange-600 focus:ring-orange-500/20">
-                    Request Cancellation
+                    Cancel & Continue
                 </button>
                 <button wire:click="closeConflictModal" class="{{ $btnOutline }} flex-1">
                     Go Back

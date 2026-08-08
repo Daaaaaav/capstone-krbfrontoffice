@@ -196,9 +196,109 @@ class PriorityRoomBooking extends Component
 
     public function confirmWithCancellation(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
+        if (!$this->conflicting_booking_id) {
+            $this->showConflictModal = false;
+            return;
+        }
+
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
+
+        $conflictingBooking = BookingRoom::where('bookingroom_id', $this->conflicting_booking_id)
+            ->where('company_id', $companyId)
+            ->whereIn('status', ['pending', 'approved'])
+            ->first();
+
+        if (!$conflictingBooking) {
+            $this->showConflictModal = false;
+            $this->conflicting_booking_id = null;
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Conflicting booking no longer exists or cannot be cancelled.', duration: 4000);
+            return;
+        }
+
+        try {
+            $startExpr = "COALESCE(
+                CASE WHEN start_time REGEXP '^[0-9]{4}-' THEN start_time END,
+                CASE WHEN date       REGEXP '^[0-9]{4}-' THEN date END,
+                CONCAT(date, ' ', start_time)
+            )";
+
+            $scheduledStartStr = DB::selectOne("SELECT $startExpr as start_dt FROM booking_rooms WHERE bookingroom_id = ?", [$conflictingBooking->bookingroom_id])->start_dt;
+            $scheduledStart = Carbon::parse($scheduledStartStr, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->showConflictModal = false;
+                $this->conflicting_booking_id = null;
+                $this->dispatch('toast', type: 'error', title: 'Cannot Cancel', message: 'The conflicting booking starts in less than 3 hours and cannot be cancelled for a Priority Booking.', duration: 5000);
+                return;
+            }
+        } catch (\Throwable $e) {
+            $this->showConflictModal = false;
+            $this->conflicting_booking_id = null;
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Invalid booking time. Please try again.', duration: 3000);
+            return;
+        }
+
         $this->requestCancellation = true;
-        $this->showConflictModal   = false;
-        $this->save();
+        $this->showConflictModal = false;
+
+        DB::transaction(function () use ($conflictingBooking, $user, $companyId) {
+            $conflictingBooking->update([
+                'status' => 'rejected',
+                'book_reject' => 'Cancelled due to Manager Priority Booking override.',
+                'approved_by' => $user->user_id,
+            ]);
+
+            $booking = PriorityRoomBookingModel::create([
+                'company_id' => $companyId,
+                'manager_id' => $user->user_id,
+                'room_id' => $this->room_id,
+                'meeting_title' => $this->meeting_title,
+                'date' => $this->date,
+                'start_time' => $this->start_time,
+                'end_time' => $this->end_time,
+                'number_of_attendees' => $this->number_of_attendees,
+                'special_notes' => $this->special_notes ?: null,
+                'status' => PriorityRoomBookingModel::STATUS_APPROVED,
+                'cancels_booking_id' => $this->conflicting_booking_id,
+            ]);
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
+                'Regular Booking Cancelled — Priority Override',
+                'Manager "' . ($user->full_name ?? $user->name) . '" cancelled regular booking #' . $this->conflicting_booking_id .
+                    ' (' . $conflictingBooking->meeting_title . ') to create Priority Booking for room "' .
+                    (Room::find($this->room_id)?->room_name ?? '#' . $this->room_id) .
+                    '" on ' . $this->date . ' ' . $this->start_time . '–' . $this->end_time . '.',
+                $booking,
+                actionRequired: false
+            );
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+                'Priority Room Booking',
+                'Manager "' . ($user->full_name ?? $user->name) . '" has submitted a priority room booking for "' .
+                    $this->meeting_title . '" on ' . $this->date . '.',
+                $booking,
+                actionRequired: false
+            );
+        });
+
+        $this->reset([
+            'room_id', 'meeting_title', 'start_time', 'end_time',
+            'special_notes', 'conflicting_booking_id', 'requestCancellation',
+        ]);
+        $this->number_of_attendees = 1;
+        $this->date = now($this->tz)->toDateString();
+        $this->activeTab = 'status';
+
+        $this->dispatch('toast', type: 'success', title: 'Booking Created', message: 'Conflicting booking cancelled and priority booking created successfully.', duration: 4000);
     }
 
     public function confirmWithoutCancellation(): void

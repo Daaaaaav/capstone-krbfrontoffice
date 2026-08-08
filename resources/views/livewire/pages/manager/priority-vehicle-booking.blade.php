@@ -295,10 +295,14 @@
                 <p class="text-muted-foreground">{{ $conflictingVehicleBooking->start_at?->format('d M Y H:i') }} – {{ $conflictingVehicleBooking->end_at?->format('d M Y H:i') }}</p>
             </div>
             @endif
-            <p class="text-sm text-foreground">Request receptionist approval to cancel the pending booking, or go back and choose a different time.</p>
+            <p class="text-sm text-foreground">An existing regular vehicle booking conflicts with your Priority Booking. <strong>Cancel the conflicting booking immediately</strong> and continue with your Priority Booking?</p>
+            <p class="text-xs text-muted-foreground mt-2">
+                <svg class="w-3.5 h-3.5 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Note: The conflicting booking can only be cancelled if it starts at least 3 hours from now. No Receptionist approval required.
+            </p>
             <div class="flex flex-col sm:flex-row gap-2 pt-1">
                 <button wire:click="confirmWithCancellation" class="{{ $btnPrimary }} flex-1 bg-orange-500 hover:bg-orange-600 focus:ring-orange-500/20">
-                    Request Cancellation
+                    Cancel & Continue
                 </button>
                 <button wire:click="closeConflictModal" class="{{ $btnOutline }} flex-1">Go Back</button>
             </div>
