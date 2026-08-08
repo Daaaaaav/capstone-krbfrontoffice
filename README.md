@@ -1,6 +1,6 @@
 # Code Setup
 In a code editor of choice, clone the project repository and navigate to the project directory as follows
-git clone https://github.com/Daaaaaav/caps-test 
+git clone https://github.com/Daaaaaav/capstone-krbfrontoffice 
 cd <directory-name>
 
 Copy the environment configuration file and make the as follows:
