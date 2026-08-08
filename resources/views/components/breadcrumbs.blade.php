@@ -95,6 +95,18 @@ $routeMappings = [
         ['label' => __('app.resource_management')],
         ['label' => __('app.manage_storages'), 'url' => route('it-officer.managestorage')]
     ],
+    'it-officer.lstm-predictions' => [
+        ['label' => __('app.ai_security')],
+        ['label' => __('app.visitor_predictions'), 'url' => route('it-officer.lstm-predictions')]
+    ],
+    'it-officer.occupancy' => [
+        ['label' => __('app.ai_security')],
+        ['label' => __('app.occupancy_forecast'), 'url' => route('it-officer.occupancy')]
+    ],
+    'it-officer.ai-security' => [
+        ['label' => __('app.ai_security')],
+        ['label' => __('app.security_reports'), 'url' => route('it-officer.ai-security')]
+    ],
     'it-officer.settings' => [
         ['label' => __('app.settings'), 'url' => route('it-officer.settings')]
     ],
