@@ -367,16 +367,23 @@
             <button wire:click="closeVehicleSidebarDetail" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">Close</button>
             <div class="flex gap-2">
                 @if($vbIsPending)
-                    @if(!$showVehicleSidebarReject)
-                    <button wire:click="openVehicleSidebarReject" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject
-                    </button>
+                    @if($this->canRejectVehicleSidebarBooking())
+                        @if(!$showVehicleSidebarReject)
+                        <button wire:click="openVehicleSidebarReject" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject
+                        </button>
+                        @else
+                        <button wire:click="$set('showVehicleSidebarReject', false)" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:bg-muted transition">Cancel</button>
+                        <button wire:click="submitVehicleSidebarReject" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive text-white hover:bg-destructive/90 transition disabled:opacity-60">
+                            <svg wire:loading wire:target="submitVehicleSidebarReject" class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                            Confirm Reject
+                        </button>
+                        @endif
                     @else
-                    <button wire:click="$set('showVehicleSidebarReject', false)" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:bg-muted transition">Cancel</button>
-                    <button wire:click="submitVehicleSidebarReject" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive text-white hover:bg-destructive/90 transition disabled:opacity-60">
-                        <svg wire:loading wire:target="submitVehicleSidebarReject" class="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                        Confirm Reject
-                    </button>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-600 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="font-medium">Cannot reject within 3 hours of start time</span>
+                        </div>
                     @endif
                 @endif
             </div>

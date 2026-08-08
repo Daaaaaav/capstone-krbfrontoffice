@@ -319,13 +319,36 @@ class PriorityRoomBooking extends Component
 
         $companyId = Auth::user()->company_id ?? null;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($companyId) {
-            $b = BookingRoom::where('bookingroom_id', $this->sidebarDetailId)
-                ->where('company_id', $companyId)
-                ->whereIn('status', ['pending', 'approved'])
-                ->firstOrFail();
+        $booking = BookingRoom::where('bookingroom_id', $this->sidebarDetailId)
+            ->where('company_id', $companyId)
+            ->whereIn('status', ['pending', 'approved'])
+            ->firstOrFail();
 
-            $b->update([
+        try {
+            $startExpr = "COALESCE(
+                CASE WHEN start_time REGEXP '^[0-9]{4}-' THEN start_time END,
+                CASE WHEN date       REGEXP '^[0-9]{4}-' THEN date END,
+                CONCAT(date, ' ', start_time)
+            )";
+
+            $scheduledStartStr = DB::selectOne("SELECT $startExpr as start_dt FROM booking_rooms WHERE bookingroom_id = ?", [$booking->bookingroom_id])->start_dt;
+            $scheduledStart = Carbon::parse($scheduledStartStr, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->closeSidebarDetail();
+                $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.priority_booking_reject_min_3_hours'), duration: 5000);
+                return;
+            }
+        } catch (\Throwable) {
+            $this->closeSidebarDetail();
+            $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.invalid_booking_time'), duration: 3000);
+            return;
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+            $booking->update([
                 'status'      => 'rejected',
                 'book_reject' => $this->sidebarRejectReason,
                 'approved_by' => Auth::user()->user_id,
@@ -342,6 +365,29 @@ class PriorityRoomBooking extends Component
         return BookingRoom::with(['room', 'user.department', 'department'])
             ->find($this->sidebarDetailId);
     }
+
+    public function canRejectSidebarBooking(): bool
+    {
+        if (!$this->sidebarBooking) return false;
+
+        try {
+            $startExpr = "COALESCE(
+                CASE WHEN start_time REGEXP '^[0-9]{4}-' THEN start_time END,
+                CASE WHEN date       REGEXP '^[0-9]{4}-' THEN date END,
+                CONCAT(date, ' ', start_time)
+            )";
+
+            $scheduledStartStr = DB::selectOne("SELECT $startExpr as start_dt FROM booking_rooms WHERE bookingroom_id = ?", [$this->sidebarBooking->bookingroom_id])->start_dt;
+            $scheduledStart = Carbon::parse($scheduledStartStr, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            return $hoursUntilStart >= 3;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function render()
     {
         $companyId = Auth::user()->company_id ?? null;

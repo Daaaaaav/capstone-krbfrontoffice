@@ -47,7 +47,6 @@
             </div>
         </div>
 
-        {{-- ================= TABLE ================= --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm min-w-[500px]">
@@ -56,7 +55,7 @@
                             <th class="px-6 py-3 text-left">#</th>
                             <th class="px-6 py-3 text-left">Room Name</th>
                             <th class="px-6 py-3 text-left">Capacity</th>
-                            <th class="px-6 py-3 text-left">Approval Validation</th>
+                            <th class="px-6 py-3 text-left">1 Hour Approval Validation</th>
                             <th class="px-6 py-3 text-left">Created</th>
                             <th class="px-6 py-3 text-left">Actions</th>
                         </tr>

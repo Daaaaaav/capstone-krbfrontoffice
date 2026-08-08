@@ -869,4 +869,5 @@ return [
 
     'error'                             => 'Kesalahan',
     'priority_booking_cancel_min_3_hours' => 'Pemesanan prioritas harus dibatalkan minimal 3 jam sebelum waktu mulai yang dijadwalkan.',
+    'priority_booking_reject_min_3_hours' => 'Pemesanan prioritas harus ditolak minimal 3 jam sebelum waktu mulai yang dijadwalkan.',
     'invalid_booking_time'              => 'Format waktu pemesanan tidak valid.',

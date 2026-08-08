@@ -357,13 +357,29 @@ class PriorityVehicleBooking extends Component
 
         $companyId = Auth::user()->company_id ?? null;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($companyId) {
-            $b = VehicleBooking::where('vehiclebooking_id', $this->vehicleSidebarDetailId)
-                ->where('company_id', $companyId)
-                ->where('status', 'pending')
-                ->firstOrFail();
+        $booking = VehicleBooking::where('vehiclebooking_id', $this->vehicleSidebarDetailId)
+            ->where('company_id', $companyId)
+            ->where('status', 'pending')
+            ->firstOrFail();
 
-            $b->update([
+        try {
+            $scheduledStart = Carbon::parse($booking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->closeVehicleSidebarDetail();
+                $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.priority_booking_reject_min_3_hours'), duration: 5000);
+                return;
+            }
+        } catch (\Throwable) {
+            $this->closeVehicleSidebarDetail();
+            $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.invalid_booking_time'), duration: 3000);
+            return;
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+            $booking->update([
                 'status' => 'rejected',
                 'notes'  => \Illuminate\Support\Facades\DB::raw(
                     "TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Rejected] " .
@@ -381,6 +397,21 @@ class PriorityVehicleBooking extends Component
         if (!$this->vehicleSidebarDetailId) return null;
         return VehicleBooking::with(['vehicle', 'user.department', 'department'])
             ->find($this->vehicleSidebarDetailId);
+    }
+
+    public function canRejectVehicleSidebarBooking(): bool
+    {
+        if (!$this->vehicleSidebarBooking) return false;
+
+        try {
+            $scheduledStart = Carbon::parse($this->vehicleSidebarBooking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            return $hoursUntilStart >= 3;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function render()
