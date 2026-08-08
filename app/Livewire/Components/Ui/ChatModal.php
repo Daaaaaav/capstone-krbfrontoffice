@@ -12,6 +12,7 @@ use App\Services\AI\BookingDraftService;
 use App\Services\AI\ContextRouter;
 use App\Services\AI\DirectBookingService;
 use App\Services\AI\ToolDispatcher;
+use App\Services\AI\LanguageDetector;
 use App\Models\AiChatSession;
 use App\Models\AiChatMessage;
 use App\Models\Room;
@@ -221,6 +222,19 @@ class ChatModal extends Component
     {
         $companyId = Auth::user()->company_id;
 
+        // Detect user's language
+        $languageDetector = app(LanguageDetector::class);
+        $sessionLocale = session('locale', config('app.locale', 'en'));
+        $detectedLanguage = $languageDetector->detectLanguage($userMessage, $sessionLocale);
+
+        if (config('app.debug')) {
+            Log::info('ChatModal: language detected', [
+                'stage' => 'manager_ai_call',
+                'detected' => $detectedLanguage,
+                'session_locale' => $sessionLocale,
+            ]);
+        }
+
         $router  = app(ContextRouter::class);
         $context = $router->route($userMessage, $companyId, 'manager', $this->getRecentHistory());
 
@@ -228,7 +242,7 @@ class ChatModal extends Component
         $this->contextMemory['active_domains'] = $domains;
 
         $builder      = app(PromptBuilder::class);
-        $systemPrompt = $builder->managerSystemPrompt($context);
+        $systemPrompt = $builder->managerSystemPrompt($context, $detectedLanguage);
         $history      = $this->getRecentHistory(exclude: 'last');
 
         $ai    = app(AIService::class);
@@ -244,6 +258,19 @@ class ChatModal extends Component
         $builder      = app(PromptBuilder::class);
         $draftService = app(BookingDraftService::class);
         $router       = app(ContextRouter::class);
+
+        // Detect user's language
+        $languageDetector = app(LanguageDetector::class);
+        $sessionLocale = session('locale', config('app.locale', 'en'));
+        $detectedLanguage = $languageDetector->detectLanguage($userMessage, $sessionLocale);
+
+        if (config('app.debug')) {
+            Log::info('ChatModal: language detected', [
+                'stage' => 'receptionist_ai_call',
+                'detected' => $detectedLanguage,
+                'session_locale' => $sessionLocale,
+            ]);
+        }
 
         $history = $this->getRecentHistory();
         $routingResult = $router->routeWithMetadata($userMessage, $companyId, 'receptionist', $history);
@@ -271,8 +298,8 @@ class ChatModal extends Component
         $draftContext = $draftService->buildDraftContext($this->bookingDraft);
         
         $systemPrompt = $isBookingIntent
-            ? $builder->receptionistBookingPrompt($context, $draftContext)
-            : $builder->receptionistGeneralPrompt($context);
+            ? $builder->receptionistBookingPrompt($context, $draftContext, $detectedLanguage)
+            : $builder->receptionistGeneralPrompt($context, $detectedLanguage);
         
         $recentHistory = $this->getRecentHistory(exclude: 'last');
 
@@ -281,6 +308,7 @@ class ChatModal extends Component
             Log::info('ChatModal: prompt selected', [
                 'stage'          => 'receptionist_ai_call',
                 'prompt_type'    => $promptType,
+                'language'       => $detectedLanguage,
                 'system_chars'   => strlen($systemPrompt),
                 'has_draft'      => !empty($draftContext),
                 'history_turns'  => count($recentHistory),
@@ -526,24 +554,82 @@ class ChatModal extends Component
 
     private function parseIntentResponse(string $raw, ?int $companyId): array
     {
-        $empty = ['reply' => $raw, 'booking_prefill' => [], 'vehicle_prefill' => [], 'booking_complete' => false];
+        // Log the raw response for debugging
+        if (config('app.debug')) {
+            Log::debug('ChatModal: parsing AI response', [
+                'stage' => 'parse_intent_response',
+                'raw_length' => strlen($raw),
+                'raw_preview' => substr($raw, 0, 200),
+            ]);
+        }
 
         $raw = trim($this->stripThinkBlocks($raw));
-        $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
-        $raw = preg_replace('/\s*```$/', '', $raw);
-        $raw = trim($raw);
+        
+        // Try to extract JSON from markdown code fences first
+        if (preg_match('/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i', $raw, $matches)) {
+            $raw = trim($matches[1]);
+        } else {
+            // Remove any leading/trailing code fence markers
+            $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
+            $raw = preg_replace('/\s*```$/', '', $raw);
+            $raw = trim($raw);
+        }
 
-        if (! str_starts_with($raw, '{')) return $empty;
+        // If it doesn't look like JSON, treat it as plain text
+        if (!str_starts_with($raw, '{')) {
+            $cleanText = $this->sanitizeDisplayText($raw);
+            if (config('app.debug')) {
+                Log::debug('ChatModal: response is plain text', [
+                    'stage' => 'parse_intent_response',
+                    'text_length' => strlen($cleanText),
+                ]);
+            }
+            return [
+                'reply' => $cleanText,
+                'booking_prefill' => [],
+                'vehicle_prefill' => [],
+                'booking_complete' => false
+            ];
+        }
 
+        // Try to decode JSON
         $decoded = json_decode($raw, true);
-        if (! is_array($decoded) || ! isset($decoded['reply'])) return $empty;
+        
+        if (!is_array($decoded)) {
+            // JSON parsing failed - return sanitized raw text
+            $cleanText = $this->sanitizeDisplayText($raw);
+            Log::warning('ChatModal: JSON decode failed, using raw text', [
+                'stage' => 'parse_intent_response',
+                'json_error' => json_last_error_msg(),
+            ]);
+            return [
+                'reply' => $cleanText,
+                'booking_prefill' => [],
+                'vehicle_prefill' => [],
+                'booking_complete' => false
+            ];
+        }
 
-        $reply          = (string) ($decoded['reply']            ?? '');
-        $bookingComplete = (bool)  ($decoded['booking_complete'] ?? false);
+        // Extract the human-readable reply
+        $reply = $this->extractDisplayMessage($decoded);
+        
+        if (empty($reply)) {
+            // No valid reply found - create a fallback
+            $reply = "I'm processing your request. Let me know if you need any clarification.";
+            Log::warning('ChatModal: no valid reply field in response', [
+                'stage' => 'parse_intent_response',
+                'decoded_keys' => array_keys($decoded),
+            ]);
+        }
+
+        // Ensure reply contains only display text, never JSON structures
+        $reply = $this->sanitizeDisplayText($reply);
+
+        $bookingComplete = (bool) ($decoded['booking_complete'] ?? false);
 
         $prefill = $decoded['booking_prefill'] ?? [];
         if (is_array($prefill)) {
-            if (empty($prefill['room_id']) && ! empty($prefill['room_name'])) {
+            if (empty($prefill['room_id']) && !empty($prefill['room_name'])) {
                 $room = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
                     ->where('room_name', 'like', '%' . trim($prefill['room_name']) . '%')->first();
                 $prefill['room_id']   = $room?->room_id;
@@ -563,10 +649,10 @@ class ChatModal extends Component
 
         $vprefill = $decoded['vehicle_prefill'] ?? [];
         if (is_array($vprefill)) {
-            if (empty($vprefill['vehicle_id']) && (! empty($vprefill['vehicle_name']) || ! empty($vprefill['plate_number']))) {
+            if (empty($vprefill['vehicle_id']) && (!empty($vprefill['vehicle_name']) || !empty($vprefill['plate_number']))) {
                 $vq = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId));
-                if (! empty($vprefill['vehicle_name'])) $vq->where('name', 'like', '%' . trim($vprefill['vehicle_name']) . '%');
-                elseif (! empty($vprefill['plate_number'])) $vq->where('plate_number', 'like', '%' . trim($vprefill['plate_number']) . '%');
+                if (!empty($vprefill['vehicle_name'])) $vq->where('name', 'like', '%' . trim($vprefill['vehicle_name']) . '%');
+                elseif (!empty($vprefill['plate_number'])) $vq->where('plate_number', 'like', '%' . trim($vprefill['plate_number']) . '%');
                 $vehicle = $vq->first();
                 $vprefill['vehicle_id']   = $vehicle?->vehicle_id;
                 $vprefill['vehicle_name'] = $vehicle?->name         ?? $vprefill['vehicle_name']  ?? null;
@@ -585,7 +671,84 @@ class ChatModal extends Component
             $vprefill['purpose_type']  = in_array($vprefill['purpose_type'] ?? '', $validT, true) ? $vprefill['purpose_type'] : null;
         }
 
-        return ['reply' => $reply, 'booking_prefill' => $prefill ?? [], 'vehicle_prefill' => $vprefill ?? [], 'booking_complete' => $bookingComplete];
+        return [
+            'reply' => $reply,
+            'booking_prefill' => $prefill ?? [],
+            'vehicle_prefill' => $vprefill ?? [],
+            'booking_complete' => $bookingComplete
+        ];
+    }
+
+    /**
+     * Extract the display message from decoded response
+     */
+    private function extractDisplayMessage(array $decoded): string
+    {
+        // Try common message field names
+        $messageFields = ['reply', 'message', 'text', 'response', 'content'];
+        
+        foreach ($messageFields as $field) {
+            if (isset($decoded[$field]) && is_string($decoded[$field]) && !empty(trim($decoded[$field]))) {
+                return trim($decoded[$field]);
+            }
+        }
+        
+        return '';
+    }
+
+    /**
+     * Sanitize text to ensure it doesn't contain raw JSON or internal structures
+     */
+    private function sanitizeDisplayText(string $text): string
+    {
+        $text = trim($text);
+        
+        // If the text looks like JSON (starts with { or [), try to extract human-readable content
+        if (preg_match('/^[\{\[]/', $text)) {
+            // Attempt to decode and extract message
+            $decoded = json_decode($text, true);
+            if (is_array($decoded)) {
+                $extracted = $this->extractDisplayMessage($decoded);
+                if (!empty($extracted)) {
+                    return $extracted;
+                }
+            }
+            
+            // If we couldn't extract a message, return a generic response
+            Log::warning('ChatModal: sanitizeDisplayText detected JSON structure in display text', [
+                'stage' => 'sanitize_display_text',
+                'preview' => substr($text, 0, 100),
+            ]);
+            return "I apologize, but I encountered an issue formatting my response. Could you please rephrase your question?";
+        }
+        
+        // Remove any remaining code fence markers
+        $text = preg_replace('/```(?:json)?/i', '', $text);
+        
+        // Check for suspicious patterns that might indicate leaked internal data
+        $suspiciousPatterns = [
+            'booking_profile',
+            'vehicle_profile',
+            'booking_prefill',
+            'vehicle_prefill',
+            'booking_complete',
+            '"room_id"',
+            '"vehicle_id"',
+            '"meeting_title"',
+        ];
+        
+        foreach ($suspiciousPatterns as $pattern) {
+            if (stripos($text, $pattern) !== false) {
+                Log::warning('ChatModal: sanitizeDisplayText detected internal field name in display text', [
+                    'stage' => 'sanitize_display_text',
+                    'pattern' => $pattern,
+                    'preview' => substr($text, 0, 100),
+                ]);
+                return "I apologize, but I encountered an issue formatting my response. Could you please rephrase your question?";
+            }
+        }
+        
+        return $text;
     }
 
     private function ensureSession(): void

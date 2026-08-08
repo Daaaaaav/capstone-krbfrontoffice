@@ -8,10 +8,14 @@ class PromptBuilder
 {
     private string $tz = 'Asia/Jakarta';
 
-    public function managerSystemPrompt(string $dataContext): string
+    public function managerSystemPrompt(string $dataContext, string $userLanguage = 'en'): string
     {
+        $languageInstruction = $this->buildLanguageInstruction($userLanguage);
+        
         return <<<PROMPT
         You are an executive analytics assistant for the facility management system at Kebun Raya Bogor.
+
+        {$languageInstruction}
 
         Your role:
         - Summarize reservation and operational statistics in a professional, executive style.
@@ -20,7 +24,6 @@ class PromptBuilder
         - Suggest one or two concrete, actionable improvements when the data indicates a problem.
         - Keep answers concise — use short paragraphs or bullet points, not walls of text.
         - Never invent figures not present in the context below.
-        - Respond in the same language the manager uses (English or Indonesian).
         - NEVER suggest copying text to Word, creating external documents, or any workaround for exporting.
           The dashboard already has built-in PDF and CSV export buttons in the chat header.
           If asked about exporting or downloading, simply say: "Use the PDF or CSV export buttons in the chat header."
@@ -33,24 +36,29 @@ class PromptBuilder
         PROMPT;
     }
 
-    public function receptionistGeneralPrompt(string $dataContext): string
+    public function receptionistGeneralPrompt(string $dataContext, string $userLanguage = 'en'): string
     {
+        $languageInstruction = $this->buildLanguageInstruction($userLanguage);
+        
         return <<<PROMPT
         You are a friendly AI assistant for a receptionist at Kebun Raya Bogor's facility management system.
+
+        {$languageInstruction}
 
         Your role:
         - Help look up booking info, schedules, and statuses.
         - Answer questions about rooms, vehicles, availability, and operations.
         - Only use data provided below — never invent IDs, names, or details.
         - Keep answers short and practical.
-        - Respond in the same language used (English or Indonesian).
 
         {$dataContext}
         PROMPT;
     }
 
-    public function receptionistBookingPrompt(string $dataContext, string $bookingDraftContext = ''): string
+    public function receptionistBookingPrompt(string $dataContext, string $bookingDraftContext = '', string $userLanguage = 'en'): string
     {
+        $languageInstruction = $this->buildLanguageInstruction($userLanguage);
+        
         $draftSection = $bookingDraftContext
             ? "\n\nACTIVE BOOKING DRAFT (carry forward collected fields):\n{$bookingDraftContext}\n"
             : '';
@@ -61,6 +69,12 @@ class PromptBuilder
 
         return <<<PROMPT
         You are a booking assistant for Kebun Raya Bogor's receptionist.
+
+        {$languageInstruction}
+
+        CRITICAL: Your response MUST be valid JSON with a "reply" field containing ONLY the human-readable message.
+        NEVER include booking_profile, vehicle_profile, or any internal metadata in the "reply" field.
+        The "reply" field is displayed directly to the user and must contain ONLY natural language text.
 
         Extract booking fields conversationally. If ALL required fields present, set "booking_complete": true.
         If fields missing, ask ONE follow-up. Carry forward draft fields below.
@@ -78,7 +92,7 @@ class PromptBuilder
 
         RESPONSE FORMAT (mandatory JSON):
         {
-          "reply": "<conversational reply>",
+          "reply": "<conversational reply in {$userLanguage}>",
           "booking_complete": <true|false>,
           "booking_prefill": {
             "meeting_title": "<string or null>", "room_id": <int or null>, "room_name": "<string or null>",
@@ -107,9 +121,41 @@ class PromptBuilder
         . $dataContext;
     }
 
-    public function receptionistSystemPrompt(string $dataContext, string $bookingDraftContext = ''): string
+    public function receptionistSystemPrompt(string $dataContext, string $bookingDraftContext = '', string $userLanguage = 'en'): string
     {
-        return $this->receptionistBookingPrompt($dataContext, $bookingDraftContext);
+        return $this->receptionistBookingPrompt($dataContext, $bookingDraftContext, $userLanguage);
+    }
+
+    /**
+     * Build language-specific instruction
+     */
+    private function buildLanguageInstruction(string $language): string
+    {
+        if ($language === 'id') {
+            return <<<TEXT
+            LANGUAGE: Indonesian (Bahasa Indonesia)
+            - Respond ONLY in natural, conversational Indonesian.
+            - Use professional but friendly Indonesian language.
+            - Indonesian terminology:
+              * "room booking" → "booking ruangan" or "pemesanan ruangan"
+              * "vehicle booking" → "booking kendaraan" or "pemesanan kendaraan"
+              * "department" → "departemen"
+              * "start time" → "waktu mulai"
+              * "end time" → "waktu selesai"
+              * "meeting" → "rapat" or "pertemuan"
+              * "available" → "tersedia"
+              * "guestbook" can remain "guestbook" (accepted term)
+            - Do NOT mix English words unnecessarily into Indonesian responses.
+            - Preserve proper nouns, dates, room names, vehicle names as given.
+            TEXT;
+        }
+        
+        return <<<TEXT
+        LANGUAGE: English
+        - Respond ONLY in natural, conversational English.
+        - Use professional but friendly language.
+        - Keep responses clear and concise.
+        TEXT;
     }
 
     public function buildManagerContext(?int $companyId): string
