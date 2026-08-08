@@ -1,4 +1,4 @@
-﻿# KRB System - Run Guide
+# KRB System - Run Guide
 
 This project supports multiple deployment methods:
 
@@ -320,6 +320,13 @@ The system uses Zoom Server-to-Server OAuth.
 php artisan test
 php artisan optimize:clear
 tail -f storage/logs/laravel.log
+
+# Run the Laravel scheduler (required for auto-starting/completing bookings in local dev)
+php artisan schedule:work
+
+# Clear cache to release stuck scheduler mutex locks (if scheduled tasks are being skipped)
+php artisan cache:clear
+php artisan schedule:clear-cache
 ```
 
 ## 9. Notes

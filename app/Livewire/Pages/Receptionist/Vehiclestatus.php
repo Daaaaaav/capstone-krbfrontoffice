@@ -51,6 +51,11 @@ class Vehiclestatus extends Component
     public string $priorityVehicleRejectReason     = '';
     public bool $showFilterModal = false;
 
+    public bool $showApproveModal = false;
+    public ?int $approveId = null;
+    public bool $showDoneModal = false;
+    public ?int $doneId = null;
+    public ?string $photoData = null;
     protected $queryString = [
         'q' => ['except' => ''],
         'vehicleFilter' => ['except' => null],
@@ -144,12 +149,30 @@ class Vehiclestatus extends Component
         ]);
     }
 
-    public function approve(int $id): void
+    public function openApproveModal(int $id): void
     {
+        $this->approveId = $id;
+        $this->photoData = null;
+        $this->showApproveModal = true;
+    }
+
+    public function closeApproveModal(): void
+    {
+        $this->showApproveModal = false;
+        $this->approveId = null;
+        $this->photoData = null;
+    }
+
+    public function submitApprove(): void
+    {
+        $this->validate([
+            'approveId' => 'required|integer',
+            'photoData' => 'required|string',
+        ]);
+
         try {
-            DB::transaction(function () use ($id) {
-                $b = VehicleBooking::lockForUpdate()
-                    ->findOrFail($id);
+            DB::transaction(function () {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($this->approveId);
 
                 if ($b->status !== 'pending') {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not in pending status.");
@@ -161,10 +184,27 @@ class Vehiclestatus extends Component
                     $b->status = 'on_progress';
                 }
 
+                // Save photo
+                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
+                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
+                    $type = strtolower($type[1]);
+                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
+                        throw new \Exception('Invalid image type');
+                    }
+                    $data = base64_decode($data);
+                    if ($data === false) {
+                        throw new \Exception('Base64 decode failed');
+                    }
+                    $filename = 'vehicle_evidences/handover_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
+                    $b->handover_photo = $filename;
+                }
+
                 $b->save();
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Booking has been approved.');
+            $this->closeApproveModal();
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Booking has been approved with evidence.');
             $this->resetPage();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
@@ -172,8 +212,7 @@ class Vehiclestatus extends Component
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
         }
-    } 
-
+    }
     public function confirmReject(int $id): void
     {
         $this->rejectId = $id;
@@ -257,20 +296,57 @@ class Vehiclestatus extends Component
         $this->rejectNote = '';
     }
 
-    public function markReturned(int $id): void
+    public function openDoneModal(int $id): void
     {
+        $this->doneId = $id;
+        $this->photoData = null;
+        $this->showDoneModal = true;
+    }
+
+    public function closeDoneModal(): void
+    {
+        $this->showDoneModal = false;
+        $this->doneId = null;
+        $this->photoData = null;
+    }
+
+    public function submitDone(): void
+    {
+        $this->validate([
+            'doneId'    => 'required|integer',
+            'photoData' => 'required|string',
+        ]);
+
         try {
-            DB::transaction(function () use ($id) {
-                $b = VehicleBooking::lockForUpdate()
-                    ->findOrFail($id);
+            DB::transaction(function () {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($this->doneId);
                 if (!in_array($b->status, ['approved', 'on_progress', 'late_return'], true)) {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} cannot be completed from status '{$b->status}'.");
                 }
+                
                 $b->status = 'completed';
+
+                // Save photo
+                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
+                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
+                    $type = strtolower($type[1]);
+                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
+                        throw new \Exception('Invalid image type');
+                    }
+                    $data = base64_decode($data);
+                    if ($data === false) {
+                        throw new \Exception('Base64 decode failed');
+                    }
+                    $filename = 'vehicle_evidences/return_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
+                    $b->return_photo = $filename;
+                }
+
                 $b->save();
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed.');
+            $this->closeDoneModal();
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed with evidence.');
             $this->resetPage();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Update', message: $e->getMessage());
@@ -279,7 +355,6 @@ class Vehiclestatus extends Component
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update: ' . $e->getMessage());
         }
     }
-
     public function overdueDuration(VehicleBooking $booking): string
     {
         if (!$booking->end_at) {
