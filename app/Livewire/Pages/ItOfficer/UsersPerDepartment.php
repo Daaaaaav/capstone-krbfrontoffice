@@ -235,13 +235,9 @@ class UsersPerDepartment extends Component
             $companyId = Auth::user()->company_id;
 
             // Get departments with user counts
+            // Match Receptionist behavior: count ALL users in department, regardless of role
             $departments = Department::where('company_id', $companyId)
-                ->withCount(['users' => function ($query) {
-                    // Only count Manager and Receptionist users
-                    $query->whereHas('role', function ($q) {
-                        $q->whereIn('roles.name', ['Manager', 'Receptionist']);
-                    });
-                }])
+                ->withCount('users')
                 ->orderBy('department_name')
                 ->get();
 
@@ -252,12 +248,10 @@ class UsersPerDepartment extends Component
                 $page = $this->departmentPages[$department->department_id] ?? 1;
                 $perPage = 10;
 
+                // Match Receptionist behavior: retrieve ALL users in department
                 $query = User::query()
                     ->where('company_id', $companyId)
                     ->where('department_id', $department->department_id)
-                    ->whereHas('role', function ($q) {
-                        $q->whereIn('roles.name', ['Manager', 'Receptionist']);
-                    })
                     ->with(['role', 'department']);
 
                 // Apply search filter
@@ -294,12 +288,10 @@ class UsersPerDepartment extends Component
             }
 
             // Handle users without department
+            // Match Receptionist behavior: show ALL unassigned users
             $unassignedQuery = User::query()
                 ->where('company_id', $companyId)
                 ->whereNull('department_id')
-                ->whereHas('role', function ($q) {
-                    $q->whereIn('roles.name', ['Manager', 'Receptionist']);
-                })
                 ->with(['role']);
 
             if (!empty($this->search)) {
