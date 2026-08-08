@@ -1,369 +1,262 @@
-﻿# KRB System - Run Guide
+# Code Setup
+In a code editor of choice, clone the project repository and navigate to the project directory as follows
+git clone https://github.com/Daaaaaav/caps-test 
+cd <directory-name>
 
-This project supports multiple deployment methods:
+Copy the environment configuration file and make the as follows:
+2.1. cp .env.example .env
+2.2. php artisan storage:link 
 
-- **Docker Production Deployment** (recommended for production)
-- **Docker Development** (for local development)
-- **Native Local Setup** (Fedora/Linux focused)
+And then, configure the database credentials and application settings inside the  
+                	newly copied.env file.
+                 
+Install Application Dependencies
+	   	Backend dependencies can be installed and configured via this command:
+              	 4.1. composer install
+		 4.2. composer dump-autoload 
 
-The system includes:
-- Laravel 12 application with Livewire 3
-- Python LSTM AI service for predictive analytics
-- MySQL database
-- Optional Wazuh integration for security monitoring
+Whilst frontend dependencies can be done as with this command:
+               	5.1. npm install
+		5.2  npm install chartjs
 
-## 1. Clone Project
+Generate the Laravel application key:
+              	6.1. php artisan key:generate
 
-```bash
-git clone <your-repo-url>
-cd KRB-System
-```
+# Database
+7.1. Create a MySQL database for the application (e.g. capstonekrbs), then 
+configure the database credentials in the .env file.
 
----
+Afterwards, execute database migrations with the command:
+8.1. php artisan migrate
 
-## 2. Docker Production Deployment (Recommended)
+Populate initial data with the seeder through inputting the command:
+9.1. php artisan migrate --seed
 
-**For production deployment with auto-starting AI services.**
+Frontend Build Process
+		Compile frontend assets via commanding:
+10.1. npm run build
+	
+For active development, run the command and keep it running throughout opening the
+app via:
+11.1. npm run dev
 
-### Quick Deploy
+Run Application Locally
+		Start the Laravel development server via the command:
+12.1. php artisan serve
 
-**Windows:**
-```bash
-.\deploy.bat
-```
+This makes the application accessible through:
+13.1. http://localhost:8000
 
-**Linux/macOS:**
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+Run the LSTM Forecasting Service
+		The AI prediction module uses a Python FastAPI service with TensorFlow.
 
-The deployment script will:
-1. Build Docker images (Laravel + Python LSTM service)
-2. Start all services (App, MySQL, LSTM, Nginx)
-3. Run database migrations
-4. Optimize the application
+Install Python dependencies through this command:
+pip install fastapi uvicorn tensorflow pandas scikit-learn holidays
 
-### Access Points
+Run the forecasting service this command:
+16.1. python -m uvicorn app.Services.AI.LSTM_Service:app --host 127.0.0.1 --port 8001
 
-- **Application**: http://localhost
-- **LSTM API**: http://localhost:8001
-- **LSTM Docs**: http://localhost:8001/docs
-- **MySQL**: localhost:3307
+Verify service availability through this command:
+17.1. curl http://127.0.0.1:8001/
 
-### Default Login
+Expected output:
+{
+  "status": "healthy",
+  "service": "Improved LSTM Forecast Service"
+}
 
-- **Manager**: `manager@krbogor.id` / `superpassword`
-- **Receptionist**: `receptionist@krbogor.id` / `receppassword`
+Nginx + PHP FPM Deployment
+		For production deployment, Nginx and PHP 8.2 FPM  
+                        is used to ensure environment consistency.
 
-### Documentation
+In the Ubuntu server, run:
+19.1. ssh <username>@<ip address>
+For our current development server, it is ssh dav@100.74.102.31
 
-- **Quick Start**: [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) - 5-minute guide
-- **Full Guide**: [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment documentation
-- **Setup Summary**: [DOCKER_SETUP_COMPLETE.md](DOCKER_SETUP_COMPLETE.md) - What was configured
+Clone the project repository in the web directory:
+            	20.1. cd /var/www
+                        20.2. git clone https://github.com/Daaaaaav/caps-test.git 
+                        20.3. cd caps-test
 
-### Common Commands
+Configure the server environment:
+cp .env.example .env
+nano .env 
 
-```bash
-# View logs
-docker-compose logs -f
+Install PHP dependencies:
+composer install --no-dev --optimize-autoloader
 
-# Stop services
-docker-compose down
+Install Frontend dependencies:
+npm install
+npm install chartjs
+npm run build
 
-# Restart services
-docker-compose restart
+Generate the Laravel Application Key:
+php artisan key:generate 
 
-# Run artisan commands
-docker-compose exec app php artisan [command]
-```
+Configure the database and run migrations for initial data:
+CREATE DATABASE krbs; 
+php artisan migrate 
+php artisan db:seed 
 
----
+Optimize Laravel:
+php artisan config:cache 
+php artisan route:cache
+php artisan view:cache
+php artisan optimize
+ 
+Configure File Permissions:
+sudo chown -R www-data:www-data .
+sudo chmod -R 775 storage bootstrap/cache
 
-## 3. Docker Development Setup
+ 
+Configure and Test Nginx:
+Copy the supplied Nginx configuration into /etc/nginx/sites-available/receptionistkebunraya 
+sudo ln -s /etc/nginx/sites-available/receptionistkebunraya \ /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
 
-Use Docker if your team needs the same setup across Windows and Linux.
+Start and Check PHP-FPM: 
+sudo systemctl restart php8.2-fpm 
+sudo systemctl status php8.2-fpm
 
-Note for Fedora/RHEL users: bind mounts use SELinux relabel (`:z`) in compose so containers can read project files.
+Start and Verify the LSTM Forecasting Service 
+pip install fastapi uvicorn tensorflow pandas scikit-learn holidays 
+python -m uvicorn app.Services.AI.LSTM_Service:app \ --host 127.0.0.1 \ --port 8001 
+curl http://127.0.0.1:8001/ 
+			if successful: 
+{ "status":"healthy", "service":"Improved LSTM Forecast Service" } 
 
-### Linux/macOS (helper script)
+Updating an Existing Deployment
+Navigate to the project directory
+1.1. cd /var/www/caps-test
 
-```bash
-chmod +x scripts/docker-dev.sh
-./scripts/docker-dev.sh init
-./scripts/docker-dev.sh start
-```
+Retrieve the last source code
+2.1.  git fetch origin
+2.2. git pull origin <latest-branch> (as of now, would be git pull origin manager)
+      
+Install any newly added dependencies
+3.1. composer install --no-dev --optimize-autoloader
+3.2. npm install 
 
-### Windows PowerShell (helper script)
+Compile the frontend
+ 4.1. npm run build
 
-```powershell
-.\scripts\docker-dev.ps1 -Action init
-.\scripts\docker-dev.ps1 -Action start
-```
+Run any new database migrations
+5.1.  php artisan migrate
 
-Open:
+Rebuild Laravel caches:
+6.1. php artisan optimize
 
-- App: http://localhost:8000
-- Vite: http://localhost:5173
-- MySQL (host): localhost:3307
+Restart the application services
+7.1. sudo systemctl restart php8.2-fpm
+7.2. sudo systemctl restart nginx 
+7.3. sudo systemctl restart lstm-service  
 
-If `3307` is busy too, set a different value in `.env` before start:
+System Verification
+Verify the web server:
+     	1.1 sudo systemctl status nginx 
 
-```env
-MYSQL_HOST_PORT=3310
-```
+Verify PHP-FPM:
+     	2.1 sudo systemctl status php8.2-fpm 
 
-### Start with Wazuh (optional)
+Verify the LSTM service:
+     	3.1. curl http://localhost:8001/
 
-Linux/macOS:
+Review the Laravel log if any error occurs: 
+4.1. tail -f storage/logs/laravel.log 
 
-```bash
-./scripts/docker-dev.sh start --wazuh
-```
+And for reviewing the Nginx log:
+5.1.  sudo tail -f /var/log/nginx/error.log
 
-Windows PowerShell:
+     Successful deployment can be confirmed when:
+Nginx and PHP-FPM services are active.
+The Laravel application loads successfully through the web browser.
+Database connectivity is established.
+The LSTM forecasting service returns a healthy status.
+Queue workers and scheduled tasks operate without errors.
+No critical errors are recorded in the application or server logs.
 
-```powershell
-.\scripts\docker-dev.ps1 -Action start -Wazuh
-```
+# END-USER SYSTEM INSTALLATION 
+The requirements and installation process from the perspective of the organization operating the KRB Receptionist System are covered in this section. For the web application to be accessible to all users in the organization, us as developers in charge must first deploy the application to the end-user domain being receptionistkebunraya.online.
 
-### Common Docker helper commands
+ Hardware Requirements
+              The production server is currently deployed on a laptop with the following minimum
+             specifications:
+ 
+Component
+Specification
+Laptop
+ASUS N46VZ
+CPU
+Intel Core i7-3630QM CPU
+RAM
+4 GB
+Storage
+50 GB SSD
+Operating System
+Ubuntu Server 22.04 LTS
+Public IP Address
+1 Static IPv4 Address
+Domain Name
+receptionistkebunraya.online
 
-Linux/macOS:
 
-```bash
-./scripts/docker-dev.sh logs
-./scripts/docker-dev.sh logs --wazuh
-./scripts/docker-dev.sh test
-./scripts/docker-dev.sh stop
-./scripts/docker-dev.sh stop --volumes
-```
+             Software Requirements
+             The following software components are for the server:
+Component
+Purpose
+Ubuntu Server 22.04 LTS
+Operating System
+Nginx
+Web Reserve / Reverse Proxy
+PHP 8.2.
+Laravel Runtime
+Composer
+Dependency Management
+Node.js
+Frontend Asset Compilation
+MySQL / MariaDB
+Database
+Python 3.10+
+AI Forecasting Service
+Git
+Version Control
 
-Windows PowerShell:
 
-```powershell
-.\scripts\docker-dev.ps1 -Action logs
-.\scripts\docker-dev.ps1 -Action logs -Wazuh
-.\scripts\docker-dev.ps1 -Action test
-.\scripts\docker-dev.ps1 -Action stop
-.\scripts\docker-dev.ps1 -Action stop -Volumes
-```
+   Network Configurations
+	   The VPS firewall is configured to allow the following ports:
+Port
+Protocol
+Function
+80
+TCP
+HTTP Traffic
+443
+TCP
+HTTPS Traffic
+22
+TCP
+Secure Shell (SSH) Administration
 
-Manual Docker commands are documented in docs/DOCKER_SETUP.md.
-
-## 4. Local Development Setup
-
-**For local development without Docker (Laragon, XAMPP, or native).**
-
-📖 **See complete guide**: [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)
-
-### Quick Start (Laragon/Windows)
-
-1. Place project in `C:\laragon\www\KRB-System\`
-2. Copy `.env.example` to `.env`
-3. Create database: `krbs`
-4. Install dependencies:
-   ```bash
-   composer install
-   npm install
-   ```
-5. Setup application:
-   ```bash
-   php artisan key:generate
-   php artisan migrate
-   php artisan db:seed
-   npm run build
-   ```
-6. Access: http://krb-system.test
-
-### Quick Start (Native Linux/macOS)
-
-1. Install prerequisites:
-   ```bash
-   # Ubuntu/Debian
-   sudo apt install -y php8.3 php8.3-mysql composer nodejs npm mysql-server
+  
+   The internal application services communicate through the Ubuntu server’s networking and are not publicly exposed. 
    
-   # macOS
-   brew install php@8.3 composer node mysql
-   ```
+   Domain Configuration
+   The domain receptionistkebunraya.online is configured to point to the VPS public 
+   IP address through DNS A Records.
+    
+               The DNS configuration is as follows:
+                
+Type
+Host
+Value
+A
+@
+VPS Public IP
+A
+www
+VPS Public IP
 
-2. Clone and setup:
-   ```bash
-   git clone <repo-url>
-   cd KRB-System
-   cp .env.example .env
-   ```
 
-3. Create database:
-   ```bash
-   mysql -u root -p
-   CREATE DATABASE krbs;
-   EXIT;
-   ```
-
-4. Install and run:
-   ```bash
-   composer install
-   npm install
-   php artisan key:generate
-   php artisan migrate
-   php artisan db:seed
-   npm run build
-   php artisan serve
-   ```
-
-5. Access: http://localhost:8000
-
-**For detailed instructions, troubleshooting, and platform-specific guides, see [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md)**
-
-## 5. AI Services (Optional)
-
-### LSTM Prediction Service
-
-The system includes a Python-based LSTM service for predictive analytics.
-
-**Local Development:**
-
-1. Install Python dependencies:
-   ```bash
-   pip install --user fastapi uvicorn tensorflow pandas scikit-learn holidays
-   ```
-
-2. Start service:
-   ```bash
-   # Windows
-   .\start_lstm_service.bat
-   
-   # Linux/macOS
-   python3 -m uvicorn app.Services.AI.LSTM_Service:app --host 127.0.0.1 --port 8001
-   ```
-
-3. Verify:
-   ```bash
-   curl http://127.0.0.1:8001/
-   ```
-
-**Docker Deployment:**
-
-LSTM service automatically starts with the application (no manual setup needed).
-
-**Features:**
-- 3-week booking predictions
-- Holiday-aware forecasting
-- Weather integration (BMKG API)
-- Occupancy forecasting
-- Anomaly detection
-
-**Note:** The application works without LSTM service using fallback predictions.
-
----
-
-## 6. Wazuh (Optional)
-
-If Wazuh is not available, the security report page can still run by reading Laravel logs.
-
-Fedora install script:
-
-```bash
-chmod +x scripts/wazuh_install_manager_fedora.sh
-./scripts/wazuh_install_manager_fedora.sh
-```
-
-Test simulation:
-
-```bash
-chmod +x scripts/wazuh_test_simulation.sh
-./scripts/wazuh_test_simulation.sh
-```
-
-Check alerts:
-
-```bash
-sudo tail -f /var/ossec/logs/alerts/alerts.log
-```
-
-One-command web test:
-
-```bash
-chmod +x scripts/run_wazuh_web_test.sh scripts/wazuh_test_simulation.sh
-./scripts/run_wazuh_web_test.sh
-```
-
-```
-
-## 7. Integrations (Google Meet & Zoom)
-
-The system supports automatic generation of online meeting links for Google Meet and Zoom when booking rooms.
-
-### Google Meet Setup
-The system uses Google OAuth 2.0 to support both free Gmail accounts and Google Workspace accounts.
-1. Create an OAuth Client ID (Web Application) in Google Cloud Console.
-2. Add your deployment URL (`https://your-domain.com/google/callback`) and local URL (`http://127.0.0.1:8000/google/callback`) to the Authorized Redirect URIs.
-3. Download the credentials as `client_secret.json` and place it in `storage/app/google/`.
-4. Add your email to the **Test users** list in Google Cloud (if the app is in Testing mode).
-5. Login as a Manager in the application, go to **Settings > Integrations**, and click **Connect Google Meet**.
-
-### Zoom Setup
-The system uses Zoom Server-to-Server OAuth.
-1. Create a Server-to-Server OAuth app in the [Zoom App Marketplace](https://marketplace.zoom.us/).
-2. Copy your credentials into `.env`:
-   ```env
-   ZOOM_ACCOUNT_ID=your_account_id
-   ZOOM_CLIENT_ID=your_client_id
-   ZOOM_CLIENT_SECRET=your_client_secret
-   ```
-3. Ensure the app is activated in the marketplace.
-
-## 8. Useful Commands
-
-```bash
-php artisan test
-php artisan optimize:clear
-tail -f storage/logs/laravel.log
-```
-
-## 9. Notes
-
-- **Production**: Use Docker deployment (section 2) for production environments
-- **Development**: Use Docker development (section 3) or native setup (section 4)
-- **AI Services**: LSTM service auto-starts in Docker deployment, manual start for local dev
-- **Security**: Keep secrets and real credentials out of git
-- **Wazuh**: Optional security monitoring, update PROJECT_PATH in scripts if needed
-- **Integrations**: Make sure to renew Zoom Server-to-Server tokens or Google OAuth test status if they expire.
-
-## 10. Project Structure
-
-```
-KRB-System/
-├── app/
-│   ├── Livewire/          # Livewire components
-│   ├── Models/            # Eloquent models
-│   ├── Services/
-│   │   └── AI/            # AI services (LSTM, DataPreprocessor, etc.)
-│   └── Http/              # Controllers and middleware
-├── docker/                # Docker configuration files
-│   ├── nginx/             # Nginx configuration
-│   ├── php/               # PHP-FPM configuration
-│   └── supervisor/        # Process manager configuration
-├── resources/
-│   └── views/             # Blade templates
-├── routes/                # Application routes
-├── Dockerfile             # Multi-stage Docker build
-├── docker-compose.yml     # Docker orchestration
-├── deploy.bat             # Windows deployment script
-├── deploy.sh              # Linux/macOS deployment script
-└── DEPLOYMENT.md          # Full deployment documentation
-```
-
-## 11. Support
-
-For issues or questions:
-
-1. **Docker Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md)
-2. **Quick Start**: See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md)
-3. **Check Logs**: `docker-compose logs -f` or `tail -f storage/logs/laravel.log`
-4. **Verify Services**: `docker-compose ps`
-
-## 12. License
-
-This project is part of the KRB System.
+  After DNS propagation, users may access the system through:     
+   receptionistkebunraya.online
