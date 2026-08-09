@@ -233,8 +233,9 @@ class LSTMPredictions extends Component
                 ]);
             }
 
-            // ── Build chart arrays ──────────────────────────────────────────────────────
-            $predictions     = $result['predictions'];
+            // ── Normalize predictions: add day_name field ───────────────────────────────
+            $predictions = $result['predictions'];
+            $predictions = $this->addDayNames($predictions);
             $dailyLabels     = array_map(fn($p) => date('d/m', strtotime($p['date'])), $predictions);
             $dailyPredicted  = array_map(fn($p) => round($p['predicted'], 1), $predictions);
             $dailyLowerBound = array_map(fn($p) => round($p['lower_bound'], 1), $predictions);
@@ -281,6 +282,7 @@ class LSTMPredictions extends Component
                 'title'           => $result['title'] ?? 'Visitor Traffic Predictions',
                 'description'     => $result['description'] ?? null,
                 'csvInfo'         => $csvInfo,
+                'modelMetrics'    => $lstmClient->getModelMetrics(),
             ]);
 
         } catch (\Exception $e) {
@@ -300,6 +302,7 @@ class LSTMPredictions extends Component
                 'title'           => 'Visitor Traffic Predictions',
                 'description'     => null,
                 'csvInfo'         => ['rows' => 0, 'start' => null, 'end' => null],
+                'modelMetrics'    => null,
             ]);
         }
     }
@@ -368,5 +371,19 @@ class LSTMPredictions extends Component
             ['label' => __('app.peak_day'),         'value' => '0',  'color' => 'yellow', 'icon' => 'arrow-trending-up'],
             ['label' => __('app.confidence'),       'value' => '0%', 'color' => 'purple', 'icon' => 'check-badge'],
         ];
+    }
+
+    /**
+     * Add day_name field to each prediction based on its date.
+     * Respects the application's current locale via Carbon.
+     */
+    private function addDayNames(array $predictions): array
+    {
+        return array_map(function ($prediction) {
+            if (!isset($prediction['day_name']) && isset($prediction['date'])) {
+                $prediction['day_name'] = \Carbon\Carbon::parse($prediction['date'])->translatedFormat('l');
+            }
+            return $prediction;
+        }, $predictions);
     }
 }
