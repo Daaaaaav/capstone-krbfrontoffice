@@ -12,6 +12,7 @@
         maxDate: '{{ $maxDate }}'
     })"
     x-init="init()"
+    x-effect="updateMinDate()"
     {{ $attributes->merge(['class' => 'cal-container']) }}>
     
     <div class="cal-header">
@@ -230,6 +231,35 @@ function customCalendar(config) {
             this.currentMonth = today.getMonth();
             this.currentYear = today.getFullYear();
             this.generateCalendar();
+        },
+        
+        updateMinDate() {
+            // Read the actual min-date attribute value (which may be bound via x-bind)
+            const minDateValue = this.$el.getAttribute('min-date');
+            
+            if (minDateValue && minDateValue !== 'null' && minDateValue !== '' && minDateValue !== 'undefined') {
+                try {
+                    const newMinDate = new Date(minDateValue);
+                    if (!isNaN(newMinDate.getTime())) {
+                        // Compare date values to avoid unnecessary regeneration
+                        const currentMinTime = this.minDate ? this.minDate.getTime() : null;
+                        const newMinTime = newMinDate.getTime();
+                        
+                        if (currentMinTime !== newMinTime) {
+                            this.minDate = newMinDate;
+                            this.generateCalendar();
+                        }
+                    }
+                } catch (e) {
+                    // Invalid date, ignore
+                }
+            } else {
+                // No min date restriction
+                if (this.minDate !== null) {
+                    this.minDate = null;
+                    this.generateCalendar();
+                }
+            }
         },
         
         generateCalendar() {
