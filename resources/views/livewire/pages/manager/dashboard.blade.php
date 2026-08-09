@@ -26,13 +26,13 @@
                     </div>
                     <span class="text-2xl font-bold text-[#4E653D]">{{ $totalRoom }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">Daily Room Bookings</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">{{ __('app.daily_room_bookings') }}</p>
                 <div class="flex items-center gap-3 mt-2">
                     <span class="text-[11px] text-amber-600 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>{{ $pendingRoomBookings->count() }} pending
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>{{ $pendingRoomBookings->count() }} {{ __('app.pending_count') }}
                     </span>
                     <span class="text-[11px] text-emerald-600 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>{{ $ongoingRoomBookings->count() }} ongoing
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>{{ $ongoingRoomBookings->count() }} {{ __('app.ongoing_count') }}
                     </span>
                 </div>
 
@@ -66,12 +66,12 @@
                     </div>
                     @endforeach
                     @if($totalRoom > 3)
-                    <p class="text-[10px] text-muted-foreground/50 pl-3">+{{ $totalRoom - 3 }} more</p>
+                    <p class="text-[10px] text-muted-foreground/50 pl-3">+{{ $totalRoom - 3 }} {{ __('app.more') }}</p>
                     @endif
                 </div>
                 @endif
 
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">Click to view details &rarr;</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">{{ __('app.click_view_details') }} &rarr;</p>
             </button>
 
             @php $totalVehicle = $pendingVehicleBookings->count() + $ongoingVehicleBookings->count(); @endphp
@@ -86,16 +86,16 @@
                     </div>
                     <span class="text-2xl font-bold text-[#4A2F24]">{{ $totalVehicle }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">Daily Vehicle Bookings</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">{{ __('app.daily_vehicle_bookings') }}</p>
                 <div class="flex items-center gap-3 mt-2">
                     <span class="text-[11px] text-amber-600 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>{{ $pendingVehicleBookings->count() }} pending
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>{{ $pendingVehicleBookings->count() }} {{ __('app.pending_count') }}
                     </span>
                     <span class="text-[11px] text-blue-600 flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>{{ $ongoingVehicleBookings->count() }} on road
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>{{ $ongoingVehicleBookings->count() }} {{ __('app.on_road_count') }}
                     </span>
                 </div>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">Click to view details &rarr;</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">{{ __('app.click_view_details') }} &rarr;</p>
             </button>
 
             <button @click="open('docpack')"
@@ -108,9 +108,9 @@
                     </div>
                     <span class="text-2xl font-bold text-amber-700">{{ $pendingDocpacks->count() }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-amber-800">Daily Doc/Package</p>
-                <p class="text-[11px] text-amber-600/70 mt-2">Document & package deliveries</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-amber-600 transition-colors">Click to view details &rarr;</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-amber-800">{{ __('app.daily_doc_package') }}</p>
+                <p class="text-[11px] text-amber-600/70 mt-2">{{ __('app.document_package_deliveries') }}</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-amber-600 transition-colors">{{ __('app.click_view_details') }} &rarr;</p>
             </button>
 
             <button @click="open('visitor')"
@@ -126,9 +126,9 @@
                     </div>
                     <span class="text-2xl font-bold text-violet-700">{{ $todayVisitors->count() }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-violet-800">Visitors Today</p>
-                <p class="text-[11px] text-violet-600/70 mt-2">Guestbook entries today</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-violet-600 transition-colors">Click to view details &rarr;</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-violet-800">{{ __('app.visitors_today') }}</p>
+                <p class="text-[11px] text-violet-600/70 mt-2">{{ __('app.guestbook_entries_today') }}</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-violet-600 transition-colors">{{ __('app.click_view_details') }} &rarr;</p>
             </button>
         </section>
 
@@ -141,8 +141,8 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
                 </svg>
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Priority Bookings Pending</p>
-                    <p class="text-[11px] text-amber-600/80">Awaiting receptionist action</p>
+                    <p class="text-xs font-bold uppercase tracking-wider text-amber-700">{{ __('app.priority_bookings_pending') }}</p>
+                    <p class="text-[11px] text-amber-600/80">{{ __('app.awaiting_receptionist_action') }}</p>
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
@@ -152,7 +152,7 @@
                         class="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-amber-700 bg-amber-50/40 hover:bg-amber-50 transition">
                         <span class="flex items-center gap-2">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/></svg>
-                            Room Priority
+                            {{ __('app.room_priority') }}
                             <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $pendingPriorityRoom->count() }}</span>
                         </span>
                         <svg class="w-3.5 h-3.5 transition-transform" :class="roomOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,7 +168,7 @@
                                     {{ $pb->room?->room_name ?? '—' }} &bull; {{ \Carbon\Carbon::parse($pb->date)->format('d M') }} {{ $pb->start_time }}–{{ $pb->end_time }}
                                 </p>
                                 @if($pb->status === 'pending_cancellation')
-                                <span class="text-[10px] text-orange-600 font-medium">Cancel request pending</span>
+                                <span class="text-[10px] text-orange-600 font-medium">{{ __('app.cancel_request_pending') }}</span>
                                 @endif
                             </div>
                         </div>
@@ -185,7 +185,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/>
                                 <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
                             </svg>
-                            Vehicle Priority
+                            {{ __('app.vehicle_priority') }}
                             <span class="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white">{{ $pendingPriorityVehicle->count() }}</span>
                         </span>
                         <svg class="w-3.5 h-3.5 transition-transform" :class="vehOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +201,7 @@
                                     {{ $pb->vehicle?->name ?? '—' }} &bull; {{ $pb->start_at?->format('d M H:i') }}
                                 </p>
                                 @if($pb->status === 'pending_cancellation')
-                                <span class="text-[10px] text-orange-600 font-medium">Cancel request pending</span>
+                                <span class="text-[10px] text-orange-600 font-medium">{{ __('app.cancel_request_pending') }}</span>
                                 @endif
                             </div>
                         </div>
@@ -215,8 +215,8 @@
 
         <div class="bg-card border border-border rounded-xl p-6 space-y-6">
             <div>
-                <h2 class="text-lg font-semibold text-card-foreground">Yearly Booking Trends</h2>
-                <p class="text-xs text-muted-foreground mt-1">Overview of all booking activities for the selected year</p>
+                <h2 class="text-lg font-semibold text-card-foreground">{{ __('app.yearly_booking_trends') }}</h2>
+                <p class="text-xs text-muted-foreground mt-1">{{ __('app.overview_all_booking_activities') }}</p>
             </div>
 
             <div class="bg-muted/30 border border-border/50 rounded-lg p-4">
@@ -240,7 +240,7 @@
             </div>
 
             <div class="bg-muted/20 border border-border/50 rounded-lg p-4">
-                <p class="text-xs font-medium text-muted-foreground mb-3">Filter by booking type</p>
+                <p class="text-xs font-medium text-muted-foreground mb-3">{{ __('app.filter_by_booking_type') }}</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     @foreach($stats as $s)
                         @php $isActive = $activeFilter === $s['key']; $isUp = $s['direction'] === 'up'; @endphp
