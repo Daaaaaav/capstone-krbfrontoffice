@@ -18,6 +18,9 @@ class LSTMClient
     private int    $timeout;
     private int    $minimumDataPoints;
 
+    // Request-scoped cache to prevent duplicate predictions in same request
+    private static array $requestCache = [];
+
     public function __construct()
     {
         $this->baseUrl           = env('LSTM_SERVICE_URL', 'http://127.0.0.1:8001');
@@ -98,6 +101,10 @@ class LSTMClient
         Cache::forget('lstm.model_fingerprint');
         Cache::forget('lstm.model_metrics');
         Cache::forget('lstm.predict.all');
+        
+        // Clear request-scoped cache as well when model changes
+        self::$requestCache = [];
+        
         Log::info('LSTMClient: model cache busted (post-retrain).');
     }
     
@@ -130,6 +137,14 @@ class LSTMClient
             $startDate    = $this->predictionStartDate($timeSeries);
             $cacheKey     = "lstm.predict.{$fp}.{$dhash}.{$forecastDays}.{$startDate}." . ($useDummyData ? 'dummy' : 'real');
 
+            // ── Request-scoped cache check (prevents duplicate FastAPI calls in same request) ──
+            if (isset(self::$requestCache[$cacheKey])) {
+                Log::info('LSTMClient: predict() request-scoped cache HIT (same request)', [
+                    'cache_key' => $cacheKey,
+                ]);
+                return self::$requestCache[$cacheKey];
+            }
+
             $cached = Cache::get($cacheKey);
 
             if ($cached !== null && $this->isPredictionStale($cached)) {
@@ -144,12 +159,15 @@ class LSTMClient
             if ($cached !== null) {
                 $firstDate = $cached['predictions'][0]['date'] ?? 'unknown';
                 $lastDate  = $cached['predictions'][count($cached['predictions']) - 1]['date'] ?? 'unknown';
-                Log::info('LSTMClient: predict() cache HIT', [
+                Log::info('LSTMClient: predict() persistent cache HIT', [
                     'cache_key'        => $cacheKey,
                     'first_prediction' => $firstDate,
                     'last_prediction'  => $lastDate,
                     'model_fingerprint'=> $fp,
                 ]);
+                
+                // Store in request cache too
+                self::$requestCache[$cacheKey] = $cached;
                 return $cached;
             }
 
@@ -158,52 +176,13 @@ class LSTMClient
                 'start_date' => $startDate,
             ]);
 
-            $result = (function () use ($timeSeries, $forecastDays, $useDummyData) {
-                $data = array_map(fn ($p) => [
-                    'date'  => $p['date'],
-                    'count' => (float) $p['count'],
-                ], $timeSeries);
-
-                $payload = [
-                    'data'           => $data,
-                    'forecast_days'  => $forecastDays,
-                    'lstm_config'    => AISettings::group('lstm'),
-                ];
-
-                $response = $this->http()->post($this->baseUrl . '/predict', $payload);
-
-                if (!$response->successful()) {
-                    Log::warning('LSTM service returned unsuccessful response', [
-                        'status' => $response->status(),
-                        'body'   => $response->body(),
-                    ]);
-                    return null;
-                }
-
-                $result = $response->json();
-
-                Log::info('LSTM prediction generated', [
-                    'model'            => $result['model'] ?? 'unknown',
-                    'rmse'             => $result['metrics']['rmse'] ?? null,
-                    'training_samples' => $result['training_samples'] ?? null,
-                ]);
-
-                return [
-                    'method'           => 'lstm',
-                    'model'            => $result['model'] ?? 'Improved LSTM Forecast Model',
-                    'rmse'             => $result['metrics']['rmse'] ?? $result['rmse'] ?? 0,
-                    'metrics'          => $result['metrics'] ?? ['rmse' => 0, 'mae' => 0, 'mape' => 0],
-                    'features_used'    => $result['features_used'] ?? [],
-                    'predictions'      => $result['predictions'] ?? [],
-                    'data_source'      => $result['data_source'] ?? 'unknown',
-                    'weekly_summary'   => $result['weekly_summary'] ?? null,
-                    'training_samples' => $result['training_samples'] ?? 0,
-                    'test_samples'     => $result['test_samples'] ?? 0,
-                ];
-            })();
+            $result = $this->executePrediction($timeSeries, $forecastDays, $useDummyData);
 
             if ($result !== null) {
+                // Store in both persistent and request-scoped cache
                 Cache::put($cacheKey, $result, self::PREDICT_TTL);
+                self::$requestCache[$cacheKey] = $result;
+                
                 $firstDate = $result['predictions'][0]['date'] ?? 'unknown';
                 $lastDate  = $result['predictions'][count($result['predictions']) - 1]['date'] ?? 'unknown';
                 Log::info('LSTMClient: predict() fresh result cached', [
@@ -226,6 +205,55 @@ class LSTMClient
         }
     }
 
+    /**
+     * Execute the actual prediction call to FastAPI
+     * Extracted to reduce code duplication
+     */
+    private function executePrediction(array $timeSeries, int $forecastDays, bool $useDummyData): ?array
+    {
+        $data = array_map(fn ($p) => [
+            'date'  => $p['date'],
+            'count' => (float) $p['count'],
+        ], $timeSeries);
+
+        $payload = [
+            'data'           => $data,
+            'forecast_days'  => $forecastDays,
+            'lstm_config'    => AISettings::group('lstm'),
+        ];
+
+        $response = $this->http()->post($this->baseUrl . '/predict', $payload);
+
+        if (!$response->successful()) {
+            Log::warning('LSTM service returned unsuccessful response', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        }
+
+        $result = $response->json();
+
+        Log::info('LSTM prediction generated', [
+            'model'            => $result['model'] ?? 'unknown',
+            'rmse'             => $result['metrics']['rmse'] ?? null,
+            'training_samples' => $result['training_samples'] ?? null,
+        ]);
+
+        return [
+            'method'           => 'lstm',
+            'model'            => $result['model'] ?? 'Improved LSTM Forecast Model',
+            'rmse'             => $result['metrics']['rmse'] ?? $result['rmse'] ?? 0,
+            'metrics'          => $result['metrics'] ?? ['rmse' => 0, 'mae' => 0, 'mape' => 0],
+            'features_used'    => $result['features_used'] ?? [],
+            'predictions'      => $result['predictions'] ?? [],
+            'data_source'      => $result['data_source'] ?? 'unknown',
+            'weekly_summary'   => $result['weekly_summary'] ?? null,
+            'training_samples' => $result['training_samples'] ?? 0,
+            'test_samples'     => $result['test_samples'] ?? 0,
+        ];
+    }
+
     public function predict3Weeks(array $timeSeries = [], bool $useDummyData = false): ?array
     {
         try {
@@ -238,6 +266,14 @@ class LSTMClient
             $dhash     = $this->datasetHash($timeSeries);
             $startDate = $this->predictionStartDate($timeSeries);
             $cacheKey  = "lstm.predict3w.{$fp}.{$dhash}.{$startDate}." . ($useDummyData ? 'dummy' : 'real');
+
+            // ── Request-scoped cache check (prevents duplicate FastAPI calls in same request) ──
+            if (isset(self::$requestCache[$cacheKey])) {
+                Log::info('LSTMClient: predict3Weeks() request-scoped cache HIT (same request)', [
+                    'cache_key' => $cacheKey,
+                ]);
+                return self::$requestCache[$cacheKey];
+            }
 
             $cached = Cache::get($cacheKey);
 
@@ -254,12 +290,15 @@ class LSTMClient
                 $predictions = $cached['predictions'] ?? [];
                 $firstDate   = $predictions[0]['date'] ?? 'unknown';
                 $lastDate    = $predictions[count($predictions) - 1]['date'] ?? 'unknown';
-                Log::info('LSTMClient: predict3Weeks() cache HIT', [
+                Log::info('LSTMClient: predict3Weeks() persistent cache HIT', [
                     'cache_key'        => $cacheKey,
                     'first_prediction' => $firstDate,
                     'last_prediction'  => $lastDate,
                     'model_fingerprint'=> $fp,
                 ]);
+                
+                // Store in request cache too
+                self::$requestCache[$cacheKey] = $cached;
                 return $cached;
             }
 
@@ -268,34 +307,13 @@ class LSTMClient
                 'start_date' => $startDate,
             ]);
 
-            $result = (function () use ($timeSeries, $useDummyData) {
-                $data = array_map(fn ($p) => [
-                    'date'  => $p['date'],
-                    'count' => (float) $p['count'],
-                ], $timeSeries);
-
-                $payload = [
-                    'data'           => $data,
-                    'forecast_days'  => 21,
-                    'use_dummy_data' => $useDummyData,
-                    'lstm_config'    => AISettings::group('lstm'),
-                ];
-
-                $response = $this->http()->post($this->baseUrl . '/predict-3weeks', $payload);
-
-                if (!$response->successful()) {
-                    Log::warning('3-week forecast request failed', [
-                        'status' => $response->status(),
-                        'body'   => $response->body(),
-                    ]);
-                    return null;
-                }
-
-                return $response->json();
-            })();
+            $result = $this->executePredict3Weeks($timeSeries, $useDummyData);
 
             if ($result !== null) {
+                // Store in both persistent and request-scoped cache
                 Cache::put($cacheKey, $result, self::PREDICT_TTL);
+                self::$requestCache[$cacheKey] = $result;
+                
                 $predictions = $result['predictions'] ?? [];
                 $firstDate   = $predictions[0]['date'] ?? 'unknown';
                 $lastDate    = $predictions[count($predictions) - 1]['date'] ?? 'unknown';
@@ -313,6 +331,37 @@ class LSTMClient
             Log::error('LSTM 3-week prediction failed', ['error' => $e->getMessage()]);
             return null;
         }
+    }
+
+    /**
+     * Execute the actual 3-week prediction call to FastAPI
+     * Extracted to reduce code duplication
+     */
+    private function executePredict3Weeks(array $timeSeries, bool $useDummyData): ?array
+    {
+        $data = array_map(fn ($p) => [
+            'date'  => $p['date'],
+            'count' => (float) $p['count'],
+        ], $timeSeries);
+
+        $payload = [
+            'data'           => $data,
+            'forecast_days'  => 21,
+            'use_dummy_data' => $useDummyData,
+            'lstm_config'    => AISettings::group('lstm'),
+        ];
+
+        $response = $this->http()->post($this->baseUrl . '/predict-3weeks', $payload);
+
+        if (!$response->successful()) {
+            Log::warning('3-week forecast request failed', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        }
+
+        return $response->json();
     }
 
     public function getModelMetrics(): ?array
