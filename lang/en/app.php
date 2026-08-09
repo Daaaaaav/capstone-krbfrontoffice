@@ -1075,4 +1075,52 @@ return [
     'no_stored_items'               => 'No stored items',
     'done_label'                    => 'Done',
     'saved_label'                   => 'Saved',
+
+    // Manager Dashboard - Daily Cards
+    'daily_room_bookings'           => 'Daily Room Bookings',
+    'daily_vehicle_bookings'        => 'Daily Vehicle Bookings',
+    'daily_doc_package'             => 'Daily Doc/Package',
+    'visitors_today'                => 'Visitors Today',
+    'pending_count'                 => 'pending',
+    'ongoing_count'                 => 'ongoing',
+    'on_road_count'                 => 'on road',
+    'click_view_details'            => 'Click to view details',
+    'guestbook_entries_today'       => 'Guestbook entries today',
+    'document_package_deliveries'   => 'Document & package deliveries',
+    'more'                          => 'more',
+
+    // Manager Dashboard - Yearly Booking Trends
+    'yearly_booking_trends'         => 'Yearly Booking Trends',
+    'overview_all_booking_activities' => 'Overview of all booking activities for the selected year',
+    'filter_by_booking_type'        => 'Filter by booking type',
+
+    // Manager Dashboard - Priority Bookings Alert
+    'priority_bookings_pending'     => 'Priority Bookings Pending',
+    'awaiting_receptionist_action'  => 'Awaiting receptionist action',
+    'room_priority'                 => 'Room Priority',
+    'vehicle_priority'              => 'Vehicle Priority',
+    'cancel_request_pending'        => 'Cancel request pending',
+
+    // IT Officer Dashboard
+    'it_officer_system_management'  => 'IT Officer - System Management',
+    'refresh'                       => 'Refresh View',
+    'click_to_manage'               => 'Click to manage',
+    'managers'                      => 'Managers',
+    'storages'                      => 'Storages',
+    'quick_actions'                 => 'Quick Actions',
+    'manage_system_users_resources' => 'Manage system users and resources',
+    'manage_receptionists'          => 'Manage Receptionists',
+    'add_edit_receptionist_users'   => 'Add or edit receptionist users',
+    'manage_managers'               => 'Manage Managers',
+    'add_edit_manager_users'        => 'Add or edit manager users',
+    'manage_rooms'                  => 'Manage Rooms',
+    'add_configure_meeting_rooms'   => 'Add or configure meeting rooms',
+    'manage_vehicles'               => 'Manage Vehicles',
+    'add_configure_vehicles'        => 'Add or configure vehicles',
+    'manage_storages'               => 'Manage Storages',
+    'add_configure_storage_areas'   => 'Add or configure storage areas',
+
+    // Users per Department
+    'users_per_dept'                => 'Users per Department',
+    'view_manage_users_by_dept'     => 'View and manage users organized by department',
 ];

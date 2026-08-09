@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-background">
     <main class="px-4 sm:px-6 py-6 space-y-6">
 
-        <x-page-header title="{{ __('app.dashboard') }}" subtitle="IT Officer - System Management">
+        <x-page-header title="{{ __('app.dashboard') }}" subtitle="{{ __('app.it_officer_system_management') }}">
             <x-slot:actions>
                 <button wire:click="$refresh"
                     class="px-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-md border border-border hover:bg-accent transition-colors">
@@ -27,7 +27,7 @@
                     <span class="text-2xl font-bold text-[#4E653D]">{{ $stats['receptionists'] }}</span>
                 </div>
                 <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">{{ __('app.receptionists') }}</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">Click to manage →</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">{{ __('app.click_to_manage') }} →</p>
             </button>
 
             {{-- Managers Card --}}
@@ -44,8 +44,8 @@
                     </div>
                     <span class="text-2xl font-bold text-[#4A2F24]">{{ $stats['managers'] }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">Managers</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">Click to manage →</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">{{ __('app.managers') }}</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">{{ __('app.click_to_manage') }} →</p>
             </button>
 
             {{-- Rooms Card --}}
@@ -60,8 +60,8 @@
                     </div>
                     <span class="text-2xl font-bold text-[#4E653D]">{{ $stats['rooms'] }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">Rooms</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">Click to manage →</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a4d2e]">{{ __('app.rooms') }}</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4E653D] transition-colors">{{ __('app.click_to_manage') }} →</p>
             </button>
 
             {{-- Vehicles Card --}}
@@ -77,8 +77,8 @@
                     </div>
                     <span class="text-2xl font-bold text-[#4A2F24]">{{ $stats['vehicles'] }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">Vehicles</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">Click to manage →</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-[#3a241c]">{{ __('app.vehicles') }}</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-[#4A2F24] transition-colors">{{ __('app.click_to_manage') }} →</p>
             </button>
 
             {{-- Storages Card --}}
@@ -95,16 +95,16 @@
                     </div>
                     <span class="text-2xl font-bold text-amber-700">{{ $stats['storages'] }}</span>
                 </div>
-                <p class="text-xs font-bold uppercase tracking-wider text-amber-800">Storages</p>
-                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-amber-600 transition-colors">Click to manage →</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-amber-800">{{ __('app.storages') }}</p>
+                <p class="text-[11px] text-muted-foreground/60 mt-3 group-hover:text-amber-600 transition-colors">{{ __('app.click_to_manage') }} →</p>
             </button>
         </section>
 
         {{-- Quick Actions --}}
         <div class="bg-card border border-border rounded-xl p-6">
             <div class="mb-4">
-                <h2 class="text-lg font-semibold text-card-foreground">Quick Actions</h2>
-                <p class="text-xs text-muted-foreground mt-1">Manage system users and resources</p>
+                <h2 class="text-lg font-semibold text-card-foreground">{{ __('app.quick_actions') }}</h2>
+                <p class="text-xs text-muted-foreground mt-1">{{ __('app.manage_system_users_resources') }}</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -119,8 +119,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-base font-bold text-foreground">Manage Receptionists</p>
-                        <p class="text-xs text-muted-foreground mt-0.5">Add or edit receptionist users</p>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_receptionists') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_edit_receptionist_users') }}</p>
                     </div>
                 </a>
 
@@ -135,8 +135,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-base font-bold text-foreground">Manage Managers</p>
-                        <p class="text-xs text-muted-foreground mt-0.5">Add or edit manager users</p>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_managers') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_edit_manager_users') }}</p>
                     </div>
                 </a>
 
@@ -149,8 +149,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-base font-bold text-foreground">Manage Rooms</p>
-                        <p class="text-xs text-muted-foreground mt-0.5">Add or configure meeting rooms</p>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_rooms') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_meeting_rooms') }}</p>
                     </div>
                 </a>
 
@@ -164,8 +164,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-base font-bold text-foreground">Manage Vehicles</p>
-                        <p class="text-xs text-muted-foreground mt-0.5">Add or configure vehicles</p>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_vehicles') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_vehicles') }}</p>
                     </div>
                 </a>
 
@@ -178,8 +178,8 @@
                         </svg>
                     </div>
                     <div>
-                        <p class="text-base font-bold text-foreground">Manage Storages</p>
-                        <p class="text-xs text-muted-foreground mt-0.5">Add or configure storage areas</p>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_storages') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_storage_areas') }}</p>
                     </div>
                 </a>
             </div>

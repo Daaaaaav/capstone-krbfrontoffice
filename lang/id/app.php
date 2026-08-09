@@ -868,7 +868,6 @@ return [
     'priority_booking_reject_min_3_hours' => 'Pemesanan prioritas harus ditolak minimal 3 jam sebelum waktu mulai yang dijadwalkan.',
     'invalid_booking_time'              => 'Format waktu pemesanan tidak valid.',
 
-    // IT Officer - Pengguna per Departemen
     'users_per_department_title'    => 'Pengguna per Departemen',
     'users_per_department_subtitle' => 'Lihat dan kelola pengguna berdasarkan departemen',
     'unassigned_users'              => 'Pengguna Tanpa Departemen',
@@ -891,7 +890,6 @@ return [
     'showing_users'                 => 'Menampilkan :count pengguna',
     'page_of'                       => 'Halaman :current dari :total',
 
-    // IT Officer - Kelola Ruangan
     'manage_rooms_title'            => 'Kelola Ruangan',
     'manage_rooms_subtitle'         => 'Kelola ruang rapat dan pengaturan',
     'add_room'                      => 'Tambah Ruangan',
@@ -917,7 +915,6 @@ return [
     'failed_to_update_setting'      => 'Gagal memperbarui pengaturan',
     'no_rooms_found'                => 'Tidak ada ruangan ditemukan',
 
-    // IT Officer - Kelola Kendaraan
     'manage_vehicles_title'         => 'Kelola Kendaraan',
     'manage_vehicles_subtitle'      => 'Kelola armada kendaraan dan ketersediaan',
     'add_vehicle'                   => 'Tambah Kendaraan',
@@ -943,7 +940,6 @@ return [
     'failed_to_delete_vehicle'      => 'Gagal menghapus kendaraan',
     'no_vehicles_found'             => 'Tidak ada kendaraan ditemukan',
 
-    // IT Officer - Kelola Penyimpanan
     'manage_storages_title'         => 'Kelola Penyimpanan',
     'manage_storages_subtitle'      => 'Kelola lokasi penyimpanan dan inventaris',
     'add_storage'                   => 'Tambah Penyimpanan',
@@ -964,7 +960,6 @@ return [
     'name_label'                    => 'Nama',
     'no_storages_found'             => 'Tidak ada penyimpanan ditemukan',
 
-    // Manager - Reservasi Ruangan Prioritas
     'priority_room_booking_title'   => 'Reservasi Ruangan Prioritas',
     'priority_room_booking_subtitle'=> 'Kirim permintaan reservasi ruangan prioritas',
     'form_tab'                      => 'Formulir',
@@ -1003,7 +998,6 @@ return [
     'submitted_label'               => 'Terkirim',
     'cancelled_label'               => 'Dibatalkan',
 
-    // Manager - Reservasi Kendaraan Prioritas
     'priority_vehicle_booking_title'   => 'Reservasi Kendaraan Prioritas',
     'priority_vehicle_booking_subtitle'=> 'Kirim permintaan reservasi kendaraan prioritas',
     'select_vehicle_placeholder'       => 'Pilih kendaraan',
@@ -1018,7 +1012,6 @@ return [
     'no_ongoing_vehicle_bookings'      => 'Tidak ada pemesanan kendaraan berlangsung',
     'vehicle_booking_detail'           => 'Detail Pemesanan Kendaraan',
 
-    // Manager - Jadwalkan Tamu (Formulir Buku Tamu)
     'schedule_visitor_title'        => 'Jadwalkan Tamu',
     'schedule_visitor_subtitle'     => 'Jadwalkan janji temu pengunjung masa depan',
     'upcoming_visitors'             => 'Tamu yang Akan Datang',
@@ -1039,7 +1032,6 @@ return [
     'scheduled_guest'               => 'Tamu Terjadwal',
     'pax_label'                     => 'orang',
 
-    // Manager - Status DocPac
     'docpack_status_title'          => 'Dok/Paket — Status',
     'docpack_status_subtitle'       => 'Pantau dokumen/paket yang menunggu dan tersimpan',
     'pending_items'                 => 'Item Menunggu',
@@ -1069,4 +1061,52 @@ return [
     'no_stored_items'               => 'Tidak ada item tersimpan',
     'done_label'                    => 'Selesai',
     'saved_label'                   => 'Tersimpan',
+
+    // Manager Dashboard - Daily Cards
+    'daily_room_bookings'           => 'Pemesanan Ruangan Hari Ini',
+    'daily_vehicle_bookings'        => 'Pemesanan Kendaraan Hari Ini',
+    'daily_doc_package'             => 'Dok/Paket Hari Ini',
+    'visitors_today'                => 'Tamu Hari Ini',
+    'pending_count'                 => 'menunggu',
+    'ongoing_count'                 => 'berlangsung',
+    'on_road_count'                 => 'di jalan',
+    'click_view_details'            => 'Klik untuk melihat detail',
+    'guestbook_entries_today'       => 'Entri buku tamu hari ini',
+    'document_package_deliveries'   => 'Pengiriman dokumen & paket',
+    'more'                          => 'lainnya',
+
+    // Manager Dashboard - Yearly Booking Trends
+    'yearly_booking_trends'         => 'Tren Pemesanan Tahunan',
+    'overview_all_booking_activities' => 'Ringkasan semua aktivitas pemesanan untuk tahun yang dipilih',
+    'filter_by_booking_type'        => 'Filter berdasarkan jenis pemesanan',
+
+    // Manager Dashboard - Priority Bookings Alert
+    'priority_bookings_pending'     => 'Pemesanan Prioritas Menunggu',
+    'awaiting_receptionist_action'  => 'Menunggu tindakan resepsionis',
+    'room_priority'                 => 'Prioritas Ruangan',
+    'vehicle_priority'              => 'Prioritas Kendaraan',
+    'cancel_request_pending'        => 'Permintaan pembatalan menunggu',
+
+    // IT Officer Dashboard
+    'it_officer_system_management'  => 'Petugas IT - Manajemen Sistem',
+    'refresh'                       => 'Segarkan Tampilan',
+    'click_to_manage'               => 'Klik untuk mengelola',
+    'managers'                      => 'Manajer',
+    'storages'                      => 'Penyimpanan',
+    'quick_actions'                 => 'Aksi Cepat',
+    'manage_system_users_resources' => 'Kelola pengguna sistem dan sumber daya',
+    'manage_receptionists'          => 'Kelola Resepsionis',
+    'add_edit_receptionist_users'   => 'Tambah atau ubah pengguna resepsionis',
+    'manage_managers'               => 'Kelola Manajer',
+    'add_edit_manager_users'        => 'Tambah atau ubah pengguna manajer',
+    'manage_rooms'                  => 'Kelola Ruangan',
+    'add_configure_meeting_rooms'   => 'Tambah atau konfigurasi ruang rapat',
+    'manage_vehicles'               => 'Kelola Kendaraan',
+    'add_configure_vehicles'        => 'Tambah atau konfigurasi kendaraan',
+    'manage_storages'               => 'Kelola Penyimpanan',
+    'add_configure_storage_areas'   => 'Tambah atau konfigurasi area penyimpanan',
+
+    // Users per Department
+    'users_per_dept'                => 'Pengguna per Departemen',
+    'view_manage_users_by_dept'     => 'Lihat dan kelola pengguna berdasarkan departemen',
 ];
