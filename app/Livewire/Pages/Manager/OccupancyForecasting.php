@@ -164,12 +164,39 @@ class OccupancyForecasting extends Component
             $roomHistory    = $this->getRoomTimeSeries();
             $vehicleHistory = $this->getVehicleTimeSeries();
 
+            // ── DIAGNOSTIC CHECKPOINT 1: Historical Data ────────────────────────────────
+            Log::info('OccupancyForecasting DIAGNOSTIC 1: Historical Data', [
+                'forecastType' => $this->forecastType,
+                'forecastDays' => $this->forecastDays,
+                'trainingSource' => $this->trainingSource,
+                'roomHistory_count' => count($roomHistory),
+                'vehicleHistory_count' => count($vehicleHistory),
+                'roomHistory_first' => $roomHistory[0] ?? null,
+                'roomHistory_last' => !empty($roomHistory) ? end($roomHistory) : null,
+                'vehicleHistory_first' => $vehicleHistory[0] ?? null,
+                'vehicleHistory_last' => !empty($vehicleHistory) ? end($vehicleHistory) : null,
+            ]);
+
             // Check LSTM availability (memoized)
             $isAvailable = $this->isLSTMAvailable();
+
+            Log::info('OccupancyForecasting DIAGNOSTIC 2: LSTM Availability', [
+                'isLSTMAvailable' => $isAvailable,
+            ]);
 
             // Get forecasts (memoized per type)
             $roomForecast    = $this->getRoomForecast($isAvailable, $roomHistory);
             $vehicleForecast = $this->getVehicleForecast($isAvailable, $vehicleHistory);
+
+            // ── DIAGNOSTIC CHECKPOINT 3: Forecast Data ──────────────────────────────────
+            Log::info('OccupancyForecasting DIAGNOSTIC 3: Forecast Data', [
+                'roomForecast_is_null' => $roomForecast === null,
+                'vehicleForecast_is_null' => $vehicleForecast === null,
+                'roomForecast_count' => is_array($roomForecast) ? count($roomForecast) : null,
+                'vehicleForecast_count' => is_array($vehicleForecast) ? count($vehicleForecast) : null,
+                'roomForecast_first' => is_array($roomForecast) && !empty($roomForecast) ? $roomForecast[0] : null,
+                'vehicleForecast_first' => is_array($vehicleForecast) && !empty($vehicleForecast) ? $vehicleForecast[0] : null,
+            ]);
 
             // ── Chart data ──────────────────────────────────────────────────────────────
             $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
@@ -177,8 +204,20 @@ class OccupancyForecasting extends Component
             // ── Occupancy stats ─────────────────────────────────────────────────────────
             $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
+            // ── DIAGNOSTIC CHECKPOINT 4: Built Data ─────────────────────────────────────
+            Log::info('OccupancyForecasting DIAGNOSTIC 4: Built Data', [
+                'chartData_labels_count' => count($chartData['labels'] ?? []),
+                'chartData_roomData_count' => count($chartData['roomData'] ?? []),
+                'chartData_vehicleData_count' => count($chartData['vehicleData'] ?? []),
+                'stats_avg_room_fc' => $stats['avg_room_fc'] ?? null,
+                'stats_avg_vehicle_fc' => $stats['avg_vehicle_fc'] ?? null,
+                'stats_peak_day' => $stats['peak_day'] ?? null,
+            ]);
+
             // ── Model metrics ───────────────────────────────────────────────────────────
             $lstmClient = new LSTMClient();
+
+            Log::info('OccupancyForecasting DIAGNOSTIC 5: NORMAL RETURN PATH');
 
             return view('livewire.pages.manager.occupancy-forecasting', [
                 'isLSTMAvailable' => $isAvailable,
@@ -197,7 +236,12 @@ class OccupancyForecasting extends Component
                 'modelMetrics'    => $lstmClient->getModelMetrics(),
             ]);
         } catch (\Exception $e) {
-            Log::error('OccupancyForecasting render failed', ['error' => $e->getMessage()]);
+            Log::error('OccupancyForecasting DIAGNOSTIC: EXCEPTION CAUGHT', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             
             return view('livewire.pages.manager.occupancy-forecasting', [
                 'isLSTMAvailable' => false,
@@ -284,21 +328,46 @@ class OccupancyForecasting extends Component
     private function getRoomForecast(bool $isAvailable, array $roomHistory): ?array
     {
         if (!in_array($this->forecastType, ['room', 'combined'])) {
+            Log::info('OccupancyForecasting: getRoomForecast skipped (forecastType not room/combined)', [
+                'forecastType' => $this->forecastType,
+            ]);
             return null;
         }
 
         if ($this->_roomForecastCache !== null) {
+            Log::info('OccupancyForecasting: getRoomForecast using cached value');
             return $this->_roomForecastCache;
         }
 
         if ($isAvailable) {
             $lstm = new LSTMClient();
+            Log::info('OccupancyForecasting: Calling LSTM predict for room', [
+                'roomHistory_count' => count($roomHistory),
+                'forecastDays' => $this->forecastDays,
+            ]);
+            
             $result = $lstm->predict($roomHistory, $this->forecastDays, false);
+            
+            Log::info('OccupancyForecasting: LSTM predict result for room', [
+                'result_is_null' => $result === null,
+                'result_keys' => $result ? array_keys($result) : null,
+                'predictions_exists' => isset($result['predictions']),
+                'predictions_type' => isset($result['predictions']) ? gettype($result['predictions']) : null,
+                'predictions_count' => isset($result['predictions']) && is_array($result['predictions']) ? count($result['predictions']) : null,
+                'first_prediction' => isset($result['predictions'][0]) ? $result['predictions'][0] : null,
+            ]);
+            
             $this->_roomForecastCache = $result['predictions'] ?? null;
         } else {
+            Log::info('OccupancyForecasting: Using fallback moving average for room');
             // Fallback: simple moving-average projection
             $this->_roomForecastCache = $this->movingAverageForecast($roomHistory, $this->forecastDays);
         }
+
+        Log::info('OccupancyForecasting: getRoomForecast final result', [
+            'cache_is_null' => $this->_roomForecastCache === null,
+            'cache_count' => is_array($this->_roomForecastCache) ? count($this->_roomForecastCache) : null,
+        ]);
 
         return $this->_roomForecastCache;
     }
@@ -309,21 +378,46 @@ class OccupancyForecasting extends Component
     private function getVehicleForecast(bool $isAvailable, array $vehicleHistory): ?array
     {
         if (!in_array($this->forecastType, ['vehicle', 'combined'])) {
+            Log::info('OccupancyForecasting: getVehicleForecast skipped (forecastType not vehicle/combined)', [
+                'forecastType' => $this->forecastType,
+            ]);
             return null;
         }
 
         if ($this->_vehicleForecastCache !== null) {
+            Log::info('OccupancyForecasting: getVehicleForecast using cached value');
             return $this->_vehicleForecastCache;
         }
 
         if ($isAvailable) {
             $lstm = new LSTMClient();
+            Log::info('OccupancyForecasting: Calling LSTM predict for vehicle', [
+                'vehicleHistory_count' => count($vehicleHistory),
+                'forecastDays' => $this->forecastDays,
+            ]);
+            
             $result = $lstm->predict($vehicleHistory, $this->forecastDays, false);
+            
+            Log::info('OccupancyForecasting: LSTM predict result for vehicle', [
+                'result_is_null' => $result === null,
+                'result_keys' => $result ? array_keys($result) : null,
+                'predictions_exists' => isset($result['predictions']),
+                'predictions_type' => isset($result['predictions']) ? gettype($result['predictions']) : null,
+                'predictions_count' => isset($result['predictions']) && is_array($result['predictions']) ? count($result['predictions']) : null,
+                'first_prediction' => isset($result['predictions'][0]) ? $result['predictions'][0] : null,
+            ]);
+            
             $this->_vehicleForecastCache = $result['predictions'] ?? null;
         } else {
+            Log::info('OccupancyForecasting: Using fallback moving average for vehicle');
             // Fallback: simple moving-average projection
             $this->_vehicleForecastCache = $this->movingAverageForecast($vehicleHistory, $this->forecastDays);
         }
+
+        Log::info('OccupancyForecasting: getVehicleForecast final result', [
+            'cache_is_null' => $this->_vehicleForecastCache === null,
+            'cache_count' => is_array($this->_vehicleForecastCache) ? count($this->_vehicleForecastCache) : null,
+        ]);
 
         return $this->_vehicleForecastCache;
     }
@@ -536,12 +630,25 @@ class OccupancyForecasting extends Component
 
     private function buildChartData(?array $room, ?array $vehicle): array
     {
+        Log::info('OccupancyForecasting: buildChartData called', [
+            'room_is_null' => $room === null,
+            'vehicle_is_null' => $vehicle === null,
+            'room_count' => is_array($room) ? count($room) : null,
+            'vehicle_count' => is_array($vehicle) ? count($vehicle) : null,
+        ]);
+
         $labels = [];
         $roomData    = [];
         $vehicleData = [];
 
         // Use whichever forecast is available for labels
         $base = $room ?? $vehicle ?? [];
+        
+        Log::info('OccupancyForecasting: buildChartData base selected', [
+            'base_count' => count($base),
+            'base_first' => $base[0] ?? null,
+        ]);
+        
         foreach ($base as $p) {
             $labels[]    = date('d/m', strtotime($p['date']));
             $roomData[]  = $room    ? round($p['predicted'], 1) : null;
@@ -553,11 +660,28 @@ class OccupancyForecasting extends Component
             }
         }
 
-        return compact('labels', 'roomData', 'vehicleData');
+        $result = compact('labels', 'roomData', 'vehicleData');
+        
+        Log::info('OccupancyForecasting: buildChartData result', [
+            'labels_count' => count($result['labels']),
+            'roomData_count' => count($result['roomData']),
+            'vehicleData_count' => count($result['vehicleData']),
+        ]);
+
+        return $result;
     }
 
     private function buildStats(array $roomHist, array $vehicleHist, ?array $roomFc, ?array $vehicleFc): array
     {
+        Log::info('OccupancyForecasting: buildStats called', [
+            'roomHist_count' => count($roomHist),
+            'vehicleHist_count' => count($vehicleHist),
+            'roomFc_is_null' => $roomFc === null,
+            'vehicleFc_is_null' => $vehicleFc === null,
+            'roomFc_count' => is_array($roomFc) ? count($roomFc) : null,
+            'vehicleFc_count' => is_array($vehicleFc) ? count($vehicleFc) : null,
+        ]);
+
         $avgRoomHist    = $this->avg(array_column($roomHist, 'count'));
         $avgVehicleHist = $this->avg(array_column($vehicleHist, 'count'));
         $avgRoomFc      = $roomFc    ? $this->avg(array_column($roomFc, 'predicted'))    : null;
@@ -579,7 +703,7 @@ class OccupancyForecasting extends Component
             }
         }
 
-        return [
+        $result = [
             'avg_room_hist'    => round($avgRoomHist, 1),
             'avg_vehicle_hist' => round($avgVehicleHist, 1),
             'avg_room_fc'      => $avgRoomFc    ? round($avgRoomFc, 1)    : '—',
@@ -590,6 +714,14 @@ class OccupancyForecasting extends Component
             'total_room_fc'    => $roomFc    ? round(array_sum(array_column($roomFc, 'predicted')))    : '—',
             'total_vehicle_fc' => $vehicleFc ? round(array_sum(array_column($vehicleFc, 'predicted'))) : '—',
         ];
+
+        Log::info('OccupancyForecasting: buildStats result', [
+            'avg_room_fc' => $result['avg_room_fc'],
+            'avg_vehicle_fc' => $result['avg_vehicle_fc'],
+            'peak_day' => $result['peak_day'],
+        ]);
+
+        return $result;
     }
 
     private function buildWeatherInsight(?array $weather, ?array $roomFc): ?array
