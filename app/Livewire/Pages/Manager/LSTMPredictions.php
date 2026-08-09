@@ -19,20 +19,20 @@ class LSTMPredictions extends Component
 {
     use WithFileUploads;
 
-    // ΓöÇΓöÇ Forecast controls ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Forecast controls ───────────────────────────────────────────────────────────
     public int $forecastDays = 21;
     public ?string $forecastStartDate = null;
     public ?string $forecastEndDate = null;
 
     /**
      * Active training-data source:
-     *   'csv_server'  ΓÇô bundled historical CSV (default)
-     *   'csv_upload'  ΓÇô user-uploaded CSV
-     *   'live_db'     ΓÇô live guestbook records from the database
+     *   'csv_server'  — bundled historical CSV (default)
+     *   'csv_upload'  — user-uploaded CSV
+     *   'live_db'     — live guestbook records from the database
      */
     public string $trainingSource = 'csv_server';
 
-    // ΓöÇΓöÇ Upload state ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Upload state ────────────────────────────────────────────────────────────────
     /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null */
     public $uploadedCsv = null;
 
@@ -48,10 +48,10 @@ class LSTMPredictions extends Component
     /** Success message shown after a successful upload. */
     public ?string $uploadSuccess = null;
 
-    // ΓöÇΓöÇ Status flags ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Status flags ────────────────────────────────────────────────────────────────
     public bool $isRetraining = false;
 
-    // ΓöÇΓöÇ Lifecycle ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Lifecycle ───────────────────────────────────────────────────────────────────
     public function mount(): void
     {
         // Initialize default date range if not set
@@ -60,7 +60,7 @@ class LSTMPredictions extends Component
         }
     }
 
-    // ΓöÇΓöÇ Validation ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Validation ──────────────────────────────────────────────────────────────────
     protected function rules(): array
     {
         return [
@@ -73,7 +73,7 @@ class LSTMPredictions extends Component
         ];
     }
 
-    // ΓöÇΓöÇ Actions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Actions ─────────────────────────────────────────────────────────────────────
 
     public function setForecastDays(int $days): void
     {
@@ -116,7 +116,7 @@ class LSTMPredictions extends Component
             return;
         }
 
-        // Switching away from upload doesn't delete the stored file ΓÇö the user
+        // Switching away from upload doesn't delete the stored file — the user
         // can switch back to it without re-uploading.
         $this->trainingSource = $source;
         $this->uploadError    = null;
@@ -203,7 +203,7 @@ class LSTMPredictions extends Component
         $this->isRetraining = false;
     }
 
-    // ΓöÇΓöÇ Render ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Render ──────────────────────────────────────────────────────────────────────
 
     public function render()
     {
@@ -213,7 +213,7 @@ class LSTMPredictions extends Component
 
             $timeSeries = $this->buildTimeSeries();
 
-            // ΓöÇΓöÇ Get predictions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            // ── Get predictions ─────────────────────────────────────────────────────────
             $result = null;
 
             if ($isLSTMAvailable && !empty($timeSeries)) {
@@ -222,7 +222,7 @@ class LSTMPredictions extends Component
                     : $lstmClient->predict($timeSeries, $this->forecastDays, false);
             }
 
-            // ΓöÇΓöÇ Fallback to statistical model ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            // ── Fallback to statistical model ──────────────────────────────────────────
             if (!$result || empty($result['predictions'])) {
                 $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
                 $result   = array_merge($fallback, [
@@ -233,14 +233,14 @@ class LSTMPredictions extends Component
                 ]);
             }
 
-            // ΓöÇΓöÇ Build chart arrays ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            // ── Build chart arrays ──────────────────────────────────────────────────────
             $predictions     = $result['predictions'];
             $dailyLabels     = array_map(fn($p) => date('d/m', strtotime($p['date'])), $predictions);
             $dailyPredicted  = array_map(fn($p) => round($p['predicted'], 1), $predictions);
             $dailyLowerBound = array_map(fn($p) => round($p['lower_bound'], 1), $predictions);
             $dailyUpperBound = array_map(fn($p) => round($p['upper_bound'], 1), $predictions);
 
-            // ΓöÇΓöÇ Weekly summary ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            // ── Weekly summary ──────────────────────────────────────────────────────────
             $weeklyData = null;
             if (!empty($result['weekly_summary'])) {
                 $weeklyData = [
@@ -250,7 +250,7 @@ class LSTMPredictions extends Component
                 ];
             }
 
-            // ΓöÇΓöÇ Stats cards ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            // ── Stats cards ─────────────────────────────────────────────────────────────
             $totalPredicted = array_sum($dailyPredicted);
             $avgDaily       = $totalPredicted / max(1, count($dailyPredicted));
             $avgConfidence  = array_sum(array_column($predictions, 'confidence')) / max(1, count($predictions));
@@ -263,7 +263,7 @@ class LSTMPredictions extends Component
                 ['label' => __('app.confidence'),       'value' => number_format($avgConfidence * 100, 1) . '%', 'color' => 'purple', 'icon' => 'check-badge'],
             ];
 
-            // ΓöÇΓöÇ CSV server metadata (shown in the UI) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+            // ── CSV server metadata (shown in the UI) ──────────────────────────────────
             $csvReader  = new CsvDataReader();
             $csvInfo    = $csvReader->serverCsvInfo();
 
@@ -304,7 +304,7 @@ class LSTMPredictions extends Component
         }
     }
 
-    // ΓöÇΓöÇ Private helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Private helpers ─────────────────────────────────────────────────────────────
 
     /**
      * Build the time-series array from whichever source is currently active.
@@ -327,7 +327,7 @@ class LSTMPredictions extends Component
                         // Fall through to server CSV
                     }
                 }
-                // No valid upload ΓåÆ fall through to server CSV
+                // No valid upload → fall through to server CSV
                 $this->trainingSource = 'csv_server';
                 return $reader->readServerCsv('visitors');
 
