@@ -147,6 +147,63 @@
                         </a>
                     </div>
                 </div>
+
+                {{-- AI Security --}}
+                @php $aiGroupActive = request()->routeIs('it-officer.lstm-predictions', 'it-officer.occupancy', 'it-officer.ai-security'); @endphp
+                <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_ai') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_ai', v))">
+                    <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                        <span class="group-label">{!! __('app.ai_security') !!}</span>
+                        <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
+                        @php $lstmActive = request()->routeIs('it-officer.lstm-predictions'); @endphp
+                        <a href="{{ route('it-officer.lstm-predictions') }}" class="sidebar-unified-item {{ $lstmActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($lstmActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                                    <rect x="9" y="9" width="6" height="6"/>
+                                    <line x1="9" y1="1" x2="9" y2="4"/>
+                                    <line x1="15" y1="1" x2="15" y2="4"/>
+                                    <line x1="9" y1="20" x2="9" y2="23"/>
+                                    <line x1="15" y1="20" x2="15" y2="23"/>
+                                    <line x1="20" y1="9" x2="23" y2="9"/>
+                                    <line x1="20" y1="15" x2="23" y2="15"/>
+                                    <line x1="1" y1="9" x2="4" y2="9"/>
+                                    <line x1="1" y1="15" x2="4" y2="15"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.visitor_predictions') }}</span>
+                            <div class="tooltip">{{ __('app.visitor_predictions') }}</div>
+                        </a>
+                        
+                        @php $occActive = request()->routeIs('it-officer.occupancy'); @endphp
+                        <a href="{{ route('it-officer.occupancy') }}" class="sidebar-unified-item {{ $occActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($occActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 3v18h18"/>
+                                    <path d="m19 9-5 5-4-4-3 3"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.occupancy_forecast') }}</span>
+                            <div class="tooltip">{{ __('app.occupancy_forecast') }}</div>
+                        </a>
+                        
+                        @php $secActive = request()->routeIs('it-officer.ai-security'); @endphp
+                        <a href="{{ route('it-officer.ai-security') }}" class="sidebar-unified-item {{ $secActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                            @if($secActive)<div class="active-pip"></div>@endif
+                            <div class="item-icon">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <path d="m9 11 2 2 4-4"/>
+                                </svg>
+                            </div>
+                            <span class="item-label">{{ __('app.security_reports') }}</span>
+                            <div class="tooltip">{{ __('app.security_reports') }}</div>
+                        </a>
+                    </div>
+                </div>
             </nav>
 
             <div class="sidebar-unified-footer">
