@@ -51,12 +51,30 @@ class LSTMPredictions extends Component
     // ── Status flags ────────────────────────────────────────────────────────────────
     public bool $isRetraining = false;
 
+    // ── Request-scoped memoization ──────────────────────────────────────────────────
+    private ?array $_timeSeriesCache = null;
+    private ?array $_csvInfoCache = null;
+    private ?array $_predictionResultCache = null;
+    private ?bool $_lstmAvailableCache = null;
+
     // ── Lifecycle ───────────────────────────────────────────────────────────────────
     public function mount(): void
     {
         // Initialize default date range if not set
         if (!$this->forecastStartDate || !$this->forecastEndDate) {
             $this->setForecastDays($this->forecastDays);
+        }
+    }
+
+    /**
+     * Reset request-scoped caches when properties change
+     */
+    public function updated($property): void
+    {
+        // Clear memoization when forecast parameters change
+        if (in_array($property, ['forecastDays', 'forecastStartDate', 'forecastEndDate', 'trainingSource'])) {
+            $this->_timeSeriesCache = null;
+            $this->_predictionResultCache = null;
         }
     }
 
@@ -121,6 +139,10 @@ class LSTMPredictions extends Component
         $this->trainingSource = $source;
         $this->uploadError    = null;
         $this->uploadSuccess  = null;
+        
+        // Clear cached time series since source changed
+        $this->_timeSeriesCache = null;
+        $this->_predictionResultCache = null;
     }
 
     /**
@@ -189,12 +211,17 @@ class LSTMPredictions extends Component
         $this->isRetraining = true;
 
         try {
-            $timeSeries = $this->buildTimeSeries();
+            $timeSeries = $this->getTimeSeries();
             $client     = new LSTMClient();
 
             if ($client->isAvailable() && !empty($timeSeries)) {
                 // POST to /retrain which sets force_retrain=true server-side
                 $client->forceRetrain($timeSeries, $this->forecastDays);
+                
+                // Clear all caches after retraining
+                $this->_timeSeriesCache = null;
+                $this->_predictionResultCache = null;
+                $this->_lstmAvailableCache = null;
             }
         } catch (\Throwable $e) {
             Log::error('LSTMPredictions: retrain failed', ['error' => $e->getMessage()]);
@@ -208,34 +235,18 @@ class LSTMPredictions extends Component
     public function render()
     {
         try {
+            // All expensive operations now use request-scoped memoization
+            $isLSTMAvailable = $this->isLSTMAvailable();
+            $timeSeries      = $this->getTimeSeries();
+            $result          = $this->getPredictionResult($isLSTMAvailable, $timeSeries);
+            $csvInfo         = $this->getCsvInfo();
             $lstmClient      = new LSTMClient();
-            $isLSTMAvailable = $lstmClient->isAvailable();
-
-            $timeSeries = $this->buildTimeSeries();
-
-            // ── Get predictions ─────────────────────────────────────────────────────────
-            $result = null;
-
-            if ($isLSTMAvailable && !empty($timeSeries)) {
-                $result = $this->forecastDays === 21
-                    ? $lstmClient->predict3Weeks($timeSeries, false)
-                    : $lstmClient->predict($timeSeries, $this->forecastDays, false);
-            }
-
-            // ── Fallback to statistical model ──────────────────────────────────────────
-            if (!$result || empty($result['predictions'])) {
-                $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
-                $result   = array_merge($fallback, [
-                    'data_source'    => 'statistical',
-                    'title'          => 'Visitor Traffic Predictions',
-                    'description'    => null,
-                    'weekly_summary' => $this->buildWeeklySummary($fallback['predictions'] ?? []),
-                ]);
-            }
-
+            
             // ── Normalize predictions: add day_name field ───────────────────────────────
             $predictions = $result['predictions'];
             $predictions = $this->addDayNames($predictions);
+            
+            // ── Build chart data (lightweight transformation) ───────────────────────────
             $dailyLabels     = array_map(fn($p) => date('d/m', strtotime($p['date'])), $predictions);
             $dailyPredicted  = array_map(fn($p) => round($p['predicted'], 1), $predictions);
             $dailyLowerBound = array_map(fn($p) => round($p['lower_bound'], 1), $predictions);
@@ -263,10 +274,6 @@ class LSTMPredictions extends Component
                 ['label' => __('app.peak_day'),         'value' => number_format($maxDay, 0),           'color' => 'yellow', 'icon' => 'arrow-trending-up'],
                 ['label' => __('app.confidence'),       'value' => number_format($avgConfidence * 100, 1) . '%', 'color' => 'purple', 'icon' => 'check-badge'],
             ];
-
-            // ── CSV server metadata (shown in the UI) ──────────────────────────────────
-            $csvReader  = new CsvDataReader();
-            $csvInfo    = $csvReader->serverCsvInfo();
 
             return view('livewire.pages.manager.lstm-predictions', [
                 'isLSTMAvailable' => $isLSTMAvailable,
@@ -305,6 +312,88 @@ class LSTMPredictions extends Component
                 'modelMetrics'    => null,
             ]);
         }
+    }
+
+    // ── Request-scoped memoized methods ─────────────────────────────────────────────
+
+    /**
+     * Check if LSTM is available (request-scoped cache)
+     */
+    private function isLSTMAvailable(): bool
+    {
+        if ($this->_lstmAvailableCache !== null) {
+            return $this->_lstmAvailableCache;
+        }
+
+        $lstmClient = new LSTMClient();
+        $this->_lstmAvailableCache = $lstmClient->isAvailable();
+        
+        return $this->_lstmAvailableCache;
+    }
+
+    /**
+     * Get time series data (request-scoped cache)
+     */
+    private function getTimeSeries(): array
+    {
+        if ($this->_timeSeriesCache !== null) {
+            return $this->_timeSeriesCache;
+        }
+
+        $this->_timeSeriesCache = $this->buildTimeSeries();
+        
+        return $this->_timeSeriesCache;
+    }
+
+    /**
+     * Get CSV info (request-scoped cache)
+     */
+    private function getCsvInfo(): array
+    {
+        if ($this->_csvInfoCache !== null) {
+            return $this->_csvInfoCache;
+        }
+
+        $csvReader = new CsvDataReader();
+        $this->_csvInfoCache = $csvReader->serverCsvInfo();
+        
+        return $this->_csvInfoCache;
+    }
+
+    /**
+     * Get prediction result (request-scoped cache)
+     */
+    private function getPredictionResult(bool $isLSTMAvailable, array $timeSeries): array
+    {
+        if ($this->_predictionResultCache !== null) {
+            return $this->_predictionResultCache;
+        }
+
+        $lstmClient = new LSTMClient();
+
+        // ── Get predictions ─────────────────────────────────────────────────────────
+        $result = null;
+
+        if ($isLSTMAvailable && !empty($timeSeries)) {
+            $result = $this->forecastDays === 21
+                ? $lstmClient->predict3Weeks($timeSeries, false)
+                : $lstmClient->predict($timeSeries, $this->forecastDays, false);
+        }
+
+        // ── Fallback to statistical model ──────────────────────────────────────────
+        if (!$result || empty($result['predictions'])) {
+            $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
+            $result   = array_merge($fallback, [
+                'data_source'    => 'statistical',
+                'title'          => 'Visitor Traffic Predictions',
+                'description'    => null,
+                'weekly_summary' => $this->buildWeeklySummary($fallback['predictions'] ?? []),
+            ]);
+        }
+
+        $this->_predictionResultCache = $result;
+        
+        return $result;
     }
 
     // ── Private helpers ─────────────────────────────────────────────────────────────
