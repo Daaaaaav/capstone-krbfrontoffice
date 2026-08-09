@@ -108,73 +108,83 @@ class CsvDataReader
 
     public function serverCsvInfo(): array
     {
-        try {
-            $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
+        $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
 
-            if (!file_exists($path)) {
-                throw new \RuntimeException(
-                    'Server CSV not found at: ' . $path . '. ' .
-                    'Run docs/generate_historical_csv.py and copy the output to storage/app/private/lstm/.'
-                );
-            }
-
-            $handle = fopen($path, 'r');
-            if ($handle === false) {
-                throw new \RuntimeException("Cannot open CSV: {$path}");
-            }
-
-            $rawHeaders = fgetcsv($handle);
-            if ($rawHeaders === false) {
-                fclose($handle);
-                return ['rows' => 0, 'start' => null, 'end' => null];
-            }
-
-            $headers = array_map('trim', array_map('strtolower', $rawHeaders));
-            $dateIdx = array_search('date', $headers, true);
-
-            if ($dateIdx === false) {
-                fclose($handle);
-                return ['rows' => 0, 'start' => null, 'end' => null];
-            }
-
-            $rowCount  = 0;
-            $firstDate = null;
-            $lastDate  = null;
-
-            while (($row = fgetcsv($handle)) !== false) {
-                if (!isset($row[$dateIdx])) {
-                    continue;
-                }
-
-                $date = trim($row[$dateIdx]);
-
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-                    continue;
-                }
-
-                $rowCount++;
-
-                if ($firstDate === null) {
-                    $firstDate = $date;
-                }
-
-                $lastDate = $date;
-            }
-
-            fclose($handle);
-
-            if ($rowCount === 0) {
-                return ['rows' => 0, 'start' => null, 'end' => null];
-            }
-
-            return [
-                'rows'  => $rowCount,
-                'start' => $firstDate,
-                'end'   => $lastDate,
-            ];
-        } catch (\Throwable $e) {
-            return ['rows' => 0, 'start' => null, 'end' => null, 'error' => $e->getMessage()];
+        if (!file_exists($path)) {
+            return ['rows' => 0, 'start' => null, 'end' => null, 'error' => 'CSV file not found'];
         }
+
+        // Cache CSV info based on file modification time for performance
+        $mtime = (int) filemtime($path);
+        $cacheKey = 'csv.server_info.' . md5($path) . '.' . $mtime;
+
+        return Cache::remember($cacheKey, self::PARSE_TTL, function () use ($path) {
+            try {
+                $handle = fopen($path, 'r');
+                if ($handle === false) {
+                    throw new \RuntimeException("Cannot open CSV: {$path}");
+                }
+
+                $rawHeaders = fgetcsv($handle);
+                if ($rawHeaders === false) {
+                    fclose($handle);
+                    return ['rows' => 0, 'start' => null, 'end' => null];
+                }
+
+                $headers = array_map('trim', array_map('strtolower', $rawHeaders));
+                $dateIdx = array_search('date', $headers, true);
+
+                if ($dateIdx === false) {
+                    fclose($handle);
+                    return ['rows' => 0, 'start' => null, 'end' => null];
+                }
+
+                $rowCount  = 0;
+                $firstDate = null;
+                $lastDate  = null;
+
+                while (($row = fgetcsv($handle)) !== false) {
+                    if (!isset($row[$dateIdx])) {
+                        continue;
+                    }
+
+                    $date = trim($row[$dateIdx]);
+
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                        continue;
+                    }
+
+                    $rowCount++;
+
+                    if ($firstDate === null) {
+                        $firstDate = $date;
+                    }
+
+                    $lastDate = $date;
+                }
+
+                fclose($handle);
+
+                if ($rowCount === 0) {
+                    return ['rows' => 0, 'start' => null, 'end' => null];
+                }
+
+                Log::info('CsvDataReader: serverCsvInfo() computed', [
+                    'rows'  => $rowCount,
+                    'start' => $firstDate,
+                    'end'   => $lastDate,
+                ]);
+
+                return [
+                    'rows'  => $rowCount,
+                    'start' => $firstDate,
+                    'end'   => $lastDate,
+                ];
+            } catch (\Throwable $e) {
+                Log::error('CsvDataReader: serverCsvInfo() failed', ['error' => $e->getMessage()]);
+                return ['rows' => 0, 'start' => null, 'end' => null, 'error' => $e->getMessage()];
+            }
+        });
     }
 
     private function parseCsvCached(string $absolutePath, string $metric): array

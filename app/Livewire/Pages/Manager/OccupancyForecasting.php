@@ -37,9 +37,20 @@ class OccupancyForecasting extends Component
     public ?array  $csvInfo         = null;
     // public bool   $withWeather   = true;
 
+    // ── Request-scoped memoization ──────────────────────────────────────────────────
+    private ?array $_roomTimeSeriesCache = null;
+    private ?array $_vehicleTimeSeriesCache = null;
+    private ?array $_csvInfoCache = null;
+    private ?array $_roomForecastCache = null;
+    private ?array $_vehicleForecastCache = null;
+    private ?bool $_lstmAvailableCache = null;
+
     public function setForecastType(string $type): void
     {
         $this->forecastType = $type;
+        // Clear forecast caches when type changes
+        $this->_roomForecastCache = null;
+        $this->_vehicleForecastCache = null;
     }
 
     public function setForecastDays(int $days): void
@@ -52,6 +63,10 @@ class OccupancyForecasting extends Component
         
         $this->forecastStartDate = $start->format('Y-m-d');
         $this->forecastEndDate = $end->format('Y-m-d');
+        
+        // Clear forecast caches when days change
+        $this->_roomForecastCache = null;
+        $this->_vehicleForecastCache = null;
     }
     
     public function mount(): void
@@ -65,11 +80,15 @@ class OccupancyForecasting extends Component
     public function updatedForecastStartDate(): void
     {
         $this->recalculateForecastDays();
+        $this->_roomForecastCache = null;
+        $this->_vehicleForecastCache = null;
     }
     
     public function updatedForecastEndDate(): void
     {
         $this->recalculateForecastDays();
+        $this->_roomForecastCache = null;
+        $this->_vehicleForecastCache = null;
     }
     
     private function recalculateForecastDays(): void
@@ -90,6 +109,12 @@ class OccupancyForecasting extends Component
         $this->trainingSource = $source;
         $this->uploadError   = null;
         $this->uploadSuccess = null;
+        
+        // Clear time series and forecast caches when source changes
+        $this->_roomTimeSeriesCache = null;
+        $this->_vehicleTimeSeriesCache = null;
+        $this->_roomForecastCache = null;
+        $this->_vehicleForecastCache = null;
     }
 
     public function uploadCsv(): void
@@ -131,63 +156,171 @@ class OccupancyForecasting extends Component
 
     public function render()
     {
-        $companyId = Auth::user()->company_id;
-        $reader    = new CsvDataReader();
+        try {
+            // Use request-scoped memoization for all expensive operations
+            $csvInfo = $this->getCsvInfo();
+            
+            // Get historical data (memoized per type)
+            $roomHistory    = $this->getRoomTimeSeries();
+            $vehicleHistory = $this->getVehicleTimeSeries();
 
-        // ── CSV INFO for server csv ────────────────────────────────────────────────────
-        $this->csvInfo = $reader->serverCsvInfo();
+            // Check LSTM availability (memoized)
+            $isAvailable = $this->isLSTMAvailable();
 
-        // ── Determine data source for training ──────────────────────────────────────────
-        $roomHistory    = $this->buildTimeSeries('room');
-        $vehicleHistory = $this->buildTimeSeries('vehicle');
+            // Get forecasts (memoized per type)
+            $roomForecast    = $this->getRoomForecast($isAvailable, $roomHistory);
+            $vehicleForecast = $this->getVehicleForecast($isAvailable, $vehicleHistory);
 
-        // LSTM forecast
-        $lstm        = new LSTMClient();
-        $isAvailable = $lstm->isAvailable();
+            // ── Chart data ──────────────────────────────────────────────────────────────
+            $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
 
-        $roomForecast    = null;
-        $vehicleForecast = null;
+            // ── Occupancy stats ─────────────────────────────────────────────────────────
+            $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
-        if ($isAvailable) {
-            if (in_array($this->forecastType, ['room', 'combined'])) {
-                $result = $lstm->predict($roomHistory, $this->forecastDays, false);
-                $roomForecast = $result['predictions'] ?? null;
-            }
-            if (in_array($this->forecastType, ['vehicle', 'combined'])) {
-                $result = $lstm->predict($vehicleHistory, $this->forecastDays, false);
-                $vehicleForecast = $result['predictions'] ?? null;
-            }
-        } else {
-            // Fallback: simple moving-average projection
-            if (in_array($this->forecastType, ['room', 'combined'])) {
-                $roomForecast = $this->movingAverageForecast($roomHistory, $this->forecastDays);
-            }
-            if (in_array($this->forecastType, ['vehicle', 'combined'])) {
-                $vehicleForecast = $this->movingAverageForecast($vehicleHistory, $this->forecastDays);
-            }
+            return view('livewire.pages.manager.occupancy-forecasting', [
+                'isLSTMAvailable' => $isAvailable,
+                'roomForecast'    => $roomForecast,
+                'vehicleForecast' => $vehicleForecast,
+                'roomHistory'     => $roomHistory,
+                'vehicleHistory'  => $vehicleHistory,
+                'chartData'       => $chartData,
+                'stats'           => $stats,
+                'weather'         => null,
+                'weatherInsight'  => null,
+                'csvInfo'         => $csvInfo,
+                'uploadedCsvName' => $this->uploadedCsvName,
+                'uploadError'     => $this->uploadError,
+                'uploadSuccess'   => $this->uploadSuccess,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('OccupancyForecasting render failed', ['error' => $e->getMessage()]);
+            
+            return view('livewire.pages.manager.occupancy-forecasting', [
+                'isLSTMAvailable' => false,
+                'roomForecast'    => null,
+                'vehicleForecast' => null,
+                'roomHistory'     => [],
+                'vehicleHistory'  => [],
+                'chartData'       => ['labels' => [], 'roomData' => [], 'vehicleData' => []],
+                'stats'           => $this->getEmptyStats(),
+                'weather'         => null,
+                'weatherInsight'  => null,
+                'csvInfo'         => ['rows' => 0, 'start' => null, 'end' => null],
+                'uploadedCsvName' => $this->uploadedCsvName,
+                'uploadError'     => $this->uploadError,
+                'uploadSuccess'   => $this->uploadSuccess,
+            ]);
+        }
+    }
+
+    // ── Request-scoped memoized methods ─────────────────────────────────────────────
+
+    /**
+     * Check if LSTM is available (request-scoped cache)
+     */
+    private function isLSTMAvailable(): bool
+    {
+        if ($this->_lstmAvailableCache !== null) {
+            return $this->_lstmAvailableCache;
         }
 
-        // ── Chart data ──────────────────────────────────────────────────────────────────
-        $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
+        $lstm = new LSTMClient();
+        $this->_lstmAvailableCache = $lstm->isAvailable();
+        
+        return $this->_lstmAvailableCache;
+    }
 
-        // ── Occupancy stats ─────────────────────────────────────────────────────────────
-        $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
+    /**
+     * Get CSV info (request-scoped cache)
+     */
+    private function getCsvInfo(): array
+    {
+        if ($this->_csvInfoCache !== null) {
+            return $this->_csvInfoCache;
+        }
 
-        return view('livewire.pages.manager.occupancy-forecasting', [
-            'isLSTMAvailable' => $isAvailable,
-            'roomForecast'    => $roomForecast,
-            'vehicleForecast' => $vehicleForecast,
-            'roomHistory'     => $roomHistory,
-            'vehicleHistory'  => $vehicleHistory,
-            'chartData'       => $chartData,
-            'stats'           => $stats,
-            'weather'         => null,
-            'weatherInsight'  => null,
-            'csvInfo'         => $this->csvInfo,
-            'uploadedCsvName' => $this->uploadedCsvName,
-            'uploadError'     => $this->uploadError,
-            'uploadSuccess'   => $this->uploadSuccess,
-        ]);
+        $reader = new CsvDataReader();
+        $this->_csvInfoCache = $reader->serverCsvInfo();
+        
+        return $this->_csvInfoCache;
+    }
+
+    /**
+     * Get room time series (request-scoped cache)
+     */
+    private function getRoomTimeSeries(): array
+    {
+        if ($this->_roomTimeSeriesCache !== null) {
+            return $this->_roomTimeSeriesCache;
+        }
+
+        $this->_roomTimeSeriesCache = $this->buildTimeSeries('room');
+        
+        return $this->_roomTimeSeriesCache;
+    }
+
+    /**
+     * Get vehicle time series (request-scoped cache)
+     */
+    private function getVehicleTimeSeries(): array
+    {
+        if ($this->_vehicleTimeSeriesCache !== null) {
+            return $this->_vehicleTimeSeriesCache;
+        }
+
+        $this->_vehicleTimeSeriesCache = $this->buildTimeSeries('vehicle');
+        
+        return $this->_vehicleTimeSeriesCache;
+    }
+
+    /**
+     * Get room forecast (request-scoped cache)
+     */
+    private function getRoomForecast(bool $isAvailable, array $roomHistory): ?array
+    {
+        if (!in_array($this->forecastType, ['room', 'combined'])) {
+            return null;
+        }
+
+        if ($this->_roomForecastCache !== null) {
+            return $this->_roomForecastCache;
+        }
+
+        if ($isAvailable) {
+            $lstm = new LSTMClient();
+            $result = $lstm->predict($roomHistory, $this->forecastDays, false);
+            $this->_roomForecastCache = $result['predictions'] ?? null;
+        } else {
+            // Fallback: simple moving-average projection
+            $this->_roomForecastCache = $this->movingAverageForecast($roomHistory, $this->forecastDays);
+        }
+
+        return $this->_roomForecastCache;
+    }
+
+    /**
+     * Get vehicle forecast (request-scoped cache)
+     */
+    private function getVehicleForecast(bool $isAvailable, array $vehicleHistory): ?array
+    {
+        if (!in_array($this->forecastType, ['vehicle', 'combined'])) {
+            return null;
+        }
+
+        if ($this->_vehicleForecastCache !== null) {
+            return $this->_vehicleForecastCache;
+        }
+
+        if ($isAvailable) {
+            $lstm = new LSTMClient();
+            $result = $lstm->predict($vehicleHistory, $this->forecastDays, false);
+            $this->_vehicleForecastCache = $result['predictions'] ?? null;
+        } else {
+            // Fallback: simple moving-average projection
+            $this->_vehicleForecastCache = $this->movingAverageForecast($vehicleHistory, $this->forecastDays);
+        }
+
+        return $this->_vehicleForecastCache;
     }
 
     /**
@@ -493,5 +626,20 @@ class OccupancyForecasting extends Component
     private function avg(array $values): float
     {
         return count($values) > 0 ? array_sum($values) / count($values) : 0;
+    }
+
+    private function getEmptyStats(): array
+    {
+        return [
+            'avg_room_hist'    => 0,
+            'avg_vehicle_hist' => 0,
+            'avg_room_fc'      => '—',
+            'avg_vehicle_fc'   => '—',
+            'room_trend'       => 0,
+            'vehicle_trend'    => 0,
+            'peak_day'         => '—',
+            'total_room_fc'    => '—',
+            'total_vehicle_fc' => '—',
+        ];
     }
 }
