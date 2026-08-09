@@ -161,6 +161,11 @@ class GuestbookScanController extends Controller
                 'jam_out'    => Carbon::now()->format('H:i'),
                 'qr_status'  => 'completed',
             ]);
+
+            // Reactivate the lanyard so it can be used again
+            if ($entry->visitor_lanyard_id) {
+                \App\Models\VisitorLanyard::where('id', $entry->visitor_lanyard_id)->update(['status' => 1]);
+            }
         }
 
         return response()->json([

@@ -77,7 +77,7 @@
                         <label class="{{ $label }}">{{ __('app.search') }}</label>
                         <div class="relative">
                             <input type="text"
-                                   class="{{ $input }} pl-9"
+                                   class="{{ $input }} !pl-9 sm:!pl-10"
                                    placeholder="{{ __('app.search') }}..."
                                    wire:model.live.debounce.300ms="q">
                             <x-heroicon-o-magnifying-glass class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
@@ -88,7 +88,7 @@
                         <label class="{{ $label }}">{{ __('app.date') }}</label>
                         <div class="relative">
                             <input type="date"
-                                   class="{{ $input }} pl-9"
+                                   class="{{ $input }} !pl-9 sm:!pl-10"
                                    wire:model.live="filter_date">
                             <x-heroicon-o-calendar class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
                         </div>
@@ -231,10 +231,34 @@
 
                                     {{-- Details --}}
                                     <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-violet-50 border-violet-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
+                                        @if($e->idType)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">ID Type:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->idType->id_type_name }}</span>
+                                            </div>
+                                        @endif
+                                        @if($e->visitorLanyard)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Lanyard:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->visitorLanyard->lanyard_name }}</span>
+                                            </div>
+                                        @endif
                                         @if($e->keperluan)
                                             <div class="flex gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.visit_purpose_label') }}:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->keperluan }}</span>
+                                            </div>
+                                        @endif
+                                        @if($e->department)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Department:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->department->department_name }}</span>
+                                            </div>
+                                        @endif
+                                        @if($e->user)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Meet With:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->user->full_name }}</span>
                                             </div>
                                         @endif
                                         <div class="flex gap-1.5">
@@ -325,6 +349,7 @@
                                     <tr class="border-b border-gray-200 bg-gray-50/50">
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.name_col') }}</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lanyard / ID</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.institution_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_label') }}</th>
@@ -373,11 +398,29 @@
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
+                                                @if($e->visitorLanyard || $e->idType)
+                                                    <div class="flex flex-col">
+                                                        @if($e->visitorLanyard) <span class="text-gray-900">{{ $e->visitorLanyard->lanyard_name }}</span> @endif
+                                                        @if($e->idType) <span class="text-[10px] text-gray-500">{{ $e->idType->id_type_name }}</span> @endif
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+
+                                            <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                 {{ $e->instansi ?? '-' }}
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                 {{ $e->keperluan ?? '-' }}
+                                                @if($e->department || $e->user)
+                                                    <div class="text-[10px] text-gray-500 font-normal mt-0.5">
+                                                        @if($e->department) <span>Dept: {{ $e->department->department_name }}</span> @endif
+                                                        @if($e->department && $e->user) <span class="mx-0.5">•</span> @endif
+                                                        @if($e->user) <span>Meet: {{ $e->user->full_name }}</span> @endif
+                                                    </div>
+                                                @endif
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-500 whitespace-nowrap">
@@ -520,6 +563,26 @@
                         <label class="{{ $ml }}">Jumlah Pengunjung <span class="text-rose-500">*</span></label>
                         <input type="number" min="1" max="999" wire:model.defer="edit.visitor_count" class="{{ $mi }}">
                         @error('edit.visitor_count') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.target_department_opt') ?? 'Target Department' }}</label>
+                        <select wire:model.live="edit.department_id" class="{{ $mi }}">
+                            <option value="">{{ __('app.select_department_opt') ?? '-- Select Department --' }}</option>
+                            @foreach($departments_list as $dept)
+                                <option value="{{ $dept['id'] }}">{{ $dept['name'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('edit.department_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.meet_with_opt') ?? 'Meet With' }}</label>
+                        <select wire:model.defer="edit.user_id" class="{{ $mi }}" @if(empty($users_list)) disabled @endif>
+                            <option value="">{{ __('app.select_employee') ?? '-- Select Employee --' }}</option>
+                            @foreach($users_list as $user)
+                                <option value="{{ $user['id'] }}">{{ $user['full_name'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('edit.user_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
                 <div class="px-6 pb-6 flex justify-end gap-2">

@@ -11,6 +11,8 @@ use App\Models\Guestbook as GuestbookModel;
 use App\Models\GuestbookQrCode;
 use App\Models\Department; 
 use App\Models\User;
+use App\Models\IdType;
+use App\Models\VisitorLanyard;
 use App\Mail\GuestbookQrMail;
 use App\Services\SecurityMonitoringService;
 use Illuminate\Support\Facades\Mail;
@@ -30,8 +32,12 @@ class Guestbook extends Component
     public $storage_place;
     public $department_id;
     public $user_id;
+    public $id_type_id;
+    public $visitor_lanyard_id;
     public $departments_list = [];
     public $users_list = [];
+    public $id_types_list = [];
+    public $visitor_lanyards_list = [];
     public $date;
     public $jam_in;
     public $petugas_penjaga;
@@ -46,9 +52,23 @@ class Guestbook extends Component
                 ->get(['department_id', 'department_name'])
                 ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
                 ->toArray();
+            $this->id_types_list = IdType::where('company_id', $compId)
+                ->get(['id', 'id_type_name'])
+                ->map(fn($t) => ['id' => $t->id, 'name' => $t->id_type_name])
+                ->toArray();
+            $this->visitor_lanyards_list = VisitorLanyard::where('company_id', $compId)->where('status', 1)
+                ->get(['id', 'lanyard_name'])
+                ->map(fn($l) => ['id' => $l->id, 'name' => $l->lanyard_name])
+                ->toArray();
         } else {
             $this->departments_list = Department::all(['department_id', 'department_name'])
                 ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+            $this->id_types_list = IdType::all(['id', 'id_type_name'])
+                ->map(fn($t) => ['id' => $t->id, 'name' => $t->id_type_name])
+                ->toArray();
+            $this->visitor_lanyards_list = VisitorLanyard::where('status', 1)->get(['id', 'lanyard_name'])
+                ->map(fn($l) => ['id' => $l->id, 'name' => $l->lanyard_name])
                 ->toArray();
         }
         
@@ -61,6 +81,7 @@ class Guestbook extends Component
     {
         $this->user_id = null; 
         $this->loadUsers($value);
+        $this->dispatch('users-list-updated', users: $this->users_list);
     }
     
     public function updatedName($value)
@@ -148,6 +169,8 @@ class Guestbook extends Component
             'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
             'department_id' => ['nullable', 'exists:departments,department_id'],
             'user_id'       => ['nullable', 'exists:users,user_id'],
+            'id_type_id'         => ['nullable', 'exists:id_types,id'],
+            'visitor_lanyard_id' => ['nullable', 'exists:visitor_lanyards,id'],
         ];
     }
 
@@ -170,6 +193,8 @@ class Guestbook extends Component
         
         $this->department_id = $this->department_id === '' ? null : $this->department_id;
         $this->user_id       = $this->user_id === '' ? null : $this->user_id;
+        $this->id_type_id    = $this->id_type_id === '' ? null : $this->id_type_id;
+        $this->visitor_lanyard_id = $this->visitor_lanyard_id === '' ? null : $this->visitor_lanyard_id;
 
         $validatedData = $this->validate();
 
@@ -188,6 +213,8 @@ class Guestbook extends Component
             'qr_status'            => 'pending',
             'visitor_count'        => $visitorCount,
             'scheduled_by_manager' => false, 
+            'id_type_id'           => $this->id_type_id,
+            'visitor_lanyard_id'   => $this->visitor_lanyard_id,
         ]);
 
         $entry = GuestbookModel::create($entryData);
@@ -198,6 +225,11 @@ class Guestbook extends Component
                 'qr_token'       => $token,
                 'visitor_number' => $index + 1,
             ]);
+        }
+
+        // Mark the selected lanyard as unavailable
+        if ($this->visitor_lanyard_id) {
+            VisitorLanyard::where('id', $this->visitor_lanyard_id)->update(['status' => 0]);
         }
 
         $emailFailed = false;
@@ -221,9 +253,21 @@ class Guestbook extends Component
             }
         }
 
-        $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place', 'isAutoFilled', 'historyGuests']);
+        $this->reset(['name', 'email', 'phone_number', 'instansi', 'keperluan', 'visitor_count', 'department_id', 'user_id', 'storage_place', 'id_type_id', 'visitor_lanyard_id', 'isAutoFilled', 'historyGuests']);
         $this->visitor_count = 1;
-        $this->users_list = []; 
+        $this->users_list = [];
+
+        // Refresh lanyards list so the used lanyard no longer appears
+        $compId = $this->companyId();
+        $lanyardQuery = VisitorLanyard::where('status', 1);
+        if ($compId) {
+            $lanyardQuery->where('company_id', $compId);
+        }
+        $this->visitor_lanyards_list = $lanyardQuery->get(['id', 'lanyard_name'])
+            ->map(fn($l) => ['id' => $l->id, 'name' => $l->lanyard_name])
+            ->toArray();
+
+        $this->dispatch('lanyards-list-updated', lanyards: $this->visitor_lanyards_list);
         $this->dispatch('$refresh');
         
         if ($emailFailed) {
