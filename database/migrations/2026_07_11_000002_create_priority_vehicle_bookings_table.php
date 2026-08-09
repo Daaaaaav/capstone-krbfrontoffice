@@ -18,7 +18,6 @@ return new class extends Migration
             $table->unsignedBigInteger('department_id')->nullable();
             $table->foreign('department_id')->references('department_id')->on('departments')->nullOnDelete();
 
-            // Booking details
             $table->string('borrower_name');
             $table->datetime('start_at');
             $table->datetime('end_at');
@@ -27,14 +26,10 @@ return new class extends Migration
             $table->string('purpose_type', 50)->nullable();
             $table->text('special_notes')->nullable();
 
-            // Status: pending_receipt | pending_cancellation | approved | rejected | cancelled_conflict_denied
             $table->string('status', 40)->default('pending_receipt');
-
-            // If this priority booking wants to cancel an existing pending vehicle booking
-            $table->unsignedBigInteger('cancels_booking_id')->nullable(); // FK to vehicle_bookings.vehiclebooking_id
+            $table->unsignedBigInteger('cancels_booking_id')->nullable(); 
             $table->foreign('cancels_booking_id')->references('vehiclebooking_id')->on('vehicle_bookings')->nullOnDelete();
 
-            // Who handled this
             $table->unsignedBigInteger('handled_by')->nullable();
             $table->foreign('handled_by')->references('user_id')->on('users')->nullOnDelete();
             $table->text('rejection_reason')->nullable();

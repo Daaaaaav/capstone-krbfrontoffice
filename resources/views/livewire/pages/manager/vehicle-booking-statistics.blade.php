@@ -6,14 +6,7 @@
             title="{{ __('app.vehicle_booking_stats_title') }}"
             subtitle="{{ __('app.vehicle_booking_stats_sub') }}">
             <x-slot:actions>
-                <x-custom-select
-                    wire:model.live="timeRange"
-                    :options="[
-                        ['value' => '7days',  'label' => __('app.7_days')],
-                        ['value' => '30days', 'label' => __('app.30_days')],
-                        ['value' => '90days', 'label' => __('app.90_days')],
-                    ]"
-                />
+                <x-date-range-picker wire:model.live="startDate" />
             </x-slot:actions>
         </x-page-header>
 

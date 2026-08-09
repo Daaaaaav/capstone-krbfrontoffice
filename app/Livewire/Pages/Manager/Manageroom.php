@@ -19,15 +19,10 @@ class Manageroom extends Component
     protected string $paginationTheme = 'tailwind';
 
     public int $companyId = 0;
-
-    // Filters
     public string $search = '';
-
-    // Create form
     public string $room_name = '';
     public $capacity = null;
 
-    // Modal state
     public bool $showModal = false;
     public bool $editMode = false;
     public ?int $edit_id = null;
@@ -44,11 +39,6 @@ class Manageroom extends Component
         $this->resetPage(pageName: 'roomsPage');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | MODAL CONTROL
-    |--------------------------------------------------------------------------
-    */
     public function openCreateModal(): void
     {
         $this->resetForm();
@@ -89,11 +79,6 @@ class Manageroom extends Component
         $this->edit_capacity  = null;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION RULES
-    |--------------------------------------------------------------------------
-    */
     protected function createRules(): array
     {
         return [
@@ -119,13 +104,10 @@ class Manageroom extends Component
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | SAVE (CREATE / UPDATE)
-    |--------------------------------------------------------------------------
-    */
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         try {
             if ($this->editMode) {
                 $this->validate($this->editRules());
@@ -158,11 +140,26 @@ class Manageroom extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE (soft delete)
-    |--------------------------------------------------------------------------
-    */
+    public function toggleEarlyApproval(int $id): void
+    {
+        try {
+            $room = Room::where('company_id', $this->companyId)->findOrFail($id);
+            $newValue = ! $room->requires_early_approval;
+            $room->update(['requires_early_approval' => $newValue]);
+
+            $state = $newValue ? 'enabled' : 'disabled';
+            $this->dispatch(
+                'toast',
+                type: 'success',
+                title: 'Setting Updated',
+                message: "Approval time validation {$state} for \"{$room->room_name}\".",
+                duration: 3000
+            );
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update setting: ' . $e->getMessage(), duration: 4000);
+        }
+    }
+
     public function delete(int $id): void
     {
         try {
@@ -176,11 +173,6 @@ class Manageroom extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | RENDER
-    |--------------------------------------------------------------------------
-    */
     public function render()
     {
         $rooms = Room::query()

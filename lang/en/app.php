@@ -1,8 +1,6 @@
 <?php
 
 return [
-
-    // ── General ──────────────────────────────────────────────────────────────
     'language'          => 'Language',
     'english'           => 'English',
     'indonesian'        => 'Indonesian',
@@ -53,7 +51,6 @@ return [
     'optional'          => 'Optional',
     'required'          => 'Required',
 
-    // ── Auth ─────────────────────────────────────────────────────────────────
     'password'          => 'Password',
     'remember_me'       => 'Remember me',
     'forgot_password'   => 'Forgot password?',
@@ -71,7 +68,6 @@ return [
     'enter_email'       => 'Enter your email address',
     'enter_password'    => 'Enter your password',
 
-    // ── Filters / Sort ────────────────────────────────────────────────────────
     'show_deleted'      => 'Show deleted records',
     'include_deleted'   => 'Include Deleted',
     'no_room_filter'    => 'No room filter',
@@ -98,15 +94,12 @@ return [
     'borrower_label'    => 'Borrower',
     'created_label'     => 'Created',
 
-    // ── Dashboard controls ────────────────────────────────────────────────────
     'click_filter_chart'=> 'Click to filter chart',
     'reset_view'        => 'Reset View',
     'select_year'       => 'Select Year',
     'viewing_data_for'  => 'Viewing data for',
     'no_data_available' => 'No data available',
 
-    // ── Navbar ────────────────────────────────────────────────────────────────
-    'create_ticket'     => 'Create Ticket',
     'book_room'         => 'Book Room',
     'book_vehicle'      => 'Book Vehicle',
     'ticket_status'     => 'Ticket Status',
@@ -115,10 +108,8 @@ return [
     'my_profile'        => 'My Profile',
     'manager_db'     => 'Manager DB',
     'receptionist_db'   => 'Receptionist DB',
-    'login_register'    => 'Login / Register',
     'login'             => 'Login',
 
-    // ── Sidebar (Receptionist) ────────────────────────────────────────────────
     'home'                  => 'Home',
     'room_management'       => 'Room Management',
     'booking_room'          => 'Booking Room',
@@ -138,7 +129,6 @@ return [
     'docpac_history'        => 'DocPac History',
     'search_modules'        => 'Search modules...',
 
-    // Sidebar (Manager)
     'user_management'       => 'User Management',
     'receptionists'         => 'Receptionists',
     'analytics'             => 'Analytics',
@@ -150,7 +140,6 @@ return [
     'occupancy_forecast'    => 'Occupancy Forecast',
     'security_reports'      => 'Security Reports',
 
-    // ── Dashboard (Receptionist) ──────────────────────────────────────────────
     'dashboard_subtitle'        => 'Overview of the last 7 days across all modules.',
     'room_bookings_label'       => 'Room Bookings',
     'vehicle_bookings_label'    => 'Vehicle Bookings',
@@ -175,7 +164,6 @@ return [
     'no_documents'              => 'No documents',
     'no_docs_recorded'          => 'No documents or packages recorded.',
 
-    // ── Booking History ───────────────────────────────────────────────────────
     'booking_history_title'     => 'Room History',
     'booking_history_subtitle'  => 'View and manage completed or rejected room booking history.',
     'history'                   => 'History',
@@ -188,7 +176,6 @@ return [
     'requester'                 => 'Requester',
     'join_link'                 => 'Join link',
 
-    // ── Bookings Approval ─────────────────────────────────────────────────────
     'bookings_approval_title'   => 'Room Booking Status',
     'bookings_approval_subtitle'=> 'Manage room booking requests (online/offline): approve, reject (reason required), or reschedule.',
     'approval_queue'            => 'Approval Queue',
@@ -198,7 +185,6 @@ return [
     'not_selected'              => 'Not selected',
     'created'                   => 'Created',
 
-    // ── Vehicle Booking ───────────────────────────────────────────────────────
     'vehicle_booking_title'     => 'Vehicle Booking',
     'vehicle_booking_subtitle'  => 'Fill in the form below to submit a vehicle loan request.',
     'booking_form_title'        => 'Vehicle Booking Form',
@@ -241,7 +227,6 @@ return [
     'terms_agree'               => 'I agree to the terms & conditions of vehicle borrowing.',
     'submit_booking'            => 'Submit Booking',
 
-    // ── Guestbook ─────────────────────────────────────────────────────────────
     'guestbook_title'           => 'Guestbook',
     'guestbook_subtitle'        => 'Visit Entry Form & Today\'s Guests.',
     'add_new_entry'             => 'Add New Entry',
@@ -270,7 +255,6 @@ return [
     'guest_email_placeholder'   => 'guest@email.com',
     'guest_email_hint'          => 'A QR code will be emailed to this address.',
 
-    // ── Guestbook History ─────────────────────────────────────────────────────
     'guestbook_history_title'   => 'Guestbook History',
     'guestbook_history_subtitle'=> 'View and manage completed or active guest visit records.',
     'visit_list'                => 'Visit List',
@@ -278,7 +262,6 @@ return [
     'recent_visits'             => 'Recent Visits',
     'all_officers'              => 'All Officers',
 
-    // ── Guestbook Status ──────────────────────────────────────────────────────
     'guestbook_status_title'        => 'Guest Book Status',
     'guestbook_status_subtitle'     => 'Guests awaiting QR confirmation or currently on-site',
     'add_guest_btn'                 => 'Add Guest',
@@ -312,7 +295,6 @@ return [
     'bookings_axis'             => 'Bookings',
     'month_axis'                => 'Month',
 
-    // ── Receptionist Users ────────────────────────────────────────────────────
     'receptionist_users_title'  => 'Receptionist Users',
     'manage_receptionists'      => 'Manage receptionist accounts',
     'add_receptionist'          => '+ Add Receptionist',
@@ -326,7 +308,6 @@ return [
     'delete_confirm'            => 'Are you sure you want to delete this receptionist?',
     'delete_confirm_title'      => 'Delete Receptionist',
 
-    // ── Room Booking Statistics ───────────────────────────────────────────────
     'room_booking_stats_title'  => 'Room Booking Statistics',
     'room_booking_stats_sub'    => 'Analyze room booking patterns and trends',
     '7_days'                    => '7 Days',
@@ -346,12 +327,10 @@ return [
     'no_visitors_found'         => 'No visitors found',
     'no_deliveries_found'       => 'No deliveries found',
 
-    // ── Vehicle Booking Statistics ────────────────────────────────────────────
     'vehicle_booking_stats_title' => 'Vehicle Booking Statistics',
     'vehicle_booking_stats_sub'   => 'Monitor vehicle booking activity and trends',
     'vehicle_booking_items'       => 'Vehicle Booking Items',
 
-    // ── Delivery Statistics ───────────────────────────────────────────────────
     'delivery_stats_title'      => 'Delivery Statistics',
     'delivery_stats_sub'        => 'Track package and document delivery trends',
     'total_deliveries'          => 'Total Deliveries',
@@ -359,7 +338,6 @@ return [
     'recent_deliveries'         => 'Recent Deliveries',
     'recipient'                 => 'Recipient',
 
-    // ── Guestbook Statistics ──────────────────────────────────────────────────
     'guestbook_stats_title'     => 'Guestbook Statistics',
     'guestbook_stats_sub'       => 'Track visitor activity and trends',
     'total_visitors'            => 'Total Visitors',
@@ -373,7 +351,6 @@ return [
     'in_building'               => 'In Building',
     'registered_status'         => 'Registered',
 
-    // ── AI Security Reports ───────────────────────────────────────────────────
     'security_reports_title'    => 'Wazuh Security Reports',
     'security_reports_sub'      => 'Live alerts from the Wazuh manager log',
     'live'                      => '● Live',
@@ -395,7 +372,6 @@ return [
     'live_entry'                => 'Live entry',
     'severity_label'            => 'severity',
 
-    // ── LSTM Predictions ──────────────────────────────────────────────────────
     'lstm_title'                => 'Visitor Traffic Predictions',
     'lstm_subtitle'             => 'AI-powered visitor forecasts based on historical guestbook data',
     'lstm_model'                => 'LSTM Neural Network',
@@ -415,7 +391,6 @@ return [
     'no_prediction_data'        => 'No prediction data available',
     'select_different_period'   => 'Select a different prediction type or forecast period.',
 
-    // ── LSTM Training Data Source ─────────────────────────────────────────────
     'training_data_source'      => 'Training Data Source',
     'training_data_source_sub'  => 'Choose what historical data the LSTM model trains on.',
     'source_csv_server'         => 'Server CSV',
@@ -437,8 +412,25 @@ return [
     'csv_missing_columns'       => 'CSV is missing required columns: :columns',
     'csv_upload_success'        => 'CSV ":name" uploaded successfully and is now active.',
     'csv_upload_failed'         => 'Upload failed. Please check the file and try again.',
+    'csv_upload_failed_detail'  => 'Upload failed: :detail',
 
-    // ── Occupancy Forecasting ─────────────────────────────────────────────────
+    'csv_error_no_file'         => 'Please select a CSV file before uploading.',
+    'csv_error_not_file'        => 'The selected item is not a valid file.',
+    'csv_error_wrong_type'      => 'Only .csv or .txt files are accepted.',
+    'csv_error_too_large'       => 'The file exceeds the 10 MB size limit.',
+
+    'csv_format_guide_title'    => 'CSV Format Requirements',
+    'csv_guide_header_required' => 'The first row must contain column headers (case-insensitive).',
+    'csv_guide_columns'         => 'Required columns (any order)',
+    'csv_guide_date_format'     => 'Date format',
+    'csv_guide_date_example'    => 'e.g.',
+    'csv_guide_numeric'         => 'All value columns must contain whole numbers (integers).',
+    'csv_guide_order'           => 'Rows must be in ascending date order (oldest first).',
+    'csv_guide_file_type'       => 'Accepted file types',
+    'csv_guide_or'              => 'or',
+    'csv_guide_max_size'        => 'max size',
+    'csv_guide_example'         => 'Example',
+
     'occupancy_title'           => 'Occupancy Forecasting',
     'occupancy_subtitle'        => 'AI-powered booking occupancy predictions',
     'forecast_type'             => 'Forecast Type',
@@ -460,18 +452,6 @@ return [
     'click_hourly'              => 'Click for hourly detail',
     'hourly_forecast'           => 'Hourly Forecast',
 
-    // ── Weather Dashboard ─────────────────────────────────────────────────────
-    'weather_title'             => 'Weather Dashboard',
-    'weather_unavailable'       => 'Unable to fetch weather data from BMKG.',
-    'weather_check_connection'  => 'Please check your internet connection and try refreshing.',
-    'refresh'                   => 'Refresh',
-    'condition'                 => 'Condition',
-    'temp'                      => 'Temp',
-    'wind'                      => 'Wind',
-    'rain'                      => 'Rain',
-    'visibility'                => 'Visibility',
-
-    // ── Help ──────────────────────────────────────────────────────────────────
     'help_title'                => 'Help & Support',
     'help_subtitle'             => 'Find answers and get help',
     'help_find_answers'         => 'Find answers to common questions about using the system.',
@@ -479,7 +459,6 @@ return [
     'still_need_help_sub'       => 'If you can\'t find an answer above, reach out to your system administrator.',
     'email_admin'               => 'Email Admin',
 
-    // ── Settings ─────────────────────────────────────────────────────────────
     'settings_title'            => 'Settings',
     'settings_subtitle'         => 'Manage your account preferences',
     'settings_manage_sub'       => 'Manage your account profile and security preferences.',
@@ -496,7 +475,6 @@ return [
     'confirm_new_password'      => 'Confirm New Password',
     'update_password'           => 'Update Password',
 
-    // ── Meeting Schedule ──────────────────────────────────────────────────────
     'meeting_schedule_title'    => 'Meeting Schedule',
     'meeting_schedule_sub'      => 'Room Booking & Online Meeting Form.',
     'add_booking_offline'       => 'Add Room Booking (Offline)',
@@ -516,7 +494,6 @@ return [
     'google_connected'          => 'Google connected',
     'google_not_connected'      => 'Google NOT connected',
 
-    // ── Room Approval ─────────────────────────────────────────────────────────
     'room_approval_title'       => 'Room Approval',
     'room_approval_sub'         => 'Approve booking requests & monitor ongoing meetings.',
     'pending_approval'          => 'Pending Approval',
@@ -528,7 +505,6 @@ return [
     'reject_reason_ph'          => 'Rejection reason',
     'send_rejection'            => 'Send Rejection',
 
-    // ── Vehicle Status ────────────────────────────────────────────────────────
     'vehicle_status_title'      => 'Vehicle Status',
     'vehicle_status_sub'        => 'Manage loans: Pending / Approved / On Progress / Returned / Late Return.',
     'vehicle_bookings_list'     => 'Vehicle Bookings',
@@ -547,7 +523,6 @@ return [
     'filter_by_vehicle'         => 'Filter by Vehicle',
     'all_vehicles'              => 'All Vehicles',
 
-    // ── Vehicle History ───────────────────────────────────────────────────────
     'vehicle_history_title'     => 'Vehicle History',
     'vehicle_history_sub_done'  => 'History of completed vehicle loans (Done).',
     'vehicle_history_sub_rej'   => 'History of rejected vehicle loans.',
@@ -559,7 +534,6 @@ return [
     'rejected_records'          => 'Rejected Records',
     'completed_records'         => 'Completed Records',
 
-    // ── DocPac Form ───────────────────────────────────────────────────────────
     'docpac_form_title'         => 'Doc/Pack Form',
     'docpac_form_sub'           => 'Input packages/documents with incoming/outgoing flow',
     'add_data'                  => 'Add Data',
@@ -571,7 +545,6 @@ return [
     'reason'                    => 'Reason',
     'all_officers'              => 'All Officers',
 
-    // ── DocPac Status ─────────────────────────────────────────────────────────
     'docpac_status_title'       => 'Documents & Packages — Status',
     'docpac_status_sub'         => 'Monitor pending & stored items before delivered/taken.',
     'items_list'                => 'Items List',
@@ -581,7 +554,6 @@ return [
     'delivered'                 => 'Delivered',
     'deliver'                   => 'Deliver',
 
-    // ── DocPac Form extra ─────────────────────────────────────────────────────
     'incoming'                  => 'Incoming for internal',
     'outgoing'                  => 'Outgoing for delivery',
     'storage_location'          => 'Storage Location',
@@ -606,13 +578,11 @@ return [
     'no_pending_items'          => 'No pending items.',
     'no_stored_items'           => 'No stored items.',
 
-    // ── DocPac History ────────────────────────────────────────────────────────
     'docpac_history_title'      => 'Documents & Packages — History',
     'docpac_history_sub'        => 'Monitor completed document & package status.',
     'completed_items'           => 'Completed Items',
     'completed_items_sub'       => 'List of delivered/taken documents & packages.',
 
-    // ── Documents (legacy) ────────────────────────────────────────────────────
     'document_name_label'       => 'Document Name',
     'document_name_ph'          => 'e.g. Work Order Letter',
     'sender_name'               => 'Sender Name',
@@ -642,13 +612,11 @@ return [
     'tips_label'                => 'Tips:',
     'tips_sent_realtime'        => 'Click <b>Already Sent</b> in the Pending/Taken list to use real-time delivery time.',
 
-    // ── Item type labels (DB values) ─────────────────────────────────────────
     'type_package'              => 'Package',
     'type_document'             => 'Document',
     'type_invoice'              => 'Invoice',
     'type_etc'                  => 'Etc',
 
-    // ── Status / tab labels ───────────────────────────────────────────────────
     'tab_all'                   => 'All',
     'tab_pending'               => 'Pending',
     'tab_stored'                => 'Stored',
@@ -666,8 +634,8 @@ return [
     'stored_at'                 => 'Stored',
     'taken_at'                  => 'Taken',
     'are_you_sure_delete'       => 'Are you sure you want to delete this item?',
+    'lihat_bukti_foto'          => 'Show Image',
 
-    // ── Packages (legacy) ─────────────────────────────────────────────────────
     'package_name'              => 'Package Name',
     'package_name_ph'           => 'e.g. Document Package PT ABC',
     'add_package'               => 'Add Package',
@@ -679,7 +647,6 @@ return [
     'loading_label'             => 'Loading…',
     'deleting_label'            => 'Deleting…',
 
-    // ── Shared filter/sidebar strings ─────────────────────────────────────────
     'filter_by_dept_user'       => 'Filter by department & user.',
     'all_departments'           => 'All Departments',
     'all_users'                 => 'All Users',
@@ -698,7 +665,6 @@ return [
     'sort_newest_opt'           => 'Newest',
     'sort_oldest_opt'           => 'Oldest',
 
-    // ── Room Requirement Names ────────────────────────────────────────────────
     'req_projector_screen'      => 'Projector & Screen',
     'req_whiteboard'            => 'Whiteboard',
     'req_coffee_break'          => 'Coffee Break',
@@ -708,7 +674,6 @@ return [
     'req_video_conference'      => 'Video Conference',
     'req_catering'              => 'Catering',
 
-    // ── Quick Book Modal ──────────────────────────────────────────────────────
     'quick_book_title'          => 'Quick Room Booking',
     'quick_book_room'           => 'Room',
     'quick_book_date'           => 'Date',
@@ -723,7 +688,6 @@ return [
     'quick_book_cancel'         => 'Cancel',
     'quick_book_confirm'        => 'Confirm Booking',
 
-    // ── Meeting Schedule extra ────────────────────────────────────────────────
     'dept_label'                => 'Department',
     'search_dept_offline_ph'    => 'Search department…',
     'select_dept_ph'            => 'Select department',
@@ -739,7 +703,6 @@ return [
     'user_filtered_optional'    => 'User (filtered by department, Optional)',
     'search_user_online_ph'     => 'Search user…',
 
-    // ── Guestbook History extra ───────────────────────────────────────────────
     'name_col'                  => 'Name',
     'institution_col'           => 'Institution',
     'purpose_col'               => 'Purpose',
@@ -766,23 +729,17 @@ return [
     'toast_perm_deleted_title'  => 'Permanently Deleted',
     'toast_perm_deleted_message'=> 'Guest permanently deleted.',
 
-    // ── Vehicle Status extra ──────────────────────────────────────────────────
     'borrower_col'              => 'Borrower',
     'vehicle_col'               => 'Vehicle',
     'destination_col'           => 'Destination',
     'purpose_type_col'          => 'Purpose Type',
     'start_col'                 => 'Start',
     'end_col'                   => 'End',
-    'photo_before'              => 'Photos Before Borrowing',
-    'photo_after'               => 'Photos After Borrowing',
-    'no_before_photos'          => 'No \'before\' photos uploaded.',
-    'no_after_photos'           => 'No \'after\' photos uploaded.',
     'uploaded_by'               => 'Uploaded by',
     'reject_booking_title'      => 'Reject Booking',
     'reject_vehicle_reason'     => 'Please enter the reason for rejecting this vehicle loan. This field is required.',
     'reject_reason_example'     => 'e.g. Vehicle under maintenance, or schedule conflict.',
 
-    // ── Bookings Approval extra ───────────────────────────────────────────────
     'reject_reason_required'    => 'Please provide a rejection reason. This field is required.',
     'reschedule_reason_required'=> 'Reschedule the schedule and room. Reschedule reason is required.',
     'start_time_label'          => 'Start Time',
@@ -825,11 +782,8 @@ return [
     'booking_room_option'       => 'Booking Room',
     'meeting_option'            => 'Meeting',
     'online_meeting_option'     => 'Online Meeting',
-
-    // ── Booking History extra ─────────────────────────────────────────────────
     'delete_booking_confirm'    => 'Are you sure you want to delete this booking?',
 
-    // ── Filters / Search (Help page) ──────────────────────────────────────────
     'search_questions'          => 'Search Questions',
     'clear_search'              => 'Clear search',
     'no_results_for'            => 'No results found for',
@@ -838,7 +792,6 @@ return [
     'sort_nearest'              => 'Nearest to now',
     'advanced_filters'          => 'Advanced Filters',
 
-    // ── FAQ Categories ────────────────────────────────────────────────────────
     'faq_cat_user_management'   => 'User Management',
     'faq_cat_analytics'         => 'Analytics',
     'faq_cat_ai_security'       => 'AI & Security',
@@ -848,11 +801,8 @@ return [
     'faq_cat_guestbook'         => 'Guestbook',
     'faq_cat_docpac'            => 'DocPac',
 
-    // ── FAQ Shared ────────────────────────────────────────────────────────────
     'faq_shared_q_password'     => 'How do I change my password?',
     'faq_shared_a_password'     => 'Go to Settings (the cog icon in the sidebar). Expand the Change Password section, enter your current password and your new password, then save.',
-
-    // FAQ Manager
     'faq_sa_q1'  => 'How do I manage receptionist accounts?',
     'faq_sa_a1'  => 'Go to User Management → Receptionists. You can create, edit, or deactivate receptionist accounts from that page.',
     'faq_sa_q2'  => 'How do I view room booking statistics?',
@@ -870,7 +820,29 @@ return [
     'faq_sa_q8'  => 'What are Security Reports?',
     'faq_sa_a8'  => 'Security Reports (AI & Security System → Security Reports) surfaces anomalies and flagged events detected by the AI monitoring layer.',
 
-    // ── FAQ Receptionist ──────────────────────────────────────────────────────
+    'model_performance_title'   => 'Model Performance',
+    'model_performance_subtitle'=> 'Evaluation metrics from the last LSTM training run',
+    'mp_last_trained'           => 'Last Trained',
+    'mp_epochs'                 => 'Epochs',
+    'mp_training_loss'          => 'Training Loss',
+    'mp_validation_loss'        => 'Validation Loss',
+    'mp_mae'                    => 'MAE',
+    'mp_rmse'                   => 'RMSE',
+    'mp_mape'                   => 'MAPE',
+    'mp_r2'                     => 'R² Score',
+    'mp_training_time'          => 'Training Time',
+    'mp_training_samples'       => 'Training Samples',
+    'mp_validation_samples'     => 'Validation Samples',
+    'mp_test_samples'           => 'Test Samples',
+    'mp_cache_status'           => 'Cache',
+    'mp_loaded_from_cache'      => 'Loaded from cache',
+    'mp_loss_curve'             => 'Loss Curve (Training vs Validation)',
+    'mp_epoch'                  => 'Epoch',
+    'mp_no_metrics'             => 'No evaluation metrics available.',
+    'mp_no_metrics_hint'        => 'Please upload training data and train the model.',
+    'mp_visitors_unit'          => 'visitors (scaled)',
+    'mp_bookings_unit'          => 'bookings (scaled)',
+
     'faq_rec_q1' => 'How do I book a meeting room?',
     'faq_rec_a1' => 'Go to Room Management → Booking Room. Fill in the meeting title, select a room, choose your date and time, then submit. Your booking will be pending approval.',
     'faq_rec_q2' => 'How do I approve or reject a room booking?',
@@ -886,4 +858,269 @@ return [
     'faq_rec_q7' => 'How do I track a DocPac status?',
     'faq_rec_a7' => 'Go to DocPac Management → DocPac Status to see the current processing status of all submitted document packages.',
 
+    'start_date' => 'Start Date',
+    'end_date' => 'End Date',
+    'apply' => 'Apply',
+    'select_date_range' => 'Select Date Range',
+
+    'select_forecast_period'    => 'Select Forecast Period',
+    'forecast_start'            => 'Forecast Start',
+    'forecast_end'              => 'Forecast End',
+    'forecasting'               => 'Forecasting',
+    'days'                      => 'days',
+    'quick_select'              => 'Quick Select',
+    'error'                     => 'Error',
+    'priority_booking_cancel_min_3_hours' => 'Priority bookings must be cancelled at least 3 hours before the scheduled start time.',
+    'priority_booking_reject_min_3_hours' => 'Priority bookings must be rejected at least 3 hours before the scheduled start time.',
+    'invalid_booking_time'      => 'Invalid booking time format.',
+
+    // IT Officer - Users per Department
+    'users_per_department_title'    => 'Users per Department',
+    'users_per_department_subtitle' => 'View and manage users organized by department',
+    'unassigned_users'              => 'Unassigned Users',
+    'users_without_department'      => 'Users without department',
+    'total_users'                   => 'Total Users',
+    'search_users'                  => 'Search users by name or email...',
+    'department_col'                => 'Department',
+    'role_col'                      => 'Role',
+    'phone_col'                     => 'Phone',
+    'status_col'                    => 'Status',
+    'actions_col'                   => 'Actions',
+    'edit_user'                     => 'Edit User',
+    'user_updated_successfully'     => 'User updated successfully!',
+    'user_deleted_successfully'     => 'User deleted successfully!',
+    'cannot_delete_own_account'     => 'You cannot delete your own account.',
+    'failed_to_load_user_data'      => 'Failed to load user data',
+    'failed_to_save_user'           => 'Failed to save user',
+    'failed_to_delete_user'         => 'Failed to delete user',
+    'user_creation_not_implemented' => 'User creation not implemented in this view. Use role-specific pages.',
+    'showing_users'                 => 'Showing :count users',
+    'page_of'                       => 'Page :current of :total',
+
+    // IT Officer - Manage Rooms
+    'manage_rooms_title'            => 'Manage Rooms',
+    'manage_rooms_subtitle'         => 'Manage meeting rooms and settings',
+    'add_room'                      => 'Add Room',
+    'edit_room'                     => 'Edit Room',
+    'create_room'                   => 'Create Room',
+    'room_name'                     => 'Room Name',
+    'room_name_placeholder'         => 'e.g. Conference Room A',
+    'capacity_label'                => 'Capacity',
+    'capacity_placeholder'          => 'Number of people',
+    'search_rooms'                  => 'Search rooms...',
+    'room_created_successfully'     => 'Room created successfully!',
+    'room_updated_successfully'     => 'Room updated successfully!',
+    'room_deleted_successfully'     => 'Room deleted successfully!',
+    'failed_to_load_room'           => 'Failed to load room',
+    'failed_to_save_room'           => 'Failed to save room',
+    'failed_to_delete_room'         => 'Failed to delete room',
+    'booking_validation'            => 'Booking Validation',
+    'requires_early_approval'       => 'Requires Early Approval',
+    'approval_time_validation'      => 'Approval Time Validation',
+    'setting_updated'               => 'Setting Updated',
+    'approval_validation_enabled'   => 'Approval time validation enabled for',
+    'approval_validation_disabled'  => 'Approval time validation disabled for',
+    'failed_to_update_setting'      => 'Failed to update setting',
+    'no_rooms_found'                => 'No rooms found',
+
+    // IT Officer - Manage Vehicles
+    'manage_vehicles_title'         => 'Manage Vehicles',
+    'manage_vehicles_subtitle'      => 'Manage vehicle fleet and availability',
+    'add_vehicle'                   => 'Add Vehicle',
+    'edit_vehicle'                  => 'Edit Vehicle',
+    'create_vehicle'                => 'Create Vehicle',
+    'vehicle_name'                  => 'Vehicle Name',
+    'vehicle_name_placeholder'      => 'e.g. Toyota Avanza',
+    'vehicle_category'              => 'Category',
+    'vehicle_category_placeholder'  => 'e.g. MPV, Sedan',
+    'plate_number'                  => 'Plate Number',
+    'plate_number_placeholder'      => 'e.g. B 1234 XYZ',
+    'year_label'                    => 'Year',
+    'year_placeholder'              => 'e.g. 2023',
+    'is_active_label'               => 'Active',
+    'notes_label'                   => 'Notes',
+    'notes_placeholder'             => 'Additional notes',
+    'search_vehicles'               => 'Search vehicles...',
+    'vehicle_created_successfully'  => 'Vehicle created successfully!',
+    'vehicle_updated_successfully'  => 'Vehicle updated successfully!',
+    'vehicle_deleted_successfully'  => 'Vehicle deleted successfully!',
+    'failed_to_load_vehicle'        => 'Failed to load vehicle',
+    'failed_to_save_vehicle'        => 'Failed to save vehicle',
+    'failed_to_delete_vehicle'      => 'Failed to delete vehicle',
+    'no_vehicles_found'             => 'No vehicles found',
+
+    // IT Officer - Manage Storages
+    'manage_storages_title'         => 'Manage Storages',
+    'manage_storages_subtitle'      => 'Manage storage locations and inventory',
+    'add_storage'                   => 'Add Storage',
+    'edit_storage'                  => 'Edit Storage',
+    'create_storage'                => 'Create Storage',
+    'storage_code'                  => 'Storage Code',
+    'storage_code_placeholder'      => 'e.g. STR-001',
+    'storage_name'                  => 'Storage Name',
+    'storage_name_placeholder'      => 'e.g. Main Warehouse',
+    'search_storages'               => 'Search storages...',
+    'storage_created_successfully'  => 'Storage created successfully!',
+    'storage_updated_successfully'  => 'Storage updated successfully!',
+    'storage_deleted_successfully'  => 'Storage deleted successfully!',
+    'failed_to_load_storage'        => 'Failed to load storage',
+    'failed_to_save_storage'        => 'Failed to save storage',
+    'failed_to_delete_storage'      => 'Failed to delete storage',
+    'code_label'                    => 'Code',
+    'name_label'                    => 'Name',
+    'no_storages_found'             => 'No storages found',
+
+    // Manager - Priority Room Booking
+    'priority_room_booking_title'   => 'Priority Room Booking',
+    'priority_room_booking_subtitle'=> 'Submit priority room booking requests',
+    'form_tab'                      => 'Form',
+    'status_tab'                    => 'Status',
+    'meeting_title'                 => 'Meeting Title',
+    'meeting_title_placeholder'     => 'Enter meeting title',
+    'number_of_attendees'           => 'Number of Attendees',
+    'conflict_detected'             => 'Conflict Detected',
+    'conflicting_booking_exists'    => 'A booking already exists for this room and time',
+    'continue_without_cancellation' => 'Continue Without Cancellation',
+    'cancel_and_override'           => 'Cancel Conflicting Booking & Override',
+    'conflicting_booking_info'      => 'Conflicting Booking Information',
+    'priority_booking_submitted'    => 'Priority room booking submitted.',
+    'booking_created_successfully'  => 'Conflicting booking cancelled and priority booking created successfully.',
+    'priority_booking_cancelled'    => 'Priority booking cancelled.',
+    'my_bookings'                   => 'My Bookings',
+    'pending_receipt'               => 'Pending Receipt',
+    'pending_cancellation'          => 'Pending Cancellation',
+    'approved_status'               => 'Approved',
+    'rejected_status'               => 'Rejected',
+    'conflict_denied'               => 'Conflict Denied',
+    'no_bookings_yet'               => 'No bookings yet',
+    'cancels_booking'               => 'Cancels Booking',
+    'rejection_reason'              => 'Rejection Reason',
+    'handled_by'                    => 'Handled By',
+    'cancel_booking'                => 'Cancel Booking',
+    'cancel_booking_confirm'        => 'Cancel this priority booking?',
+    'scheduled_for'                 => 'Scheduled for',
+    'attendees'                     => 'Attendees',
+    'ongoing_bookings'              => 'Ongoing Bookings',
+    'no_ongoing_bookings'           => 'No ongoing bookings',
+    'booking_detail'                => 'Booking Detail',
+    'reject_booking'                => 'Reject Booking',
+    'cannot_cancel_within_3_hours'  => 'The conflicting booking starts in less than 3 hours and cannot be cancelled for a Priority Booking.',
+    'conflicting_booking_no_longer_exists' => 'Conflicting booking no longer exists or cannot be cancelled.',
+    'submitted_label'               => 'Submitted',
+    'cancelled_label'               => 'Cancelled',
+
+    // Manager - Priority Vehicle Booking
+    'priority_vehicle_booking_title'   => 'Priority Vehicle Booking',
+    'priority_vehicle_booking_subtitle'=> 'Submit priority vehicle booking requests',
+    'select_vehicle_placeholder'       => 'Select vehicle',
+    'select_department_placeholder'    => 'Select department',
+    'date_from'                        => 'Date From',
+    'date_to'                          => 'Date To',
+    'priority_vehicle_booking_submitted' => 'Priority vehicle booking submitted.',
+    'conflicting_vehicle_booking_exists' => 'A vehicle booking already exists for this vehicle and time period',
+    'conflicting_vehicle_booking_no_longer_exists' => 'Conflicting vehicle booking no longer exists or cannot be cancelled.',
+    'vehicle_booking_rejected'         => 'Vehicle booking rejected.',
+    'ongoing_vehicle_bookings'         => 'Ongoing Vehicle Bookings',
+    'no_ongoing_vehicle_bookings'      => 'No ongoing vehicle bookings',
+    'vehicle_booking_detail'           => 'Vehicle Booking Detail',
+
+    // Manager - Schedule Visitor (Guestbook Form)
+    'schedule_visitor_title'        => 'Schedule Visitor',
+    'schedule_visitor_subtitle'     => 'Schedule future visitor appointments',
+    'upcoming_visitors'             => 'Upcoming Visitors',
+    'scheduled_visitors'            => 'Scheduled Visitors',
+    'schedule_new_visitor'          => 'Schedule New Visitor',
+    'visitor_information'           => 'Visitor Information',
+    'scheduled_date'                => 'Scheduled Date',
+    'scheduled_time'                => 'Scheduled Time',
+    'visitor_count_label'           => 'Visitor Count',
+    'visitor_scheduled_successfully'=> 'Visitor scheduled (:count pax). QR sent to :email.',
+    'visitor_scheduled_no_email'    => 'Visitor scheduled (:count pax). No email provided.',
+    'search_visitors'               => 'Search visitors...',
+    'no_upcoming_visitors'          => 'No upcoming visitors',
+    'active_today'                  => 'Active Today',
+    'upcoming_label'                => 'Upcoming',
+    'qr_code_sent_to'               => 'QR code sent to',
+    'email_failed_but_saved'        => 'Entry saved, but QR email could not be sent. Check mail config.',
+    'scheduled_guest'               => 'Scheduled Guest',
+    'pax_label'                     => 'pax',
+
+    // Manager - DocPack Status
+    'docpack_status_title'          => 'Doc/Pack — Status',
+    'docpack_status_subtitle'       => 'Monitor pending and stored documents/packages',
+    'pending_items'                 => 'Pending Items',
+    'stored_items'                  => 'Stored Items',
+    'item_name'                     => 'Item Name',
+    'sender_name'                   => 'Sender Name',
+    'receiver_name'                 => 'Receiver Name',
+    'image_label'                   => 'Image',
+    'store_item'                    => 'Store Item',
+    'finalize_item'                 => 'Finalize Item',
+    'item_stored'                   => 'Item stored.',
+    'item_finalized'                => 'Item finalized.',
+    'information_saved'             => 'Information saved.',
+    'edit_item'                     => 'Edit Item',
+    'save_item'                     => 'Save Item',
+    'filter_options'                => 'Filter Options',
+    'date_mode'                     => 'Date Mode',
+    'all_dates'                     => 'All Dates',
+    'newest_first'                  => 'Newest First',
+    'oldest_first'                  => 'Oldest First',
+    'filter_by_sender'              => 'Filter by Sender',
+    'filter_by_receiver'            => 'Filter by Receiver',
+    'select_date'                   => 'Select Date',
+    'apply_filters'                 => 'Apply Filters',
+    'reset_filters'                 => 'Reset Filters',
+    'no_pending_items'              => 'No pending items',
+    'no_stored_items'               => 'No stored items',
+    'done_label'                    => 'Done',
+    'saved_label'                   => 'Saved',
+
+    // Manager Dashboard - Daily Cards
+    'daily_room_bookings'           => 'Daily Room Bookings',
+    'daily_vehicle_bookings'        => 'Daily Vehicle Bookings',
+    'daily_doc_package'             => 'Daily Doc/Package',
+    'visitors_today'                => 'Visitors Today',
+    'pending_count'                 => 'pending',
+    'ongoing_count'                 => 'ongoing',
+    'on_road_count'                 => 'on road',
+    'click_view_details'            => 'Click to view details',
+    'guestbook_entries_today'       => 'Guestbook entries today',
+    'document_package_deliveries'   => 'Document & package deliveries',
+    'more'                          => 'more',
+
+    // Manager Dashboard - Yearly Booking Trends
+    'yearly_booking_trends'         => 'Yearly Booking Trends',
+    'overview_all_booking_activities' => 'Overview of all booking activities for the selected year',
+    'filter_by_booking_type'        => 'Filter by booking type',
+
+    // Manager Dashboard - Priority Bookings Alert
+    'priority_bookings_pending'     => 'Priority Bookings Pending',
+    'awaiting_receptionist_action'  => 'Awaiting receptionist action',
+    'room_priority'                 => 'Room Priority',
+    'vehicle_priority'              => 'Vehicle Priority',
+    'cancel_request_pending'        => 'Cancel request pending',
+
+    // IT Officer Dashboard
+    'it_officer_system_management'  => 'IT Officer - System Management',
+    'refresh'                       => 'Refresh View',
+    'click_to_manage'               => 'Click to manage',
+    'managers'                      => 'Managers',
+    'storages'                      => 'Storages',
+    'quick_actions'                 => 'Quick Actions',
+    'manage_system_users_resources' => 'Manage system users and resources',
+    'manage_receptionists'          => 'Manage Receptionists',
+    'add_edit_receptionist_users'   => 'Add or edit receptionist users',
+    'manage_managers'               => 'Manage Managers',
+    'add_edit_manager_users'        => 'Add or edit manager users',
+    'manage_rooms'                  => 'Manage Rooms',
+    'add_configure_meeting_rooms'   => 'Add or configure meeting rooms',
+    'manage_vehicles'               => 'Manage Vehicles',
+    'add_configure_vehicles'        => 'Add or configure vehicles',
+    'manage_storages'               => 'Manage Storages',
+    'add_configure_storage_areas'   => 'Add or configure storage areas',
+
+    // Users per Department
+    'users_per_dept'                => 'Users per Department',
+    'view_manage_users_by_dept'     => 'View and manage users organized by department',
 ];

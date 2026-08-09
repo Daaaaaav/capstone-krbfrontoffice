@@ -25,45 +25,37 @@ class Vehiclestatus extends Component
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
-    // Filters/state
     public string $q = '';
     public ?int $vehicleFilter = null;
-    public ?string $selectedDate = null;   // YYYY-MM-DD
-    public string $statusTab = 'pending';  // pending | approved | on_progress
-    public string $sortFilter = 'recent';  // recent | oldest | nearest
+    public ?string $selectedDate = null;   // YYYY-MM-DD | null (default)
+    public string $statusTab = 'pending';  // pending (default) | approved | on_progress
+    public string $sortFilter = 'recent';  // recent (default) | oldest | nearest
     public int $perPage = 10;
-
-    /** cache */
     public $vehicles;
-    /** @var array<int,string> */
     public array $vehicleMap = [];
-
-    // Reject modal state
     public bool $showRejectModal = false;
     public ?int $rejectId = null;
     public string $rejectNote = '';
-
-    // Reject result popup state
     public bool $showRejectResult = false;
-    public string $rejectResultType = 'success'; // 'success' | 'error'
+    public string $rejectResultType = 'success'; // 'success' (default) | 'error'
     public string $rejectResultTitle = '';
     public string $rejectResultMessage = '';
     public ?int $rejectResultBookingId = null;
-
-    // *** BARU: Detail modal state ***
     public bool $showDetailModal = false;
     public ?int  $selectedBookingId = null;
-    /** @var array{before: array, after: array} */
     public array $selectedPhotos = ['before' => [], 'after' => []];
-    // *** END BARU ***
-
-    // Priority vehicle booking detail modal
     public bool $showPriorityVehicleDetailModal = false;
     public ?int $priorityVehicleDetailId        = null;
-
-    // Mobile filter modal
+    public bool   $showPriorityVehicleRejectModal  = false;
+    public ?int   $priorityVehicleRejectId         = null;
+    public string $priorityVehicleRejectReason     = '';
     public bool $showFilterModal = false;
 
+    public bool $showApproveModal = false;
+    public ?int $approveId = null;
+    public bool $showDoneModal = false;
+    public ?int $doneId = null;
+    public ?string $photoData = null;
     protected $queryString = [
         'q' => ['except' => ''],
         'vehicleFilter' => ['except' => null],
@@ -73,7 +65,6 @@ class Vehiclestatus extends Component
         'page' => ['except' => 1],
     ];
 
-    // Reset page on filter change
     public function updatedQ()
     {
         $this->resetPage();
@@ -97,7 +88,6 @@ class Vehiclestatus extends Component
 
     public function mount(): void
     {
-        // Deduplicate by name: keep only the first vehicle per unique name
         $this->vehicles = Vehicle::orderBy('name')
             ->get()
             ->unique(fn($v) => $v->name ?? $v->plate_number ?? $v->vehicle_id);
@@ -140,7 +130,6 @@ class Vehiclestatus extends Component
             'vehicleNotifs'          => $this->vehicleNotifs,
             'priorityVehicleDetailBooking' => $this->priorityVehicleDetailBooking,
             'selectedBooking'        => $this->selectedBooking,
-            // Manager priority vehicle bookings for the current status tab
             'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
                 ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
                 ->when($this->statusTab === 'pending', fn($q) => $q->whereIn('status', [
@@ -160,17 +149,30 @@ class Vehiclestatus extends Component
         ]);
     }
 
-    /* =========================
-     * Actions
-     * ========================= */
-
-    public function approve(int $id): void
+    public function openApproveModal(int $id): void
     {
+        $this->approveId = $id;
+        $this->photoData = null;
+        $this->showApproveModal = true;
+    }
+
+    public function closeApproveModal(): void
+    {
+        $this->showApproveModal = false;
+        $this->approveId = null;
+        $this->photoData = null;
+    }
+
+    public function submitApprove(): void
+    {
+        $this->validate([
+            'approveId' => 'required|integer',
+            'photoData' => 'required|string',
+        ]);
+
         try {
-            DB::transaction(function () use ($id) {
-                /** @var VehicleBooking $b */
-                $b = VehicleBooking::lockForUpdate()
-                    ->findOrFail($id);
+            DB::transaction(function () {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($this->approveId);
 
                 if ($b->status !== 'pending') {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not in pending status.");
@@ -182,10 +184,27 @@ class Vehiclestatus extends Component
                     $b->status = 'on_progress';
                 }
 
+                // Save photo
+                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
+                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
+                    $type = strtolower($type[1]);
+                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
+                        throw new \Exception('Invalid image type');
+                    }
+                    $data = base64_decode($data);
+                    if ($data === false) {
+                        throw new \Exception('Base64 decode failed');
+                    }
+                    $filename = 'vehicle_evidences/handover_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
+                    $b->handover_photo = $filename;
+                }
+
                 $b->save();
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Booking has been approved.');
+            $this->closeApproveModal();
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Booking has been approved with evidence.');
             $this->resetPage();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
@@ -193,9 +212,7 @@ class Vehiclestatus extends Component
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
         }
-    } 
-
-    /** Open modal to ask for reject reason */
+    }
     public function confirmReject(int $id): void
     {
         $this->rejectId = $id;
@@ -203,7 +220,6 @@ class Vehiclestatus extends Component
         $this->showRejectModal = true;
     }
 
-    /** Close/cancel modal */
     public function cancelReject(): void
     {
         $this->showRejectModal = false;
@@ -211,9 +227,10 @@ class Vehiclestatus extends Component
         $this->rejectNote = '';
     }
 
-    /** Validate + perform rejection with required note */
     public function submitReject(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'rejectNote' => 'required|string|min:5|max:2000',
             'rejectId'   => 'required|integer',
@@ -225,9 +242,6 @@ class Vehiclestatus extends Component
 
         try {
             $fullNote = $prefix . $reason;
-
-            // Single atomic UPDATE — no SELECT needed, checks status in the WHERE clause.
-            // Uses a parameterized expression to safely append the rejection note.
             $affected = DB::table('vehicle_bookings')
                 ->where('vehiclebooking_id', $bookingId)
                 ->where('status', 'pending')
@@ -250,7 +264,6 @@ class Vehiclestatus extends Component
             $this->rejectResultBookingId = $bookingId;
             $this->showRejectResult  = true;
 
-            // Optimistically remove the card from the current list without a full re-render
             $this->dispatch('booking-rejected', id: $bookingId);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -283,20 +296,57 @@ class Vehiclestatus extends Component
         $this->rejectNote = '';
     }
 
-    public function markReturned(int $id): void
+    public function openDoneModal(int $id): void
     {
+        $this->doneId = $id;
+        $this->photoData = null;
+        $this->showDoneModal = true;
+    }
+
+    public function closeDoneModal(): void
+    {
+        $this->showDoneModal = false;
+        $this->doneId = null;
+        $this->photoData = null;
+    }
+
+    public function submitDone(): void
+    {
+        $this->validate([
+            'doneId'    => 'required|integer',
+            'photoData' => 'required|string',
+        ]);
+
         try {
-            DB::transaction(function () use ($id) {
-                $b = VehicleBooking::lockForUpdate()
-                    ->findOrFail($id);
+            DB::transaction(function () {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($this->doneId);
                 if (!in_array($b->status, ['approved', 'on_progress', 'late_return'], true)) {
                     throw new \RuntimeException("Booking #{$b->vehiclebooking_id} cannot be completed from status '{$b->status}'.");
                 }
+                
                 $b->status = 'completed';
+
+                // Save photo
+                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
+                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
+                    $type = strtolower($type[1]);
+                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
+                        throw new \Exception('Invalid image type');
+                    }
+                    $data = base64_decode($data);
+                    if ($data === false) {
+                        throw new \Exception('Base64 decode failed');
+                    }
+                    $filename = 'vehicle_evidences/return_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
+                    $b->return_photo = $filename;
+                }
+
                 $b->save();
             });
 
-            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed.');
+            $this->closeDoneModal();
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Booking marked as completed with evidence.');
             $this->resetPage();
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'warning', title: 'Cannot Update', message: $e->getMessage());
@@ -305,11 +355,6 @@ class Vehiclestatus extends Component
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update: ' . $e->getMessage());
         }
     }
-
-    /**
-     * Return a human-readable overdue duration string for a booking that is past its end_at.
-     * e.g. "2d 3h", "45m". Returns '' if the booking is not overdue.
-     */
     public function overdueDuration(VehicleBooking $booking): string
     {
         if (!$booking->end_at) {
@@ -342,7 +387,6 @@ class Vehiclestatus extends Component
 
     public function markDone(int $id): void
     {
-        // Kept for backward compatibility: any existing 'returned' records can still be completed.
         try {
             DB::transaction(function () use ($id) {
                 $b = VehicleBooking::lockForUpdate()
@@ -364,11 +408,9 @@ class Vehiclestatus extends Component
         }
     }
 
-    // *** BARU: Metode untuk Detail Modal ***
     public function showDetails(int $id): void
     {
         try {
-            // Verify it exists before opening
             VehicleBooking::findOrFail($id);
             $this->selectedBookingId = $id;
             $this->showDetailModal   = true;
@@ -379,7 +421,6 @@ class Vehiclestatus extends Component
         }
     }
 
-    /** Computed: load the VehicleBooking being viewed in the detail modal. */
     public function getSelectedBookingProperty(): ?VehicleBooking
     {
         if (!$this->selectedBookingId) return null;
@@ -393,9 +434,6 @@ class Vehiclestatus extends Component
         $this->selectedPhotos    = ['before' => [], 'after' => []];
         $this->resetErrorBag();
     }
-    // *** END BARU ***
-
-    // ── Priority Vehicle Booking detail modal ──────────────────────────────
 
     public function openPriorityVehicleDetail(int $id): void
     {
@@ -409,7 +447,92 @@ class Vehiclestatus extends Component
         $this->priorityVehicleDetailId        = null;
     }
 
-    /** Computed: load the PriorityVehicleBooking being viewed in the detail modal. */
+    public function approvePriorityVehicleById(int $id): void
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+                $pvb = PriorityVehicleBooking::lockForUpdate()
+                    ->where('id', $id)
+                    ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', [
+                        PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                        PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                    ])
+                    ->firstOrFail();
+
+                if ($pvb->status === PriorityVehicleBooking::STATUS_PENDING_CANCELLATION && $pvb->cancels_booking_id) {
+                    VehicleBooking::where('vehiclebooking_id', $pvb->cancels_booking_id)
+                        ->whereIn('status', ['pending', 'approved'])
+                        ->update(['status' => 'rejected', 'notes' => 'Cancelled to accommodate a manager priority booking.']);
+                }
+
+                $pvb->status     = PriorityVehicleBooking::STATUS_APPROVED;
+                $pvb->handled_by = \Illuminate\Support\Facades\Auth::id();
+                $pvb->save();
+            });
+
+            $this->showPriorityVehicleDetailModal = false;
+            $this->priorityVehicleDetailId        = null;
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking approved.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
+        }
+    }
+
+    public function openPriorityVehicleReject(int $id): void
+    {
+        $this->priorityVehicleRejectId     = $id;
+        $this->priorityVehicleRejectReason = '';
+        $this->showPriorityVehicleRejectModal = true;
+    }
+
+    public function closePriorityVehicleReject(): void
+    {
+        $this->showPriorityVehicleRejectModal = false;
+        $this->priorityVehicleRejectId        = null;
+        $this->priorityVehicleRejectReason    = '';
+    }
+
+    public function submitPriorityVehicleReject(): void
+    {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
+        $this->validate([
+            'priorityVehicleRejectReason' => 'required|string|min:5|max:1000',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
+                $pvb = PriorityVehicleBooking::lockForUpdate()
+                    ->where('id', $this->priorityVehicleRejectId)
+                    ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+                    ->whereIn('status', [
+                        PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                        PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                    ])
+                    ->firstOrFail();
+
+                $pvb->status           = PriorityVehicleBooking::STATUS_REJECTED;
+                $pvb->rejection_reason = $this->priorityVehicleRejectReason;
+                $pvb->handled_by       = \Illuminate\Support\Facades\Auth::id();
+                $pvb->save();
+            });
+
+            $this->showPriorityVehicleRejectModal = false;
+            $this->showPriorityVehicleDetailModal = false;
+            $this->priorityVehicleRejectId        = null;
+            $this->priorityVehicleDetailId        = null;
+            $this->priorityVehicleRejectReason    = '';
+            $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Priority vehicle booking has been rejected.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to reject: ' . $e->getMessage());
+        }
+    }
+
     public function getPriorityVehicleDetailBookingProperty(): ?PriorityVehicleBooking
     {
         if (!$this->priorityVehicleDetailId) return null;
@@ -417,7 +540,6 @@ class Vehiclestatus extends Component
             ->find($this->priorityVehicleDetailId);
     }
 
-    // ───────── Mobile Filter Modal ─────────
     public function openFilterModal(): void
     {
         $this->showFilterModal = true;
@@ -442,17 +564,10 @@ class Vehiclestatus extends Component
         $this->showFilterModal = false;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Priority Vehicle Booking — Notification handling
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /** Notification bell panel */
     public bool $showNotifPanel = false;
-
-    /** Approval modal for a cancellation request */
     public bool  $showPriorityApprovalModal = false;
     public ?int  $priorityApprovalNotifId   = null;
-    public ?int  $priorityApprovalBookingId = null; // PriorityVehicleBooking id
+    public ?int  $priorityApprovalBookingId = null; 
 
     public function toggleNotifPanel(): void
     {
@@ -493,12 +608,6 @@ class Vehiclestatus extends Component
         $this->priorityApprovalBookingId = null;
     }
 
-    /**
-     * Receptionist approves the cancellation:
-     * 1. Cancel the conflicting pending vehicle booking.
-     * 2. Mark the priority booking as approved.
-     * 3. Mark the notification as actioned.
-     */
     public function approvePriorityVehicle(): void
     {
         if (!$this->priorityApprovalBookingId) {
@@ -513,7 +622,6 @@ class Vehiclestatus extends Component
                     ->where('company_id', $companyId)
                     ->firstOrFail();
 
-                // Cancel the conflicting booking if it's still pending
                 if ($priority->cancels_booking_id) {
                     VehicleBooking::where('vehiclebooking_id', $priority->cancels_booking_id)
                         ->where('status', 'pending')
@@ -528,7 +636,6 @@ class Vehiclestatus extends Component
                     'handled_by' => \Illuminate\Support\Facades\Auth::user()->user_id,
                 ]);
 
-                // Update notification
                 if ($this->priorityApprovalNotifId) {
                     ManagerNotification::where('id', $this->priorityApprovalNotifId)
                         ->update(['action_taken' => 'approved', 'is_read' => true]);
@@ -545,10 +652,6 @@ class Vehiclestatus extends Component
         $this->resetPage();
     }
 
-    /**
-     * Receptionist denies the cancellation request.
-     * The priority booking is marked as conflict-denied.
-     */
     public function denyPriorityVehicle(): void
     {
         if (!$this->priorityApprovalBookingId) {
@@ -581,8 +684,7 @@ class Vehiclestatus extends Component
 
         $this->closePriorityApprovalModal();
     }
-
-    /** Count of unread vehicle-related notifications for the bell badge. */
+    
     public function getVehicleNotifCountProperty(): int
     {
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -594,7 +696,6 @@ class Vehiclestatus extends Component
             ->count();
     }
 
-    /** Recent vehicle notifications for the panel dropdown. */
     public function getVehicleNotifsProperty()
     {
         $user = \Illuminate\Support\Facades\Auth::user();

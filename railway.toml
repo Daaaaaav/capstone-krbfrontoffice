@@ -1,9 +1,0 @@
-[build]
-dockerfilePath = "Dockerfile"
-# No target specified = uses the final unnamed stage (Laravel + Nginx)
-
-[deploy]
-startCommand = "/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
-healthcheckPath = "/"
-healthcheckTimeout = 60
-restartPolicyType = "on_failure"

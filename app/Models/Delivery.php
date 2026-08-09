@@ -10,21 +10,21 @@ class Delivery extends Model
     use SoftDeletes;
 
     protected $table = 'deliveries';
-    protected $primaryKey = 'delivery_id'; // adjust if your PK is "id"
+    protected $primaryKey = 'delivery_id'; 
 
     protected $fillable = [
         'company_id',
         'department_id',
         'receptionist_id',
-        'type',             // 'document' | 'package'
+        'type',             
         'item_name',
         'nama_pengirim',
         'nama_penerima',
         'catatan',
-        'status',           // 'pending' | 'stored' | 'done'
-        'direction',        // 'deliver' | 'taken'   <-- NEW flow uses this
-        'pengiriman',       // datetime when delivered
-        'pengambilan',      // datetime when taken
+        'status',          
+        'direction',      
+        'pengiriman',       
+        'pengambilan',  
         'image', 
     ];
 
@@ -36,7 +36,6 @@ class Delivery extends Model
         'deleted_at' => 'datetime',
     ];
 
-    /* ------------ Relationships ------------- */
     public function receptionist()
     {
         return $this->belongsTo(User::class, 'receptionist_id', 'user_id');
@@ -47,7 +46,6 @@ class Delivery extends Model
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
     }
 
-    /* --------------- Scopes ----------------- */
     public function scopeByCompany($q, ?int $companyId)
     {
         if ($companyId)
@@ -55,14 +53,6 @@ class Delivery extends Model
         return $q;
     }
 
-    /* --------- Computed / Accessors --------- */
-
-    /**
-     * Human label from direction ONLY when status is 'done'
-     * deliver  -> delivered
-     * taken    -> taken
-     * other    -> the raw status (pending/stored) for clarity
-     */
     public function getFinishStatusAttribute(): string
     {
         if (($this->status ?? '') !== 'done') {
@@ -76,12 +66,6 @@ class Delivery extends Model
         };
     }
 
-    /**
-     * Finish timestamp based on direction.
-     * deliver  -> pengiriman
-     * taken    -> pengambilan
-     * fallback -> created_at
-     */
     public function getFinishAtAttribute(): ?\Illuminate\Support\Carbon
     {
         return match ($this->direction) {

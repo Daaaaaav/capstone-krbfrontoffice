@@ -1,6 +1,3 @@
-{{-- 
-    Checkbox Indicator - Pure visual component, uses @aware for state
---}}
 @aware([
     'checked' => false,
     'indeterminate' => false,
@@ -16,11 +13,10 @@
 ])
 
 @php
-/* DEALING WITH SIZES - START */
 $sizeClasses = match($size) {
     'xs' => 'size-4',
     'sm' => 'size-5',
-    'md' => 'size-6', // default
+    'md' => 'size-6', 
     'lg' => 'size-7',
     'xl' => 'size-8',
     default => 'size-6',
@@ -43,11 +39,8 @@ $iconSizeClasses = match($size) {
     'xl' => 'size-5',
     default => 'size-4',
 };
-/* SIZES - END */
 
-// Build button classes array with conditionals
 $buttonClasses = [
-    // Base classes
     'flex items-center justify-center border overflow-hidden appearance-none',
     'bg-white dark:bg-neutral-800',
     'disabled:cursor-not-allowed disabled:opacity-50',
@@ -60,16 +53,12 @@ $buttonClasses = [
     'border-black/10 dark:border-white/15' => !$invalid,
     'focus:border-black/15 focus:ring-neutral-900/15 dark:focus:border-white/20 dark:focus:ring-neutral-100/15' => !$invalid,
     'border-red-600/30 border-2 focus:border-red-600/30 focus:ring-red-600/20 dark:border-red-400/30 dark:focus:border-red-400/30 dark:focus:ring-red-400/20' => $invalid,
-    
-    // Conditional hover styles
-    'hover:border-neutral-400 dark:hover:border-neutral-500' => !$disabled,
 
-    // icon like classes
+    'hover:border-neutral-400 dark:hover:border-neutral-500' => !$disabled,
     'data-[checked]:bg-[var(--color-primary)] data-[checked]:border-[var(--color-primary)]',
     'data-[indeterminate]:bg-[var(--color-primary)] data-[indeterminate]:border-[var(--color-primary)]',
 ];
 
-// Build icon classes array
 $iconClasses = [
     $iconSizeClasses,
     '!text-[var(--color-primary-fg)]',
@@ -105,7 +94,6 @@ $iconClasses = [
 
     {{ $attributes->class($buttonClasses) }}
 >    
-    {{-- Check icon for normal checked state --}}
     <x-ui.icon
         name="check"
         :variant="$iconVariant"
@@ -114,7 +102,6 @@ $iconClasses = [
         style="display:none"
     />
     
-    {{-- Minus icon for indeterminate state --}}
     <x-ui.icon
         name="minus"
         :variant="$iconVariant"

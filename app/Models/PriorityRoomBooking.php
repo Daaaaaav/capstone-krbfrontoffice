@@ -31,13 +31,12 @@ class PriorityRoomBooking extends Model
         'number_of_attendees' => 'integer',
     ];
 
-    // Status constants
-    const STATUS_PENDING_RECEIPT           = 'pending_receipt';           // Created, no conflict
-    const STATUS_PENDING_CANCELLATION      = 'pending_cancellation';      // Waiting receptionist approval to cancel conflict
-    const STATUS_APPROVED                  = 'approved';                  // Receptionist approved (incl. cancellation)
-    const STATUS_COMPLETED                 = 'completed';                 // Schedule has ended — moved to history automatically
-    const STATUS_REJECTED                  = 'rejected';                  // Receptionist rejected
-    const STATUS_CONFLICT_DENIED           = 'cancelled_conflict_denied'; // Receptionist denied the cancellation request
+    const STATUS_PENDING_RECEIPT           = 'pending_receipt';           
+    const STATUS_PENDING_CANCELLATION      = 'pending_cancellation';      
+    const STATUS_APPROVED                  = 'approved';                  
+    const STATUS_COMPLETED                 = 'completed';                 
+    const STATUS_REJECTED                  = 'rejected';                  
+    const STATUS_CONFLICT_DENIED           = 'cancelled_conflict_denied'; 
 
     public function manager(): BelongsTo
     {
@@ -69,10 +68,6 @@ class PriorityRoomBooking extends Model
         return $query->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION]);
     }
 
-    /**
-     * Auto-expire any pending priority room bookings whose scheduled time has already passed.
-     * Marks them as rejected so they don't clog the queue.
-     */
     public static function autoExpirePending(?int $companyId): void
     {
         static::query()
@@ -91,10 +86,21 @@ class PriorityRoomBooking extends Model
             ]);
     }
 
-    /**
-     * Auto-complete any approved priority room bookings whose scheduled end time has passed.
-     * Transitions approved → completed so they leave the active/ongoing view and appear in history.
-     */
+    public static function autoApproveNonClashing(?int $companyId): void
+    {
+        $now = now();
+
+        static::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', self::STATUS_PENDING_RECEIPT)
+            ->where('date', $now->toDateString())
+            ->where('start_time', '<=', $now->format('H:i:s'))
+            ->update([
+                'status'     => self::STATUS_APPROVED,
+                'updated_at' => $now->toDateTimeString(),
+            ]);
+    }
+
     public static function autoCompleteApproved(?int $companyId): void
     {
         static::query()

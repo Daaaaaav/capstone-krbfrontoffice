@@ -19,8 +19,7 @@ class AutoCompleteBookings extends Command
     public function handle(): int
     {
         $now = Carbon::now($this->tz);
-        // Add 1 minute tolerance: booking ending at 11:00 completes at 11:01
-        // This allows consecutive bookings (e.g., 09:00-11:00 and 11:00-13:00)
+        // Add 1 minute tolerance such as booking ending at 11:00 completes at 11:01
         $threshold = $now->copy()->subMinute()->format('Y-m-d H:i:s');
 
         $endExpr = "COALESCE(
@@ -29,9 +28,8 @@ class AutoCompleteBookings extends Command
             CONCAT(date, ' ', end_time)
         )";
 
-        // ── Regular room bookings ────────────────────────────────────────────
         $updatedRooms = DB::transaction(function () use ($threshold, $endExpr) {
-            return BookingRoom::query()
+            $completed = BookingRoom::query()
                 ->whereNotNull('date')
                 ->whereNotNull('end_time')
                 ->whereRaw("$endExpr IS NOT NULL")
@@ -43,11 +41,24 @@ class AutoCompleteBookings extends Command
                     'status'     => 'completed',
                     'updated_at' => Carbon::now($this->tz)->toDateTimeString(),
                 ]);
+
+            BookingRoom::query()
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$threshold])
+                ->where(function ($q) {
+                    $q->whereRaw("LOWER(TRIM(`status`)) = 'pending'");
+                })
+                ->update([
+                    'status'      => 'rejected',
+                    'book_reject' => 'Auto-rejected: booking window expired without approval.',
+                    'updated_at'  => Carbon::now($this->tz)->toDateTimeString(),
+                ]);
+
+            return $completed;
         });
 
-        // ── Priority room bookings ────────────────────────────────────────────
-        // Uses simple DATE + TIME columns (no COALESCE needed — they are always
-        // stored as separate DATE and TIME fields in priority_room_bookings).
         $updatedPriority = DB::transaction(function () use ($threshold) {
             return PriorityRoomBooking::query()
                 ->where('status', PriorityRoomBooking::STATUS_APPROVED)

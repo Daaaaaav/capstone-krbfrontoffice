@@ -7,19 +7,6 @@ use Illuminate\Support\Facades\Storage;
 
 class ImageHelper
 {
-    /**
-     * Convert an uploaded image to WebP and store it on the given disk.
-     *
-     * Returns the stored path (relative to the disk root), e.g.
-     * "images/deliveries/delivery_20260710_123456_abc123.webp"
-     *
-     * @param  UploadedFile  $file       The Livewire / Laravel uploaded file.
-     * @param  string        $directory  Storage directory, e.g. "images/deliveries".
-     * @param  string        $prefix     Filename prefix, e.g. "delivery".
-     * @param  string        $disk       Laravel storage disk (default: "public").
-     * @param  int           $quality    WebP quality 0–100 (default: 82).
-     * @return string  The stored relative path.
-     */
     public static function storeAsWebp(
         UploadedFile $file,
         string $directory,
@@ -29,8 +16,6 @@ class ImageHelper
     ): string {
         $filename = $prefix . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.webp';
         $relativePath = $directory . '/' . $filename;
-
-        // Read the source image into a GD resource
         $tmpPath = $file->getRealPath();
         $mime    = $file->getMimeType() ?? '';
 
@@ -44,23 +29,40 @@ class ImageHelper
         };
 
         if ($source === false) {
-            // GD could not parse the image — fall back to storing the original file as-is
             $ext      = strtolower($file->getClientOriginalExtension() ?: 'png');
             $fallback = $prefix . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.' . $ext;
             return $file->storeAs($directory, $fallback, $disk);
         }
 
-        // Preserve alpha channel for PNG / WebP sources
+        // Convert palette/indexed images to true-color for WebP compatibility
+        if (!imageistruecolor($source)) {
+            $width  = imagesx($source);
+            $height = imagesy($source);
+            $trueColor = imagecreatetruecolor($width, $height);
+
+            // Preserve transparency
+            imagealphablending($trueColor, false);
+            imagesavealpha($trueColor, true);
+            $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
+            imagefill($trueColor, 0, 0, $transparent);
+
+            // Copy palette image to true-color image
+            imagealphablending($trueColor, true);
+            imagecopy($trueColor, $source, 0, 0, 0, 0, $width, $height);
+
+            imagedestroy($source);
+            $source = $trueColor;
+        }
+
+        // preserve alpha channel for image sources
         imagealphablending($source, true);
         imagesavealpha($source, true);
-
-        // Render to a memory buffer
+    
         ob_start();
         imagewebp($source, null, $quality);
         $webpData = ob_get_clean();
         imagedestroy($source);
 
-        // Write to storage
         Storage::disk($disk)->put($relativePath, $webpData);
 
         return $relativePath;

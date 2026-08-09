@@ -19,17 +19,11 @@ class OtpVerification extends Model
         'is_verified' => 'boolean',
     ];
 
-    /**
-     * Check if OTP is expired
-     */
     public function isExpired(): bool
     {
         return Carbon::now()->isAfter($this->expires_at);
     }
 
-    /**
-     * Check if OTP is valid
-     */
     public function isValid(string $code): bool
     {
         return !$this->is_verified

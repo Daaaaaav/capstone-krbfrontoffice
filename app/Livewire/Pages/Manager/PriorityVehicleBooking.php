@@ -24,10 +24,7 @@ class PriorityVehicleBooking extends Component
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
-    // ── Tabs ───────────────────────────────────────────────────────────────
     public string $activeTab = 'form';
-
-    // ── Form fields ────────────────────────────────────────────────────────
     public ?int $vehicle_id = null;
     public ?int $department_id = null;
     public string $borrower_name = '';
@@ -39,21 +36,13 @@ class PriorityVehicleBooking extends Component
     public string $destination = '';
     public string $purpose_type = 'dinas';
     public string $special_notes = '';
-
-    // ── Conflict detection (pending vehicle booking) ───────────────────────
     public ?int $conflicting_vehicle_booking_id = null;
     public bool $showConflictModal = false;
     public bool $requestCancellation = false;
-
-    // ── Status tab ─────────────────────────────────────────────────────────
     public string $statusFilter = 'all';
     public int $perPage = 8;
-
-    // ── Cancel own booking modal ───────────────────────────────────────────
     public bool $showCancelModal = false;
     public ?int $cancelTargetId = null;
-
-    // ── Dropdown data ──────────────────────────────────────────────────────
     public array $vehicles = [];
     public array $departments = [];
     public array $users = [];
@@ -87,7 +76,6 @@ class PriorityVehicleBooking extends Component
         $this->date_to   = $today;
     }
 
-    // ── Department → User cascade ──────────────────────────────────────────
     public function updatedDepartmentId(): void
     {
         $this->borrower_name   = '';
@@ -113,7 +101,6 @@ class PriorityVehicleBooking extends Component
         $this->resetPage();
     }
 
-    // ── Conflict detection: pending vehicle booking for same vehicle ────────
     public function detectConflict(): void
     {
         $this->conflicting_vehicle_booking_id = null;
@@ -133,10 +120,9 @@ class PriorityVehicleBooking extends Component
             return;
         }
 
-        // Find a conflicting vehicle booking that is PENDING (not yet approved / on the road)
         $conflict = VehicleBooking::query()
             ->where('vehicle_id', $this->vehicle_id)
-            ->where('status', 'pending')   // only pending — per requirements
+            ->where('status', 'pending')  
             ->where('start_at', '<', $end->toDateTimeString())
             ->where('end_at', '>', $start->toDateTimeString())
             ->first(['vehiclebooking_id', 'borrower_name', 'start_at', 'end_at']);
@@ -146,9 +132,10 @@ class PriorityVehicleBooking extends Component
         }
     }
 
-    // ── Form submission ────────────────────────────────────────────────────
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'vehicle_id'    => ['required', 'integer', 'exists:vehicles,vehicle_id'],
             'borrower_name' => ['required', 'string', 'max:255'],
@@ -165,7 +152,6 @@ class PriorityVehicleBooking extends Component
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
 
-        // Re-check conflict at save time
         $this->detectConflict();
 
         if ($this->conflicting_vehicle_booking_id && !$this->requestCancellation) {
@@ -243,9 +229,113 @@ class PriorityVehicleBooking extends Component
 
     public function confirmWithCancellation(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
+        if (!$this->conflicting_vehicle_booking_id) {
+            $this->showConflictModal = false;
+            return;
+        }
+
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
+
+        $conflictingBooking = VehicleBooking::where('vehiclebooking_id', $this->conflicting_vehicle_booking_id)
+            ->where('company_id', $companyId)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$conflictingBooking) {
+            $this->showConflictModal = false;
+            $this->conflicting_vehicle_booking_id = null;
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Conflicting vehicle booking no longer exists or cannot be cancelled.', duration: 4000);
+            return;
+        }
+
+        try {
+            $scheduledStart = Carbon::parse($conflictingBooking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->showConflictModal = false;
+                $this->conflicting_vehicle_booking_id = null;
+                $this->dispatch('toast', type: 'error', title: 'Cannot Cancel', message: 'The conflicting vehicle booking starts in less than 3 hours and cannot be cancelled for a Priority Booking.', duration: 5000);
+                return;
+            }
+        } catch (\Throwable $e) {
+            $this->showConflictModal = false;
+            $this->conflicting_vehicle_booking_id = null;
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Invalid booking time. Please try again.', duration: 3000);
+            return;
+        }
+
         $this->requestCancellation = true;
-        $this->showConflictModal   = false;
-        $this->save();
+        $this->showConflictModal = false;
+
+        DB::transaction(function () use ($conflictingBooking, $user, $companyId) {
+            $startAt = Carbon::parse($this->date_from . ' ' . $this->start_time, $this->tz);
+            $endAt = Carbon::parse($this->date_to . ' ' . $this->end_time, $this->tz);
+
+            $conflictingBooking->update([
+                'status' => 'rejected',
+                'notes' => DB::raw(
+                    "TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Cancelled] Cancelled due to Manager Priority Booking override.'))"
+                ),
+            ]);
+
+            $vehicleLabel = collect($this->vehicles)->firstWhere('id', $this->vehicle_id)['label'] ?? '#' . $this->vehicle_id;
+
+            $booking = PriorityVehicleBookingModel::create([
+                'company_id' => $companyId,
+                'manager_id' => $user->user_id,
+                'vehicle_id' => $this->vehicle_id,
+                'department_id' => $this->department_id ?: null,
+                'borrower_name' => $this->borrower_name,
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+                'purpose' => $this->purpose,
+                'destination' => $this->destination ?: null,
+                'purpose_type' => $this->purpose_type,
+                'special_notes' => $this->special_notes ?: null,
+                'status' => PriorityVehicleBookingModel::STATUS_APPROVED,
+                'cancels_booking_id' => $this->conflicting_vehicle_booking_id,
+            ]);
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_VEHICLE_CANCEL_REQUEST,
+                'Regular Vehicle Booking Cancelled — Priority Override',
+                'Manager "' . ($user->full_name ?? $user->name) . '" cancelled regular vehicle booking #' . $this->conflicting_vehicle_booking_id .
+                    ' (' . $conflictingBooking->borrower_name . ') to create Priority Booking for vehicle "' . $vehicleLabel .
+                    '" from ' . $startAt->format('d M Y H:i') . ' to ' . $endAt->format('d M Y H:i') . '.',
+                $booking,
+                actionRequired: false
+            );
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_PRIORITY_VEHICLE_DIRECT,
+                'Priority Vehicle Booking',
+                'Manager "' . ($user->full_name ?? $user->name) . '" submitted a priority vehicle booking for "' .
+                    $vehicleLabel . '" on ' . $startAt->format('d M Y') . '.',
+                $booking,
+                actionRequired: false
+            );
+        });
+
+        $this->reset([
+            'vehicle_id', 'department_id', 'borrower_name',
+            'start_time', 'end_time', 'purpose', 'destination',
+            'special_notes', 'conflicting_vehicle_booking_id', 'requestCancellation',
+        ]);
+        $this->purpose_type = 'dinas';
+        $this->usersForCombobox = [];
+        $today = now($this->tz)->toDateString();
+        $this->date_from = $today;
+        $this->date_to = $today;
+        $this->activeTab = 'status';
+
+        $this->dispatch('toast', type: 'success', title: 'Booking Created', message: 'Conflicting vehicle booking cancelled and priority booking created successfully.', duration: 4000);
     }
 
     public function confirmWithoutCancellation(): void
@@ -262,7 +352,6 @@ class PriorityVehicleBooking extends Component
         $this->requestCancellation = false;
     }
 
-    // ── Cancel own booking ─────────────────────────────────────────────────
     public function openCancelModal(int $id): void
     {
         $this->cancelTargetId  = $id;
@@ -281,15 +370,54 @@ class PriorityVehicleBooking extends Component
             return;
         }
 
-        $companyId = Auth::user()->company_id ?? null;
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
         $booking = PriorityVehicleBookingModel::where('id', $this->cancelTargetId)
             ->where('company_id', $companyId)
-            ->where('manager_id', Auth::user()->user_id)
+            ->where('manager_id', $user->user_id)
             ->first();
 
-        if ($booking && $booking->isActionable()) {
-            $booking->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by manager.']);
+        if (!$booking || !$booking->isActionable()) {
+            $this->showCancelModal = false;
+            $this->cancelTargetId  = null;
+            return;
         }
+
+        try {
+            $scheduledStart = Carbon::parse($booking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->showCancelModal = false;
+                $this->cancelTargetId  = null;
+                $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.priority_booking_cancel_min_3_hours'), duration: 5000);
+                return;
+            }
+        } catch (\Throwable) {
+            $this->showCancelModal = false;
+            $this->cancelTargetId  = null;
+            $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.invalid_booking_time'), duration: 3000);
+            return;
+        }
+
+        DB::transaction(function () use ($booking, $user, $companyId) {
+            $booking->update(['status' => 'rejected', 'rejection_reason' => 'Cancelled by manager.']);
+
+            $vehicleLabel = $booking->vehicle 
+                ? ($booking->vehicle->name ?? 'Vehicle') . ($booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '')
+                : 'Vehicle #' . $booking->vehicle_id;
+
+            ManagerNotification::notifyReceptionists(
+                $companyId,
+                ManagerNotification::TYPE_PRIORITY_VEHICLE_DIRECT,
+                'Priority Vehicle Booking Cancelled',
+                'Manager "' . ($user->full_name ?? $user->name) . '" has cancelled priority vehicle booking for "' .
+                    $vehicleLabel . '" scheduled on ' . $booking->start_at->format('d M Y H:i') . '.',
+                $booking,
+                actionRequired: false
+            );
+        });
 
         $this->showCancelModal = false;
         $this->cancelTargetId  = null;
@@ -297,7 +425,6 @@ class PriorityVehicleBooking extends Component
         $this->dispatch('toast', type: 'info', title: 'Cancelled', message: 'Priority booking cancelled.', duration: 3000);
     }
 
-    // ── Sidebar detail modal ───────────────────────────────────────────────
     public bool   $showVehicleSidebarDetail   = false;
     public ?int   $vehicleSidebarDetailId     = null;
     public bool   $showVehicleSidebarReject   = false;
@@ -326,19 +453,37 @@ class PriorityVehicleBooking extends Component
 
     public function submitVehicleSidebarReject(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'vehicleSidebarRejectReason' => 'required|string|min:5|max:2000',
         ]);
 
         $companyId = Auth::user()->company_id ?? null;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($companyId) {
-            $b = VehicleBooking::where('vehiclebooking_id', $this->vehicleSidebarDetailId)
-                ->where('company_id', $companyId)
-                ->where('status', 'pending')
-                ->firstOrFail();
+        $booking = VehicleBooking::where('vehiclebooking_id', $this->vehicleSidebarDetailId)
+            ->where('company_id', $companyId)
+            ->where('status', 'pending')
+            ->firstOrFail();
 
-            $b->update([
+        try {
+            $scheduledStart = Carbon::parse($booking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            if ($hoursUntilStart < 3) {
+                $this->closeVehicleSidebarDetail();
+                $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.priority_booking_reject_min_3_hours'), duration: 5000);
+                return;
+            }
+        } catch (\Throwable) {
+            $this->closeVehicleSidebarDetail();
+            $this->dispatch('toast', type: 'error', title: __('app.error'), message: __('app.invalid_booking_time'), duration: 3000);
+            return;
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+            $booking->update([
                 'status' => 'rejected',
                 'notes'  => \Illuminate\Support\Facades\DB::raw(
                     "TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Rejected] " .
@@ -358,7 +503,21 @@ class PriorityVehicleBooking extends Component
             ->find($this->vehicleSidebarDetailId);
     }
 
-    // ── Render ─────────────────────────────────────────────────────────────
+    public function canRejectVehicleSidebarBooking(): bool
+    {
+        if (!$this->vehicleSidebarBooking) return false;
+
+        try {
+            $scheduledStart = Carbon::parse($this->vehicleSidebarBooking->start_at, $this->tz);
+            $now = Carbon::now($this->tz);
+            $hoursUntilStart = $now->diffInHours($scheduledStart, false);
+
+            return $hoursUntilStart >= 3;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function render()
     {
         $companyId = Auth::user()->company_id ?? null;
@@ -387,7 +546,6 @@ class PriorityVehicleBooking extends Component
             ? VehicleBooking::with('vehicle')->find($this->conflicting_vehicle_booking_id)
             : null;
 
-        // Sidebar: recent pending/approved vehicle bookings for the company
         $sidebarVehicles = VehicleBooking::with('vehicle')
             ->where('company_id', $companyId)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])

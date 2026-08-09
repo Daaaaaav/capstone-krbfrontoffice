@@ -14,7 +14,6 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
     @if ($paginator->hasPages())
         <nav>
             <ul class="pagination">
-                {{-- Previous Page Link --}}
                 @if ($paginator->onFirstPage())
                     <li class="page-item disabled" aria-disabled="true">
                         <span class="page-link">@lang('pagination.previous')</span>
@@ -31,7 +30,6 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                     @endif
                 @endif
 
-                {{-- Next Page Link --}}
                 @if ($paginator->hasMorePages())
                     @if(method_exists($paginator,'getCursorName'))
                         <li class="page-item">

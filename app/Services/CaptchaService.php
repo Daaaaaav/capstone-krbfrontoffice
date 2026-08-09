@@ -12,7 +12,7 @@ class CaptchaService
         try {
             $response = Http::timeout(10)
                 ->withOptions([
-                    'verify' => false, // Disable SSL verification for local development
+                    'verify' => false,
                 ])
                 ->asForm()
                 ->post(

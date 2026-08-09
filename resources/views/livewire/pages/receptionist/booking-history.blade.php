@@ -245,6 +245,68 @@
                         </div>
                     </div>
                              {{-- LIST AREA (grid cards, same style as Approval) --}}
+
+                {{-- ── MANAGER PRIORITY ROOM BOOKINGS SECTION ── --}}
+                @php
+                    $priorityHistoryList = $activeTab === 'done' ? $priorityRoomHistory : $priorityRoomRejected;
+                @endphp
+                @if($priorityHistoryList->isNotEmpty())
+                <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-amber-200 bg-amber-50/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700">
+                            Manager Priority Bookings — {{ $activeTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
+                        </span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $priorityHistoryList->count() }}</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        @foreach($priorityHistoryList as $pb)
+                        @php
+                            $pbBadge = $activeTab === 'done'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700';
+                        @endphp
+                        <div wire:key="priority-hist-{{ $pb->id }}"
+                             class="bg-white border border-amber-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-amber-300 transition-all group">
+                            <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                                <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0 space-y-0.5">
+                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $pb->meeting_title }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ $pb->room?->room_name ?? '—' }} &bull;
+                                    {{ \Carbon\Carbon::parse($pb->date)->format('d M Y') }} &bull;
+                                    {{ $pb->start_time }} – {{ $pb->end_time }}
+                                </p>
+                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pb->manager?->full_name ?? '—' }}</p>
+                                @if($pb->rejection_reason)
+                                    <p class="text-[11px] text-rose-500 italic">{{ $pb->rejection_reason }}</p>
+                                @endif
+                            </div>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pbBadge }}">
+                                {{ $pb->statusLabel() }}
+                            </span>
+                            </div>
+                            {{-- Action buttons — same pattern as normal bookings --}}
+                            <div class="pt-2 border-t border-amber-100 flex justify-end gap-2">
+                                <button type="button"
+                                    wire:click="openPriorityEdit({{ $pb->id }})"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
+                                    {{ __('app.edit') }}
+                                </button>
+                                <button type="button"
+                                    wire:click="confirmPriorityDelete({{ $pb->id }}, '{{ str_replace('\'', '', $pb->meeting_title ?? 'Priority Booking') }}')"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
+                                    {{ __('app.delete') }}
+                                </button>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 {{-- DONE TAB --}}
                 @if($activeTab === 'done')
                     @if($doneRows->isEmpty())
@@ -835,51 +897,6 @@
                     @endif
                 @endif
 
-                {{-- ── MANAGER PRIORITY ROOM BOOKINGS SECTION ── --}}
-                @php
-                    $priorityHistoryList = $activeTab === 'done' ? $priorityRoomHistory : $priorityRoomRejected;
-                @endphp
-                @if($priorityHistoryList->isNotEmpty())
-                <div class="px-4 sm:px-6 pt-4 pb-3 border-t border-amber-200 bg-amber-50/40">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                        <span class="text-xs font-bold uppercase tracking-wider text-amber-700">
-                            Manager Priority Bookings — {{ $activeTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
-                        </span>
-                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white">{{ $priorityHistoryList->count() }}</span>
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        @foreach($priorityHistoryList as $pb)
-                        @php
-                            $pbBadge = $activeTab === 'done'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-rose-100 text-rose-700';
-                        @endphp
-                        <div wire:key="priority-hist-{{ $pb->id }}" class="bg-white border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-                            <div class="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
-                                <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0 space-y-0.5">
-                                <p class="text-sm font-semibold text-gray-900 truncate">{{ $pb->meeting_title }}</p>
-                                <p class="text-xs text-gray-500">
-                                    {{ $pb->room?->room_name ?? '—' }} &bull;
-                                    {{ \Carbon\Carbon::parse($pb->date)->format('d M Y') }} &bull;
-                                    {{ $pb->start_time }} – {{ $pb->end_time }}
-                                </p>
-                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pb->manager?->full_name ?? '—' }}</p>
-                                @if($pb->rejection_reason)
-                                    <p class="text-[11px] text-rose-500 italic">{{ $pb->rejection_reason }}</p>
-                                @endif
-                            </div>
-                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pbBadge }}">
-                                {{ $pb->statusLabel() }}
-                            </span>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
                 {{-- PAGINATION --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50 border-t border-gray-200">
                     <div class="w-full">
@@ -1433,4 +1450,248 @@
                 </div>
             </div>
         @endif
+
+    {{-- Priority Room Booking Detail Modal --}}
+    @if($showPriorityDetailModal && $priorityDetailBooking)
+    @php $pb = $priorityDetailBooking; @endphp
+    <div class="fixed inset-0 z-[200] flex items-center justify-center p-4" wire:key="history-priority-detail-modal">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closePriorityDetail"></div>
+        <div class="relative w-full max-w-lg bg-white border border-amber-200 rounded-2xl shadow-2xl overflow-hidden">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-amber-200 bg-amber-50/70">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">Priority Room Booking</p>
+                        <p class="text-[11px] text-amber-700">Submitted by manager</p>
+                    </div>
+                </div>
+                <button wire:click="closePriorityDetail" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-100 text-gray-500 hover:text-gray-700 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+                {{-- Status badge --}}
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</span>
+                    @php
+                        $pbBadgeClass = match($pb->status) {
+                            'approved', 'completed'   => 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                            'pending_receipt'          => 'bg-amber-100 text-amber-700 border-amber-200',
+                            'pending_cancellation'     => 'bg-orange-100 text-orange-700 border-orange-200',
+                            'rejected', 'conflict_denied' => 'bg-rose-100 text-rose-700 border-rose-200',
+                            default                    => 'bg-gray-100 text-gray-600 border-gray-200',
+                        };
+                    @endphp
+                    <span class="text-xs font-bold px-3 py-1 rounded-full border {{ $pbBadgeClass }}">
+                        {{ $pb->statusLabel() }}
+                    </span>
+                </div>
+
+                {{-- Booking details grid --}}
+                <div class="rounded-xl border border-gray-200 bg-gray-50/50 divide-y divide-gray-100">
+                    <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Room</p>
+                            <p class="font-semibold text-gray-900">{{ $pb->room?->room_name ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Meeting Title</p>
+                            <p class="font-semibold text-gray-900">{{ $pb->meeting_title ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Date</p>
+                            <p class="font-semibold text-gray-900">{{ \Carbon\Carbon::parse($pb->date)->format('d M Y') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Time</p>
+                            <p class="font-semibold text-gray-900">
+                                {{ \Carbon\Carbon::parse($pb->start_time)->format('H:i') }} – {{ \Carbon\Carbon::parse($pb->end_time)->format('H:i') }}
+                            </p>
+                        </div>
+                        @if($pb->number_of_attendees)
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Attendees</p>
+                            <p class="font-semibold text-gray-900">{{ $pb->number_of_attendees }}</p>
+                        </div>
+                        @endif
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Requested by</p>
+                            <p class="font-semibold text-amber-700">{{ $pb->manager?->full_name ?? '—' }}</p>
+                        </div>
+                        @if($pb->special_notes)
+                        <div class="col-span-2">
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Special Notes</p>
+                            <p class="font-semibold text-gray-900">{{ $pb->special_notes }}</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Rejection reason (if denied) --}}
+                @if($pb->rejection_reason)
+                <div class="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+                    <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <div>
+                        <p class="text-[11px] font-semibold text-red-700 mb-0.5">Reason for denial</p>
+                        <p class="text-xs text-red-600">{{ $pb->rejection_reason }}</p>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-6 py-4 border-t border-amber-100 bg-amber-50/40 flex items-center justify-between gap-3">
+                <button wire:click="closePriorityDetail"
+                    class="px-5 py-2 text-xs font-semibold rounded-lg bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition focus:outline-none focus:ring-2 focus:ring-amber-400/30">
+                    Close
+                </button>
+                <div class="flex gap-2">
+                    <button type="button"
+                        wire:click="openPriorityEdit({{ $pb->id }})"
+                        class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm inline-flex items-center gap-1.5">
+                        <x-heroicon-o-pencil class="w-3.5 h-3.5"/>
+                        {{ __('app.edit') }}
+                    </button>
+                    <button type="button"
+                        wire:click="confirmPriorityDelete({{ $pb->id }}, '{{ str_replace('\'', '', $pb->meeting_title ?? 'Priority Booking') }}')"
+                        class="h-9 px-4 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold hover:bg-rose-100 transition inline-flex items-center gap-1.5">
+                        <x-heroicon-o-trash class="w-3.5 h-3.5"/>
+                        {{ __('app.delete') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ===== PRIORITY ROOM BOOKING EDIT MODAL ===== --}}
+    @if($showPriorityEdit)
+    <div class="fixed inset-0 z-[250] overflow-y-auto flex items-center justify-center p-4" wire:key="priority-room-edit-modal">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showPriorityEdit', false)"></div>
+        <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
+            {{-- Header --}}
+            <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                <div>
+                    <p class="text-base font-bold tracking-tight">Edit Priority Room Booking #{{ $priorityEditId }}</p>
+                    @if($priorityEditCreatedAt)
+                        <p class="text-xs text-[#CDDEA7]/70 mt-0.5">Created: {{ $priorityEditCreatedAt }}</p>
+                    @endif
+                    @if($priorityEditLastEdited)
+                        <p class="text-xs text-[#CDDEA7]/70">Last edited: {{ $priorityEditLastEdited }}</p>
+                    @endif
+                </div>
+                <button type="button" wire:click="$set('showPriorityEdit', false)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">✕</button>
+            </div>
+            {{-- Body --}}
+            <div class="p-6 space-y-4 overflow-y-auto flex-1">
+                {{-- Meeting Title --}}
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Meeting Title *</label>
+                    <input type="text" wire:model.live="priorityEdit.meeting_title"
+                        class="w-full h-10 px-3.5 rounded-lg border border-gray-300 text-gray-800 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition">
+                    @error('priorityEdit.meeting_title') <p class="text-xs text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+                {{-- Date --}}
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Date *</label>
+                    <input type="date" wire:model.live="priorityEdit.date"
+                        class="w-full h-10 px-3.5 rounded-lg border border-gray-300 text-gray-800 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition">
+                    @error('priorityEdit.date') <p class="text-xs text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+                {{-- Start / End Time --}}
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Start Time *</label>
+                        <input type="time" wire:model.live="priorityEdit.start_time"
+                            class="w-full h-10 px-3.5 rounded-lg border border-gray-300 text-gray-800 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition">
+                        @error('priorityEdit.start_time') <p class="text-xs text-rose-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">End Time *</label>
+                        <input type="time" wire:model.live="priorityEdit.end_time"
+                            class="w-full h-10 px-3.5 rounded-lg border border-gray-300 text-gray-800 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition">
+                        @error('priorityEdit.end_time') <p class="text-xs text-rose-600 mt-1">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                {{-- Number of Attendees --}}
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Number of Attendees</label>
+                    <input type="number" min="1" wire:model.live="priorityEdit.number_of_attendees"
+                        class="w-full h-10 px-3.5 rounded-lg border border-gray-300 text-gray-800 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition">
+                    @error('priorityEdit.number_of_attendees') <p class="text-xs text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+                {{-- Special Notes --}}
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Special Notes</label>
+                    <textarea wire:model.live="priorityEdit.special_notes" rows="3"
+                        class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-gray-800 focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 bg-white transition text-sm resize-none"
+                        placeholder="Any notes..."></textarea>
+                    @error('priorityEdit.special_notes') <p class="text-xs text-rose-600 mt-1">{{ $message }}</p> @enderror
+                </div>
+            </div>
+            {{-- Footer --}}
+            <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50/50">
+                <button type="button"
+                    wire:click="$set('showPriorityEdit', false)"
+                    class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 transition inline-flex items-center gap-1.5">
+                    {{ __('app.cancel') }}
+                </button>
+                <button type="button"
+                    wire:click="savePriorityEdit"
+                    wire:loading.attr="disabled"
+                    class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                    <span wire:loading.remove wire:target="savePriorityEdit">{{ __('app.save') }}</span>
+                    <span wire:loading wire:target="savePriorityEdit" class="flex items-center gap-1.5">
+                        <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5"/>
+                        {{ __('app.save') }}...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- ===== PRIORITY ROOM BOOKING DELETE MODAL ===== --}}
+    @if($showPriorityDeleteModal)
+    <div class="fixed inset-0 z-[250] overflow-y-auto flex items-center justify-center p-4" wire:key="priority-room-delete-modal">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="$set('showPriorityDeleteModal', false)"></div>
+        <div class="relative w-full max-w-sm bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-200 bg-rose-50/60">
+                <p class="text-base font-bold text-gray-900">Delete Priority Room Booking?</p>
+                <p class="text-xs text-gray-500 mt-0.5">This action cannot be undone.</p>
+            </div>
+            <div class="px-6 py-4">
+                @if($priorityDeletingSummary)
+                    <p class="text-sm text-gray-700">
+                        You are about to delete: <span class="font-semibold text-gray-900">{{ $priorityDeletingSummary }}</span>
+                    </p>
+                @endif
+            </div>
+            <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                <button type="button" wire:click="$set('showPriorityDeleteModal', false)"
+                    class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                    {{ __('app.cancel') }}
+                </button>
+                <button type="button" wire:click="executePriorityDelete" wire:loading.attr="disabled"
+                    class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                    <span wire:loading.remove wire:target="executePriorityDelete">{{ __('app.delete') }}</span>
+                    <span wire:loading wire:target="executePriorityDelete" class="flex items-center gap-1.5">
+                        <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                        {{ __('app.delete') }}...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
 </div>

@@ -8,10 +8,6 @@ use Illuminate\Http\Request;
 
 class GoogleAuthController extends Controller
 {
-    /**
-     * Redirect to Google's OAuth consent screen.
-     * Only accessible when logged in as Manager.
-     */
     public function auth()
     {
         $client = $this->makeClient();
@@ -19,9 +15,6 @@ class GoogleAuthController extends Controller
         return redirect()->away($authUrl);
     }
 
-    /**
-     * Handle the OAuth callback from Google, save the token.
-     */
     public function callback(Request $request)
     {
         if ($request->has('error')) {
@@ -65,9 +58,6 @@ class GoogleAuthController extends Controller
         }
     }
 
-    /**
-     * Disconnect — delete the saved token.
-     */
     public function disconnect()
     {
         $tokenPath = config('services.google.token_path', 'storage/app/google/token.json');
@@ -93,7 +83,7 @@ class GoogleAuthController extends Controller
         $client = new Client();
         $client->setAuthConfig($clientSecretPath);
         $client->setAccessType('offline');
-        $client->setPrompt('consent'); // always return refresh_token
+        $client->setPrompt('consent'); // refresh_token
         $client->setScopes([
             Calendar::CALENDAR,
             Calendar::CALENDAR_EVENTS,

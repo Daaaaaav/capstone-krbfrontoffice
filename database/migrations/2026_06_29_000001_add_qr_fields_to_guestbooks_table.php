@@ -14,10 +14,7 @@ return new class extends Migration {
             if (!Schema::hasColumn('guestbooks', 'qr_token')) {
                 $table->string('qr_token', 64)->nullable()->unique()->after('email');
             }
-            if (!Schema::hasColumn('guestbooks', 'qr_status')) {
-                // 'pending'   = QR sent, not yet scanned
-                // 'ongoing'   = QR scanned at least once (visitor confirmed onsite)
-                // 'completed' = jam_out is set
+            if (!Schema::hasColumn('guestbooks', 'qr_status')) {             
                 $table->enum('qr_status', ['pending', 'ongoing', 'completed'])
                       ->default('pending')
                       ->after('qr_token');

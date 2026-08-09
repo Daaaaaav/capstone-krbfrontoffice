@@ -16,6 +16,7 @@
         "blade-ui-kit/blade-icons": "^1.8",
         "google/apiclient": "^2.18",
         "laravel/framework": "^12.0",
+        "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.10.1",
         "livewire/flux": "^2.4",
         "livewire/livewire": "^3.7",

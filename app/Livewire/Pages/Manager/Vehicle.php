@@ -19,19 +19,13 @@ class Vehicle extends Component
     protected string $paginationTheme = 'tailwind';
 
     public int $company_id = 0;
-
-    // Filters
     public string $search = '';
-
-    // Create form
     public string $name         = '';
     public string $category     = '';
     public string $plate_number = '';
     public string $year         = '';
     public bool   $is_active    = true;
     public string $notes        = '';
-
-    // Modal state
     public bool    $showModal        = false;
     public bool    $editMode         = false;
     public ?int    $edit_id          = null;
@@ -52,11 +46,6 @@ class Vehicle extends Component
         $this->resetPage(pageName: 'vehiclesPage');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | MODAL CONTROL
-    |--------------------------------------------------------------------------
-    */
     public function openCreateModal(): void
     {
         $this->resetForm();
@@ -111,11 +100,6 @@ class Vehicle extends Component
         $this->edit_notes        = '';
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION RULES
-    |--------------------------------------------------------------------------
-    */
     protected function createRules(): array
     {
         return [
@@ -151,13 +135,10 @@ class Vehicle extends Component
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | SAVE (CREATE / UPDATE)
-    |--------------------------------------------------------------------------
-    */
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         try {
             if ($this->editMode) {
                 $this->validate($this->editRules());
@@ -199,11 +180,6 @@ class Vehicle extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE (soft delete)
-    |--------------------------------------------------------------------------
-    */
     public function delete(int $id): void
     {
         try {
@@ -217,11 +193,6 @@ class Vehicle extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | RENDER
-    |--------------------------------------------------------------------------
-    */
     public function render()
     {
         $rows = VehicleModel::query()

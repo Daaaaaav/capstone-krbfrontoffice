@@ -55,7 +55,6 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                 <div>
                     <span class="relative z-0 inline-flex rtl:flex-row-reverse rounded-lg shadow-sm">
                         <span>
-                            {{-- Previous Page Link --}}
                             @if ($paginator->onFirstPage())
                                 <span aria-disabled="true" aria-label="{{ __('pagination.previous') }}">
                                     <span class="relative inline-flex items-center px-2.5 py-2 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 cursor-default rounded-l-lg leading-5" aria-hidden="true">
@@ -73,16 +72,12 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                             @endif
                         </span>
 
-                        {{-- Pagination Elements --}}
                         @foreach ($elements as $element)
-                            {{-- "Three Dots" Separator --}}
                             @if (is_string($element))
                                 <span aria-disabled="true">
                                     <span class="relative inline-flex items-center px-3.5 py-2 -ml-px text-sm font-medium text-gray-500 bg-white border border-gray-200 cursor-default leading-5">{{ $element }}</span>
                                 </span>
                             @endif
-
-                            {{-- Array Of Links --}}
                             @if (is_array($element))
                                 @foreach ($element as $page => $url)
                                     <span wire:key="paginator-{{ $paginator->getPageName() }}-page{{ $page }}">
@@ -101,7 +96,6 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                         @endforeach
 
                         <span>
-                            {{-- Next Page Link --}}
                             @if ($paginator->hasMorePages())
                                 <button type="button" wire:click="nextPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" dusk="nextPage{{ $paginator->getPageName() == 'page' ? '' : '.' . $paginator->getPageName() }}.after" class="relative inline-flex items-center px-2.5 py-2 -ml-px text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-r-lg leading-5 hover:bg-gray-50 hover:text-gray-900 focus:z-10 focus:outline-none focus:border-[#4E653D] focus:ring-1 focus:ring-[#4E653D] active:bg-gray-100 transition ease-in-out duration-150" aria-label="{{ __('pagination.next') }}">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

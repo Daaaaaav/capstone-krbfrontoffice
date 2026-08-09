@@ -18,18 +18,15 @@ use Illuminate\Support\Str;
 #[Title('Register')]
 class Register extends Component
 {
-    // Form fields
     public string $full_name = '';
     public string $email = '';
     public string $phone_number = '';
     public string $password = '';
     public string $password_confirmation = '';
 
-    // Select values (FK)
     public ?int $company_id = null;
     public ?int $department_id = null;
 
-    // Options for <select>
     public array $companies = [];
     public array $departments = [];
 
@@ -39,7 +36,6 @@ class Register extends Component
             redirect()->route('home')->send();
         }
 
-        // Ambil companies (alias ke id/name agar mudah dipakai di view)
         $this->companies = Company::query()
             ->orderBy('company_name')
             ->get(['company_id as id', 'company_name as name'])
@@ -49,7 +45,6 @@ class Register extends Component
         $this->departments = [];
     }
 
-    // Ketika company berubah, load departments milik company tsb
     public function updatedCompanyId($value): void
     {
         $this->department_id = null;
@@ -74,8 +69,6 @@ class Register extends Component
             'email'            => ['required','email','max:255','unique:users,email'],
             'phone_number'     => ['nullable','string','max:30'],
             'password'         => ['required','confirmed','min:6'],
-
-            // exists diarahkan ke kolom PK sebenarnya
             'company_id'       => ['nullable','exists:companies,company_id'],
             'department_id'    => ['nullable','exists:departments,department_id'],
         ];
@@ -85,14 +78,13 @@ class Register extends Component
     {
         $data = $this->validate();
 
-        // Ambil role_id untuk 'User' dari tabel roles; fallback ke 3 kalau tidak ada
         $defaultRoleId = Role::where('name', 'User')->value('role_id') ?? 3;
 
         $user = User::create([
             'full_name'     => $data['full_name'],
             'email'         => Str::lower($data['email']),
             'phone_number'  => $data['phone_number'] ?: null,
-            'password'      => $data['password'], // pastikan di User::$casts => ['password' => 'hashed']
+            'password'      => $data['password'],
             'company_id'    => $this->company_id,
             'department_id' => $this->department_id,
             'role_id'       => $defaultRoleId,

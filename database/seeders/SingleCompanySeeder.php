@@ -18,43 +18,29 @@ use App\Models\{
     Storage,
     Vehicle,
     VehicleBooking,
-    VehicleBookingPhoto, 
     Delivery,
     Announcement,
     Information,
-    Guestbook // BookingRoom and Ticket models removed
+    Guestbook
 };
 
 class SingleCompanySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Start a database transaction for data integrity
         DB::transaction(function () {
-            // Get current time for timestamps
             $now = Carbon::now();
-
-            // Define the three requested companies
             $companies = [
                 ['Kebun Raya Cibodas', 'krcibodas.id', 'https://tiketkebunraya.id/assets/images/kebun-raya-cibodas.png'],
                 ['Kebun Raya Bali', 'krbali.id', 'https://tiketkebunraya.id/assets/images/kebun-raya-bali.png'],
                 ['Kebun Raya Purwodadi', 'krpurwodadi.id', 'https://tiketkebunraya.id/assets/images/kebun-raya-purwodadi.png'],
             ];
-
-            // Default Company (often ID 1) - ensure it exists
             Company::firstOrCreate(
                 ['company_id' => 1],
                 ['company_name' => 'Default Company']
             );
-
-            // Loop through each company definition
             foreach ($companies as [$companyName, $domain, $imageUrl]) {
                 echo "\n🌿 Seeding {$companyName}...\n";
-
-                // === COMPANY CREATION ===
                 $company = Company::firstOrCreate(
                     ['company_name' => $companyName],
                     [
@@ -65,14 +51,10 @@ class SingleCompanySeeder extends Seeder
                 );
 
                 $companyId = $company->company_id;
-
-                // === ROLES ===
                 $roles = [];
                 foreach (['Manager', 'Receptionist'] as $r) {
                     $roles[$r] = Role::firstOrCreate(['name' => $r]);
                 }
-
-                // === DEPARTMENTS ===
                 $deptNames = [
                     'IT','Finance','HRD','Marketing','Operations',
                     'General Affairs','Executive',
@@ -85,8 +67,6 @@ class SingleCompanySeeder extends Seeder
                         'department_name' => $d,
                     ]);
                 }
-
-                // === CORE USERS (Manager & Receptionist) ===
                 $manager = User::firstOrCreate(
                     ['email' => "manager@{$domain}"],
                     [
@@ -115,32 +95,19 @@ class SingleCompanySeeder extends Seeder
                 );
                 echo "  ✅ Receptionist User: {$receptionist->email} (receppassword)\n";
 
-
-                // === GENERAL USERS ===
                 $users = collect([$manager, $receptionist]);
-                $agents = collect();
 
                 echo "  ✅ Seeded core users\n";
-
-                // Memanggil fungsi untuk data aset dan aktivitas spesifik perusahaan
                 $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now);
             }
         });
     }
 
-    // --- Helper Functions ---
-
-    /**
-     * Helper function to seed asset and activity data for a specific company.
-     * Ticket and Booking Room logic removed.
-     */
-    protected function seedAssetsAndActivities($companyId, $companyName, $depts, $roles, $admins, $users, $agents, $receptionist, $now)
+    protected function seedAssetsAndActivities($companyId, $companyName, $depts, $roles, $admins, $users, $receptionist, $now)
     {
-        // Set random seed based on company ID for consistent demo data per company
         mt_srand($companyId * 999); 
-        $daysBack = 1825; // 5 Years
+        $daysBack = 1825; // 5 years
 
-        // ===== ROOMS & REQUIREMENTS (Data is seeded but no booking logic remains) =====
         $rooms = collect(['Garuda','Merak','Cendrawasih','Aula','Elang'])
             ->map(fn($r) => Room::firstOrCreate(['company_id'=>$companyId,'room_name'=>"Ruang {$r}"]));
         echo "  ✅ Seeded Rooms\n";
@@ -151,7 +118,6 @@ class SingleCompanySeeder extends Seeder
         }
         echo "  ✅ Seeded Requirements\n";
 
-        // ===== STORAGES & VEHICLES =====
         foreach ([['S-01','Rak Dokumen'],['S-02','Loker Paket'],['S-03','Gudang ATK']] as [$code,$name]) {
             Storage::firstOrCreate(['company_id'=>$companyId,'code'=>$code],['name'=>$name]);
         }
@@ -168,8 +134,7 @@ class SingleCompanySeeder extends Seeder
             ));
         }
         echo "  ✅ Seeded Vehicles\n";
-
-        // ===== DELIVERIES =====
+        
         for ($i=1; $i<=50; $i++) {
             Delivery::create([
                 'company_id'=>$companyId,
@@ -185,24 +150,8 @@ class SingleCompanySeeder extends Seeder
         }
         echo "  ✅ Seeded Deliveries\n";
 
-        // ===== ANNOUNCEMENTS/GUESTBOOK =====
         for ($i=1; $i<=30; $i++) {
             $randomDate = $now->copy()->subDays(rand(0, $daysBack)); 
-
-            Announcement::create([
-                'company_id'=>$companyId,
-                'description'=>"📢 Pengumuman {$companyName} #{$i}",
-                'event_at'=>$randomDate->copy()->addDays(rand(2,10)),
-                'created_at'=>$randomDate,
-            ]);
-
-            Information::create([
-                'company_id'=>$companyId,
-                'department_id'=>Arr::random($depts)->department_id,
-                'description'=>"📰 Info khusus {$companyName} #{$i}",
-                'event_at'=>$randomDate->copy()->addDays(rand(1,5)),
-                'created_at'=>$randomDate,
-            ]);
 
             Guestbook::create([
                 'company_id'=>$companyId,
@@ -219,16 +168,10 @@ class SingleCompanySeeder extends Seeder
         }
         echo "  ✅ Seeded Announcements, Information, and Guestbooks\n";
 
-        // ===== VEHICLE BOOKINGS =====
-        // The 4 vehicles are: index 0 & 1 = "clean" (never late_return),
-        // index 2 & 3 = "overdue" (may have late_return bookings).
         if ($vehicles->isNotEmpty()) {
             $cleanVehicleIds  = $vehicles->take(2)->pluck('vehicle_id')->toArray();
             $overdueVehicleIds = $vehicles->slice(2)->pluck('vehicle_id')->toArray();
-
-            // Statuses allowed for clean vehicles (no late_return)
             $cleanStatuses   = ['pending', 'approved', 'on_progress', 'returned', 'completed', 'rejected'];
-            // Statuses for overdue vehicles (late_return included)
             $overdueStatuses = ['pending', 'approved', 'on_progress', 'returned', 'completed', 'rejected', 'late_return'];
 
             foreach (range(1, 80) as $i) {
@@ -239,7 +182,6 @@ class SingleCompanySeeder extends Seeder
 
                 $purposeType = Arr::random(['dinas', 'operasional', 'antar_jemput', 'lainnya']);
 
-                // Pick status pool based on whether this vehicle is "clean"
                 if (in_array($vehicle->vehicle_id, $cleanVehicleIds)) {
                     $status = Arr::random($cleanStatuses);
                 } else {
@@ -263,25 +205,6 @@ class SingleCompanySeeder extends Seeder
                     'created_at'   => $start,
                     'updated_at'   => $start,
                 ]);
-
-                if (in_array($status, ['on_progress', 'returned', 'completed', 'late_return'])) {
-                    VehicleBookingPhoto::create([
-                        'vehiclebooking_id' => $booking->vehiclebooking_id,
-                        'user_id'           => $user->user_id,
-                        'photo_type'        => 'before',
-                        'photo_path'        => 'vehicle_photos/demo_sample_before_' . $i . '.jpg',
-                        'created_at'        => $start,
-                    ]);
-                }
-                if ($status === 'completed') {
-                    VehicleBookingPhoto::create([
-                        'vehiclebooking_id' => $booking->vehiclebooking_id,
-                        'user_id'           => $user->user_id,
-                        'photo_type'        => 'after',
-                        'photo_path'        => 'vehicle_photos/demo_sample_after_' . $i . '.jpg',
-                        'created_at'        => $end,
-                    ]);
-                }
             }
         }
         echo "  ✅ Seeded Vehicle Bookings\n";

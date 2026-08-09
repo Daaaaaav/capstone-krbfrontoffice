@@ -258,6 +258,16 @@
                                                     <span>{{ __('app.received_label') }}: <span class="font-medium text-gray-700">{{ fmtDate($row->created_at) }} · {{ fmtTime($row->created_at) }}</span></span>
                                                 </div>
                                             @endif
+
+                                            {{-- Show Image button --}}
+                                            @if($row->image && Storage::disk('public')->exists($row->image))
+                                                <button type="button"
+                                                    @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->image) }}' })"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
+                                                    <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                    {{ __('app.lihat_bukti_foto') }}
+                                                </button>
+                                            @endif
                                         </div>
 
                                         {{-- BOTTOM ACTIONS --}}
@@ -335,6 +345,14 @@
                                                 </td>
                                                 <td class="px-6 py-4 text-right">
                                                     <div class="flex items-center justify-end gap-2">
+                                                        @if($row->image && Storage::disk('public')->exists($row->image))
+                                                            <button type="button"
+                                                                @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->image) }}' })"
+                                                                class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 focus:outline-none transition inline-flex items-center gap-1.5">
+                                                                <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                                {{ __('app.lihat_bukti_foto') }}
+                                                            </button>
+                                                        @endif
                                                         <button type="button" wire:click="openEdit({{ $row->delivery_id }})"
                                                             class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition shadow-sm">
                                                             {{ __('app.edit') }}
@@ -759,7 +777,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Document Photo</label>
                         <div class="flex gap-4">
                             <div class="w-32 h-40 shrink-0 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden relative flex items-center justify-center">
-                                @if($editPhoto)
+                                @if($editPhoto && method_exists($editPhoto, 'temporaryUrl') && in_array($editPhoto->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']))
                                     <img src="{{ $editPhoto->temporaryUrl() }}" class="w-full h-full object-cover">
                                 @elseif($editImageUrl && Storage::disk('public')->exists($editImageUrl))
                                     <img src="{{ asset('storage/' . $editImageUrl) }}" class="w-full h-full object-cover">
@@ -805,4 +823,26 @@
             </div>
         </div>
     @endif
-</div>
+
+    {{-- IMAGE LIGHTBOX --}}
+    <div
+        x-data="{ open: false, src: '' }"
+        @open-lightbox.window="open = true; src = $event.detail.src"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="open = false"
+        style="display:none">
+        <button type="button" @click="open = false"
+            class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img :src="src" alt="Bukti foto" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain">
+    </div>
+</div>>

@@ -4,14 +4,12 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
-// ========== Controllers ==========
 use App\Http\Controllers\GuestbookScanController;
-use App\Http\Controllers\AttachmentController;
-use App\Http\Controllers\VehicleAttachmentController;
+// use App\Http\Controllers\AttachmentController;
+// use App\Http\Controllers\VehicleAttachmentController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ChatExportController;
 
-// ========== Livewire Pages (Manager) ==========
 use App\Livewire\Pages\Manager\Dashboard as ManagerDashboard;
 use App\Livewire\Pages\Manager\ReceptionistUsers as ReceptionistUsers;
 use App\Livewire\Pages\Manager\RoomBookingStatistics as RoomBookingStatistics;
@@ -133,6 +131,7 @@ Route::get('/home', function (Request $request) {
     return match ($roleName) {
         'Manager'       => redirect()->route('manager.dashboard'),
         'Receptionist'  => redirect()->route('receptionist.dashboard'),
+        'IT Officer'    => redirect()->route('it-officer.dashboard'),
         default         => (function () use ($request) {
             Auth::logout();
             $request->session()->invalidate();
@@ -188,14 +187,14 @@ Route::middleware(['auth'])->group(function () {
     })->where('path', '.*')->name('delivery.image');
 
     // ---------- Attachments API (Local Storage) ----------
-    Route::prefix('attachments')->group(function () {
-        Route::post('/temp', [AttachmentController::class, 'tempUpload'])
-            ->name('attachments.temp');
-        Route::delete('/temp', [AttachmentController::class, 'deleteTemp'])
-            ->name('attachments.temp.delete');
-        Route::post('/finalize', [AttachmentController::class, 'finalizeTemp'])
-            ->name('attachments.finalize');
-    });
+    // Route::prefix('attachments')->group(function () {
+    //     Route::post('/temp', [AttachmentController::class, 'tempUpload'])
+    //         ->name('attachments.temp');
+    //     Route::delete('/temp', [AttachmentController::class, 'deleteTemp'])
+    //         ->name('attachments.temp.delete');
+    //     Route::post('/finalize', [AttachmentController::class, 'finalizeTemp'])
+    //         ->name('attachments.finalize');
+    // });
 
     // ---------- Notifications UI (Static View) ----------
     Route::get('/notifications', function () {
@@ -211,19 +210,13 @@ Route::middleware(['auth'])->group(function () {
     // ---------- Manager routes ----------
     Route::middleware('is.manager')->group(function () {
         Route::get('/manager-dashboard', ManagerDashboard::class)->name('manager.dashboard');
-        Route::get('/receptionists', ReceptionistUsers::class)->name('manager.receptionists');
         Route::get('/room-bookings', RoomBookingStatistics::class)->name('manager.room');
         Route::get('/vehicle-bookings', VehicleBookingStatistics::class)->name('manager.vehicle');
         Route::get('/deliveries', DeliveryStatistics::class)->name('manager.delivery');
         Route::get('/guestbook', GuestbookStatistics::class)->name('manager.guestbook');
         Route::get('/lstm-predictions', \App\Livewire\Pages\Manager\LSTMPredictions::class)->name('manager.lstm-predictions');
         Route::get('/ai-security', AISecurityReports::class)->name('manager.ai-security');
-        // Route::get('/weather', \App\Livewire\Pages\Manager\WeatherDashboard::class)->name('manager.weather');
         Route::get('/occupancy-forecasting', \App\Livewire\Pages\Manager\OccupancyForecasting::class)->name('manager.occupancy');
-        // Resource Management
-        Route::get('/manage-rooms', Manageroom::class)->name('manager.manageroom');
-        Route::get('/manage-vehicles', VehiclePage::class)->name('manager.managevehicle');
-        Route::get('/manage-storages', StoragePage::class)->name('manager.managestorage');
         Route::get('/manager-settings', ManagerSettings::class)->name('manager.settings');
         Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
         // Priority bookings & operational forms
@@ -232,6 +225,22 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/manager-guestbook-form', ManagerGuestbookForm::class)->name('manager.guestbook-form');
         Route::get('/manager-docpack-form', ManagerDocPackForm::class)->name('manager.docpack-form');
         Route::get('/manager-docpack-status', fn() => redirect()->route('manager.docpack-form'))->name('manager.docpack-status');
+    });
+
+    // ---------- IT Officer routes ----------
+    Route::middleware('is.it.officer')->group(function () {
+        Route::get('/it-officer-dashboard', \App\Livewire\Pages\ItOfficer\Dashboard::class)->name('it-officer.dashboard');
+        Route::get('/it-officer-receptionists', \App\Livewire\Pages\ItOfficer\ReceptionistUsers::class)->name('it-officer.receptionists');
+        Route::get('/it-officer-managers', \App\Livewire\Pages\ItOfficer\ManagerUsers::class)->name('it-officer.managers');
+        Route::get('/it-officer-users-per-department', \App\Livewire\Pages\ItOfficer\UsersPerDepartment::class)->name('it-officer.users-per-department');
+        Route::get('/it-officer-manage-rooms', \App\Livewire\Pages\ItOfficer\Manageroom::class)->name('it-officer.manageroom');
+        Route::get('/it-officer-manage-vehicles', \App\Livewire\Pages\ItOfficer\Vehicle::class)->name('it-officer.managevehicle');
+        Route::get('/it-officer-manage-storages', \App\Livewire\Pages\ItOfficer\Storage::class)->name('it-officer.managestorage');
+        Route::get('/it-officer-lstm-predictions', \App\Livewire\Pages\ItOfficer\LSTMPredictions::class)->name('it-officer.lstm-predictions');
+        Route::get('/it-officer-occupancy', \App\Livewire\Pages\ItOfficer\OccupancyForecasting::class)->name('it-officer.occupancy');
+        Route::get('/it-officer-ai-security', \App\Livewire\Pages\ItOfficer\AISecurityReports::class)->name('it-officer.ai-security');
+        Route::get('/it-officer-settings', \App\Livewire\Pages\ItOfficer\Settings::class)->name('it-officer.settings');
+        Route::get('/it-officer-help', \App\Livewire\Pages\ItOfficer\Help::class)->name('it-officer.help');
     });
 
     // ---------- Receptionist routes ----------

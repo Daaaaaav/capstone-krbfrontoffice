@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Pages\Receptionist;
 
-use App\Models\Delivery; // gunakan tabel deliveries
+use App\Models\Delivery; 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
@@ -21,23 +21,16 @@ class Documents extends Component
     protected string $paginationTheme = 'tailwind';
     protected $queryString = ['q', 'filter_date'];
 
-    /**
-     * Menjaga kompatibilitas dengan form/blade lama:
-     * - document_name  -> item_name (DB)
-     * - penyimpanan    -> storage_id (DB)
-     */
     public $document_name, $nama_pengirim, $nama_penerima;
-    public $type = 'document';         // 'document' | 'package'
-    public $penyimpanan;               // storage_id
+    public $type = 'document';         // 'document' (default) | 'package'
+    public $penyimpanan;            
     public $pengambilan_date, $pengambilan_time;
-    public $status = 'pending';        // 'pending' | 'stored' | 'delivered' | 'taken'
+    public $status = 'pending';        // 'pending' (default) | 'stored' | 'delivered' | 'taken'
     public $filter_date;
     public $q = '';
 
     public bool $showEdit = false;
     public $editId = null;
-
-    // Delete Modal State
     public ?int $deletingId = null;
     public string $deletingSummary = '';
     public bool $showDeleteModal = false;
@@ -83,11 +76,11 @@ class Documents extends Component
     protected function rules(): array
     {
         return [
-            'document_name'    => ['required', 'string', 'max:255'],                 // -> item_name
+            'document_name'    => ['required', 'string', 'max:255'],                
             'nama_pengirim'    => ['nullable', 'string', 'max:255'],
             'nama_penerima'    => ['nullable', 'string', 'max:255'],
             'type'             => ['required', 'in:document,package'],
-            'penyimpanan'      => ['nullable', 'integer', 'exists:storages,storage_id'], // -> storage_id
+            'penyimpanan'      => ['nullable', 'integer', 'exists:storages,storage_id'],
             'pengambilan_date' => ['nullable', 'date'],
             'pengambilan_time' => ['nullable', 'date_format:H:i'],
             'status'           => ['required', 'in:pending,stored,delivered,taken'],
@@ -114,6 +107,8 @@ class Documents extends Component
 
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $data = $this->validate();
 
         SecurityMonitoringService::logFormSubmit('documents', $data);
@@ -178,6 +173,8 @@ class Documents extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate($this->rulesEdit());
         $row = $this->findOwnedOrFail($this->editId);
 
@@ -237,10 +234,9 @@ class Documents extends Component
         $this->isForceDelete = false;
     }
 
-    /** Soft delete only */
     private function deleteAction(int $id): void
     {
-        $this->findOwnedOrFail($id)->delete(); // soft delete
+        $this->findOwnedOrFail($id)->delete();
         $this->dispatch('toast', type: 'success', title: __('app.success'), message: 'Item dihapus (soft delete).', duration: 3000);
         $this->dispatch('$refresh');
     }
@@ -265,8 +261,6 @@ class Documents extends Component
         $this->type = 'document';
         $this->status = 'pending';
     }
-
-    // ======== Lists / Query (otomatis exclude soft-deleted) ========
 
     public function getPendingListProperty()
     {
@@ -301,7 +295,7 @@ class Documents extends Component
     public function getEntriesProperty()
     {
         $q = Delivery::byCompany($this->companyId())
-            ->whereNotNull('pengiriman'); // riwayat (delivered)
+            ->whereNotNull('pengiriman');
 
         if ($this->filter_date) {
             $q->whereDate('pengambilan', $this->filter_date);
@@ -319,7 +313,6 @@ class Documents extends Component
 
     public function render()
     {
-        // tetap gunakan blade lama jika struktur UI kamu belum diubah
         return view('livewire.pages.receptionist.documents', [
             'pendingList' => $this->pendingList,
             'storedList'  => $this->storedList,

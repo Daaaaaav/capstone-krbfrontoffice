@@ -186,10 +186,10 @@
                                 @php
                                     $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
                                     $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
-                                    $isScheduled = $e->date && $e->date->gt(now()->startOfDay());
-                                    $cardBorder  = $isScheduled ? 'border-amber-300 bg-amber-50/40' : 'border-[#4E653D]/25 bg-white';
-                                    $cardHover   = $isScheduled ? 'hover:border-amber-400 hover:shadow-amber-100' : 'hover:border-[#4E653D]/40';
-                                    $avatarBg    = $isScheduled ? 'bg-amber-500' : 'bg-[#4E653D]';
+                                    $isScheduled = (bool) ($e->scheduled_by_manager ?? false);
+                                    $cardBorder  = $isScheduled ? 'border-violet-300 bg-violet-50/40' : 'border-[#4E653D]/25 bg-white';
+                                    $cardHover   = $isScheduled ? 'hover:border-violet-400 hover:shadow-violet-100' : 'hover:border-[#4E653D]/40';
+                                    $avatarBg    = $isScheduled ? 'bg-violet-600' : 'bg-[#4E653D]';
                                 @endphp
                                 <div wire:key="active-{{ $e->guestbook_id }}"
                                      class="{{ $cardBorder }} border rounded-xl p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 hover:shadow-md {{ $cardHover }} transition">
@@ -341,7 +341,7 @@
                                             $rowNo       = ($activeEntries->firstItem() ?? 1) + $loop->index;
                                             $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
                                             $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
-                                            $isScheduled = $e->date && $e->date->gt(now()->startOfDay());
+                                            $isScheduled = (bool) ($e->scheduled_by_manager ?? false);
                                         @endphp
                                         <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="{{ $isScheduled ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50/50' }} transition-colors">
                                             

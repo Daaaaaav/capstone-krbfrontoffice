@@ -6,6 +6,7 @@ use App\Models\BookingRoom;
 use App\Models\PriorityRoomBooking;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -25,14 +26,50 @@ class RoomApproval extends Component
     public int $perPending = 6;
     public int $perOngoing = 6;
 
-    // Priority booking detail modal
     public bool  $showPriorityDetailModal = false;
     public ?int  $priorityDetailId        = null;
 
-    /** Poller */
     public function tick(): void
     {
-        // No action needed; Livewire will automatically re-render and re-query
+        // No action needed; Livewire automatic re-render and re-query
+    }
+
+    private function autoProgressToCompleted(): void
+    {
+        $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'));
+
+        $threshold = $now->copy()->subMinute()->toDateTimeString();
+
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN end_time END,
+            CASE WHEN `date`   REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN `date`  END,
+            CONCAT(`date`, ' ', end_time)
+        )";
+
+        DB::transaction(function () use ($threshold, $endExpr) {
+            BookingRoom::query()
+                ->where('status', 'approved')
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$threshold])
+                ->update([
+                    'status'     => 'completed',
+                    'updated_at' => now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString(),
+                ]);
+
+            BookingRoom::query()
+                ->where('status', 'pending')
+                ->whereNotNull('date')
+                ->whereNotNull('end_time')
+                ->whereRaw("$endExpr IS NOT NULL")
+                ->whereRaw("$endExpr <= ?", [$threshold])
+                ->update([
+                    'status'     => 'rejected',
+                    'book_reject' => 'Auto-rejected: booking window expired without approval.',
+                    'updated_at' => now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString(),
+                ]);
+        });
     }
 
     public function openPriorityDetail(int $id): void
@@ -47,7 +84,6 @@ class RoomApproval extends Component
         $this->priorityDetailId        = null;
     }
 
-    /** Computed: load the PriorityRoomBooking being viewed */
     public function getPriorityDetailBookingProperty(): ?PriorityRoomBooking
     {
         if (!$this->priorityDetailId) return null;
@@ -71,27 +107,56 @@ class RoomApproval extends Component
 
     public function render()
     {
-        $cid = Auth::user()?->company_id;
+        PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
 
-        // Paginated pending list
+        $cid = Auth::user()?->company_id;
+        $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'))->toDateTimeString();
+
+        $startExpr = "COALESCE(
+            CASE WHEN start_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN start_time END,
+            CASE WHEN date       REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date END,
+            CONCAT(date, ' ', start_time)
+        )";
+
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN end_time END,
+            CASE WHEN date     REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' THEN date     END,
+            CONCAT(date, ' ', end_time)
+        )";
+
         $pending = BookingRoom::with('room')
             ->company($cid)
-            ->pending()
+            ->where(function ($q) use ($now, $startExpr, $endExpr) {
+                $q->where(function ($q1) use ($now, $endExpr) {
+
+                      $q1->pending()
+                         ->whereNotNull('date')
+                         ->whereNotNull('end_time')
+                         ->whereRaw("$endExpr > ?", [$now]);
+                  })
+                  ->orWhere(function ($q2) use ($now, $startExpr) {
+                      $q2->approved()
+                         ->whereNotNull('date')
+                         ->whereNotNull('start_time')
+                         ->whereRaw("$startExpr > ?", [$now]);
+                  });
+            })
             ->orderBy('date')
             ->orderBy('start_time')
             ->paginate($this->perPending, pageName: 'pendingPage')
             ->through(fn($r) => $this->uiMap($r));
 
-        // Paginated ongoing list
         $ongoing = BookingRoom::with('room')
             ->company($cid)
             ->approved()
+            ->whereNotNull('date')
+            ->whereNotNull('start_time')
+            ->whereRaw("$startExpr <= ?", [$now])
             ->orderBy('date')
             ->orderBy('start_time')
             ->paginate($this->perOngoing, pageName: 'ongoingPage')
             ->through(fn($r) => $this->uiMap($r));
 
-        // Priority room bookings — pending + approved (all active statuses)
         $priorityRoomBookings = PriorityRoomBooking::with(['room', 'manager'])
             ->forCompany($cid)
             ->whereIn('status', [

@@ -6,63 +6,50 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use App\Services\GroqService;
+use App\Services\AI\AIService;
+use App\Services\AI\PromptBuilder;
+use App\Services\AI\BookingDraftService;
+use App\Services\AI\ContextRouter;
+use App\Services\AI\DirectBookingService;
+use App\Services\AI\ToolDispatcher;
 use App\Models\AiChatSession;
 use App\Models\AiChatMessage;
+use App\Models\Room;
+use App\Models\Vehicle;
 
 class ChatModal extends Component
 {
-    // ── UI state ─────────────────────────────────────────────
-    public bool   $isOpen       = false;
-    public string $message      = '';
-    public bool   $isLoading    = false;
-    public string $userRole     = 'receptionist';   // set in mount()
+    public bool   $isOpen    = false;
+    public string $message   = '';
+    public bool   $isLoading = false;
+    public string $userRole  = 'receptionist';
+    public string $panel     = 'chat';
 
-    // 'chat' | 'history' | 'session'
-    public string $panel        = 'chat';
+    public array $messages        = [];
+    public ?int  $activeSessionId = null;
 
-    // ── Active conversation ───────────────────────────────────
-    /**
-     * Each entry: [
-     *   'role'            => 'user'|'assistant',
-     *   'text'            => string,
-     *   'booking_prefill' => array|null,
-     *   'sent_at'         => string  (human-readable, e.g. "14:03")
-     * ]
-     */
-    public array $messages      = [];
+    public array $conversationHistory = [];
 
-    /** DB id of the current open session (null until first message sent) */
-    public ?int $activeSessionId = null;
+    public array $bookingDraft = [];
 
-    // ── History panel ─────────────────────────────────────────
-    /**
-     * List of past sessions for the sidebar.
-     * Each entry: ['id', 'title', 'role', 'started_at', 'message_count']
-     */
-    public array $historySessions = [];
+   
+    public array $contextMemory = [];
 
-    /** The session being viewed in the 'session' panel */
+    public array  $historySessions     = [];
     public ?int   $viewingSessionId    = null;
     public array  $viewingMessages     = [];
     public string $viewingSessionTitle = '';
     public string $viewingSessionDate  = '';
 
-    // ─────────────────────────────────────────────────────────
-    // Modal lifecycle
-    // ─────────────────────────────────────────────────────────
-
     public function mount(): void
     {
-        // Resolve the user's role once and store it as a public property
-        // so Blade templates can access it as $userRole directly.
-        $this->userRole = $this->resolveUserRole();
+        $this->userRole     = $this->resolveUserRole();
+        $this->bookingDraft = app(BookingDraftService::class)->emptyDraft();
+        $this->contextMemory = $this->emptyMemory();
 
-        // Auto-archive any session this user left open (e.g. navigated away
-        // mid-conversation without clicking clear). This runs once per page load.
         AiChatSession::where('user_id', Auth::id())
             ->whereNull('ended_at')
-            ->whereNotNull('title')   // only archive sessions that had at least one user message
+            ->whereNotNull('title')
             ->update(['ended_at' => now()]);
     }
 
@@ -82,10 +69,6 @@ class ChatModal extends Component
         $this->isOpen = false;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Panels
-    // ─────────────────────────────────────────────────────────
-
     public function showHistory(): void
     {
         $this->loadHistorySessions();
@@ -101,12 +84,9 @@ class ChatModal extends Component
     public function viewSession(int $sessionId): void
     {
         $session = AiChatSession::with('messages')
-            ->where('user_id', Auth::id())
-            ->find($sessionId);
+            ->where('user_id', Auth::id())->find($sessionId);
 
-        if (!$session) {
-            return;
-        }
+        if (! $session) return;
 
         $this->viewingSessionId    = $sessionId;
         $this->viewingSessionTitle = $session->title ?? 'Untitled session';
@@ -134,29 +114,19 @@ class ChatModal extends Component
     {
         AiChatSession::where('user_id', Auth::id())->where('id', $sessionId)->delete();
         $this->loadHistorySessions();
-
-        // If viewing the just-deleted session, go back to list
         if ($this->viewingSessionId === $sessionId) {
             $this->backToHistory();
         }
     }
 
-    /**
-     * Restore a past session into the active chat, closing any open session.
-     */
     public function restoreSession(int $sessionId): void
     {
         $session = AiChatSession::with('messages')
-            ->where('user_id', Auth::id())
-            ->find($sessionId);
+            ->where('user_id', Auth::id())->find($sessionId);
 
-        if (!$session) {
-            return;
-        }
+        if (! $session) return;
 
-        // Archive the current live session if it has messages
         $this->archiveCurrentSession();
-
         $this->activeSessionId = $session->id;
         $this->messages = $session->messages->map(fn(AiChatMessage $m) => [
             'role'            => $m->role,
@@ -166,25 +136,23 @@ class ChatModal extends Component
             'sent_at'         => $m->sent_at->format('H:i'),
         ])->values()->toArray();
 
+        $this->conversationHistory = [];
+        foreach ($this->messages as $msg) {
+            $this->appendToHistory($msg['role'] === 'user' ? 'user' : 'assistant', $msg['text']);
+        }
+
         $this->panel = 'chat';
         $this->dispatch('chat-scroll-bottom');
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Chat
-    // ─────────────────────────────────────────────────────────
-
     public function sendMessage(): void
     {
         $text = trim($this->message);
+        if ($text === '' || $this->isLoading) return;
 
-        if ($text === '' || $this->isLoading) {
-            return;
-        }
+        $this->ensureMemoryDefaults();
 
-        // Ensure a DB session exists
         $this->ensureSession();
-
         $sentAt = now()->format('H:i');
 
         $this->messages[] = [
@@ -197,104 +165,446 @@ class ChatModal extends Component
         $this->message   = '';
         $this->isLoading = true;
 
-        // Persist user message
         $this->persistMessage('user', $text, null, null);
+        $this->appendToHistory('user', $text);
 
         $reply    = 'Sorry, something went wrong. Please try again.';
         $prefill  = null;
         $vprefill = null;
 
         try {
-            $groq = app(GroqService::class);
-
             if ($this->userRole() === 'manager') {
-                $reply = $groq->managerChat($text);
+                [$reply] = $this->callManagerAI($text);
             } else {
-                $result   = $groq->receptionistChatWithIntent($text);
-                $reply    = $result['reply'];
-                $prefill  = $result['booking_prefill']  ?? null;
-                $vprefill = $result['vehicle_prefill']  ?? null;
+                [$reply, $prefill, $vprefill] = $this->callReceptionistAI($text);
             }
         } catch (\Throwable $e) {
-            Log::error('ChatModal: GroqService failed', ['error' => $e->getMessage()]);
+            Log::error('ChatModal: AI call failed', [
+                'stage'     => $this->userRole() === 'manager' ? 'manager_ai_call' : 'receptionist_ai_call',
+                'class'     => get_class($e),
+                'error'     => $e->getMessage(),
+                'file'      => $e->getFile() . ':' . $e->getLine(),
+                'user_role' => $this->userRole(),
+            ]);
         }
-
-        $replySentAt = now()->format('H:i');
 
         $this->messages[] = [
             'role'            => 'assistant',
             'text'            => $reply,
             'booking_prefill' => $prefill,
             'vehicle_prefill' => $vprefill,
-            'sent_at'         => $replySentAt,
+            'sent_at'         => now()->format('H:i'),
         ];
         $this->isLoading = false;
 
-        // Persist assistant message
         $this->persistMessage('assistant', $reply, $prefill, $vprefill);
+        $this->appendToHistory('assistant', $reply);
 
         $this->dispatch('chat-scroll-bottom');
     }
 
     public function clearChat(): void
     {
-        // Archive the finished conversation
         $this->archiveCurrentSession();
-
-        // Reset to a fresh conversation
-        $this->messages        = [];
-        $this->message         = '';
-        $this->isLoading       = false;
-        $this->activeSessionId = null;
-        $this->panel           = 'chat';
-
+        $this->messages            = [];
+        $this->message             = '';
+        $this->isLoading           = false;
+        $this->activeSessionId     = null;
+        $this->conversationHistory = [];
+        $this->bookingDraft        = app(BookingDraftService::class)->emptyDraft();
+        $this->contextMemory       = $this->emptyMemory();
+        $this->panel               = 'chat';
         $this->seedGreeting();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // DB helpers
-    // ─────────────────────────────────────────────────────────
-
-    /**
-     * Create a new DB session on the first real user message.
-     */
-    private function ensureSession(): void
+    private function callManagerAI(string $userMessage): array
     {
-        if ($this->activeSessionId) {
-            return;
+        $companyId = Auth::user()->company_id;
+
+        $router  = app(ContextRouter::class);
+        $context = $router->route($userMessage, $companyId, 'manager', $this->getRecentHistory());
+
+        $domains = $router->detectDomains($userMessage, 'manager', $this->getRecentHistory());
+        $this->contextMemory['active_domains'] = $domains;
+
+        $builder      = app(PromptBuilder::class);
+        $systemPrompt = $builder->managerSystemPrompt($context);
+        $history      = $this->getRecentHistory(exclude: 'last');
+
+        $ai    = app(AIService::class);
+        $raw   = $ai->chat($systemPrompt, $userMessage, $history);
+        $reply = $this->stripThinkBlocks($raw);
+
+        return [$reply];
+    }
+
+    private function callReceptionistAI(string $userMessage): array
+    {
+        $companyId    = Auth::user()->company_id;
+        $builder      = app(PromptBuilder::class);
+        $draftService = app(BookingDraftService::class);
+        $router       = app(ContextRouter::class);
+
+        $history = $this->getRecentHistory();
+        $routingResult = $router->routeWithMetadata($userMessage, $companyId, 'receptionist', $history);
+
+        $domains = $routingResult->domains;
+        $this->contextMemory['active_domains'] = $domains;
+
+        $context = $routingResult->assembledContext;
+        $isBookingIntent = $routingResult->isBookingIntent;
+
+        if (config('app.debug')) {
+            Log::info('ChatModal: receptionist AI routing complete', [
+                'stage'              => 'receptionist_ai_call',
+                'is_booking_intent'  => $isBookingIntent,
+                'detected_domains'   => $domains,
+                'context_chars'      => strlen($context),
+            ]);
         }
 
-        $session = AiChatSession::create([
-            'user_id'    => Auth::id(),
-            'role'       => $this->userRole(),
-            'title'      => null,
-            'started_at' => now(),
-        ]);
+        $memoryHint = $this->buildMemoryHint();
+        if ($memoryHint) {
+            $context = $memoryHint . "\n\n" . $context;
+        }
 
+        $draftContext = $draftService->buildDraftContext($this->bookingDraft);
+        
+        $systemPrompt = $isBookingIntent
+            ? $builder->receptionistBookingPrompt($context, $draftContext)
+            : $builder->receptionistGeneralPrompt($context);
+        
+        $recentHistory = $this->getRecentHistory(exclude: 'last');
+
+        if (config('app.debug')) {
+            $promptType = $isBookingIntent ? 'booking' : 'general';
+            Log::info('ChatModal: prompt selected', [
+                'stage'          => 'receptionist_ai_call',
+                'prompt_type'    => $promptType,
+                'system_chars'   => strlen($systemPrompt),
+                'has_draft'      => !empty($draftContext),
+                'history_turns'  => count($recentHistory),
+            ]);
+        }
+
+        $ai  = app(AIService::class);
+        $raw = $ai->chat($systemPrompt, $userMessage, $recentHistory);
+
+        $parsed     = $this->parseIntentResponse($raw, $companyId);
+        $reply      = $parsed['reply'];
+        $prefill    = $parsed['booking_prefill']  ?? [];
+        $vprefill   = $parsed['vehicle_prefill']  ?? [];
+        $isComplete = $parsed['booking_complete'] ?? false;
+
+        $prevDraft = $this->bookingDraft;
+
+        $this->bookingDraft = $draftService->mergePrefill(
+            $this->bookingDraft,
+            $this->hasAnyValue($prefill)  ? $prefill  : null,
+            $this->hasAnyValue($vprefill) ? $vprefill : null
+        );
+        $this->bookingDraft = $draftService->resolveDraftDates($this->bookingDraft);
+        $this->bookingDraft = $draftService->resolveRoomId($this->bookingDraft, $companyId);
+        $this->bookingDraft = $draftService->resolveVehicleId($this->bookingDraft, $companyId);
+
+        if (config('app.debug')) {
+            Log::info('ChatModal: booking draft updated', [
+                'stage'          => 'booking_draft_updated',
+                'type'           => $this->bookingDraft['type'],
+                'turns'          => $this->bookingDraft['turns'],
+                'ai_complete'    => $isComplete,
+                'room_fields'    => $this->bookingDraft['room'],
+                'vehicle_fields' => $this->bookingDraft['vehicle'],
+            ]);
+        }
+
+        $this->updateMemory($prefill, $vprefill);
+
+        $roomReady    = $isComplete && $this->bookingDraft['type'] === 'room';
+        $vehicleReady = $isComplete && $this->bookingDraft['type'] === 'vehicle';
+
+        if (! $roomReady)    $roomReady    = $draftService->isRoomDraftComplete($this->bookingDraft);
+        if (! $vehicleReady) $vehicleReady = $draftService->isVehicleDraftComplete($this->bookingDraft);
+
+        if ($roomReady) {
+            $payload = $draftService->buildRoomPayload($this->bookingDraft);
+
+            if (config('app.debug')) {
+                Log::info('ChatModal: room draft complete — attempting direct creation', [
+                    'stage'   => 'booking_draft_complete',
+                    'type'    => 'room',
+                    'payload' => $payload,
+                ]);
+
+                Log::info('ChatModal: dispatching to DirectBookingService', [
+                    'stage' => 'booking_dispatch_started',
+                    'type'  => 'room',
+                ]);
+            }
+
+            $result = app(DirectBookingService::class)->createRoomBooking($payload);
+
+            if ($result['ok']) {
+                $this->bookingDraft = $draftService->resetDraft();
+
+                $roomName = $payload['roomId']
+                    ? ($this->bookingDraft['room']['room_name'] ?? "Room #{$payload['roomId']}")
+                    : 'the meeting room';
+                $roomLabel = $prevDraft['room']['room_name'] ?? ($payload['title'] ? '' : $roomName);
+
+                $reply = "Booking saved successfully and is now **pending approval**."
+                    . "\n\n**{$payload['title']}**"
+                    . ($prevDraft['room']['room_name'] ? " — {$prevDraft['room']['room_name']}" : '')
+                    . "\n{$payload['ymd']}  {$payload['time']}-{$payload['endTime']}"
+                    . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
+
+                if (config('app.debug')) {
+                    Log::info('ChatModal: room booking confirmed', [
+                        'stage'      => 'booking_created',
+                        'booking_id' => $result['booking_id'],
+                    ]);
+                }
+
+                return [$reply, null, null];
+            }
+
+            Log::warning('ChatModal: room booking creation failed', [
+                'stage' => 'booking_failed',
+                'error' => $result['error'],
+            ]);
+
+            $reply = "I wasn't able to save the booking. **Reason:** {$result['error']}\n\nPlease correct the details and try again.";
+            return [$reply, null, null];
+        }
+
+        if ($vehicleReady) {
+            $payload = $draftService->buildVehiclePayload($this->bookingDraft);
+
+            if (config('app.debug')) {
+                Log::info('ChatModal: vehicle draft complete — attempting direct creation', [
+                    'stage'   => 'booking_draft_complete',
+                    'type'    => 'vehicle',
+                    'payload' => $payload,
+                ]);
+
+                Log::info('ChatModal: dispatching to DirectBookingService', [
+                    'stage' => 'booking_dispatch_started',
+                    'type'  => 'vehicle',
+                ]);
+            }
+
+            $result = app(DirectBookingService::class)->createVehicleBooking($payload);
+
+            if ($result['ok']) {
+                $this->bookingDraft = $draftService->resetDraft();
+
+                $vehicleName = $prevDraft['vehicle']['vehicle_name'] ?? "Vehicle #{$payload['vehicleId']}";
+                $reply = "Vehicle booking saved successfully and is now **pending approval**."
+                    . "\n\n**{$vehicleName}**"
+                    . " — {$payload['borrowerName']}"
+                    . "\n{$payload['dateFrom']}  {$payload['startTime']}–{$payload['endTime']}"
+                    . "\n\nBooking #{$result['booking_id']} has been submitted to the approval queue.";
+
+                if (config('app.debug')) {
+                    Log::info('ChatModal: vehicle booking confirmed', [
+                        'stage'      => 'booking_created',
+                        'booking_id' => $result['booking_id'],
+                    ]);
+                }
+
+                return [$reply, null, null];
+            }
+
+            Log::warning('ChatModal: vehicle booking creation failed', [
+                'stage' => 'booking_failed',
+                'error' => $result['error'],
+            ]);
+
+            $reply = "I wasn't able to save the vehicle booking. **Reason:** {$result['error']}\n\nPlease correct the details and try again.";
+            return [$reply, null, null];
+        }
+
+        if (config('app.debug')) {
+            Log::info('ChatModal: booking draft still incomplete', [
+                'stage'       => 'booking_draft_updated',
+                'type'        => $this->bookingDraft['type'],
+                'turns'       => $this->bookingDraft['turns'],
+                'missing_room'    => $this->bookingDraft['type'] === 'room'
+                    ? $this->missingRoomSummary($this->bookingDraft['room'])
+                    : [],
+                'missing_vehicle' => $this->bookingDraft['type'] === 'vehicle'
+                    ? $this->missingVehicleSummary($this->bookingDraft['vehicle'])
+                    : [],
+            ]);
+        }
+
+        $outPrefill  = $this->hasAnyValue($prefill)  ? $prefill  : null;
+        $outVprefill = $this->hasAnyValue($vprefill) ? $vprefill : null;
+
+        return [$reply, $outPrefill, $outVprefill];
+    }
+
+    private function missingRoomSummary(array $r): array
+    {
+        $missing = [];
+        if (empty($r['meeting_title'])) $missing[] = 'meeting_title';
+        if (empty($r['date']))          $missing[] = 'date';
+        if (empty($r['start_time']))    $missing[] = 'start_time';
+        if (empty($r['end_time']))      $missing[] = 'end_time';
+        $isOnline = ($r['booking_type'] ?? '') === 'online_meeting';
+        if (! $isOnline && empty($r['room_id'])) $missing[] = 'room_id';
+        return $missing;
+    }
+
+    private function missingVehicleSummary(array $v): array
+    {
+        $missing = [];
+        if (empty($v['vehicle_id']))    $missing[] = 'vehicle_id';
+        if (empty($v['borrower_name'])) $missing[] = 'borrower_name';
+        if (empty($v['date_from']))     $missing[] = 'date_from';
+        if (empty($v['date_to']))       $missing[] = 'date_to';
+        if (empty($v['start_time']))    $missing[] = 'start_time';
+        if (empty($v['end_time']))      $missing[] = 'end_time';
+        if (empty($v['purpose']))       $missing[] = 'purpose';
+        if (empty($v['destination']))   $missing[] = 'destination';
+        if (empty($v['purpose_type']))  $missing[] = 'purpose_type';
+        return $missing;
+    }
+
+    private function emptyMemory(): array
+    {
+        return [
+            'last_room_id'    => null,
+            'last_room_name'  => null,
+            'last_vehicle_id' => null,
+            'last_date'       => null,
+            'active_domains'  => [],
+        ];
+    }
+
+    private function updateMemory(array $prefill, array $vprefill): void
+    {
+        if (! empty($prefill['room_id']))   $this->contextMemory['last_room_id']   = $prefill['room_id'];
+        if (! empty($prefill['room_name'])) $this->contextMemory['last_room_name'] = $prefill['room_name'];
+        if (! empty($prefill['date']))      $this->contextMemory['last_date']       = $prefill['date'];
+        if (! empty($vprefill['vehicle_id'])) $this->contextMemory['last_vehicle_id'] = $vprefill['vehicle_id'];
+        if (! empty($vprefill['date_from']))  $this->contextMemory['last_date']       = $vprefill['date_from'];
+    }
+
+    private function ensureMemoryDefaults(): void
+    {
+        $defaults = $this->emptyMemory();
+        foreach ($defaults as $key => $default) {
+            if (! array_key_exists($key, $this->contextMemory)) {
+                $this->contextMemory[$key] = $default;
+            }
+        }
+    }
+
+    private function buildMemoryHint(): string
+    {
+        $this->ensureMemoryDefaults();
+
+        $lines = [];
+
+        if ($this->contextMemory['last_room_name'] ?? null) {
+            $lines[] = "Last discussed room: {$this->contextMemory['last_room_name']}"
+                . (($this->contextMemory['last_room_id'] ?? null) ? " (ID:{$this->contextMemory['last_room_id']})" : '');
+        }
+        if ($this->contextMemory['last_vehicle_id'] ?? null) {
+            $lines[] = "Last discussed vehicle ID: {$this->contextMemory['last_vehicle_id']}";
+        }
+        if ($this->contextMemory['last_date'] ?? null) {
+            $lines[] = "Last discussed date: {$this->contextMemory['last_date']}";
+        }
+
+        if (empty($lines)) return '';
+
+        return "SESSION MEMORY (carry forward — do not re-ask unless changed):\n"
+            . implode("\n", $lines);
+    }
+
+    private function parseIntentResponse(string $raw, ?int $companyId): array
+    {
+        $empty = ['reply' => $raw, 'booking_prefill' => [], 'vehicle_prefill' => [], 'booking_complete' => false];
+
+        $raw = trim($this->stripThinkBlocks($raw));
+        $raw = preg_replace('/^```(?:json)?\s*/i', '', $raw);
+        $raw = preg_replace('/\s*```$/', '', $raw);
+        $raw = trim($raw);
+
+        if (! str_starts_with($raw, '{')) return $empty;
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded) || ! isset($decoded['reply'])) return $empty;
+
+        $reply          = (string) ($decoded['reply']            ?? '');
+        $bookingComplete = (bool)  ($decoded['booking_complete'] ?? false);
+
+        $prefill = $decoded['booking_prefill'] ?? [];
+        if (is_array($prefill)) {
+            if (empty($prefill['room_id']) && ! empty($prefill['room_name'])) {
+                $room = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+                    ->where('room_name', 'like', '%' . trim($prefill['room_name']) . '%')->first();
+                $prefill['room_id']   = $room?->room_id;
+                $prefill['room_name'] = $room?->room_name ?? $prefill['room_name'];
+            }
+            $prefill['room_id']             = isset($prefill['room_id'])             ? (int) $prefill['room_id']             : null;
+            $prefill['number_of_attendees'] = isset($prefill['number_of_attendees']) ? (int) $prefill['number_of_attendees'] : null;
+            $prefill['special_notes']   = $prefill['special_notes']   ?? null;
+            $prefill['department']      = $prefill['department']      ?? null;
+            $prefill['historical_user'] = $prefill['historical_user'] ?? null;
+            $validBT = ['meeting', 'online_meeting'];
+            $prefill['booking_type']    = in_array($prefill['booking_type'] ?? '', $validBT, true) ? $prefill['booking_type'] : null;
+            $validP  = ['google_meet', 'zoom'];
+            $prefill['online_provider'] = in_array($prefill['online_provider'] ?? '', $validP, true) ? $prefill['online_provider'] : null;
+            if (($prefill['booking_type'] ?? '') === 'online_meeting') { $prefill['room_id'] = null; $prefill['room_name'] = null; }
+        }
+
+        $vprefill = $decoded['vehicle_prefill'] ?? [];
+        if (is_array($vprefill)) {
+            if (empty($vprefill['vehicle_id']) && (! empty($vprefill['vehicle_name']) || ! empty($vprefill['plate_number']))) {
+                $vq = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId));
+                if (! empty($vprefill['vehicle_name'])) $vq->where('name', 'like', '%' . trim($vprefill['vehicle_name']) . '%');
+                elseif (! empty($vprefill['plate_number'])) $vq->where('plate_number', 'like', '%' . trim($vprefill['plate_number']) . '%');
+                $vehicle = $vq->first();
+                $vprefill['vehicle_id']   = $vehicle?->vehicle_id;
+                $vprefill['vehicle_name'] = $vehicle?->name         ?? $vprefill['vehicle_name']  ?? null;
+                $vprefill['plate_number'] = $vehicle?->plate_number ?? $vprefill['plate_number']  ?? null;
+            }
+            $vprefill['vehicle_id']    = isset($vprefill['vehicle_id'])   ? (int) $vprefill['vehicle_id'] : null;
+            $vprefill['borrower_name'] = $vprefill['borrower_name'] ?? null;
+            $vprefill['department']    = $vprefill['department']    ?? null;
+            $vprefill['date_from']     = $vprefill['date_from']     ?? null;
+            $vprefill['date_to']       = $vprefill['date_to']       ?? null;
+            $vprefill['start_time']    = $vprefill['start_time']    ?? null;
+            $vprefill['end_time']      = $vprefill['end_time']      ?? null;
+            $vprefill['purpose']       = $vprefill['purpose']       ?? null;
+            $vprefill['destination']   = $vprefill['destination']   ?? null;
+            $validT = ['dinas', 'operasional', 'antar_jemput', 'lainnya'];
+            $vprefill['purpose_type']  = in_array($vprefill['purpose_type'] ?? '', $validT, true) ? $vprefill['purpose_type'] : null;
+        }
+
+        return ['reply' => $reply, 'booking_prefill' => $prefill ?? [], 'vehicle_prefill' => $vprefill ?? [], 'booking_complete' => $bookingComplete];
+    }
+
+    private function ensureSession(): void
+    {
+        if ($this->activeSessionId) return;
+        $session = AiChatSession::create(['user_id' => Auth::id(), 'role' => $this->userRole(), 'title' => null, 'started_at' => now()]);
         $this->activeSessionId = $session->id;
     }
 
-    /**
-     * Save a single message to the DB and update the session title
-     * from the first user message.
-     */
     private function persistMessage(string $role, string $text, ?array $prefill, ?array $vprefill = null): void
     {
-        if (!$this->activeSessionId) {
-            return;
-        }
-
+        if (! $this->activeSessionId) return;
         AiChatMessage::create([
             'session_id'      => $this->activeSessionId,
             'role'            => $role,
             'text'            => $text,
-            'booking_prefill' => $prefill !== null || $vprefill !== null
-                ? ['room' => $prefill, 'vehicle' => $vprefill]
-                : null,
+            'booking_prefill' => $prefill !== null || $vprefill !== null ? ['room' => $prefill, 'vehicle' => $vprefill] : null,
             'sent_at'         => now(),
         ]);
-
-        // Set title from the first user message
         if ($role === 'user') {
             $session = AiChatSession::find($this->activeSessionId);
             if ($session && empty($session->title)) {
@@ -303,115 +613,167 @@ class ChatModal extends Component
         }
     }
 
-    /**
-     * Close the current DB session (mark ended_at).
-     */
     private function archiveCurrentSession(): void
     {
         if ($this->activeSessionId) {
-            $session = AiChatSession::find($this->activeSessionId);
-            $session?->close();
+            AiChatSession::find($this->activeSessionId)?->close();
             $this->activeSessionId = null;
         }
     }
 
-    /**
-     * Load the 30 most-recent archived sessions for the history panel.
-     * Includes sessions auto-closed on page navigation (ended_at set by mount()).
-     */
     private function loadHistorySessions(): void
     {
         $this->historySessions = AiChatSession::where('user_id', Auth::id())
-            ->whereNotNull('ended_at')
-            ->whereNotNull('title')    // only sessions that had at least one real message
-            ->withCount('messages')
-            ->orderByDesc('started_at')
-            ->limit(30)
-            ->get()
-            ->map(fn(AiChatSession $s) => [
-                'id'            => $s->id,
-                'title'         => $s->title,
-                'role'          => $s->role,
-                'started_at'    => $s->started_at->format('d M Y, H:i'),
-                'message_count' => $s->messages_count,
-            ])
-            ->values()
-            ->toArray();
+            ->whereNotNull('ended_at')->whereNotNull('title')
+            ->withCount('messages')->orderByDesc('started_at')->limit(30)->get()
+            ->map(fn(AiChatSession $s) => ['id' => $s->id, 'title' => $s->title, 'role' => $s->role, 'started_at' => $s->started_at->format('d M Y, H:i'), 'message_count' => $s->messages_count])
+            ->values()->toArray();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Export helpers (manager only)
-    // ─────────────────────────────────────────────────────────
+    private function appendToHistory(string $role, string $content): void
+    {
+        $this->conversationHistory[] = ['role' => $role, 'content' => $content];
+        $max = (int) config('ai.max_draft_turns', 10);
+        if (count($this->conversationHistory) > $max) {
+            $this->conversationHistory = array_slice($this->conversationHistory, -$max);
+        }
+    }
 
-    /**
-     * Open the analytics PDF report in a new tab.
-     * The controller pulls live stats directly — no messages needed.
-     */
+    private function getRecentHistory(string $exclude = ''): array
+    {
+        $history = $this->conversationHistory;
+        if ($exclude === 'last' && ! empty($history)) array_pop($history);
+        
+        return $this->compressHistory($history);
+    }
+
+    private function compressHistory(array $history): array
+    {
+        if (count($history) <= 4) {
+            return $history;
+        }
+
+        $compressed = [];
+        
+        $recent = array_slice($history, -4);
+        
+        $older = array_slice($history, 0, -4);
+        
+        if (!empty($older)) {
+            $summary = $this->summarizeOlderTurns($older);
+            if ($summary) {
+                $compressed[] = [
+                    'role' => 'system',
+                    'content' => $summary
+                ];
+            }
+        }
+        
+        foreach ($recent as $turn) {
+            $compressed[] = $turn;
+        }
+        
+        if (config('app.debug')) {
+            Log::info('ChatModal: history compressed', [
+                'stage' => 'history_compression',
+                'original_turns' => count($history),
+                'compressed_turns' => count($compressed),
+                'older_turns_summarized' => count($older),
+            ]);
+        }
+        
+        return $compressed;
+    }
+
+    private function summarizeOlderTurns(array $older): ?string
+    {
+        if (empty($older)) {
+            return null;
+        }
+
+        $topics = [];
+        $hasBookingDiscussion = false;
+        $roomMentions = [];
+        $vehicleMentions = [];
+
+        foreach ($older as $turn) {
+            $content = mb_strtolower($turn['content'] ?? '');
+            
+            if (preg_match('/\b(book|reserve|booking|pesan)\b/i', $content)) {
+                $hasBookingDiscussion = true;
+            }
+            
+            if (preg_match('/room\s*([a-z0-9]+)/i', $content, $m)) {
+                $roomMentions[] = $m[0];
+            }
+            
+            if (preg_match('/vehicle|kendaraan|mobil/i', $content)) {
+                $vehicleMentions[] = 'vehicle';
+            }
+        }
+
+        $summary = "Earlier conversation context:";
+        
+        if ($hasBookingDiscussion) {
+            $summary .= " Discussed booking.";
+        }
+        
+        if (!empty($roomMentions)) {
+            $uniqueRooms = array_unique(array_slice($roomMentions, 0, 2));
+            $summary .= " Mentioned: " . implode(', ', $uniqueRooms) . ".";
+        }
+        
+        if (!empty($vehicleMentions)) {
+            $summary .= " Discussed vehicles.";
+        }
+
+        return strlen($summary) > 30 ? $summary : null;
+    }
+
     public function exportPdf(): void
     {
-        if ($this->userRole !== 'manager') {
-            return;
-        }
-
-        $this->js("window.open(" . json_encode(route('chat.export.pdf')) . ", '_blank')");
+        if ($this->userRole !== 'manager') return;
+        $this->js('window.open(' . json_encode(route('chat.export.pdf')) . ", '_blank')");
     }
 
-    /**
-     * Open the analytics CSV report in a new tab.
-     */
     public function exportCsv(): void
     {
-        if ($this->userRole !== 'manager') {
-            return;
-        }
-
-        $this->js("window.open(" . json_encode(route('chat.export.csv')) . ", '_blank')");
+        if ($this->userRole !== 'manager') return;
+        $this->js('window.open(' . json_encode(route('chat.export.csv')) . ", '_blank')");
     }
-
-    // ─────────────────────────────────────────────────────────
-    // Misc helpers
-    // ─────────────────────────────────────────────────────────
 
     private function seedGreeting(): void
     {
         $role     = $this->userRole();
         $greeting = $role === 'manager'
             ? "Hello! I'm your analytics assistant. Ask me about bookings, occupancy trends, vehicle usage, or any statistics."
-            : "Hello! I'm your booking assistant. Ask me about today's schedule, pending approvals, recent bookings, or say \"rebook [meeting name] for next Monday\" to pre-fill a new booking.";
+            : "Hello! I'm your booking assistant. Ask me about today's schedule, pending approvals, or say something like \"Book Meeting Room A tomorrow from 9 to 11 for the weekly sync\" and I'll create the booking for you.";
 
-        $this->messages[] = [
-            'role'            => 'assistant',
-            'text'            => $greeting,
-            'booking_prefill' => null,
-            'vehicle_prefill' => null,
-            'sent_at'         => now()->format('H:i'),
-        ];
+        $this->messages[] = ['role' => 'assistant', 'text' => $greeting, 'booking_prefill' => null, 'vehicle_prefill' => null, 'sent_at' => now()->format('H:i')];
     }
 
-    private function userRole(): string
-    {
-        // Keep this as an internal alias so sendMessage() and seedGreeting()
-        // can still call it without reading the public property during hydration.
-        return $this->resolveUserRole();
+    private function userRole(): string { 
+        return $this->resolveUserRole(); 
     }
 
     private function resolveUserRole(): string
     {
         $user = Auth::user();
-        if (!$user) {
-            return 'receptionist';
-        }
-
-        $roleName = strtolower(
-            $user->role?->name
-            ?? $user->role_name
-            ?? ''
-        );
-
+        if (! $user) return 'receptionist';
+        $roleName = strtolower($user->role?->name ?? $user->role_name ?? '');
         return str_contains($roleName, 'manager') ? 'manager' : 'receptionist';
     }
 
-    // ─────────────────────────────────────────────────────────
+    private function stripThinkBlocks(string $raw): string
+    {
+        return trim(preg_replace('/<think>.*?<\/think>/si', '', $raw));
+    }
+
+    private function hasAnyValue(array $arr): bool
+    {
+        foreach ($arr as $v) { if ($v !== null && $v !== '') return true; }
+        return false;
+    }
 
     public function render()
     {

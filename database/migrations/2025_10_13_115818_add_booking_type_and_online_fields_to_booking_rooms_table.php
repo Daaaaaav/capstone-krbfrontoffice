@@ -8,15 +8,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('booking_rooms', function (Blueprint $table) {
-            // What kind of booking is this?
-            // meeting = on-site meeting (default)
-            // online_meeting = fully online
-            // hybrid = mix (optional but handy)
             $table->enum('booking_type', ['meeting', 'online_meeting', 'hybrid', 'etc'])
                 ->default('meeting')
                 ->after('is_approve');
 
-            // Online-meeting specific fields (nullable for non-online bookings)
             $table->enum('online_provider', ['zoom', 'google_meet'])
                 ->nullable()
                 ->after('booking_type');
@@ -25,7 +20,6 @@ return new class extends Migration {
                 ->nullable()
                 ->after('online_provider');
 
-            // Optional extra metadata some providers use
             $table->string('online_meeting_code', 120)
                 ->nullable()
                 ->after('online_meeting_url');
@@ -34,7 +28,6 @@ return new class extends Migration {
                 ->nullable()
                 ->after('online_meeting_code');
 
-            // Useful for filtering/searching online entries
             $table->index(['booking_type', 'online_provider']);
         });
     }

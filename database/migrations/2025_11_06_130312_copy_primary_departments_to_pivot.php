@@ -8,7 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // HANYA SALIN DATA. JANGAN HAPUS APA-APA.
         DB::statement('
             INSERT INTO user_departments (user_id, department_id)
             SELECT user_id, department_id

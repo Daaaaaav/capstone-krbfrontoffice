@@ -17,7 +17,6 @@ class RedirectIfAuthenticated
                 $user = Auth::user();
                 $role = $user->role->name ?? $user->role ?? null;
 
-                // If role is unrecognized, log out and let them reach the guest page
                 if (!in_array($role, ['Manager', 'Admin', 'Superadmin', 'Receptionist'])) {
                     Auth::guard($guard)->logout();
                     $request->session()->invalidate();

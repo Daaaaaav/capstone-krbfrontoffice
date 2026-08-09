@@ -7,17 +7,39 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Guestbook;
+use Carbon\Carbon;
 
 #[Layout('layouts.manager')]
 #[Title('Guestbook Statistics')]
 class GuestbookStatistics extends Component
 {
-    public $timeRange = '90days';
-    public $showList  = false;
+    public $startDate;
+    public $endDate;
+    public $showList = false;
 
-    public function setTimeRange($range): void
+    public function mount(): void
     {
-        $this->timeRange = $range;
+        $this->startDate = now()->startOfMonth()->format('Y-m-d');
+        $this->endDate = now()->format('Y-m-d');
+    }
+
+    public function updated($propertyName): void
+    {
+        if (in_array($propertyName, ['startDate', 'endDate'])) {
+            $this->validateDateRange();
+        }
+    }
+
+    protected function validateDateRange(): void
+    {
+        if ($this->startDate && $this->endDate) {
+            $start = Carbon::parse($this->startDate);
+            $end = Carbon::parse($this->endDate);
+            
+            if ($start->greaterThan($end)) {
+                $this->endDate = $this->startDate;
+            }
+        }
     }
 
     public function toggleList(): void
@@ -30,61 +52,56 @@ class GuestbookStatistics extends Component
         try {
             $companyId = Auth::user()->company_id;
 
-            $days = match($this->timeRange) {
-                '30days' => 30,
-                '90days' => 90,
-                default  => 7,
-            };
+            $since = Carbon::parse($this->startDate)->startOfDay();
+            $until = Carbon::parse($this->endDate)->endOfDay();
 
-            $since = now()->subDays($days)->startOfDay();
-
-            // ── KPI counts ────────────────────────────────────────────────────
             $totalVisitors = Guestbook::where('company_id', $companyId)
-                ->where('created_at', '>=', $since)
+                ->whereBetween('created_at', [$since, $until])
                 ->count();
 
-            // Currently inside: checked in but not yet checked out
             $checkedIn = Guestbook::where('company_id', $companyId)
-                ->where('created_at', '>=', $since)
+                ->whereBetween('created_at', [$since, $until])
                 ->whereNotNull('jam_in')
                 ->whereNull('jam_out')
                 ->count();
 
-            // Already left: has a check-out time
             $checkedOut = Guestbook::where('company_id', $companyId)
-                ->where('created_at', '>=', $since)
+                ->whereBetween('created_at', [$since, $until])
                 ->whereNotNull('jam_out')
                 ->count();
 
-            // ── Daily chart — zero-filled for every day in range ──────────────
             $raw = Guestbook::where('company_id', $companyId)
-                ->where('created_at', '>=', $since)
+                ->whereBetween('created_at', [$since, $until])
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                 ->groupByRaw('DATE(created_at)')
                 ->orderByRaw('DATE(created_at)')
                 ->pluck('count', 'date');
 
             $labels = [];
-            $data   = [];
-            for ($i = $days - 1; $i >= 0; $i--) {
-                $date     = now()->subDays($i)->format('Y-m-d');
-                $labels[] = now()->subDays($i)->format('d/m');
-                $data[]   = (int) ($raw[$date] ?? 0);
+            $data = [];
+            $currentDate = $since->copy();
+            
+            while ($currentDate->lessThanOrEqualTo($until)) {
+                $dateKey = $currentDate->format('Y-m-d');
+                $labels[] = $currentDate->format('d/m');
+                $data[] = (int) ($raw[$dateKey] ?? 0);
+                $currentDate->addDay();
             }
 
-            // ── Visitor list ──────────────────────────────────────────────────
+            $days = $since->diffInDays($until) + 1;
+
             $guestbooks = $this->showList
                 ? Guestbook::where('company_id', $companyId)
-                    ->where('created_at', '>=', $since)
+                    ->whereBetween('created_at', [$since, $until])
                     ->orderBy('created_at', 'desc')
                     ->get()
                 : collect();
 
             $stats = [
-                ['label' => __('app.total_visitors'), 'value' => $totalVisitors,                                           'color' => 'blue'],
-                ['label' => __('app.currently_in'),   'value' => $checkedIn,                                               'color' => 'yellow'],
-                ['label' => __('app.checked_out'),    'value' => $checkedOut,                                              'color' => 'green'],
-                ['label' => __('app.avg_per_day'),    'value' => $days > 0 ? round($totalVisitors / $days, 1) : 0,         'color' => 'purple'],
+                ['label' => __('app.total_visitors'), 'value' => $totalVisitors, 'color' => 'blue'],
+                ['label' => __('app.currently_in'), 'value' => $checkedIn, 'color' => 'yellow'],
+                ['label' => __('app.checked_out'), 'value' => $checkedOut, 'color' => 'green'],
+                ['label' => __('app.avg_per_day'), 'value' => $days > 0 ? round($totalVisitors / $days, 1) : 0, 'color' => 'purple'],
             ];
 
             $this->dispatch('guestbook-chart-updated', labels: $labels, data: $data);

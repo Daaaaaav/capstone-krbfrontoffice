@@ -16,39 +16,18 @@ use App\Models\Role;
 class ReceptionistUsers extends Component
 {
     use WithPagination;
-    /*
-    |--------------------------------------------------------------------------
-    | FILTERS
-    |--------------------------------------------------------------------------
-    */
+  
     public $search = '';
     public $statusFilter = 'all';
-
-    /*
-    |--------------------------------------------------------------------------
-    | MODAL / CRUD STATE
-    |--------------------------------------------------------------------------
-    */
     public $showModal = false;
     public $editMode = false;
     public $userId = null;
-
-    /*
-    |--------------------------------------------------------------------------
-    | FORM FIELDS
-    |--------------------------------------------------------------------------
-    */
     public $name = '';
     public $email = '';
     public $password = '';
     public $phone = '';
     public $status = 'active';
 
-    /*
-    |--------------------------------------------------------------------------
-    | FILTER
-    |--------------------------------------------------------------------------
-    */
     public function setStatusFilter($status)
     {
         $this->statusFilter = $status;
@@ -60,11 +39,6 @@ class ReceptionistUsers extends Component
         $this->resetPage();
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | MODAL CONTROL
-    |--------------------------------------------------------------------------
-    */
     public function openCreateModal()
     {
         $this->resetForm();
@@ -117,11 +91,6 @@ class ReceptionistUsers extends Component
         $this->status = 'active';
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATION RULES
-    |--------------------------------------------------------------------------
-    */
     protected function rules()
     {
         return [
@@ -142,24 +111,16 @@ class ReceptionistUsers extends Component
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | SAVE (CREATE / UPDATE)
-    |--------------------------------------------------------------------------
-    */
     public function save()
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate();
 
         try {
 
             $companyId = Auth::user()->company_id;
 
-            /*
-            |--------------------------------------------------------------------------
-            | UPDATE
-            |--------------------------------------------------------------------------
-            */
             if ($this->editMode) {
 
                 $user = User::where('user_id', $this->userId)->firstOrFail();
@@ -169,7 +130,6 @@ class ReceptionistUsers extends Component
                 $user->phone_number = $this->phone;
                 $user->status = $this->status;
 
-                // Only update password if filled
                 if (!empty($this->password)) {
                     $user->password = Hash::make($this->password);
                 }
@@ -185,12 +145,6 @@ class ReceptionistUsers extends Component
                 );
 
             } else {
-
-                /*
-                |--------------------------------------------------------------------------
-                | CREATE
-                |--------------------------------------------------------------------------
-                */
                 $role = Role::where('name', 'Receptionist')->first();
 
                 if (!$role) {
@@ -233,11 +187,6 @@ class ReceptionistUsers extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE
-    |--------------------------------------------------------------------------
-    */
     public function delete($id)
     {
         try {
@@ -278,33 +227,18 @@ class ReceptionistUsers extends Component
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | RENDER
-    |--------------------------------------------------------------------------
-    */
     public function render()
     {
         try {
 
             $companyId = Auth::user()->company_id;
 
-            /*
-            |--------------------------------------------------------------------------
-            | BASE QUERY (reused for both stats and results)
-            |--------------------------------------------------------------------------
-            */
             $baseQuery = User::query()
                 ->where('company_id', $companyId)
                 ->whereHas('role', function ($q) {
                     $q->where('roles.name', 'Receptionist');
                 });
 
-            /*
-            |--------------------------------------------------------------------------
-            | STATS — lightweight DB counts, not loading all rows
-            |--------------------------------------------------------------------------
-            */
             $totalCount    = (clone $baseQuery)->count();
             $activeCount   = (clone $baseQuery)->where('status', 'active')->count();
             $inactiveCount = (clone $baseQuery)->where('status', 'inactive')->count();
@@ -315,11 +249,6 @@ class ReceptionistUsers extends Component
                 ['label' => 'Inactive',             'value' => $inactiveCount, 'key' => 'inactive'],
             ];
 
-            /*
-            |--------------------------------------------------------------------------
-            | SEARCH
-            |--------------------------------------------------------------------------
-            */
             $query = clone $baseQuery;
 
             if (!empty($this->search)) {
@@ -331,20 +260,11 @@ class ReceptionistUsers extends Component
                 });
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | STATUS FILTER
-            |--------------------------------------------------------------------------
-            */
+
             if ($this->statusFilter !== 'all') {
                 $query->where('status', $this->statusFilter);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | PAGINATED RESULTS (15 per page)
-            |--------------------------------------------------------------------------
-            */
             $receptionists = $query->latest()->paginate(15);
 
             return view(

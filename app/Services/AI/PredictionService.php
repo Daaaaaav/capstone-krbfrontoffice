@@ -5,13 +5,6 @@ namespace App\Services\AI;
 use App\Models\AISettings;
 use Carbon\Carbon;
 
-/**
- * AI Prediction Service
- *
- * Uses preprocessed data to make predictions and generate insights.
- * All numeric thresholds are read from the ai_settings database table —
- * no hardcoded magic numbers in this class.
- */
 class PredictionService
 {
     private DataPreprocessor $preprocessor;
@@ -21,11 +14,6 @@ class PredictionService
         $this->preprocessor = new DataPreprocessor();
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
-
-    /**
-     * Predict future booking demand using LSTM or fallback methods.
-     */
     public function predictBookingDemand(string $type, int $companyId, int $forecastDays = 7): array
     {
         $timeSeries = $this->preprocessor->createTimeSeriesDataset($type, $companyId, 90);
@@ -37,8 +25,6 @@ class PredictionService
         $lstmClient = new LSTMClient();
         $result     = $lstmClient->predictWithFallback($timeSeries, $forecastDays);
 
-        // Read fallback bounds from DB in case LSTM was unavailable and the
-        // fallback model didn't already embed them.
         $lowerMult = AISettings::get('ma_lower_bound', 0.8);
         $upperMult = AISettings::get('ma_upper_bound', 1.2);
 
@@ -58,9 +44,6 @@ class PredictionService
         return $forecast;
     }
 
-    /**
-     * Detect anomalies in booking patterns.
-     */
     public function detectAnomalies(string $type, int $companyId): array
     {
         $features = match ($type) {
@@ -73,15 +56,11 @@ class PredictionService
 
         $anomalies = [];
 
-        // ── Late-night activity ───────────────────────────────────────────────
         if (isset($features['hourly_distribution'])) {
             $lateNightActivity =
                 array_sum(array_slice($features['hourly_distribution'], 22, 2)) +
                 array_sum(array_slice($features['hourly_distribution'],  0, 6));
 
-            // Threshold: any late-night activity beyond 10 events is flagged.
-            // This is a security heuristic, not a tunable AI param, so 10 is
-            // intentional and documented here rather than DB-driven.
             if ($lateNightActivity > 10) {
                 $anomalies[] = [
                     'type'           => 'unusual_hours',
@@ -92,12 +71,10 @@ class PredictionService
             }
         }
 
-        // ── Demand spike ─────────────────────────────────────────────────────
         if (isset($features['booking_frequency'])) {
             $avgFrequency    = $features['booking_frequency'];
             $recentFrequency = $this->getRecentFrequency($type, $companyId, 7);
 
-            // Spike multiplier: read from DB (defaults to 1.5 = 50% above average)
             $spikeMultiplier = (float) AISettings::get('demand_spike_multiplier', 1.5);
 
             if ($avgFrequency > 0 && $recentFrequency > $avgFrequency * $spikeMultiplier) {
@@ -112,7 +89,6 @@ class PredictionService
             }
         }
 
-        // ── Low approval rate ─────────────────────────────────────────────────
         if (isset($features['approval_rate'])) {
             $lowApprovalThreshold = (float) AISettings::get('low_approval_threshold', 60);
 
@@ -126,7 +102,6 @@ class PredictionService
             }
         }
 
-        // ── Unusual patterns from preprocessor ───────────────────────────────
         if (isset($features['unusual_patterns'])) {
             foreach ($features['unusual_patterns'] as $pattern) {
                 $anomalies[] = [
@@ -141,9 +116,6 @@ class PredictionService
         return $anomalies;
     }
 
-    /**
-     * Generate resource optimisation recommendations.
-     */
     public function generateOptimizationRecommendations(int $companyId): array
     {
         $roomFeatures    = $this->preprocessor->preprocessRoomBookings($companyId);
@@ -151,7 +123,6 @@ class PredictionService
 
         $recommendations = [];
 
-        // Room optimisation
         if (!empty($roomFeatures['peak_hours'])) {
             $peakHoursStr    = implode(', ', array_map(fn ($h) => $h . ':00', $roomFeatures['peak_hours']));
             $recommendations[] = [
@@ -174,7 +145,6 @@ class PredictionService
             ];
         }
 
-        // Vehicle optimisation
         if (!empty($vehicleFeatures['vehicle_popularity'])) {
             $mostUsed        = count($vehicleFeatures['vehicle_popularity']);
             $recommendations[] = [
@@ -186,7 +156,6 @@ class PredictionService
             ];
         }
 
-        // Department usage insights
         if (!empty($roomFeatures['department_usage'])) {
             $topDept         = array_key_first($roomFeatures['department_usage']);
             $topCount        = $roomFeatures['department_usage'][$topDept];
@@ -202,14 +171,10 @@ class PredictionService
         return $recommendations;
     }
 
-    /**
-     * Calculate booking conflict probability.
-     */
     public function calculateConflictProbability(array $bookingData, int $companyId): array
     {
         $features = $this->preprocessor->preprocessRoomBookings($companyId, 30);
 
-        // Read all score weights from DB
         $scorePeakHour    = (int) AISettings::get('conflict_score_peak_hour',    30);
         $scoreHighDayVol  = (int) AISettings::get('conflict_score_high_day_vol', 20);
         $scoreShortNotice = (int) AISettings::get('conflict_score_short_notice', 25);
@@ -225,14 +190,12 @@ class PredictionService
         $score   = 0;
         $factors = [];
 
-        // Peak hour check
         $requestedHour = Carbon::parse($bookingData['start_time'])->hour;
         if (in_array($requestedHour, $features['peak_hours'] ?? [])) {
             $score   += $scorePeakHour;
             $factors[] = 'Requested time is during peak hours';
         }
 
-        // Day-of-week volume check
         $dayOfWeek       = Carbon::parse($bookingData['start_time'])->dayOfWeek;
         $dayDistribution = $features['daily_distribution'] ?? array_fill(0, 7, 0);
         $avgDayBookings  = array_sum($dayDistribution) / 7;
@@ -242,20 +205,17 @@ class PredictionService
             $factors[] = 'High booking volume on this day of week';
         }
 
-        // Short-notice check
         $leadTime = now()->diffInHours(Carbon::parse($bookingData['start_time']));
         if ($leadTime < $urgencyHours) {
             $score   += $scoreShortNotice;
             $factors[] = "Short notice booking (less than {$urgencyHours} hours)";
         }
 
-        // Duration check
         if (($bookingData['duration_hours'] ?? 0) > $longDuration) {
             $score   += $scoreLongDur;
             $factors[] = "Long duration booking (>{$longDuration}h)";
         }
 
-        // Popular room check
         if (isset($bookingData['room_id'], $features['room_popularity'][$bookingData['room_id']])) {
             $score   += $scorePopularRoom;
             $factors[] = 'Popular room requested';
@@ -269,12 +229,6 @@ class PredictionService
         ];
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Simple linear regression over a time-series count array.
-     * Returns the slope (trend per day).
-     */
     private function calculateTrend(array $timeSeries): float
     {
         if (count($timeSeries) < 2) return 0.0;

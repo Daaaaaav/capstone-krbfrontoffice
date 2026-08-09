@@ -7,15 +7,12 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust all proxies so HTTPS scheme is correctly detected behind
-        // Nginx/Apache reverse proxies (fixes Livewire upload-file 401).
         $middleware->trustProxies(at: '*');
-
-        // Apply locale detection to every web request
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\WazuhSecurityMonitor::class,
@@ -26,8 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'is.manager' => \App\Http\Middleware\IsManager::class,
             'is.receptionist'=> \App\Http\Middleware\IsReceptionist::class,
+            'is.it.officer' => \App\Http\Middleware\IsItOfficer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
     })->create();

@@ -7,17 +7,39 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use App\Models\BookingRoom;
+use Carbon\Carbon;
 
 #[Layout('layouts.manager')]
 #[Title('Room Booking Statistics')]
 class RoomBookingStatistics extends Component
 {
-    public string $timeRange = '90days';
-    public bool   $showList  = false;
+    public string $startDate;
+    public string $endDate;
+    public bool $showList = false;
 
-    public function setTimeRange(string $range): void
+    public function mount(): void
     {
-        $this->timeRange = $range;
+        $this->startDate = now()->startOfMonth()->format('Y-m-d');
+        $this->endDate = now()->format('Y-m-d');
+    }
+
+    public function updated($propertyName): void
+    {
+        if (in_array($propertyName, ['startDate', 'endDate'])) {
+            $this->validateDateRange();
+        }
+    }
+
+    protected function validateDateRange(): void
+    {
+        if ($this->startDate && $this->endDate) {
+            $start = Carbon::parse($this->startDate);
+            $end = Carbon::parse($this->endDate);
+            
+            if ($start->greaterThan($end)) {
+                $this->endDate = $this->startDate;
+            }
+        }
     }
 
     public function toggleList(): void
@@ -30,50 +52,46 @@ class RoomBookingStatistics extends Component
         try {
             $companyId = Auth::user()->company_id;
 
-            $days = match($this->timeRange) {
-                '30days' => 30,
-                '90days' => 90,
-                default  => 7,
-            };
+            $since = Carbon::parse($this->startDate)->startOfDay();
+            $until = Carbon::parse($this->endDate)->endOfDay();
 
-            $since = now()->subDays($days)->startOfDay();
+            $base = BookingRoom::where('company_id', $companyId)->whereBetween('created_at', [$since, $until]);
 
-            // ── KPI counts ────────────────────────────────────────────────────
-            $base = BookingRoom::where('company_id', $companyId)->where('created_at', '>=', $since);
-
-            $totalBookings     = (clone $base)->count();
-            $pendingBookings   = (clone $base)->where('status', 'pending')->count();
-            $approvedBookings  = (clone $base)->where('status', 'approved')->count();
-            $rejectedBookings  = (clone $base)->where('status', 'rejected')->count();
+            $totalBookings = (clone $base)->count();
+            $pendingBookings = (clone $base)->where('status', 'pending')->count();
+            $approvedBookings = (clone $base)->where('status', 'approved')->count();
+            $rejectedBookings = (clone $base)->where('status', 'rejected')->count();
             $completedBookings = (clone $base)->whereIn('status', ['completed', 'done'])->count();
 
-            // ── Daily chart — zero-filled for every day in range ──────────────
             $raw = BookingRoom::where('company_id', $companyId)
-                ->where('created_at', '>=', $since)
+                ->whereBetween('created_at', [$since, $until])
                 ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
                 ->groupByRaw('DATE(created_at)')
                 ->orderByRaw('DATE(created_at)')
                 ->pluck('count', 'date');
 
             $labels = [];
-            $data   = [];
-            for ($i = $days - 1; $i >= 0; $i--) {
-                $date     = now()->subDays($i)->format('Y-m-d');
-                $labels[] = now()->subDays($i)->format('M d');
-                $data[]   = (int) ($raw[$date] ?? 0);
+            $data = [];
+            $currentDate = $since->copy();
+            
+            while ($currentDate->lessThanOrEqualTo($until)) {
+                $dateKey = $currentDate->format('Y-m-d');
+                $labels[] = $currentDate->format('M d');
+                $data[] = (int) ($raw[$dateKey] ?? 0);
+                $currentDate->addDay();
             }
 
             $kpis = [
-                ['label' => __('app.total_bookings'), 'value' => $totalBookings,     'color' => 'blue'],
-                ['label' => __('app.pending'),        'value' => $pendingBookings,   'color' => 'yellow'],
-                ['label' => __('app.approved'),       'value' => $approvedBookings,  'color' => 'green'],
-                ['label' => __('app.rejected'),       'value' => $rejectedBookings,  'color' => 'red'],
-                ['label' => __('app.completed'),      'value' => $completedBookings, 'color' => 'gray'],
+                ['label' => __('app.total_bookings'), 'value' => $totalBookings, 'color' => 'blue'],
+                ['label' => __('app.pending'), 'value' => $pendingBookings, 'color' => 'yellow'],
+                ['label' => __('app.approved'), 'value' => $approvedBookings, 'color' => 'green'],
+                ['label' => __('app.rejected'), 'value' => $rejectedBookings, 'color' => 'red'],
+                ['label' => __('app.completed'), 'value' => $completedBookings, 'color' => 'gray'],
             ];
 
             $bookings = $this->showList
                 ? BookingRoom::where('company_id', $companyId)
-                    ->where('created_at', '>=', $since)
+                    ->whereBetween('created_at', [$since, $until])
                     ->with(['room', 'user', 'department'])
                     ->orderBy('created_at', 'desc')
                     ->get()

@@ -16,7 +16,6 @@
                 </div>
 
                 <div class="divide-y divide-gray-100">
-                    {{-- Example Static Notification Items --}}
                     <div class="p-4 sm:p-5 flex gap-4 hover:bg-gray-50/50 transition cursor-pointer group">
                         <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <x-heroicon-o-information-circle class="w-5 h-5" />

@@ -5,10 +5,6 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    /**
-     * Add indexes on columns used in the receptionist users search query.
-     * This speeds up LIKE '%...%' prefix scans and the role/company joins.
-     */
     public function up(): void
     {
         $dbName  = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
@@ -36,7 +32,6 @@ return new class extends Migration {
     {
         $dbName  = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
 
-        // Check which of our indexes exist
         $indexes = \Illuminate\Support\Facades\DB::select(
             "SELECT INDEX_NAME FROM information_schema.STATISTICS
              WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'",
@@ -44,7 +39,6 @@ return new class extends Migration {
         );
         $existing = collect($indexes)->pluck('INDEX_NAME')->unique()->all();
 
-        // Check whether any FK depends on users_company_role_index
         $fkBlocking = \Illuminate\Support\Facades\DB::select(
             "SELECT COUNT(*) as cnt
              FROM information_schema.KEY_COLUMN_USAGE k
@@ -67,7 +61,6 @@ return new class extends Migration {
             if (in_array('users_phone_number_index', $existing, true)) {
                 $table->dropIndex('users_phone_number_index');
             }
-            // Only drop the composite index if no FK is using it as its backing index
             if (!$hasFkBlocking && in_array('users_company_role_index', $existing, true)) {
                 $table->dropIndex('users_company_role_index');
             }

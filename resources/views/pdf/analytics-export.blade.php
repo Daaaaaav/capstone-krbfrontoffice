@@ -14,7 +14,6 @@
             line-height: 1.5;
         }
 
-        /* ── Header ── */
         .report-header {
             border-bottom: 2.5px solid #111;
             padding-bottom: 10px;
@@ -36,7 +35,6 @@
             letter-spacing: 0.04em;
         }
 
-        /* ── Section headings ── */
         .section { margin-top: 22px; margin-bottom: 6px; }
         .section-title {
             font-size: 11pt;
@@ -48,7 +46,6 @@
             color: #111;
         }
 
-        /* ── KPI cards (2-per-row table) ── */
         .kpi-grid { display: table; width: 100%; margin-top: 10px; border-collapse: separate; border-spacing: 6px; }
         .kpi-cell { display: table-cell; width: 25%; }
         .kpi-card {
@@ -64,7 +61,6 @@
         .kpi-neg   { color: #dc2626; }
         .kpi-neu   { color: #6b7280; }
 
-        /* ── Tables ── */
         table.data {
             width: 100%;
             border-collapse: collapse;
@@ -89,21 +85,18 @@
         .text-center { text-align: center; }
         .bold { font-weight: bold; }
 
-        /* ── Monthly breakdown mini-table ── */
         table.monthly th, table.monthly td {
             font-size: 7.5pt;
             padding: 3px 4px;
             text-align: center;
         }
 
-        /* ── Actionable flags ── */
         .flag { margin-top: 7px; padding: 7px 10px; border-radius: 5px; font-size: 8.5pt; }
         .flag-warning { background: #fef3c7; border-left: 3px solid #f59e0b; }
         .flag-info    { background: #eff6ff; border-left: 3px solid #3b82f6; }
         .flag-ok      { background: #f0fdf4; border-left: 3px solid #22c55e; }
         .flag-cat     { font-weight: bold; margin-bottom: 2px; }
 
-        /* ── Footer ── */
         .doc-footer {
             margin-top: 30px;
             border-top: 1px solid #ccc;
@@ -118,9 +111,6 @@
 </head>
 <body>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- HEADER                                          --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="report-header">
     <div class="header-row">
         <div class="header-left">
@@ -137,9 +127,6 @@
     </div>
 </div>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- KPI OVERVIEW                                    --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="section">
     <div class="section-title">KPI Overview — Year to Date</div>
 </div>
@@ -182,9 +169,6 @@
     </tr>
 </table>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- THIS WEEK SNAPSHOT                              --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="section">
     <div class="section-title">This Week — {{ $period_week }}</div>
 </div>
@@ -236,9 +220,6 @@
     </tbody>
 </table>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- ROOM BOOKINGS DETAIL                           --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="section">
     <div class="section-title">Room Bookings — Detail</div>
 </div>
@@ -282,9 +263,6 @@
     </tbody>
 </table>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- VEHICLE BOOKINGS DETAIL                        --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="section page-break">
     <div class="section-title">Vehicle Bookings — Detail</div>
 </div>
@@ -322,9 +300,6 @@
     </tbody>
 </table>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- DELIVERIES + GUESTS                            --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="section">
     <div class="section-title">Deliveries &amp; Guest Visits</div>
 </div>
@@ -357,9 +332,6 @@
     </tbody>
 </table>
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- ACTIONABLE FLAGS                               --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="section">
     <div class="section-title">Actionable Recommendations</div>
 </div>
@@ -374,9 +346,6 @@
     </div>
 @endforeach
 
-{{-- ═══════════════════════════════════════════════ --}}
-{{-- FOOTER                                         --}}
-{{-- ═══════════════════════════════════════════════ --}}
 <div class="doc-footer">
     KRB Facility Management Analytics Report — {{ $year }} &nbsp;|&nbsp; Confidential — Internal Use Only
 </div>

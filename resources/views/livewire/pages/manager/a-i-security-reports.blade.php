@@ -20,6 +20,7 @@
                     <h2 class="text-3xl font-bold mt-2 {{ [
                         'blue' => 'text-blue-600',
                         'red' => 'text-red-600',
+                        'orange' => 'text-orange-600',
                         'yellow' => 'text-yellow-600',
                         'green' => 'text-green-600',
                     ][$stat['color']] }}">{{ $stat['value'] }}</h2>
@@ -108,9 +109,13 @@
                 class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $selectedSeverity === 'all' ? 'bg-[#4A2F24] text-white' : 'bg-white border border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}">
                 {{ __('app.all') }}
             </button>
+            <button wire:click="setSeverity('critical')"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $selectedSeverity === 'critical' ? 'bg-red-600 text-white' : 'bg-white border border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}">
+                🔴 Critical
+            </button>
             <button wire:click="setSeverity('high')"
-                class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $selectedSeverity === 'high' ? 'bg-red-600 text-white' : 'bg-white border border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}">
-                🔴 {{ __('app.severity_high') }}
+                class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $selectedSeverity === 'high' ? 'bg-orange-500 text-white' : 'bg-white border border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}">
+                🟠 High
             </button>
             <button wire:click="setSeverity('medium')"
                 class="px-4 py-2 rounded-lg text-sm font-medium transition {{ $selectedSeverity === 'medium' ? 'bg-yellow-500 text-white' : 'bg-white border border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}">
@@ -128,36 +133,31 @@
                 <div class="border-b border-[#d4dfc8] last:border-b-0 p-5 hover:bg-[#f0f4eb] transition">
                     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div class="flex items-start gap-4">
-                            <span class="px-3 py-1 rounded-full text-xs font-medium {{ [
-                                'high' => 'bg-red-100 text-red-700',
-                                'medium' => 'bg-yellow-100 text-yellow-700',
-                                'low' => 'bg-green-100 text-green-700',
-                            ][$alert['severity']] }}">
-                                {{ $alert['severity_label'] }}
+                            <span class="px-3 py-1 border rounded-full text-xs {{ $alert->severity_badge_class }}">
+                                {{ $alert->severity_label }}
                             </span>
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <p class="font-semibold text-[#2d3a24]">{{ $alert['title'] }}</p>
-                                    @if($alert['rule_id'])
-                                        <span class="text-xs px-2 py-1 rounded-full bg-[#eef1e8] text-[#5a6e4a]">{{ __('app.rule_label') }} {{ $alert['rule_id'] }}</span>
+                                    <p class="font-semibold text-[#2d3a24]">{{ $alert->description }}</p>
+                                    @if($alert->rule_id)
+                                        <span class="text-xs px-2 py-1 rounded-full bg-[#eef1e8] text-[#5a6e4a]">{{ __('app.rule_label') }} {{ $alert->rule_id }}</span>
                                     @endif
                                 </div>
-                                <p class="text-sm text-[#5a6e4a] mt-1 break-words">{{ $alert['message'] }}</p>
                                 <div class="mt-3 flex flex-wrap gap-2 text-xs text-[#7a8f6a]">
-                                    @foreach($alert['details'] as $detail)
-                                        <span class="px-2 py-1 rounded-full bg-[#eef1e8]">{{ $detail }}</span>
-                                    @endforeach
+                                    @if($alert->agent_name)
+                                        <span class="px-2 py-1 rounded-full bg-[#eef1e8]">Agent: {{ $alert->agent_name }}</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                         <div class="text-sm text-[#7a8f6a] lg:text-right">
-                            <div>{{ $alert['timestamp'] ?? __('app.live_entry') }}</div>
-                            <div class="text-xs mt-1 uppercase tracking-wide">{{ $alert['severity'] }} {{ __('app.severity_label') }}</div>
+                            <div>{{ $alert->created_at ? $alert->created_at->toDateTimeString() : __('app.live_entry') }}</div>
+                            <div class="text-xs mt-1 uppercase tracking-wide">Level {{ $alert->rule_level }}</div>
                         </div>
                     </div>
                     <details class="mt-4">
                         <summary class="cursor-pointer text-sm text-[#4E653D] hover:text-[#354C2B]">{{ __('app.show_raw_log') }}</summary>
-                        <pre class="mt-3 overflow-x-auto rounded-xl bg-[#2d3a24] text-[#CDDEA7] text-xs leading-6 p-4 whitespace-pre-wrap">{{ $alert['raw'] }}</pre>
+                        <pre class="mt-3 overflow-x-auto rounded-xl bg-[#2d3a24] text-[#CDDEA7] text-xs leading-6 p-4 whitespace-pre-wrap">{{ $alert->raw_log }}</pre>
                     </details>
                 </div>
             @empty

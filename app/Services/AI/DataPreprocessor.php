@@ -11,25 +11,8 @@ use App\Models\Guestbook;
 use App\Models\Delivery;
 use App\Models\User;
 
-/**
- * AI Data Preprocessor
- * 
- * Prepares raw database data for AI/ML predictive analysis by:
- * - Cleaning and normalizing data
- * - Feature engineering
- * - Aggregating time-series data
- * - Handling missing values
- * - Creating training datasets
- */
 class DataPreprocessor
 {
-    /**
-     * Preprocess room booking data for predictive analysis
-     * 
-     * @param int $companyId
-     * @param int $days Number of days to look back
-     * @return array Preprocessed features
-     */
     public function preprocessRoomBookings(int $companyId, int $days = 90): array
     {
         $bookings = BookingRoom::where('company_id', $companyId)
@@ -41,41 +24,31 @@ class DataPreprocessor
             return $this->getEmptyRoomBookingFeatures();
         }
 
-        // Feature extraction
         $features = [
-            // Temporal features
             'hourly_distribution' => $this->extractHourlyDistribution($bookings, 'start_time'),
             'daily_distribution' => $this->extractDailyDistribution($bookings),
             'weekly_trend' => $this->extractWeeklyTrend($bookings),
-            
-            // Booking patterns
+           
             'avg_duration' => $bookings->avg('duration_hours') ?? 0,
             'peak_hours' => $this->identifyPeakHours($bookings, 'start_time'),
             'booking_frequency' => $bookings->count() / max($days, 1),
             
-            // Status distribution
             'status_distribution' => $this->extractStatusDistribution($bookings),
             'approval_rate' => $this->calculateApprovalRate($bookings),
             'cancellation_rate' => $this->calculateCancellationRate($bookings),
             
-            // Room utilization
             'room_popularity' => $this->extractRoomPopularity($bookings),
             'department_usage' => $this->extractDepartmentUsage($bookings),
             
-            // User behavior
             'repeat_users' => $this->identifyRepeatUsers($bookings),
             'booking_lead_time' => $this->calculateAverageLeadTime($bookings),
             
-            // Anomaly indicators
             'unusual_patterns' => $this->detectUnusualPatterns($bookings),
         ];
 
         return $features;
     }
 
-    /**
-     * Preprocess vehicle booking data for predictive analysis
-     */
     public function preprocessVehicleBookings(int $companyId, int $days = 90): array
     {
         $bookings = VehicleBooking::where('company_id', $companyId)
@@ -88,25 +61,20 @@ class DataPreprocessor
         }
 
         $features = [
-            // Temporal features
             'hourly_distribution' => $this->extractHourlyDistribution($bookings, 'departure_time'),
             'daily_distribution' => $this->extractDailyDistribution($bookings),
             'weekly_trend' => $this->extractWeeklyTrend($bookings),
             
-            // Trip patterns
             'avg_duration' => $bookings->avg('duration_hours') ?? 0,
             'destination_frequency' => $this->extractDestinationFrequency($bookings),
             'booking_frequency' => $bookings->count() / max($days, 1),
             
-            // Status distribution
             'status_distribution' => $this->extractStatusDistribution($bookings),
             'completion_rate' => $this->calculateCompletionRate($bookings),
             
-            // Vehicle utilization
             'vehicle_popularity' => $this->extractVehiclePopularity($bookings),
             'department_usage' => $this->extractDepartmentUsage($bookings),
             
-            // User behavior
             'repeat_users' => $this->identifyRepeatUsers($bookings),
             'booking_lead_time' => $this->calculateAverageLeadTime($bookings),
         ];
@@ -114,9 +82,6 @@ class DataPreprocessor
         return $features;
     }
 
-    /**
-     * Preprocess guestbook data for visitor prediction
-     */
     public function preprocessGuestbookData(int $companyId, int $days = 90): array
     {
         $visitors = Guestbook::where('company_id', $companyId)
@@ -128,30 +93,23 @@ class DataPreprocessor
         }
 
         $features = [
-            // Temporal features
             'hourly_distribution' => $this->extractHourlyDistribution($visitors, 'created_at'),
             'daily_distribution' => $this->extractDailyDistribution($visitors),
             'weekly_trend' => $this->extractWeeklyTrend($visitors),
             
-            // Visitor patterns
             'avg_visit_duration' => $this->calculateAverageVisitDuration($visitors),
             'visitor_frequency' => $visitors->count() / max($days, 1),
             'peak_hours' => $this->identifyPeakHours($visitors, 'created_at'),
             
-            // Institution analysis
             'institution_distribution' => $this->extractInstitutionDistribution($visitors),
             'repeat_institutions' => $this->identifyRepeatInstitutions($visitors),
             
-            // Purpose analysis
             'purpose_categories' => $this->categorizePurposes($visitors),
         ];
 
         return $features;
     }
 
-    /**
-     * Preprocess delivery data for package prediction
-     */
     public function preprocessDeliveryData(int $companyId, int $days = 90): array
     {
         $deliveries = Delivery::where('company_id', $companyId)
@@ -163,33 +121,24 @@ class DataPreprocessor
         }
 
         $features = [
-            // Temporal features
             'hourly_distribution' => $this->extractHourlyDistribution($deliveries, 'created_at'),
             'daily_distribution' => $this->extractDailyDistribution($deliveries),
             'weekly_trend' => $this->extractWeeklyTrend($deliveries),
             
-            // Delivery patterns
             'delivery_frequency' => $deliveries->count() / max($days, 1),
             'type_distribution' => $this->extractTypeDistribution($deliveries),
             'direction_distribution' => $this->extractDirectionDistribution($deliveries),
             
-            // Status tracking
             'status_distribution' => $this->extractStatusDistribution($deliveries),
             'completion_rate' => $this->calculateCompletionRate($deliveries),
             'avg_processing_time' => $this->calculateAverageProcessingTime($deliveries),
             
-            // Storage analysis
             'storage_utilization' => $this->extractStorageUtilization($deliveries),
         ];
 
         return $features;
     }
 
-    /**
-     * Create time-series dataset for forecasting.
-     * Uses ALL available historical data by default (no date limit)
-     * so the model can learn from patterns across years.
-     */
     public function createTimeSeriesDataset(string $model, int $companyId, int $days = 0): array
     {
         $modelClass = match($model) {
@@ -202,14 +151,11 @@ class DataPreprocessor
 
         $query = \Illuminate\Support\Facades\DB::table((new $modelClass)->getTable())
             ->where('company_id', $companyId)
-            ->whereNull('deleted_at'); // respect soft deletes manually
+            ->whereNull('deleted_at');
 
-        // Only apply a date limit when explicitly requested (days > 0)
-        // For guestbook, always limit to the seeded window to avoid sparse leading zeros
         if ($days > 0) {
             $query->where('created_at', '>=', now()->subDays($days));
         } else {
-            // Default: use history_days from ai_settings (falls back to 730 days / 2 years)
             $historyDays = (int) AISettings::get('history_days', 730);
             $query->where('created_at', '>=', now()->subDays($historyDays));
         }
@@ -224,17 +170,11 @@ class DataPreprocessor
             return [];
         }
 
-        // Build a zero-filled daily series from the query window start to today
-        // Use the query's actual start date (730 days ago by default) rather than
-        // the earliest DB record, to avoid a long sparse prefix of zeros
         $windowDays = $days > 0 ? $days : (int) AISettings::get('history_days', 730);
         $startDate  = now()->subDays($windowDays)->startOfDay();
         $endDate    = Carbon::today();
         $totalDays  = $startDate->diffInDays($endDate) + 1;
-
-        // Build a lookup map: date string → count (avoids firstWhere cast issues)
         $countByDate = $data->pluck('count', 'date')->toArray();
-
         $timeSeries = [];
 
         for ($i = 0; $i < $totalDays; $i++) {
@@ -254,8 +194,6 @@ class DataPreprocessor
         return $timeSeries;
     }
 
-    // ==================== HELPER METHODS ====================
-
     private function extractHourlyDistribution($collection, string $timeField): array
     {
         $distribution = array_fill(0, 24, 0);
@@ -272,7 +210,7 @@ class DataPreprocessor
 
     private function extractDailyDistribution($collection): array
     {
-        $distribution = array_fill(0, 7, 0); // 0 = Sunday, 6 = Saturday
+        $distribution = array_fill(0, 7, 0); 
         
         foreach ($collection as $item) {
             $dayOfWeek = Carbon::parse($item->created_at)->dayOfWeek;
@@ -391,8 +329,6 @@ class DataPreprocessor
     private function detectUnusualPatterns($collection): array
     {
         $patterns = [];
-        
-        // Detect late-night bookings (10 PM - 6 AM)
         $lateNight = $collection->filter(function($item) {
             $hour = Carbon::parse($item->start_time ?? $item->created_at)->hour;
             return $hour >= 22 || $hour < 6;
@@ -406,7 +342,6 @@ class DataPreprocessor
             ];
         }
         
-        // Detect weekend activity
         $weekend = $collection->filter(function($item) {
             return Carbon::parse($item->created_at)->isWeekend();
         })->count();
@@ -475,11 +410,12 @@ class DataPreprocessor
 
     private function categorizePurposes($collection): array
     {
-        // Simple keyword-based categorization
         $categories = [
             'meeting' => ['meeting', 'rapat', 'diskusi', 'pertemuan'],
             'business' => ['bisnis', 'business', 'kerjasama', 'partnership'],
             'consultation' => ['konsultasi', 'consultation', 'advice'],
+            'internship' => ['magang', 'internship'],
+            'visit' => ['company visit', 'visitasi', 'observasi'],
             'delivery' => ['pengiriman', 'delivery', 'kirim'],
             'other' => [],
         ];
@@ -545,8 +481,6 @@ class DataPreprocessor
             ->map(fn($group) => $group->count())
             ->toArray();
     }
-
-    // ==================== EMPTY FEATURE SETS ====================
 
     private function getEmptyRoomBookingFeatures(): array
     {

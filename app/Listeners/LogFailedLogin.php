@@ -16,9 +16,6 @@ class LogFailedLogin
         $this->request = $request;
     }
 
-    /**
-     * Handle the event.
-     */
     public function handle(Failed $event): void
     {
         $ip = $this->request->ip() ?? '127.0.0.1';
@@ -26,15 +23,16 @@ class LogFailedLogin
         
         $key = 'failed_login_attempts_' . $ip;
         
-        // Track the attempts in cache for 5 minutes
         $attempts = Cache::get($key, 0);
         $attempts++;
         Cache::put($key, $attempts, now()->addMinutes(5));
 
         if ($attempts >= 5) {
             Log::info("level 12 srcip: {$ip} location: /{$location} -> BRUTE_FORCE_DETECTED");
+            \App\Models\WazuhAlert::create(['rule_level' => 12, 'description' => 'BRUTE_FORCE_DETECTED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
         } else {
             Log::info("level 5 srcip: {$ip} location: /{$location} -> LOGIN_FAILED");
+            \App\Models\WazuhAlert::create(['rule_level' => 5, 'description' => 'LOGIN_FAILED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
         }
     }
 }

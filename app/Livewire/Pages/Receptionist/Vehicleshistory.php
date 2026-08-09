@@ -24,46 +24,41 @@ class Vehicleshistory extends Component
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
-    // Filters
     public string $q = '';
     public ?int $vehicleFilter = null;
-
-    /**
-     * done     => status completed
-     * rejected => status rejected
-     */
     public string $statusTab = 'done';
-
-    // Include deleted checkbox
     public bool $withTrashed = false;
-
-    // Date filter (single date)
-    public ?string $selectedDate = null;   // 'YYYY-MM-DD' atau null
-
-    // Sort filter
-    public string $sortFilter = 'recent';  // recent | oldest | nearest
-
-    // Pagination
+    public ?string $selectedDate = null;   // 'YYYY-MM-DD' | null (default)
+    public string $sortFilter = 'recent';  // recent (default) | oldest | nearest
     public int $perPage = 5;
-
-    // Edit Modal State
     public bool $showEdit = false;
     public ?int $editId = null;
     public ?string $editLastEdited = null;
     public ?string $editCreatedAt = null;
-    
-    // Delete Modal State
     public ?int $deletingId = null;
     public string $deletingSummary = '';
     public bool $showDeleteModal = false;
     public bool $isForceDelete = false;
-
-    // *** BARU: Detail modal state ***
     public bool $showDetailModal = false;
     public ?VehicleBooking $selectedBooking = null;
-    /** @var array{before: array, after: array} */
     public array $selectedPhotos = ['before' => [], 'after' => []];
-    // *** END BARU ***
+    public bool $showPriorityDetailModal = false;
+    public ?int $priorityDetailId = null;
+    public bool $showPriorityEdit = false;
+    public ?int $priorityEditId = null;
+    public ?string $priorityEditLastEdited = null;
+    public ?string $priorityEditCreatedAt = null;
+    public array $priorityEdit = [
+        'borrower_name' => '',
+        'purpose'       => '',
+        'destination'   => '',
+        'special_notes' => '',
+        'start_at'      => '',
+        'end_at'        => '',
+    ];
+    public ?int $priorityDeletingId = null;
+    public string $priorityDeletingSummary = '';
+    public bool $showPriorityDeleteModal = false;
 
     public array $edit = [
         'borrower_name' => '',
@@ -124,9 +119,6 @@ class Vehicleshistory extends Component
         $this->isForceDelete = false;
     }
 
-    /**
-     * Soft delete untuk status 'completed' (Done) dan 'rejected'.
-     */
     private function softDeleteAction(int $vehiclebookingId): void
     {
         $user = Auth::user();
@@ -156,9 +148,6 @@ class Vehicleshistory extends Component
         $this->resetPage();
     }
 
-    /**
-     * Restore soft-deleted row.
-     */
     public function restore(int $vehiclebookingId): void
     {
         $user = Auth::user();
@@ -209,7 +198,6 @@ class Vehicleshistory extends Component
             'end_at'        => $booking->end_at ? Carbon::parse($booking->end_at)->format('Y-m-d\TH:i') : '',
         ];
 
-        // Generate pseudo-logs based on timestamps
         $logs = [];
         if ($booking->created_at) {
             $logs[] = ['status' => 'Created', 'time' => $booking->created_at, 'type' => 'info'];
@@ -230,7 +218,6 @@ class Vehicleshistory extends Component
             $logs[] = ['status' => 'Deleted', 'time' => $booking->deleted_at, 'type' => 'warning'];
         }
         
-        // Sort logs by time
         usort($logs, function($a, $b) {
             return Carbon::parse($a['time'])->timestamp <=> Carbon::parse($b['time'])->timestamp;
         });
@@ -242,6 +229,8 @@ class Vehicleshistory extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate([
             'edit.borrower_name' => 'required|string|max:255',
             'edit.purpose'       => 'nullable|string|max:255',
@@ -276,7 +265,6 @@ class Vehicleshistory extends Component
         $this->reset('editId', 'edit', 'editLastEdited', 'editCreatedAt');
     }
 
-    // *** BARU: Metode untuk Detail Modal ***
     public function showDetails(int $id): void
     {
         try {
@@ -300,7 +288,118 @@ class Vehicleshistory extends Component
         $this->selectedPhotos = ['before' => [], 'after' => []];
         $this->resetErrorBag();
     }
-    // *** END BARU ***
+
+    public function openPriorityDetail(int $id): void
+    {
+        $this->priorityDetailId        = $id;
+        $this->showPriorityDetailModal = true;
+    }
+
+    public function closePriorityDetail(): void
+    {
+        $this->showPriorityDetailModal = false;
+        $this->priorityDetailId        = null;
+    }
+
+    public function getPriorityDetailBookingProperty(): ?\App\Models\PriorityVehicleBooking
+    {
+        if (!$this->priorityDetailId) return null;
+        return \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager', 'department'])
+            ->find($this->priorityDetailId);
+    }
+
+    public function openPriorityEdit(int $id): void
+    {
+        $user      = Auth::user();
+        $companyId = (int) ($user?->company_id ?? 0);
+
+        $pvb = \App\Models\PriorityVehicleBooking::where('company_id', $companyId)
+            ->find($id);
+
+        if (!$pvb) return;
+
+        $this->priorityEditId          = $id;
+        $this->priorityEditLastEdited  = $pvb->updated_at ? Carbon::parse($pvb->updated_at)->format('d M Y, H:i') : null;
+        $this->priorityEditCreatedAt   = $pvb->created_at ? Carbon::parse($pvb->created_at)->format('d M Y, H:i') : null;
+        $this->priorityEdit = [
+            'borrower_name' => (string) ($pvb->borrower_name ?? ''),
+            'purpose'       => (string) ($pvb->purpose ?? ''),
+            'destination'   => (string) ($pvb->destination ?? ''),
+            'special_notes' => (string) ($pvb->special_notes ?? ''),
+            'start_at'      => $pvb->start_at ? Carbon::parse($pvb->start_at)->format('Y-m-d\TH:i') : '',
+            'end_at'        => $pvb->end_at   ? Carbon::parse($pvb->end_at)->format('Y-m-d\TH:i')   : '',
+        ];
+
+        $this->showPriorityDetailModal = false;
+        $this->showPriorityEdit        = true;
+    }
+
+    public function savePriorityEdit(): void
+    {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
+        $this->validate([
+            'priorityEdit.borrower_name' => 'required|string|max:255',
+            'priorityEdit.purpose'       => 'nullable|string|max:255',
+            'priorityEdit.destination'   => 'nullable|string|max:255',
+            'priorityEdit.special_notes' => 'nullable|string',
+            'priorityEdit.start_at'      => 'required|date',
+            'priorityEdit.end_at'        => 'required|date|after_or_equal:priorityEdit.start_at',
+        ]);
+
+        $user      = Auth::user();
+        $companyId = (int) ($user?->company_id ?? 0);
+
+        $pvb = \App\Models\PriorityVehicleBooking::where('company_id', $companyId)
+            ->find($this->priorityEditId);
+
+        if ($pvb) {
+            $pvb->update([
+                'borrower_name' => $this->priorityEdit['borrower_name'],
+                'purpose'       => $this->priorityEdit['purpose'],
+                'destination'   => $this->priorityEdit['destination'],
+                'special_notes' => $this->priorityEdit['special_notes'],
+                'start_at'      => Carbon::parse($this->priorityEdit['start_at'])->format('Y-m-d H:i:s'),
+                'end_at'        => Carbon::parse($this->priorityEdit['end_at'])->format('Y-m-d H:i:s'),
+            ]);
+            $this->dispatch('toast', type: 'success', title: 'Saved', message: "Priority booking #{$this->priorityEditId} updated.", duration: 3000);
+        }
+
+        $this->showPriorityEdit = false;
+        $this->reset('priorityEditId', 'priorityEdit', 'priorityEditLastEdited', 'priorityEditCreatedAt');
+    }
+
+    public function confirmPriorityDelete(int $id, string $summary): void
+    {
+        $this->priorityDeletingId      = $id;
+        $this->priorityDeletingSummary = $summary;
+        $this->showPriorityDeleteModal = true;
+    }
+
+    public function executePriorityDelete(): void
+    {
+        if (!$this->priorityDeletingId) return;
+
+        $user      = Auth::user();
+        $companyId = (int) ($user?->company_id ?? 0);
+
+        $pvb = \App\Models\PriorityVehicleBooking::where('company_id', $companyId)
+            ->find($this->priorityDeletingId);
+
+        if (!$pvb) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Record not found.', duration: 3000);
+            $this->showPriorityDeleteModal = false;
+            $this->priorityDeletingId      = null;
+            return;
+        }
+
+        $pvb->delete();
+        $this->dispatch('toast', type: 'success', title: 'Deleted', message: "Priority booking #{$this->priorityDeletingId} deleted.", duration: 3000);
+
+        $this->showPriorityDeleteModal = false;
+        $this->priorityDeletingId      = null;
+        $this->priorityDeletingSummary = '';
+    }
 
     public function render()
     {
@@ -309,23 +408,18 @@ class Vehicleshistory extends Component
 
         $query = VehicleBooking::where('company_id', $companyId);
 
-        // Include / exclude soft-deleted — explicit both branches so the
-        // global SoftDeletes scope is always deterministic regardless of
-        // query-builder call order.
         if ($this->withTrashed) {
             $query->withTrashed();
         } else {
             $query->whereNull('deleted_at');
         }
 
-        // Status filter
         if ($this->statusTab === 'rejected') {
             $query->where('status', 'rejected');
         } else {
             $query->where('status', 'completed');
         }
 
-        // Search
         if (strlen(trim($this->q)) > 0) {
             $q = trim($this->q);
             $query->where(function ($qq) use ($q) {
@@ -335,17 +429,14 @@ class Vehicleshistory extends Component
             });
         }
 
-        // Filter kendaraan
         if ($this->vehicleFilter) {
             $query->where('vehicle_id', $this->vehicleFilter);
         }
 
-        // Filter tanggal (single date)
         if (!empty($this->selectedDate)) {
             $query->whereDate('start_at', $this->selectedDate);
         }
 
-        // Sorting
         $now = Carbon::now($this->tz);
         switch ($this->sortFilter) {
             case 'oldest':
@@ -362,7 +453,6 @@ class Vehicleshistory extends Component
 
         $bookings = $query->paginate($this->perPage);
 
-        // Data kendaraan untuk label
         $vehicles = Vehicle::where('company_id', $companyId)
             ->get(['vehicle_id', 'name', 'plate_number']);
 
@@ -370,8 +460,7 @@ class Vehicleshistory extends Component
             $label = $v->name ?? $v->plate_number ?? ('#' . $v->vehicle_id);
             return [$v->vehicle_id => $label];
         })->toArray();
-
-        // Manager priority vehicle bookings — approved = done, rejected = rejected
+        
         $priorityVehicleHistory = PriorityVehicleBooking::with(['vehicle', 'manager'])
             ->forCompany($companyId)
             ->when($this->statusTab === 'done', fn($q) => $q->where('status', PriorityVehicleBooking::STATUS_APPROVED))
@@ -395,6 +484,7 @@ class Vehicleshistory extends Component
             'vehicleMap'             => $vehicleMap,
             'vehicles'               => $vehicles,
             'priorityVehicleHistory' => $priorityVehicleHistory,
+            'priorityDetailBooking'  => $this->priorityDetailBooking,
         ]);
     }
 }

@@ -57,13 +57,24 @@
                         </div>
                     </div>
 
-                    {{-- MOBILE FILTER BUTTON --}}
-                    <button type="button"
-                        class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#CDDEA7]/10 hover:bg-[#CDDEA7]/20 border border-[#CDDEA7]/20 text-[#CDDEA7] text-xs font-semibold md:hidden transition"
-                        wire:click="openFilterModal">
-                        <x-heroicon-o-bars-3 class="w-4 h-4"/>
-                        <span>{{ __('app.filter') }}</span>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        {{-- Show deleted toggle --}}
+                        <button type="button" wire:click="$toggle('withTrashed')" class="flex items-center gap-2 group focus:outline-none">
+                            <div class="relative flex items-center">
+                                <div class="w-9 h-5 rounded-full transition-colors {{ $withTrashed ? 'bg-primary' : 'bg-border' }}"></div>
+                                <div class="absolute left-[3px] w-3.5 h-3.5 rounded-full bg-white shadow transition-transform {{ $withTrashed ? 'translate-x-4' : '' }}"></div>
+                            </div>
+                            <span class="text-sm font-medium transition-colors" style="color:#CDDEA7 !important">{{ __('app.show_deleted') }}</span>
+                        </button>
+
+                        {{-- MOBILE FILTER BUTTON --}}
+                        <button type="button"
+                            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#CDDEA7]/10 hover:bg-[#CDDEA7]/20 border border-[#CDDEA7]/20 text-[#CDDEA7] text-xs font-semibold md:hidden transition"
+                            wire:click="openFilterModal">
+                            <x-heroicon-o-bars-3 class="w-4 h-4"/>
+                            <span>{{ __('app.filter') }}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -152,7 +163,6 @@
                     </div>
                 </div>
 
-                {{-- LIST (2-COLUMN GRID LAYOUT) --}}
                 <div class="px-4 sm:px-6 py-5 bg-gray-50/50">
                     @if($viewMode === 'card')
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -196,6 +206,12 @@
                                                     <span class="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 {{ $statusBg }}">
                                                         {{ $statusLabel }}
                                                     </span>
+                                                    {{-- Deleted Badge --}}
+                                                    @if($row->deleted_at)
+                                                        <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex-shrink-0">
+                                                            {{ strtoupper(__('app.deleted')) }}
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
 
@@ -246,7 +262,16 @@
                                     </div>
                                 </div>
 
-                                {{-- BOTTOM ACTIONS --}}
+                                {{-- Show Image button --}}
+                                @if($row->image && Storage::disk('public')->exists($row->image))
+                                    <button type="button"
+                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->image) }}' })"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
+                                        <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                        {{ __('app.lihat_bukti_foto') }}
+                                    </button>
+                                @endif
+
                                 <div class="pt-3 border-t border-gray-100 mt-4 flex items-center justify-between">
                                     <span class="text-[10px] font-semibold text-gray-400 font-mono">
                                         #{{ $rowNo }}
@@ -257,11 +282,21 @@
                                             class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:ring-2 focus:ring-[#4E653D]/20 focus:outline-none transition shadow-sm">
                                             {{ __('app.edit') }}
                                         </button>
-                                        <button type="button" wire:click="confirmDelete({{ $row->delivery_id }}, '{{ addslashes($row->item_name) }}')"
-                                            wire:loading.attr="disabled"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
-                                            {{ __('app.delete') }}
-                                        </button>
+                                        @if(!$row->deleted_at)
+                                            <button type="button" wire:click="confirmDelete({{ $row->delivery_id }}, '{{ addslashes($row->item_name) }}')"
+                                                wire:loading.attr="disabled"
+                                                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
+                                                {{ __('app.delete') }}
+                                            </button>
+                                        @else
+                                            <button type="button"
+                                                wire:click="restore({{ $row->delivery_id }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="restore"
+                                                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 transition shadow-sm">
+                                                {{ __('app.restore') }}
+                                            </button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -322,9 +357,16 @@
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4">
-                                                <span class="text-[10px] px-2 py-0.5 rounded-full {{ $statusBg }}">
-                                                    {{ $statusLabel }}
-                                                </span>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[10px] px-2 py-0.5 rounded-full {{ $statusBg }}">
+                                                        {{ $statusLabel }}
+                                                    </span>
+                                                    @if($row->deleted_at)
+                                                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                                                            {{ strtoupper(__('app.deleted')) }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td class="px-6 py-4">{{ $row->nama_pengirim ?? '—' }}</td>
                                             <td class="px-6 py-4">{{ $row->nama_penerima ?? '—' }}</td>
@@ -338,14 +380,31 @@
                                             </td>
                                             <td class="px-6 py-4 text-right">
                                                 <div class="flex items-center justify-end gap-2 font-medium">
+                                                    @if($row->image && Storage::disk('public')->exists($row->image))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->image) }}' })"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 focus:outline-none transition inline-flex items-center gap-1.5">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                            {{ __('app.lihat_bukti_foto') }}
+                                                        </button>
+                                                    @endif
                                                     <button type="button" wire:click="openEdit({{ $row->delivery_id }})"
                                                         class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                         {{ __('app.edit') }}
                                                     </button>
-                                                    <button type="button" wire:click="confirmDelete({{ $row->delivery_id }}, '{{ addslashes($row->item_name) }}')"
-                                                        class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
-                                                        {{ __('app.delete') }}
-                                                    </button>
+                                                    @if(!$row->deleted_at)
+                                                        <button type="button" wire:click="confirmDelete({{ $row->delivery_id }}, '{{ addslashes($row->item_name) }}')"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+                                                            {{ __('app.delete') }}
+                                                        </button>
+                                                    @else
+                                                        <button type="button"
+                                                            wire:click="restore({{ $row->delivery_id }})"
+                                                            wire:loading.attr="disabled"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition">
+                                                            {{ __('app.restore') }}
+                                                        </button>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -765,7 +824,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Document Photo</label>
                         <div class="flex gap-4">
                             <div class="w-32 h-40 shrink-0 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden relative flex items-center justify-center">
-                                @if($editPhoto)
+                                @if($editPhoto && method_exists($editPhoto, 'temporaryUrl') && in_array($editPhoto->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']))
                                     <img src="{{ $editPhoto->temporaryUrl() }}" class="w-full h-full object-cover">
                                 @elseif($editCurrentImage && Storage::disk('public')->exists($editCurrentImage))
                                     <img src="{{ asset('storage/' . $editCurrentImage) }}" class="w-full h-full object-cover">

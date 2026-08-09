@@ -88,7 +88,7 @@
                         </div>
                         @endif
                         <div>
-                            <label class="{{ $label }}">Photo Evidence (optional)</label>
+                            <label class="{{ $label }}">Photo Evidence</label>
                             <input type="file" wire:model="photo" accept="image/*" class="{{ $input }} h-auto py-2 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary">
                             @error('photo') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>

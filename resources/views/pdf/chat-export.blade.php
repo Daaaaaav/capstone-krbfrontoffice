@@ -21,7 +21,6 @@
             line-height: 1.5;
         }
 
-        /* ── Header ── */
         .header {
             border-bottom: 2px solid #111;
             padding-bottom: 10px;
@@ -68,7 +67,6 @@
             letter-spacing: 0.04em;
         }
 
-        /* ── Message bubbles ── */
         .messages {
             margin-top: 6px;
         }
@@ -82,7 +80,6 @@
             width: 100%;
         }
 
-        /* User bubble — right-aligned */
         .msg-row.user .msg-bubble {
             text-align: right;
         }
@@ -138,14 +135,12 @@
             text-align: right;
         }
 
-        /* ── Divider between messages ── */
         .msg-divider {
             border: none;
             border-top: 1px dashed #dde1e9;
             margin: 6px 0;
         }
 
-        /* ── Empty state ── */
         .empty {
             text-align: center;
             color: #888;
@@ -153,7 +148,6 @@
             margin-top: 30px;
         }
 
-        /* ── Footer ── */
         .doc-footer {
             margin-top: 30px;
             border-top: 1px solid #ccc;
@@ -163,7 +157,6 @@
             text-align: center;
         }
 
-        /* dompdf page numbers */
         .page-num {
             position: fixed;
             bottom: -1.4cm;
@@ -175,7 +168,6 @@
 </head>
 <body>
 
-    {{-- Header --}}
     <div class="header">
         <div class="header-top">
             <div class="header-left">
@@ -194,7 +186,6 @@
         </div>
     </div>
 
-    {{-- Messages --}}
     <div class="messages">
         @forelse ($messages as $i => $msg)
             @php
@@ -223,12 +214,10 @@
         @endforelse
     </div>
 
-    {{-- Footer --}}
     <div class="doc-footer">
         This document was generated from the AI Assistant chat and is intended for internal use only.
     </div>
 
-    {{-- dompdf page number script --}}
     <script type="text/php">
         if (isset($pdf)) {
             $pdf->page_text(

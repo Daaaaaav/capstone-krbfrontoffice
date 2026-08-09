@@ -370,6 +370,25 @@
                                                         <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->reject_note }}
                                                     </div>
                                                 @endif
+
+                                                <div class="flex flex-wrap gap-2 mt-3">
+                                                    @if($b->handover_photo && Storage::disk('public')->exists($b->handover_photo))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                            Approve Photo
+                                                        </button>
+                                                    @endif
+                                                    @if($b->return_photo && Storage::disk('public')->exists($b->return_photo))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs font-semibold transition">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                            Mark Done Photo
+                                                        </button>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     
@@ -396,9 +415,9 @@
  
                                             {{-- Approve Button (Primary Style) --}}
                                             <button type="button"
-                                                    wire:click.stop="approve({{ $b->vehiclebooking_id }})"
+                                                    wire:click.stop="openApproveModal({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
-                                                    wire:target="approve({{ $b->vehiclebooking_id }})"
+                                                    wire:target="openApproveModal({{ $b->vehiclebooking_id }})"
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
                                                 {{ __('app.approve') }}
                                             </button>
@@ -413,9 +432,9 @@
                                             @endif
                                             {{-- Mark Completed Button --}}
                                             <button type="button"
-                                                    wire:click.stop="markReturned({{ $b->vehiclebooking_id }})"
+                                                    wire:click.stop="openDoneModal({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
-                                                    wire:target="markReturned({{ $b->vehiclebooking_id }})"
+                                                    wire:target="openDoneModal({{ $b->vehiclebooking_id }})"
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
                                                 {{ __('app.mark_done') }}
                                             </button>
@@ -475,6 +494,20 @@
                                                 <td class="h-12 px-6 py-4 font-medium whitespace-nowrap text-xs">{{ strtolower(\Carbon\Carbon::parse($b->end_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->end_at)->format('H.i') }}</td>
                                                 <td class="h-12 px-6 py-4">
                                                     <div class="flex items-center justify-end gap-2 font-medium">
+                                                        @if($b->handover_photo && Storage::disk('public')->exists($b->handover_photo))
+                                                            <button type="button"
+                                                                @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition inline-flex items-center gap-1.5" title="Approve Photo">
+                                                                <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                            </button>
+                                                        @endif
+                                                        @if($b->return_photo && Storage::disk('public')->exists($b->return_photo))
+                                                            <button type="button"
+                                                                @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition inline-flex items-center gap-1.5" title="Mark Done Photo">
+                                                                <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                            </button>
+                                                        @endif
                                                         <button type="button" wire:click.stop="showDetails({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
                                                             Detail
@@ -484,7 +517,7 @@
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
                                                                 {{ __('app.reject') }}
                                                             </button>
-                                                            <button type="button" wire:click.stop="approve({{ $b->vehiclebooking_id }})"
+                                                            <button type="button" wire:click.stop="openApproveModal({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.approve') }}
                                                             </button>
@@ -496,7 +529,7 @@
                                                                     +{{ $overdueTable }} late
                                                                 </span>
                                                             @endif
-                                                            <button type="button" wire:click.stop="markReturned({{ $b->vehiclebooking_id }})"
+                                                            <button type="button" wire:click.stop="openDoneModal({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.mark_done') }}
                                                             </button>
@@ -1144,7 +1177,33 @@
         </div>
 
         {{-- Footer --}}
-        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end">
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
+            @if($pvd->isActionable())
+                @if($pvd->status === 'pending_cancellation')
+                    {{-- Conflict booking: needs explicit approval to cancel the existing booking --}}
+                    <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
+                            wire:loading.attr="disabled"
+                            wire:target="approvePriorityVehicleById({{ $pvd->id }})"
+                            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Approve &amp; Cancel Conflict
+                    </button>
+                @else
+                    {{-- Non-clashing: straightforward approve --}}
+                    <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
+                            wire:loading.attr="disabled"
+                            wire:target="approvePriorityVehicleById({{ $pvd->id }})"
+                            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Approve
+                    </button>
+                @endif
+                <button wire:click="openPriorityVehicleReject({{ $pvd->id }})"
+                        class="px-4 py-2 text-xs font-semibold rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Reject
+                </button>
+            @endif
             <button wire:click="closePriorityVehicleDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
                 Close
             </button>
@@ -1152,6 +1211,391 @@
     </div>
 </div>
 @endif
+
+{{-- Priority Vehicle Reject Modal --}}
+@if($showPriorityVehicleRejectModal)
+<div class="fixed inset-0 z-[210] flex items-center justify-center p-4" wire:key="priority-veh-reject-modal">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closePriorityVehicleReject"></div>
+    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-rose-200">
+        <div class="px-6 py-4 border-b border-rose-200 bg-rose-50/60 flex items-center justify-between">
+            <p class="text-sm font-semibold text-gray-900">Reject Priority Vehicle Booking</p>
+            <button wire:click="closePriorityVehicleReject" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-100 text-gray-500 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="px-6 py-5 space-y-3">
+            <p class="text-xs text-gray-600">Provide a reason so the manager can review and resubmit if needed.</p>
+            <textarea wire:model="priorityVehicleRejectReason"
+                      rows="3"
+                      placeholder="Enter rejection reason…"
+                      class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder:text-gray-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 resize-none transition"></textarea>
+            @error('priorityVehicleRejectReason') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
+            <button wire:click="closePriorityVehicleReject" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Cancel</button>
+            <button wire:click="submitPriorityVehicleReject"
+                    wire:loading.attr="disabled"
+                    wire:target="submitPriorityVehicleReject"
+                    class="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition">
+                Confirm Reject
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+        {{-- APPROVE MODAL (Camera) --}}
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+            role="dialog" aria-modal="true"
+            wire:key="approve-modal-container"
+            x-data="{
+                show: @entangle('showApproveModal').live,
+                stream: null,
+                devices: [],
+                selectedDeviceId: null,
+                init() {
+                    this.$watch('show', value => {
+                        if (value) {
+                            this.getDevices();
+                        } else {
+                            this.stopCamera();
+                        }
+                    });
+                },
+                async getDevices() {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                        alert('Browser tidak mendukung kamera.');
+                        return;
+                    }
+                    try {
+                        const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        initialStream.getTracks().forEach(t => t.stop());
+                        const allDevices = await navigator.mediaDevices.enumerateDevices();
+                        this.devices = allDevices.filter(d => d.kind === 'videoinput');
+                        if (this.devices.length > 0) {
+                            this.selectedDeviceId = this.devices[0].deviceId;
+                            this.startCamera();
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Gagal mengakses kamera: ' + e.message);
+                    }
+                },
+                async startCamera() {
+                    this.stopCamera();
+                    if (!this.selectedDeviceId) return;
+                    try {
+                        this.stream = await navigator.mediaDevices.getUserMedia({
+                            video: { deviceId: { exact: this.selectedDeviceId } }
+                        });
+                        this.$refs.video.srcObject = this.stream;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                stopCamera() {
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(t => t.stop());
+                        this.stream = null;
+                    }
+                },
+                capture() {
+                    const canvas = this.$refs.canvas;
+                    const video = this.$refs.video;
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    $wire.set('photoData', canvas.toDataURL('image/png'));
+                },
+                handleFile(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        $wire.set('photoData', ev.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }"
+            x-show="show"
+            x-transition.opacity
+            style="display: none;"
+            >
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
+                wire:click="closeApproveModal"></div>
+
+            <div x-show="show"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
+                
+                {{-- Flush Header --}}
+                <div class="px-5 py-4 bg-[#4A2F24] flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full border border-[#CDDEA7]/30 flex items-center justify-center bg-white/5">
+                            <x-heroicon-o-camera class="w-4 h-4 text-[#CDDEA7]" />
+                        </div>
+                        <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Handover Evidence</h3>
+                    </div>
+                    <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
+                        wire:click="closeApproveModal">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                {{-- Body --}}
+                <div class="p-5 flex flex-col gap-4">
+                    <div class="flex justify-between items-center text-sm px-2" x-show="devices.length > 1">
+                        <label class="font-medium text-gray-700 text-xs">Pilih Kamera:</label>
+                        <select x-model="selectedDeviceId" @change="startCamera()" class="p-1 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring focus:ring-[#CDDEA7]/50 outline-none">
+                            <template x-for="(device, index) in devices" :key="device.deviceId">
+                                <option :value="device.deviceId" x-text="device.label || 'Kamera ' + (index + 1)"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    {{-- Camera Viewport --}}
+                    <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                        <canvas x-ref="canvas" style="display: none;"></canvas>
+                        
+                        {{-- Reticle --}}
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                            <svg width="220" height="220" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M50 30H30V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M190 30H210V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M50 210H30V190" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M190 210H210V190" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    {{-- Preview --}}
+                    <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                            <x-heroicon-o-arrow-path class="w-4 h-4"/>
+                            Retake
+                        </button>
+                    </div>
+
+                    {{-- Actions (Capture/Gallery) --}}
+                    <div x-show="!$wire.photoData" class="flex items-center gap-3">
+                        <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
+                            <x-heroicon-o-photo class="w-5 h-5"/>
+                            Buka Galeri
+                        </button>
+                        <input type="file" accept="image/*" x-ref="fileInput" @change="handleFile" class="hidden">
+                        
+                        <button type="button" @click="capture()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#4A2F24] text-white font-bold text-sm hover:bg-[#38221A] transition shadow-md">
+                            <x-heroicon-o-camera class="w-5 h-5 text-[#CDDEA7]"/>
+                            Ambil Foto
+                        </button>
+                    </div>
+
+                    {{-- Actions (Submit) --}}
+                    <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
+                        <button type="button" wire:click="submitApprove" @click="stopCamera()"
+                            class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4A2F24] text-white font-bold text-sm hover:bg-[#38221A] transition shadow-md"
+                            wire:loading.attr="disabled" wire:target="submitApprove">
+                            <x-heroicon-o-check class="w-5 h-5 text-[#CDDEA7]" />
+                            <span>Simpan & Approve</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- DONE MODAL (Camera) --}}
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+            role="dialog" aria-modal="true"
+            wire:key="done-modal-container"
+            x-data="{
+                show: @entangle('showDoneModal').live,
+                stream: null,
+                devices: [],
+                selectedDeviceId: null,
+                init() {
+                    this.$watch('show', value => {
+                        if (value) {
+                            this.getDevices();
+                        } else {
+                            this.stopCamera();
+                        }
+                    });
+                },
+                async getDevices() {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                        alert('Browser tidak mendukung kamera.');
+                        return;
+                    }
+                    try {
+                        const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        initialStream.getTracks().forEach(t => t.stop());
+                        const allDevices = await navigator.mediaDevices.enumerateDevices();
+                        this.devices = allDevices.filter(d => d.kind === 'videoinput');
+                        if (this.devices.length > 0) {
+                            this.selectedDeviceId = this.devices[0].deviceId;
+                            this.startCamera();
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Gagal mengakses kamera: ' + e.message);
+                    }
+                },
+                async startCamera() {
+                    this.stopCamera();
+                    if (!this.selectedDeviceId) return;
+                    try {
+                        this.stream = await navigator.mediaDevices.getUserMedia({
+                            video: { deviceId: { exact: this.selectedDeviceId } }
+                        });
+                        this.$refs.video.srcObject = this.stream;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                stopCamera() {
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(t => t.stop());
+                        this.stream = null;
+                    }
+                },
+                capture() {
+                    const canvas = this.$refs.canvas;
+                    const video = this.$refs.video;
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    $wire.set('photoData', canvas.toDataURL('image/png'));
+                },
+                handleFile(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        $wire.set('photoData', ev.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }"
+            x-show="show"
+            x-transition.opacity
+            style="display: none;"
+            >
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
+                wire:click="closeDoneModal"></div>
+
+            <div x-show="show"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
+                
+                {{-- Flush Header --}}
+                <div class="px-5 py-4 bg-[#4A2F24] flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full border border-[#CDDEA7]/30 flex items-center justify-center bg-white/5">
+                            <x-heroicon-o-camera class="w-4 h-4 text-[#CDDEA7]" />
+                        </div>
+                        <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Return Evidence</h3>
+                    </div>
+                    <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
+                        wire:click="closeDoneModal">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                {{-- Body --}}
+                <div class="p-5 flex flex-col gap-4">
+                    <div class="flex justify-between items-center text-sm px-2" x-show="devices.length > 1">
+                        <label class="font-medium text-gray-700 text-xs">Pilih Kamera:</label>
+                        <select x-model="selectedDeviceId" @change="startCamera()" class="p-1 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring focus:ring-[#CDDEA7]/50 outline-none">
+                            <template x-for="(device, index) in devices" :key="device.deviceId">
+                                <option :value="device.deviceId" x-text="device.label || 'Kamera ' + (index + 1)"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    {{-- Camera Viewport --}}
+                    <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                        <canvas x-ref="canvas" style="display: none;"></canvas>
+                        
+                        {{-- Reticle --}}
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                            <svg width="220" height="220" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M50 30H30V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M190 30H210V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M50 210H30V190" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M190 210H210V190" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    {{-- Preview --}}
+                    <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                            <x-heroicon-o-arrow-path class="w-4 h-4"/>
+                            Retake
+                        </button>
+                    </div>
+
+                    {{-- Actions (Capture/Gallery) --}}
+                    <div x-show="!$wire.photoData" class="flex items-center gap-3">
+                        <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
+                            <x-heroicon-o-photo class="w-5 h-5"/>
+                            Buka Galeri
+                        </button>
+                        <input type="file" accept="image/*" x-ref="fileInput" @change="handleFile" class="hidden">
+                        
+                        <button type="button" @click="capture()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#4A2F24] text-white font-bold text-sm hover:bg-[#38221A] transition shadow-md">
+                            <x-heroicon-o-camera class="w-5 h-5 text-[#CDDEA7]"/>
+                            Ambil Foto
+                        </button>
+                    </div>
+
+                    {{-- Actions (Submit) --}}
+                    <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
+                        <button type="button" wire:click="submitDone" @click="stopCamera()"
+                            class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4E653D] text-white font-bold text-sm hover:bg-[#354C2B] transition shadow-md"
+                            wire:loading.attr="disabled" wire:target="submitDone">
+                            <x-heroicon-o-check class="w-5 h-5" />
+                            <span>Simpan & Return</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{-- IMAGE LIGHTBOX --}}
+    <div
+        x-data="{ open: false, src: '' }"
+        @open-lightbox.window="open = true; src = $event.detail.src"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="open = false"
+        style="display:none">
+        <button type="button" @click="open = false"
+            class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img :src="src" alt="Bukti foto" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain">
+    </div>
 
 </div>{{-- end root Livewire div --}}
 

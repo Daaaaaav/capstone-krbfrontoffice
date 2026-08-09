@@ -537,7 +537,7 @@
 
                         {{-- Jenis keperluan --}}
                         <div class="flex flex-col justify-end">
-                            <label class="{{ $label }}">{{ __('app.purpose_type') }}</label>
+                            <label class="{{ $label }}">{{ __('app.purpose_type') }} <span class="text-destructive">*</span></label>
                             <div
                                 x-data="{
                                     open: false,
@@ -762,10 +762,22 @@
                     @else
                         <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                             @foreach($vehicleScheduleData as $booking)
-                                <div wire:click="openBookingDetail({{ $booking['id'] }})" class="cursor-pointer p-3 rounded-xl border border-border bg-muted/5 shadow-sm hover:border-primary/30 transition-colors">
+                            @php $isPriority = !empty($booking['is_priority']); @endphp
+                                <div wire:click="openBookingDetail('{{ $booking['id'] }}')"
+                                     wire:key="vschedule-{{ $booking['id'] }}"
+                                     class="cursor-pointer p-3 rounded-xl border shadow-sm hover:border-primary/30 transition-colors
+                                        {{ $isPriority ? 'border-amber-300 bg-amber-50/40' : 'border-border bg-muted/5' }}">
+                                    {{-- Priority star badge --}}
+                                    @if($isPriority)
+                                    <div class="flex items-center gap-1 mb-1.5">
+                                        <svg class="w-3 h-3 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                        <span class="text-[10px] font-bold text-amber-600 uppercase tracking-wide">Priority</span>
+                                    </div>
+                                    @endif
                                     <div class="flex items-start justify-between gap-2 mb-2">
                                         <div class="font-bold text-foreground text-sm leading-tight break-words">{{ $booking['title'] }}</div>
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase whitespace-nowrap
+                                            {{ $isPriority ? 'bg-amber-500/15 text-amber-700' : 'bg-primary/10 text-primary' }}">
                                             {{ $booking['status'] }}
                                         </span>
                                     </div>
@@ -778,6 +790,12 @@
                                             <x-heroicon-o-calendar-days class="w-3.5 h-3.5"/>
                                             <span><strong>End:</strong> {{ $booking['end_date'] }}, {{ $booking['end_time'] }}</span>
                                         </div>
+                                        @if($isPriority && !empty($booking['requested_by']))
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <x-heroicon-o-user class="w-3.5 h-3.5"/>
+                                            <span>{{ $booking['requested_by'] }}</span>
+                                        </div>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
@@ -801,10 +819,20 @@
                 x-transition:leave="ease-in duration-200"
                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-                
-                <div class="px-6 py-4 border-b border-border bg-muted/5 flex items-start justify-between">
+
+                @php $detailIsPriority = !empty($selectedBookingDetail['is_priority']); @endphp
+
+                <div class="px-6 py-4 border-b border-border {{ $detailIsPriority ? 'bg-amber-50/60' : 'bg-muted/5' }} flex items-start justify-between">
                     <div>
-                        <h3 class="text-lg font-bold text-foreground leading-tight">{{ $selectedBookingDetail['vehicle_name'] }}</h3>
+                        <div class="flex items-center gap-2">
+                            @if($detailIsPriority)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 text-[10px] font-bold uppercase tracking-wide">
+                                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                Priority
+                            </span>
+                            @endif
+                            <h3 class="text-lg font-bold text-foreground leading-tight">{{ $selectedBookingDetail['vehicle_name'] }}</h3>
+                        </div>
                         <p class="text-sm text-muted-foreground mt-1">Vehicle Booking Detail</p>
                     </div>
                     <button @click="showDetail = false" class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted/10">
@@ -820,18 +848,25 @@
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Status</p>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase bg-primary/10 text-primary">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase
+                                {{ $detailIsPriority ? 'bg-amber-500/15 text-amber-700' : 'bg-primary/10 text-primary' }}">
                                 {{ $selectedBookingDetail['status'] }}
                             </span>
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Borrower</p>
-                            <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['borrower'] }}</p>
+                            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                                {{ $detailIsPriority ? 'Requested by (Manager)' : 'Borrower' }}
+                            </p>
+                            <p class="text-sm font-semibold text-foreground">
+                                {{ $detailIsPriority ? ($selectedBookingDetail['requested_by'] ?? '—') : $selectedBookingDetail['borrower'] }}
+                            </p>
                         </div>
+                        @if(!$detailIsPriority)
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Department</p>
                             <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['department'] }}</p>
                         </div>
+                        @endif
                         <div>
                             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Start</p>
                             <p class="text-sm font-semibold text-foreground">{{ $selectedBookingDetail['start_at_full'] }}</p>

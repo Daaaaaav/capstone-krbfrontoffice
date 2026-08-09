@@ -229,10 +229,6 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button @click="cameraError = null; requestCameraAccess()" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#4E653D] text-white rounded-lg text-xs font-semibold hover:bg-[#3d5130] transition shadow-sm">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            Izinkan Kamera
-                        </button>
                         <button x-show="cameras.length > 0" @click="showCameraSelect = !showCameraSelect" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             Ganti Kamera
@@ -329,13 +325,17 @@
 
                 cameraError: null,
                 showCameraSelect: false,
-                scanLog: [],
+                // Pre-seeded from DB so history survives page reloads and different devices
+                scanLog: @json($initialScanLog),
                 processing: false,
                 lastScannedToken: null,
                 cooldownMs: 2000,
                 _lastScanTime: 0,
                 _stream: null,
                 _animFrameId: null,
+                _pollInterval: null,
+                // Track the latest attempt timestamp we have, so polling only fetches newer rows.
+                _latestAttemptAt: @json($latestAttemptAt),
 
                 // Camera selection
                 cameras: [],
@@ -349,6 +349,7 @@
                 async init() {
                     if (this.allDone) return;
                     await this.requestCameraAccess();
+                    this.startPolling();
                 },
 
                 async requestCameraAccess() {
@@ -594,6 +595,57 @@
                 // Clean up when component is destroyed
                 destroy() {
                     this.stopCamera();
+                    this.stopPolling();
+                },
+
+                startPolling() {
+                    // Poll every 4 seconds for new attempts written by other devices
+                    this._pollInterval = setInterval(() => this.pollNewAttempts(), 4000);
+                },
+
+                stopPolling() {
+                    if (this._pollInterval) {
+                        clearInterval(this._pollInterval);
+                        this._pollInterval = null;
+                    }
+                },
+
+                async pollNewAttempts() {
+                    try {
+                        const newRows = await $wire.fetchNewAttempts(this._latestAttemptAt);
+                        if (newRows && newRows.length > 0) {
+                            // newRows are ordered oldest-first from the server; prepend newest-first
+                            for (let i = newRows.length - 1; i >= 0; i--) {
+                                const row = newRows[i];
+                                // Avoid duplicates: skip if this message+time already exists
+                                const exists = this.scanLog.some(
+                                    l => l.time === row.time && l.message === row.message
+                                );
+                                if (!exists) {
+                                    this.scanLog.unshift(row);
+                                }
+                            }
+                            // Advance our cursor to the newest timestamp we just received
+                            this._latestAttemptAt = newRows[newRows.length - 1].attempted_at;
+
+                            // Sync scanned count and completion state in case another device
+                            // completed a checkout we haven't seen yet
+                            const lastSuccess = newRows.filter(r => r.success).pop();
+                            if (lastSuccess) {
+                                const data = await $wire.getProgress();
+                                if (data) {
+                                    this.scannedCount = data.scanned_count;
+                                    if (data.all_done) {
+                                        this.allDone = true;
+                                        this.stopCamera();
+                                        this.stopPolling();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Silently ignore poll errors — next interval will retry
+                    }
                 },
             };
         }

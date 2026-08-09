@@ -9,10 +9,6 @@ use App\Models\Guestbook;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Pulls the same live statistics that the Manager AI chatbot uses,
- * structured as an array ready for PDF / CSV export.
- */
 class AnalyticsExportService
 {
     private string $tz = 'Asia/Jakarta';
@@ -31,7 +27,6 @@ class AnalyticsExportService
         $weekEnd   = $now->copy()->endOfWeek()->toDateString();
         $today     = $now->toDateString();
 
-        // ── Room bookings ────────────────────────────────────────
         $rq = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
 
         $rooms = [
@@ -85,12 +80,10 @@ class AnalyticsExportService
             ? sprintf('%02d:00–%02d:00', $peakHr, $peakHr + 1)
             : 'N/A';
 
-        // Monthly breakdown (rooms YTD)
         $rooms['monthly'] = $this->monthlyBreakdown(
             $rq, 'created_at', $yearStart, $yearEnd
         );
 
-        // ── Vehicle bookings ─────────────────────────────────────
         $vq = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
 
         $vehicles = [
@@ -112,7 +105,6 @@ class AnalyticsExportService
             $vq, 'created_at', $yearStart, $yearEnd
         );
 
-        // ── Deliveries ───────────────────────────────────────────
         $dq = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId));
 
         $deliveries = [
@@ -125,7 +117,6 @@ class AnalyticsExportService
             $dq, 'created_at', $yearStart, $yearEnd
         );
 
-        // ── Guest visits ─────────────────────────────────────────
         $gq = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId));
 
         $guests = [
@@ -138,7 +129,6 @@ class AnalyticsExportService
             $gq, 'created_at', $yearStart, $yearEnd
         );
 
-        // ── Actionable flags ─────────────────────────────────────
         $flags = $this->buildFlags($rooms, $vehicles, $deliveries);
 
         return [
@@ -155,10 +145,6 @@ class AnalyticsExportService
             'months'       => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
         ];
     }
-
-    // ──────────────────────────────────────────────────────────
-    // Helpers
-    // ──────────────────────────────────────────────────────────
 
     private function monthlyBreakdown($query, string $dateCol, string $start, string $end): array
     {
@@ -184,15 +170,10 @@ class AnalyticsExportService
         return round(($current - $prev) / $prev * 100, 1);
     }
 
-    /**
-     * Build a list of actionable flags based on the stats.
-     * Each flag: ['level' => 'warning|info|ok', 'category' => string, 'message' => string]
-     */
     private function buildFlags(array $rooms, array $vehicles, array $deliveries): array
     {
         $flags = [];
 
-        // High room rejection rate
         if ($rooms['rejection_rate'] >= 20) {
             $flags[] = [
                 'level'    => 'warning',
@@ -207,7 +188,6 @@ class AnalyticsExportService
             ];
         }
 
-        // Pending rooms backlog
         if ($rooms['ytd_pending'] >= 5) {
             $flags[] = [
                 'level'    => 'warning',
@@ -216,7 +196,6 @@ class AnalyticsExportService
             ];
         }
 
-        // Vehicle rejection rate
         if ($vehicles['rejection_rate'] >= 20) {
             $flags[] = [
                 'level'    => 'warning',
@@ -225,7 +204,6 @@ class AnalyticsExportService
             ];
         }
 
-        // Pending vehicles backlog
         if ($vehicles['ytd_pending'] >= 5) {
             $flags[] = [
                 'level'    => 'warning',
@@ -234,7 +212,6 @@ class AnalyticsExportService
             ];
         }
 
-        // Pending deliveries
         if ($deliveries['ytd_pending'] >= 10) {
             $flags[] = [
                 'level'    => 'warning',
@@ -242,8 +219,7 @@ class AnalyticsExportService
                 'message'  => "{$deliveries['ytd_pending']} delivery documents are pending — follow up to prevent backlog.",
             ];
         }
-
-        // YoY growth signals
+        
         if ($rooms['yoy_change'] !== null) {
             if ($rooms['yoy_change'] > 30) {
                 $flags[] = [

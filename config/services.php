@@ -4,19 +4,6 @@ $systemMode = strtolower(trim((string) env('SYSTEM_MODE', 'development')));
 $isSecureMode = in_array($systemMode, ['deployment', 'production', 'prod'], true);
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
-
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -47,6 +34,11 @@ return [
         'mode' => $systemMode,
         'otp_enabled' => $isSecureMode,
         'captcha_enabled' => $isSecureMode,
+    ],
+
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
+        'model'   => env('GROQ_MODEL', 'qwen/qwen3-32b'),
     ],
 
     'zoom' => [

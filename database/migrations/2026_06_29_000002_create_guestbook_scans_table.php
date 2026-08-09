@@ -5,11 +5,6 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    /**
-     * Each row represents one scan of the guestbook QR code.
-     * Allows a group of visitors to each scan individually,
-     * recording their own name/details on the public scan page.
-     */
     public function up(): void
     {
         Schema::create('guestbook_scans', function (Blueprint $table) {

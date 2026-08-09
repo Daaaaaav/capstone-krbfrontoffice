@@ -10,15 +10,9 @@ class AISettings extends Model
     protected $table    = 'ai_settings';
     protected $fillable = ['key', 'value', 'type', 'group', 'label', 'description'];
 
-    // ── Cache TTL (seconds) ──────────────────────────────────────────────────
     private const CACHE_KEY = 'ai_settings_all';
-    private const CACHE_TTL = 3600; // 1 hour
+    private const CACHE_TTL = 3600; 
 
-    // ── Typed accessor ───────────────────────────────────────────────────────
-
-    /**
-     * Return the value cast to the declared type.
-     */
     public function getCastedValueAttribute(): mixed
     {
         return match ($this->type) {
@@ -29,21 +23,12 @@ class AISettings extends Model
         };
     }
 
-    // ── Static helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Get one setting value by key, cast to its declared type.
-     * Falls back to $default when the key is not found.
-     */
     public static function get(string $key, mixed $default = null): mixed
     {
         $all = static::allCached();
         return array_key_exists($key, $all) ? $all[$key] : $default;
     }
 
-    /**
-     * Return all settings for a group as  key => casted_value.
-     */
     public static function group(string $group): array
     {
         return static::where('group', $group)
@@ -52,29 +37,27 @@ class AISettings extends Model
             ->toArray();
     }
 
-    /**
-     * Persist a single value and bust the cache.
-     */
     public static function set(string $key, mixed $value): void
     {
         static::where('key', $key)->update(['value' => (string) $value]);
         static::bustCache();
     }
 
-    /**
-     * Bust the settings cache (call after any bulk update).
-     */
+    public static function getMultiple(array $defaults): array
+    {
+        $all    = static::allCached();
+        $result = [];
+        foreach ($defaults as $key => $default) {
+            $result[$key] = array_key_exists($key, $all) ? $all[$key] : $default;
+        }
+        return $result;
+    }
+
     public static function bustCache(): void
     {
         Cache::forget(self::CACHE_KEY);
     }
 
-    // ── Internal ─────────────────────────────────────────────────────────────
-
-    /**
-     * Load all settings from cache (or DB on miss).
-     * Returns key => casted_value map.
-     */
     private static function allCached(): array
     {
         return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {

@@ -20,7 +20,6 @@
             padding: 40px 30px;
         }
 
-        /* ── Header ── */
         .header {
             background: #4A2F24;
             border-radius: 10px;
@@ -109,7 +108,6 @@
             margin: 0;
         }
 
-        /* ── QR Section ── */
         .qr-section-title {
             font-size: 14px;
             font-weight: 700;
@@ -170,7 +168,6 @@
             word-break: break-all;
         }
 
-        /* ── Footer ── */
         .footer {
             border-top: 1px solid #f3f4f6;
             padding-top: 16px;
@@ -179,8 +176,7 @@
             font-size: 9px;
             color: #9ca3af;
         }
-
-        /* Page break for many visitors */
+        
         .page-break {
             page-break-before: always;
         }

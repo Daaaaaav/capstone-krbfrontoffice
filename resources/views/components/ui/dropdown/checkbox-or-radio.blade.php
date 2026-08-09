@@ -8,7 +8,6 @@
     'shortcut' => null
 ])
 
-<!-- prevent those props from been part of the attributes bag... -->
 @props([
     'classes' => '',
     'value' => '',

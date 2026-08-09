@@ -1,7 +1,6 @@
 <div>
-    <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
+    <main class="max-w-3xl mx-auto px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
 
-        {{-- HERO BANNER --}}
         <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl">
             <div class="pointer-events-none absolute inset-0 opacity-10">
                 <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
@@ -24,7 +23,6 @@
             </div>
         </div>
 
-        {{-- ===== SEARCH ===== --}}
         <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
             <label class="block text-sm font-medium text-gray-700 mb-2">{{ __('app.search_questions') }}</label>
             <div class="relative">
@@ -42,7 +40,6 @@
             </div>
         </div>
 
-        {{-- ===== FAQ LIST ===== --}}
         @if(count($filteredFaqs) > 0)
             <div class="space-y-3" x-data="{ open: null }">
                 @foreach($filteredFaqs as $index => $faq)
@@ -80,7 +77,6 @@
             </div>
         @endif
 
-        {{-- ===== CONTACT CARD ===== --}}
         <div class="relative overflow-hidden rounded-2xl bg-[#4A2F24] text-[#CDDEA7] shadow-2xl p-6 sm:p-8">
             <div class="pointer-events-none absolute inset-0 opacity-10">
                 <div class="absolute top-0 -right-4 w-24 h-24 bg-[#CDDEA7] rounded-full blur-xl"></div>
@@ -92,7 +88,7 @@
                     {{ __('app.still_need_help_sub') }}
                 </p>
                 <div class="flex flex-wrap gap-3 text-sm">
-                    <a href="mailto:davina.managerkrb@gmail.com"
+                    <a href="mailto:helpadminkrb@gmail.com"
                         class="inline-flex items-center gap-2 px-4 py-2 bg-[#CDDEA7] text-[#4A2F24] rounded-lg font-semibold hover:bg-white hover:text-gray-900 transition shadow-sm">
                         <x-heroicon-o-envelope class="w-4 h-4 shrink-0" />
                         <span>{{ __('app.email_admin') }}</span>

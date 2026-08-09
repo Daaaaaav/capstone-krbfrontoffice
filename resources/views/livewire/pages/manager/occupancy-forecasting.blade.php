@@ -1,7 +1,5 @@
 <div class="min-h-screen bg-[#f5f7f2]">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
-        {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.occupancy_title') }}"
             subtitle="{{ __('app.occupancy_subtitle') }}">
@@ -16,11 +14,8 @@
             </x-slot:actions>
         </x-page-header>
 
-        {{-- CONTROLS --}}
         <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {{-- Forecast Type --}}
                 <div>
                     <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_type') }}</label>
                     <div class="flex gap-2">
@@ -39,29 +34,44 @@
                     </div>
                 </div>
 
-                {{-- Forecast Period --}}
                 <div>
                     <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_period') }}</label>
-                    <div class="flex gap-2">
-                        <button wire:click="setForecastDays(7)"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition {{ $forecastDays === 7 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.7_days') }}
-                        </button>
-                        <button wire:click="setForecastDays(14)"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition {{ $forecastDays === 14 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.14_days') }}
-                        </button>
-                        <button wire:click="setForecastDays(21)"
-                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition {{ $forecastDays === 21 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
-                            {{ __('app.21_days') }}
-                        </button>
+                    <div class="flex flex-col sm:flex-row gap-2 items-start">
+                        <div class="flex-1 w-full">
+                            <x-forecast-date-picker 
+                                wire:model.live="forecastStartDate"
+                                class="w-full"
+                            />
+                        </div>
+                        <div class="flex gap-2">
+                            <button wire:click="setForecastDays(7)"
+                                type="button"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition {{ $forecastDays === 7 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                7d
+                            </button>
+                            <button wire:click="setForecastDays(14)"
+                                type="button"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition {{ $forecastDays === 14 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                14d
+                            </button>
+                            <button wire:click="setForecastDays(21)"
+                                type="button"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition {{ $forecastDays === 21 ? 'bg-[#4A2F24] text-white' : 'bg-[#eef1e8] text-[#4E653D] hover:bg-[#dde4d4]' }}">
+                                21d
+                            </button>
+                        </div>
                     </div>
+                    @if($forecastStartDate && $forecastEndDate)
+                        <p class="text-xs text-[#7a8f6a] mt-2">
+                            {{ __('app.forecasting') ?? 'Forecasting' }} {{ $forecastDays }} {{ $forecastDays === 1 ? __('app.day') : __('app.days') }}
+                            ({{ \Carbon\Carbon::parse($forecastStartDate)->format('M d') }} - {{ \Carbon\Carbon::parse($forecastEndDate)->format('M d, Y') }})
+                        </p>
+                    @endif
                 </div>
             </div>
 
             <div class="border-t border-[#e8ede2] mt-6"></div>
 
-            {{-- ── TRAINING DATA SOURCE ──────────────────────────────────────── --}}
             <div class="mt-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div>
@@ -70,10 +80,7 @@
                     </div>
                 </div>
 
-                {{-- Source selector buttons --}}
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                    {{-- CSV Server (default) --}}
                     <button wire:click="setTrainingSource('csv_server')"
                         class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             {{ $trainingSource === 'csv_server'
@@ -104,7 +111,6 @@
                         </div>
                     </button>
 
-                    {{-- Custom CSV Upload --}}
                     <button wire:click="setTrainingSource('csv_upload')"
                         class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             {{ $trainingSource === 'csv_upload'
@@ -125,7 +131,6 @@
                         </div>
                     </button>
 
-                    {{-- Live DB --}}
                     <button wire:click="setTrainingSource('live_db')"
                         class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition
                             {{ $trainingSource === 'live_db'
@@ -143,18 +148,39 @@
                             <p class="text-xs text-[#7a8f6a] mt-0.5 leading-snug">{{ __('app.source_live_db_desc') }}</p>
                         </div>
                     </button>
-
                 </div>
 
-                {{-- ── CSV UPLOAD FORM (shown only when csv_upload is active) ── --}}
                 @if($trainingSource === 'csv_upload')
                     <div class="mt-4 p-4 bg-[#f5f7f2] border border-[#d4dfc8] rounded-xl space-y-3">
-                        <p class="text-xs font-medium text-[#4E653D]">{{ __('app.csv_required_columns') }}:
-                            <span class="font-normal text-[#7a8f6a]">
-                                date, visitors, docs_packages_received, docs_packages_sent,
-                                offline_room_bookings, online_room_bookings, vehicle_bookings
-                            </span>
-                        </p>
+
+                        {{-- CSV Format Guidance --}}
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                            <p class="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                                {{ __('app.csv_format_guide_title') }}
+                            </p>
+                            <ul class="text-xs text-blue-700 space-y-1 pl-5 list-disc">
+                                <li>{{ __('app.csv_guide_header_required') }}</li>
+                                <li>{{ __('app.csv_guide_columns') }}:
+                                    <code class="px-1 py-0.5 bg-blue-100 rounded text-blue-900 font-mono text-[10px]">
+                                        date, visitors, docs_packages_received, docs_packages_sent, offline_room_bookings, online_room_bookings, vehicle_bookings
+                                    </code>
+                                </li>
+                                <li>{{ __('app.csv_guide_date_format') }}: <code class="px-1 py-0.5 bg-blue-100 rounded text-blue-900 font-mono text-[10px]">YYYY-MM-DD</code> ({{ __('app.csv_guide_date_example') }}: <code class="font-mono text-[10px]">2024-01-15</code>)</li>
+                                <li>{{ __('app.csv_guide_numeric') }}</li>
+                                <li>{{ __('app.csv_guide_order') }}</li>
+                                <li>{{ __('app.csv_guide_file_type') }}: <code class="font-mono text-[10px]">.csv</code> {{ __('app.csv_guide_or') }} <code class="font-mono text-[10px]">.txt</code>, {{ __('app.csv_guide_max_size') }}: 10 MB</li>
+                            </ul>
+                            <div class="mt-2 pt-2 border-t border-blue-200">
+                                <p class="text-[10px] font-semibold text-blue-700 mb-1">{{ __('app.csv_guide_example') }}:</p>
+                                <pre class="text-[10px] font-mono text-blue-800 bg-blue-100 rounded px-2 py-1.5 overflow-x-auto whitespace-pre">date,visitors,docs_packages_received,docs_packages_sent,offline_room_bookings,online_room_bookings,vehicle_bookings
+2024-01-01,45,3,2,4,2,1
+2024-01-02,52,5,1,6,3,2
+2024-01-03,38,2,4,3,1,0</pre>
+                            </div>
+                        </div>
 
                         {{-- Error --}}
                         @if($uploadError)
@@ -202,7 +228,6 @@
                     </div>
                 @endif
 
-                {{-- Active source badge --}}
                 <div class="mt-3 flex items-center gap-2 text-xs text-[#7a8f6a]">
                     <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
                     {{ __('app.currently_using') }}:
@@ -217,7 +242,6 @@
             </div>
         </div>
 
-        {{-- STATS CARDS --}}
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="bg-white border border-[#d4dfc8] rounded-2xl p-5 shadow-sm hover:shadow-lg transition">
                 <p class="text-sm font-medium text-[#7a8f6a] mb-2">{{ __('app.avg_room_occupancy') }}</p>
@@ -258,29 +282,6 @@
             </div>
         </section>
 
-        {{-- WEATHER INSIGHTS (only shown when weather data is available) --}}
-        @if(!empty($weatherInsight))
-            <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm">
-                <h3 class="text-lg font-semibold text-[#2d3a24] mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    {{ __('app.weather_impact') }}
-                </h3>
-                <div class="space-y-3">
-                    @foreach($weatherInsight as $insight)
-                        <div class="flex items-start gap-3 p-4 rounded-lg {{ $insight['type'] === 'warning' ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200' }}">
-                            <span class="text-2xl">{{ $insight['icon'] }}</span>
-                            <p class="text-sm {{ $insight['type'] === 'warning' ? 'text-yellow-800' : 'text-green-800' }} flex-1">
-                                {{ $insight['message'] }}
-                            </p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        {{-- FORECAST CHART --}}
         @if($roomForecast || $vehicleForecast)
             <div class="bg-white border border-[#d4dfc8] p-6 rounded-2xl shadow-sm">
                 <div class="mb-4">
@@ -296,28 +297,222 @@
             </div>
         @endif
 
-        {{-- WEATHER MINI CARDS (only shown when weather data is available) --}}
-        @if(!empty($weather['forecast']))
-            <div class="bg-white border border-[#d4dfc8] rounded-2xl p-6 shadow-sm">
-                <h3 class="text-lg font-semibold text-[#2d3a24] mb-4">{{ __('app.3day_weather') }}</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    @foreach($weather['forecast'] as $day)
-                        <div class="flex items-center gap-4 p-4 bg-[#f0f4eb] rounded-lg">
-                            <span class="text-4xl">{{ $day['weather_icon'] }}</span>
-                            <div class="flex-1">
-                                <p class="text-sm font-semibold text-[#2d3a24]">{{ $day['date_label'] }}</p>
-                                <p class="text-xs text-[#7a8f6a]">{{ $day['summary']['weather_desc'] ?? '—' }}</p>
-                                <p class="text-lg font-bold text-[#2d3a24] mt-1">{{ $day['max_temp'] }}°C</p>
-                                <p class="text-xs text-[#9aaa8a]">🌧️ {{ $day['rain_chance'] }}% {{ __('app.rain') }}</p>
-                            </div>
-                        </div>
-                    @endforeach
+        <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-[#f0f4eb] border-b border-[#d4dfc8] flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-[#4E653D] text-white flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
                 </div>
-                <p class="text-xs text-[#9aaa8a] mt-4 text-center">
-                    Data from <a href="https://data.bmkg.go.id" target="_blank" class="underline">BMKG</a>
-                </p>
+                <div>
+                    <h3 class="text-base font-semibold text-[#2d3a24]">{{ __('app.model_performance_title') }}</h3>
+                    <p class="text-xs text-[#7a8f6a] mt-0.5">{{ __('app.model_performance_subtitle') }}</p>
+                </div>
             </div>
-        @endif
+
+            @php $m = $modelMetrics ?? []; $hasMetrics = !empty($m) && ($m['available'] ?? false); @endphp
+
+            @if($hasMetrics)
+                <div class="p-6 space-y-6">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_last_trained') }}</p>
+                            <p class="text-sm font-bold text-[#2d3a24] leading-snug">
+                                @if(!empty($m['trained_at']))
+                                    {{ \Carbon\Carbon::parse($m['trained_at'])->format('d M Y') }}<br>
+                                    <span class="font-normal text-[#5a6e4a]">{{ \Carbon\Carbon::parse($m['trained_at'])->format('H:i') }}</span>
+                                @else —
+                                @endif
+                            </p>
+                        </div>
+
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_epochs') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ $m['epochs_run'] ?? '—' }}</p>
+                        </div>
+
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_training_loss') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['training_loss']) && $m['training_loss'] !== null ? number_format((float)$m['training_loss'], 4) : '—' }}
+                            </p>
+                        </div>
+
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_validation_loss') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['validation_loss']) && $m['validation_loss'] !== null ? number_format((float)$m['validation_loss'], 4) : '—' }}
+                            </p>
+                        </div>
+
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_mae') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['mae']) && $m['mae'] !== null ? number_format((float)$m['mae'], 4) : '—' }}
+                            </p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_bookings_unit') }}</p>
+                        </div>
+
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_rmse') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">
+                                {{ isset($m['rmse']) && $m['rmse'] !== null ? number_format((float)$m['rmse'], 4) : '—' }}
+                            </p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_bookings_unit') }}</p>
+                        </div>
+
+                        @if(isset($m['smape']) && $m['smape'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_smape') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['smape'], 2) }}%</p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_smape_hint') }}</p>
+                        </div>
+                        @elseif(isset($m['mape']) && $m['mape'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_mape') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['mape'], 2) }}%</p>
+                        </div>
+                        @endif
+
+                        @if(isset($m['wape']) && $m['wape'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_wape') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['wape'], 2) }}%</p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_wape_hint') }}</p>
+                        </div>
+                        @endif
+
+                        @if(isset($m['r2']) && $m['r2'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_r2') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['r2'], 4) }}</p>
+                        </div>
+                        @endif
+
+                        @if(isset($m['best_val_loss']) && $m['best_val_loss'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_best_val_loss') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format((float)$m['best_val_loss'], 6) }}</p>
+                        </div>
+                        @endif
+
+                        @if(isset($m['early_stop_epoch']) && $m['early_stop_epoch'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_early_stop_epoch') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ $m['early_stop_epoch'] }}</p>
+                            <p class="text-[10px] text-[#9aaa8a] mt-0.5">{{ __('app.mp_best_epoch_hint') }}</p>
+                        </div>
+                        @endif
+
+                        @if(isset($m['trainable_params']) && $m['trainable_params'] !== null)
+                        <div class="bg-[#f5f7f2] rounded-xl p-4 border border-[#e2e8da]">
+                            <p class="text-xs font-medium text-[#7a8f6a] mb-1">{{ __('app.mp_trainable_params') }}</p>
+                            <p class="text-2xl font-bold text-[#2d3a24]">{{ number_format($m['trainable_params']) }}</p>
+                        </div>
+                        @endif
+
+                    </div>
+
+                    @php
+                        $hasSecondaryOcc = (isset($m['training_time']) && $m['training_time'] !== null)
+                            || (isset($m['training_samples']) && $m['training_samples'] !== null)
+                            || (isset($m['validation_samples']) && $m['validation_samples'] !== null)
+                            || (isset($m['test_samples']) && $m['test_samples'] !== null);
+                    @endphp
+                    @if($hasSecondaryOcc)
+                    <div class="border-t border-[#e8ede2] pt-4">
+                        <div class="flex flex-wrap gap-6">
+                            @if(isset($m['training_time']) && $m['training_time'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_training_time') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $m['training_time'] }}s</p>
+                            </div>
+                            @endif
+                            @if(isset($m['training_samples']) && $m['training_samples'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_training_samples') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ number_format($m['training_samples']) }}</p>
+                            </div>
+                            @endif
+                            @if(isset($m['validation_samples']) && $m['validation_samples'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_validation_samples') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ number_format($m['validation_samples']) }}</p>
+                            </div>
+                            @endif
+                            @if(isset($m['test_samples']) && $m['test_samples'] !== null)
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_test_samples') }}</p>
+                                <p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ number_format($m['test_samples']) }}</p>
+                            </div>
+                            @endif
+                            @if(!empty($m['from_cache']))
+                            <div>
+                                <p class="text-xs text-[#7a8f6a]">{{ __('app.mp_cache_status') }}</p>
+                                <span class="inline-flex items-center gap-1 mt-0.5 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                    {{ __('app.mp_loaded_from_cache') }}
+                                </span>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
+                    @if(!empty($m['loss_history']) && !empty($m['val_loss_history']))
+                    <div class="border-t border-[#e8ede2] pt-4">
+                        <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_loss_curve') }}</h4>
+                        <div wire:ignore style="position: relative; height: 220px;">
+                            <canvas id="lossCurveChartOcc"></canvas>
+                        </div>
+                    </div>
+                    @endif
+
+                    @if(!empty($m['hyperparameters']))
+                    <div class="border-t border-[#e8ede2] pt-4">
+                        <h4 class="text-sm font-semibold text-[#2d3a24] mb-3">{{ __('app.mp_hyperparameters') }}</h4>
+                        @php $hp = $m['hyperparameters']; @endphp
+                        <div class="flex flex-wrap gap-x-6 gap-y-3">
+                            @if(isset($hp['lstm_units']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_lstm_units') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['lstm_units'] }}</p></div>
+                            @endif
+                            @if(isset($hp['sequence_window']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_seq_window') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['sequence_window'] }}</p></div>
+                            @endif
+                            @if(isset($hp['dropout_rate']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_dropout') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['dropout_rate'] }}</p></div>
+                            @endif
+                            @if(isset($hp['batch_size']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_batch_size') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['batch_size'] }}</p></div>
+                            @endif
+                            @if(isset($hp['validation_split']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_val_split') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['validation_split'] * 100 }}%</p></div>
+                            @endif
+                            @if(isset($hp['early_stop_patience']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_patience') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['early_stop_patience'] }}</p></div>
+                            @endif
+                            @if(isset($hp['optimizer']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_optimizer') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['optimizer'] }}</p></div>
+                            @endif
+                            @if(isset($hp['loss_fn']))
+                            <div><p class="text-xs text-[#7a8f6a]">{{ __('app.mp_hp_loss_fn') }}</p><p class="text-sm font-semibold text-[#2d3a24] mt-0.5">{{ $hp['loss_fn'] }}</p></div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
+                </div>
+            @else
+                <div class="p-10 text-center">
+                    <svg class="w-10 h-10 text-[#b5c4a5] mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-sm font-medium text-[#5a6e4a]">{{ __('app.mp_no_metrics') }}</p>
+                    <p class="text-xs text-[#9aaa8a] mt-1">{{ __('app.mp_no_metrics_hint') }}</p>
+                </div>
+            @endif
+        </div>
 
     </main>
 </div>
@@ -342,9 +537,20 @@
             window.occupancyChart.destroy();
         }
 
-        const datasets = [];
-        const roomData = @json($chartData['roomData']);
+        const labels      = @json($chartData['labels']);
+        const roomData    = @json($chartData['roomData']);
         const vehicleData = @json($chartData['vehicleData']);
+
+        console.group('[OccupancyForecasting Debug] Chart vs Prediction data');
+        console.log('Label count   :', labels.length);
+        console.log('First label   :', labels[0] ?? 'none');
+        console.log('Last label    :', labels[labels.length - 1] ?? 'none');
+        console.log('Labels sample :', labels.slice(0, 5));
+        console.log('Room data pts :', roomData ? roomData.filter(v => v !== null).length : 0);
+        console.log('Veh data pts  :', vehicleData ? vehicleData.filter(v => v !== null).length : 0);
+        console.groupEnd();
+
+        const datasets = [];
 
         if (roomData && roomData.some(v => v !== null)) {
             datasets.push({
@@ -374,7 +580,7 @@
 
         window.occupancyChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: @json($chartData['labels']), datasets },
+            data: { labels: labels, datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -394,6 +600,62 @@
             }
         });
     }
+</script>
+@endpush
+@endif
+
+@php $occLossHistory = $modelMetrics['loss_history'] ?? []; $occValLossHistory = $modelMetrics['val_loss_history'] ?? []; @endphp
+@if(!empty($occLossHistory) && !empty($occValLossHistory))
+@push('scripts')
+<script>
+(function () {
+    function buildOccLossCurve() {
+        const ctx = document.getElementById('lossCurveChartOcc');
+        if (!ctx) return;
+        if (window.lossCurveChartOcc && typeof window.lossCurveChartOcc.destroy === 'function') {
+            window.lossCurveChartOcc.destroy();
+        }
+        const epochs = Array.from({ length: @json(count($occLossHistory)) }, (_, i) => i + 1);
+        window.lossCurveChartOcc = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: epochs,
+                datasets: [
+                    {
+                        label: '{{ __('app.mp_training_loss') }}',
+                        data: @json($occLossHistory),
+                        borderColor: '#4E653D',
+                        backgroundColor: 'rgba(78,101,61,0.08)',
+                        borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
+                    },
+                    {
+                        label: '{{ __('app.mp_validation_loss') }}',
+                        data: @json($occValLossHistory),
+                        borderColor: '#4A2F24',
+                        backgroundColor: 'rgba(74,47,36,0.05)',
+                        borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, borderDash: [4,3],
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                    tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(6) } }
+                },
+                scales: {
+                    x: { title: { display: true, text: '{{ __('app.mp_epoch') }}', font: { size: 11 } }, ticks: { maxTicksLimit: 10 } },
+                    y: { title: { display: true, text: 'Loss (MSE)', font: { size: 11 } }, beginAtZero: false }
+                }
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', buildOccLossCurve);
+    document.addEventListener('livewire:init', () => {
+        Livewire.hook('morph.updated', ({ el, component }) => setTimeout(buildOccLossCurve, 150));
+    });
+})();
 </script>
 @endpush
 @endif

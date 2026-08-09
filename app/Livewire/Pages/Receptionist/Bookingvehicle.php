@@ -17,45 +17,32 @@ use App\Services\SecurityMonitoringService;
 #[Title('Vehicle Booking')]
 class Bookingvehicle extends Component
 {
-    // Vehicle Directory schedule modal
     public bool $showVehicleScheduleModal = false;
     public ?int $selectedVehicleForSchedule = null;
     public array $vehicleScheduleData = [];
     public bool $showBookingDetailModal = false;
     public array $selectedBookingDetail = [];
-
-    // Vehicle booking approve/reject (from directory modal)
     public bool $showVehicleRejectModal = false;
     public ?int $vehicleRejectId = null;
     public string $vehicleRejectNote = '';
-
-    // form fields
     public ?int $department_id = null;
     public ?int $borrower_user_id = null;
     public string $borrower_name = '';
     public ?int $vehicle_id = null;
-
     public ?string $date_from = null;
     public ?string $date_to = null;
     public ?string $start_time = null;
     public ?string $end_time = null;
-
     public string $purpose = '';
     public ?string $destination = null;
-    public string $odd_even_area = 'tidak';      // sesuaikan enum di DB
-    public ?string $purpose_type = null;         // jenis keperluan
-    public ?string $purpose_type_other = null;   // untuk opsi "lainnya"
-
-
-    /** @var \Illuminate\Support\Collection */
+    public string $odd_even_area = 'tidak';      
+    public ?string $purpose_type = null;         
+    public ?string $purpose_type_other = null;   
     public $departments;
     public $users;
     public $vehicles;
     public bool $hasVehicles = false;
-
-    /** Plain array for the Alpine combobox — updated whenever department changes */
     public array $usersForCombobox = [];
-    // search box seperti di MeetingSchedule
     public string $departmentSearch = '';
     public string $userSearch = '';
 
@@ -77,7 +64,7 @@ class Bookingvehicle extends Component
             'purpose'              => ['required', 'string', 'max:255'],
             'destination'          => ['nullable', 'string', 'max:255'],
             'odd_even_area'        => ['nullable', 'string', 'max:50'],
-            'purpose_type'         => ['nullable', 'string', 'max:50'],
+            'purpose_type'         => ['required', 'string', 'in:dinas,operasional,antar_jemput,lainnya'],
             'purpose_type_other'   => ['required_if:purpose_type,lainnya', 'nullable', 'string', 'max:255'],
         ];
     }
@@ -87,39 +74,26 @@ class Bookingvehicle extends Component
         $user = Auth::user();
         $companyId = (int) ($user?->company_id ?? 0);
 
-        // semua departemen di company ini, urut A-Z
         $this->departments = Department::where('company_id', $companyId)
             ->orderBy('department_name', 'asc')
             ->get();
-
-        // user awal kosong, baru diisi ketika departemen dipilih
         $this->users = collect();
-
-        // kendaraan aktif, urut nama A-Z
         $this->vehicles = Vehicle::where('company_id', $companyId)
             ->where('is_active', 1)
             ->orderBy('name', 'asc')
             ->get(['vehicle_id', 'name', 'plate_number']);
-
         $this->hasVehicles = $this->vehicles->count() > 0;
-
-        // default tanggal = hari ini
         $today = now($this->tz)->toDateString();
         $this->date_from = $today;
         $this->date_to   = $today;
     }
 
-    /**
-     * Auto-called saat departemen diganti.
-     */
     public function updatedDepartmentId($value): void
     {
-        // reset pilihan + search user
         $this->borrower_user_id = null;
         $this->userSearch = '';
 
         if (!$value) {
-            // kalau dikosongkan, list user dikosongkan
             $this->users = collect();
             $this->usersForCombobox = [];
             return;
@@ -128,13 +102,11 @@ class Bookingvehicle extends Component
         $authUser  = Auth::user();
         $companyId = (int) ($authUser?->company_id ?? 0);
 
-        // load user hanya dari departemen terpilih, urut A-Z
         $this->users = User::where('company_id', $companyId)
             ->where('department_id', $value)
             ->orderBy('full_name', 'asc')
             ->get();
 
-        // keep a plain array for the Alpine combobox
         $this->usersForCombobox = $this->users
             ->map(fn($u) => [
                 'id'    => $u->user_id,
@@ -147,6 +119,8 @@ class Bookingvehicle extends Component
 
     public function submit()
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         try {
             $this->validate();
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -183,17 +157,25 @@ class Bookingvehicle extends Component
             $startAt = Carbon::parse($this->date_from.' '.$this->start_time, $this->tz);
             $endAt   = Carbon::parse($this->date_to.' '.$this->end_time, $this->tz);
 
-            // nama borrower dari user yang dipilih, atau dari input text
+            if ($startAt->greaterThanOrEqualTo($endAt)) {
+                $this->dispatch(
+                    'toast',
+                    type: 'error',
+                    title: 'Invalid Booking Time',
+                    message: 'The start time must be before the end time.',
+                    duration: 7000
+                );
+                return;
+            }
+
             $borrowerName = $this->borrower_name;
             if ($this->borrower_user_id) {
-                // BUG FIX: Don't rely on hydrated collection which might be null. Query directly.
                 $u = \App\Models\User::find($this->borrower_user_id);
                 if ($u) {
                     $borrowerName = $u->full_name;
                 }
             }
 
-        // ── 1-Month Advance Booking Constraint ─────────────────────────────
         $maxAdvanceDate = now($this->tz)->addMonths(1);
         if ($startAt->greaterThan($maxAdvanceDate)) {
             $this->dispatch(
@@ -206,7 +188,6 @@ class Bookingvehicle extends Component
             return;
         }
 
-        // ── 1-Hour Advance Booking Constraint ──────────────────────────
         $minAdvanceDate = now($this->tz)->addMinutes(30);
         if ($startAt->lessThan($minAdvanceDate)) {
             $this->dispatch(
@@ -218,19 +199,11 @@ class Bookingvehicle extends Component
             );
             return;
         }
-        // ───────────────────────────────────────────────────────────────────
-
-        // jika keperluan_type = lainnya + ada detail lainnya, boleh digabung ke purpose
         if ($this->purpose_type === 'lainnya' && $this->purpose_type_other) {
             $this->purpose .= ' (Lainnya: '.$this->purpose_type_other.')';
         }
 
-        // ── Late-return block ──────────────────────────────────────────────
-        // Refuse any new booking for a vehicle that currently has an
-        // unresolved late_return booking. The receptionist must mark that
-        // overdue booking as returned before the vehicle can be booked again.
         $blocker = VehicleBooking::findLateReturnBlocker((int) $this->vehicle_id);
-
         if ($blocker) {
             $tz           = $this->tz;
             $overdueSince = \Carbon\Carbon::parse($blocker->end_at, $tz);
@@ -257,9 +230,7 @@ class Bookingvehicle extends Component
             );
             return;
         }
-        // ── end late-return block ──────────────────────────────────────────
 
-        // ── Overlapping booking check with 1-hour buffer ───────────────────
         $conflict = VehicleBooking::where('vehicle_id', $this->vehicle_id)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])
             ->where(function($q) use ($startAt, $endAt) {
@@ -278,7 +249,6 @@ class Bookingvehicle extends Component
             );
             return;
         }
-        // ── end overlapping booking check ──────────────────────────────────
 
             VehicleBooking::create([
                 'vehicle_id'     => $this->vehicle_id,
@@ -300,7 +270,6 @@ class Bookingvehicle extends Component
             $this->dispatch('$refresh');
             $this->dispatch('toast', type: 'success', title: 'Submitted', message: 'Vehicle booking has been created.', duration: 3000);
 
-            // reset form (list departemen/vehicles tetap)
             $this->reset([
                 'department_id',
                 'borrower_user_id',
@@ -318,11 +287,9 @@ class Bookingvehicle extends Component
                 'departmentSearch',
                 'userSearch',
             ]);
-
-            // list user dikosongkan lagi
+    
             $this->users = collect();
             $this->usersForCombobox = [];
-
             $today = now($this->tz)->toDateString();
             $this->date_from     = $today;
             $this->date_to       = $today;
@@ -342,14 +309,12 @@ class Bookingvehicle extends Component
 
     public function openBookingDetail($bookingId): void
     {
-        $booking = collect($this->vehicleScheduleData)->firstWhere('id', $bookingId);
+        $booking = collect($this->vehicleScheduleData)->first(fn($b) => (string) $b['id'] === (string) $bookingId);
         if ($booking) {
             $this->selectedBookingDetail = $booking;
             $this->showBookingDetailModal = true;
         }
     }
-
-    /* ===================== Vehicle Directory Approve / Reject ===================== */
 
     public function approveVehicleBookingFromDirectory(int $id): void
     {
@@ -367,7 +332,6 @@ class Bookingvehicle extends Component
                 $b->save();
             });
 
-            // Refresh schedule data so card updates inline
             if ($this->selectedVehicleForSchedule) {
                 $this->openVehicleScheduleModal($this->selectedVehicleForSchedule);
             }
@@ -433,41 +397,77 @@ class Bookingvehicle extends Component
         }
     }
 
-    /* ===================== Vehicle Directory Schedule Modal ===================== */
-
     public function openVehicleScheduleModal($vehicleId): void
     {
         $this->selectedVehicleForSchedule = (int) $vehicleId;
         $now     = now($this->tz);
         $endDate = $now->copy()->addDays(30);
-
-        $this->vehicleScheduleData = VehicleBooking::with(['vehicle', 'user', 'department'])
+        $regularBookings = VehicleBooking::with(['vehicle', 'user', 'department'])
             ->where('vehicle_id', $vehicleId)
-            ->whereBetween('start_at', [$now->startOfDay(), $endDate->endOfDay()])
-            ->whereIn('status', ['pending', 'approved', 'ongoing', 'PENDING', 'APPROVED', 'ONGOING'])
+            ->whereBetween('start_at', [$now->copy()->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', ['pending', 'approved', 'on_progress', 'PENDING', 'APPROVED'])
             ->orderBy('start_at')
             ->get()
             ->map(function ($b) {
                 $startAt = Carbon::parse($b->start_at, $this->tz);
                 $endAt   = Carbon::parse($b->end_at,   $this->tz);
                 return [
-                    'id'           => $b->vehiclebooking_id,
-                    'title'        => $b->purpose ?? 'Vehicle Booking',
-                    'vehicle_name' => $b->vehicle->name ?? 'Vehicle',
-                    'plate_number' => $b->vehicle->plate_number ?? '-',
-                    'borrower'     => $b->user->full_name ?? $b->borrower_name ?? 'Unknown',
-                    'department'   => $b->department->department_name ?? 'Unknown',
-                    'purpose'      => $b->purpose ?? '-',
-                    'destination'  => $b->destination ?? '-',
-                    'start_date'   => $startAt->format('l, d M Y'),
-                    'end_date'     => $endAt->format('l, d M Y'),
-                    'start_time'   => $startAt->format('H:i'),
-                    'end_time'     => $endAt->format('H:i'),
+                    'id'            => $b->vehiclebooking_id,
+                    'title'         => $b->purpose ?? 'Vehicle Booking',
+                    'vehicle_name'  => $b->vehicle->name ?? 'Vehicle',
+                    'plate_number'  => $b->vehicle->plate_number ?? '-',
+                    'borrower'      => $b->user->full_name ?? $b->borrower_name ?? 'Unknown',
+                    'department'    => $b->department->department_name ?? 'Unknown',
+                    'purpose'       => $b->purpose ?? '-',
+                    'destination'   => $b->destination ?? '-',
+                    'start_date'    => $startAt->format('l, d M Y'),
+                    'end_date'      => $endAt->format('l, d M Y'),
+                    'start_time'    => $startAt->format('H:i'),
+                    'end_time'      => $endAt->format('H:i'),
                     'start_at_full' => $startAt->format('d M Y H:i'),
                     'end_at_full'   => $endAt->format('d M Y H:i'),
-                    'status'       => $b->status,
+                    'status'        => $b->status,
+                    'is_priority'   => false,
+                    'requested_by'  => null,
                 ];
-            })
+            });
+        $priorityBookings = \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager', 'department'])
+            ->where('vehicle_id', $vehicleId)
+            ->whereBetween('start_at', [$now->copy()->startOfDay(), $endDate->endOfDay()])
+            ->whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+            ])
+            ->orderBy('start_at')
+            ->get()
+            ->map(function ($pb) {
+                $startAt = Carbon::parse($pb->start_at, $this->tz);
+                $endAt   = Carbon::parse($pb->end_at,   $this->tz);
+                return [
+                    'id'            => 'priority-' . $pb->id,
+                    'title'         => $pb->purpose ?? 'Priority Vehicle Booking',
+                    'vehicle_name'  => $pb->vehicle->name ?? 'Vehicle',
+                    'plate_number'  => $pb->vehicle->plate_number ?? '-',
+                    'borrower'      => $pb->manager?->full_name ?? '—',
+                    'department'    => $pb->department?->department_name ?? '—',
+                    'purpose'       => $pb->purpose ?? '-',
+                    'destination'   => $pb->destination ?? '-',
+                    'start_date'    => $startAt->format('l, d M Y'),
+                    'end_date'      => $endAt->format('l, d M Y'),
+                    'start_time'    => $startAt->format('H:i'),
+                    'end_time'      => $endAt->format('H:i'),
+                    'start_at_full' => $startAt->format('d M Y H:i'),
+                    'end_at_full'   => $endAt->format('d M Y H:i'),
+                    'status'        => $pb->statusLabel(),
+                    'is_priority'   => true,
+                    'requested_by'  => $pb->manager?->full_name ?? '—',
+                ];
+            });
+
+        $this->vehicleScheduleData = $regularBookings->concat($priorityBookings)
+            ->sortBy(fn($b) => $b['start_date'] . ' ' . $b['start_time'])
+            ->values()
             ->toArray();
 
         $this->showVehicleScheduleModal = true;
@@ -477,7 +477,6 @@ class Bookingvehicle extends Component
     public function render()
 
     {
-        // === FILTER + SORT DEPARTEMEN BERDASARKAN SEARCH ===
         $departments = $this->departments;
 
         if (trim($this->departmentSearch) !== '') {
@@ -488,12 +487,10 @@ class Bookingvehicle extends Component
             });
         }
 
-        // pastikan tetap urut A-Z setelah filter
         $departments = $departments
             ->sortBy('department_name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-        // === FILTER + SORT USERS (KALAU SUDAH ADA DEPARTEMEN) ===
         $users = $this->users;
 
         if ($this->department_id) {
@@ -506,12 +503,10 @@ class Bookingvehicle extends Component
                 });
             }
 
-            // pastikan user juga tetap urut A-Z setelah filter
             $users = $users
                 ->sortBy('full_name', SORT_NATURAL | SORT_FLAG_CASE)
                 ->values();
         } else {
-            // kalau belum pilih departemen, kosongin saja
             $users = collect();
         }
 
@@ -520,8 +515,6 @@ class Bookingvehicle extends Component
             'users'       => $users,
             'vehicles'    => $this->vehicles,
             'hasVehicles' => $this->hasVehicles,
-            // Fresh query every render so newly-added/activated vehicles appear in
-            // the Fleet Availability sidebar without a full page reload.
             'vehiclesForDirectory' => Vehicle::where('company_id', (int) (Auth::user()?->company_id ?? 0))
                 ->where('is_active', 1)
                 ->orderBy('name', 'asc')

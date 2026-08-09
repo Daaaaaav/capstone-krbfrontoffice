@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 import holidays
@@ -16,14 +17,14 @@ from pydantic import BaseModel, Field
 
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.regularizers import l2
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import (
     mean_squared_error,
     mean_absolute_error,
-    mean_absolute_percentage_error
+    r2_score,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -46,22 +47,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ── MODEL CACHE DIRECTORY ────────────────────────────────────────────────────
-
-# Stored alongside this script; can be overridden via env var
 MODEL_DIR = os.getenv(
     "LSTM_MODEL_DIR",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_cache")
 )
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-MODEL_PATH      = os.path.join(MODEL_DIR, "lstm_model.keras")
-SCALER_PATH     = os.path.join(MODEL_DIR, "scaler.pkl")
+MODEL_PATH       = os.path.join(MODEL_DIR, "lstm_model.keras")
+SCALER_PATH      = os.path.join(MODEL_DIR, "scaler.pkl")
 FINGERPRINT_PATH = os.path.join(MODEL_DIR, "fingerprint.json")
+METRICS_PATH     = os.path.join(MODEL_DIR, "model_metrics.json")
+
+_model_singleton  = None   
+_scaler_singleton = None   
+_prediction_cache: dict = {}
 
 
-# ── HEALTH CHECK ─────────────────────────────────────────────────────────────
+def _clear_prediction_cache() -> None:
+    global _prediction_cache
+    _prediction_cache = {}
+    logger.info("Prediction response cache cleared.")
+
+
+def _prediction_cache_key(model_fp: str, data_sig: str, forecast_days: int) -> str:
+    return f"{model_fp}|{data_sig}|{forecast_days}"
+
 
 @app.get("/")
 def health_check():
@@ -71,25 +81,19 @@ def health_check():
         "version": "2.2.0"
     }
 
-
-# ── CONFIG MODEL ─────────────────────────────────────────────────────────────
-
 class LSTMConfig(BaseModel):
-    lstm_units:          int   = Field(default=64,      ge=8,   le=512)
-    dropout_rate:        float = Field(default=0.1,     ge=0.0, le=0.5)
+    lstm_units:          int   = Field(default=128,     ge=8,   le=512)
+    dropout_rate:        float = Field(default=0.2,     ge=0.0, le=0.5)
     l2_regularization:   float = Field(default=1e-5,    ge=0.0, le=0.1)
-    sequence_window:     int   = Field(default=7,       ge=3,   le=60)
+    sequence_window:     int   = Field(default=14,      ge=3,   le=60)
     epochs:              int   = Field(default=150,     ge=1,   le=1000)
     batch_size:          int   = Field(default=16,      ge=4,   le=256)
     validation_split:    float = Field(default=0.15,    ge=0.05, le=0.30)
-    early_stop_patience: int   = Field(default=10,      ge=1,   le=50)
+    early_stop_patience: int   = Field(default=15,      ge=1,   le=50)
     min_data_points:     int   = Field(default=45,      ge=10)
     history_days:        int   = Field(default=730,     ge=30)
     confidence_min:      float = Field(default=0.30,    ge=0.0, le=1.0)
     confidence_max:      float = Field(default=0.92,    ge=0.0, le=1.0)
-
-
-# ── REQUEST MODELS ────────────────────────────────────────────────────────────
 
 class DataPoint(BaseModel):
     date: str
@@ -101,20 +105,12 @@ class RequestData(BaseModel):
     forecast_days: int = 7
     use_dummy_data: bool = False
     lstm_config: Optional[LSTMConfig] = None
-    force_retrain: bool = False  # set True to skip cache and retrain
+    force_retrain: bool = False  # set True to skip cache and retrain (takes long time, better not default lol)
 
     def get_config(self) -> LSTMConfig:
         return self.lstm_config if self.lstm_config is not None else LSTMConfig()
 
-
-# ── MODEL FINGERPRINTING ──────────────────────────────────────────────────────
-
 def _data_signature(df: pd.DataFrame) -> str:
-    """
-    A lightweight signature of the training dataset.
-    Uses the sorted date range + total count sum so we retrain when
-    new data arrives but not on every tiny fluctuation.
-    """
     min_date  = str(df['date'].min())
     max_date  = str(df['date'].max())
     n_rows    = len(df)
@@ -123,7 +119,6 @@ def _data_signature(df: pd.DataFrame) -> str:
 
 
 def compute_fingerprint(cfg: LSTMConfig, df: pd.DataFrame) -> str:
-    """SHA-256 of (config JSON + data signature)."""
     payload = json.dumps(cfg.dict(), sort_keys=True) + "|" + _data_signature(df)
     return hashlib.sha256(payload.encode()).hexdigest()
 
@@ -139,6 +134,7 @@ def load_fingerprint() -> Optional[str]:
 
 
 def save_fingerprint(fp: str, trained_at: str, training_samples: int) -> None:
+    os.makedirs(MODEL_DIR, exist_ok=True)
     with open(FINGERPRINT_PATH, "w") as f:
         json.dump({
             "fingerprint":      fp,
@@ -156,10 +152,44 @@ def load_fingerprint_meta() -> dict:
     except Exception:
         return {}
 
+def compute_smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    eps        = 1e-8
+    numerator  = 2.0 * np.abs(y_true - y_pred)
+    denominator = np.abs(y_true) + np.abs(y_pred) + eps
+    return float(round(np.mean(numerator / denominator) * 100.0, 4))
 
-# ── SAVE / LOAD MODEL + SCALER ────────────────────────────────────────────────
+
+def compute_wape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    eps = 1e-8
+    return float(round(
+        np.sum(np.abs(y_true - y_pred)) / (np.sum(np.abs(y_true)) + eps) * 100.0,
+        4
+    ))
+
+def save_model_metrics(metrics: dict) -> None:
+    try:
+        os.makedirs(MODEL_DIR, exist_ok=True)
+        with open(METRICS_PATH, "w") as f:
+            json.dump(metrics, f, indent=2)
+        logger.info("Model metrics saved to %s", METRICS_PATH)
+    except Exception as e:
+        logger.warning("Could not save model metrics: %s", e)
+
+
+def load_model_metrics() -> Optional[dict]:
+    if not os.path.exists(METRICS_PATH):
+        return None
+    try:
+        with open(METRICS_PATH, "r") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+_MAPE_SANE_BOUND = 1000.0  
 
 def save_model_and_scaler(model, scaler: MinMaxScaler) -> None:
+    os.makedirs(MODEL_DIR, exist_ok=True)
     model.save(MODEL_PATH)
     with open(SCALER_PATH, "wb") as f:
         pickle.dump(scaler, f)
@@ -167,7 +197,6 @@ def save_model_and_scaler(model, scaler: MinMaxScaler) -> None:
 
 
 def load_model_and_scaler():
-    """Returns (model, scaler) or (None, None) if cache is missing."""
     if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
         return None, None
     try:
@@ -181,7 +210,17 @@ def load_model_and_scaler():
         return None, None
 
 
-# ── FEATURE ENGINEERING ───────────────────────────────────────────────────────
+def _get_singleton_model():
+    global _model_singleton, _scaler_singleton
+    if _model_singleton is None:
+        _model_singleton, _scaler_singleton = load_model_and_scaler()
+    return _model_singleton, _scaler_singleton
+
+
+def _set_singleton_model(model, scaler) -> None:
+    global _model_singleton, _scaler_singleton
+    _model_singleton  = model
+    _scaler_singleton = scaler
 
 def create_features(df):
     df['date'] = pd.to_datetime(df['date'])
@@ -209,9 +248,6 @@ def create_features(df):
     df = df.dropna().reset_index(drop=True)
     return df
 
-
-# ── PREPROCESSING ─────────────────────────────────────────────────────────────
-
 FEATURE_COLUMNS = [
     'count',
     'day_of_week',
@@ -226,11 +262,6 @@ FEATURE_COLUMNS = [
 
 
 def preprocess(df, scaler: Optional[MinMaxScaler] = None):
-    """
-    If a fitted scaler is provided (inference mode) use it directly.
-    Otherwise fit a new one (training mode).
-    Returns (scaled_array, scaler).
-    """
     features = df[FEATURE_COLUMNS]
     if scaler is None:
         scaler = MinMaxScaler()
@@ -240,17 +271,12 @@ def preprocess(df, scaler: Optional[MinMaxScaler] = None):
     return scaled, scaler
 
 
-# ── CREATE SEQUENCES ──────────────────────────────────────────────────────────
-
 def create_sequences(data, window: int = 7):
     X, y = [], []
     for i in range(len(data) - window):
         X.append(data[i:i + window])
         y.append(data[i + window][0])
     return np.array(X), np.array(y)
-
-
-# ── BUILD MODEL ───────────────────────────────────────────────────────────────
 
 def build_model(input_shape, cfg: LSTMConfig):
     model = Sequential()
@@ -267,9 +293,6 @@ def build_model(input_shape, cfg: LSTMConfig):
     model.compile(optimizer='adam', loss='mse')
     return model
 
-
-# ── CONFIDENCE SCORE ──────────────────────────────────────────────────────────
-
 def compute_confidence(rmse: float, y_test: np.ndarray, cfg: LSTMConfig) -> float:
     data_range = float(np.max(y_test) - np.min(y_test))
     if data_range < 1e-6:
@@ -278,13 +301,10 @@ def compute_confidence(rmse: float, y_test: np.ndarray, cfg: LSTMConfig) -> floa
     confidence = max(cfg.confidence_min, min(cfg.confidence_max, 1.0 - nrmse))
     return round(confidence, 4)
 
-
-# ── FORECAST ──────────────────────────────────────────────────────────────────
-
 def forecast(model, data, scaler, df, days: int = 7, window: int = 7):
     results     = []
     last_seq    = data[-window:].copy()
-    last_date   = df['date'].max()
+    last_date   = datetime.now().date()
     id_holidays = holidays.ID()
 
     for i in range(days):
@@ -322,44 +342,7 @@ def forecast(model, data, scaler, df, days: int = 7, window: int = 7):
 
     return results
 
-
-# ── DUMMY DATA GENERATOR ──────────────────────────────────────────────────────
-
-def generate_dummy_booking_data(days: int = 180):
-    import random
-    data        = []
-    start_date  = datetime.now() - timedelta(days=days)
-    id_holidays = holidays.ID()
-
-    for i in range(days):
-        date  = start_date + timedelta(days=i)
-        dow   = date.weekday()
-        count = 20
-        if dow < 5:
-            count += random.randint(5, 10)
-        else:
-            count += random.randint(-2, 5)
-        if date in id_holidays:
-            count += random.randint(15, 30)
-        count += i * 0.03
-        count += random.randint(-4, 4)
-        count  = max(1, int(count))
-        data.append({"date": date.strftime("%Y-%m-%d"), "count": float(count)})
-
-    return data
-
-
-# ── CORE TRAIN-OR-LOAD LOGIC ──────────────────────────────────────────────────
-
 def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool = False):
-    """
-    Returns (model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache).
-
-    - If a saved model exists AND its fingerprint matches the current
-      config + data, it is loaded directly (no training).
-    - Otherwise the model is trained from scratch and the result is saved.
-    - force_retrain=True bypasses the fingerprint check entirely.
-    """
     current_fp = compute_fingerprint(cfg, df)
     saved_fp   = load_fingerprint()
 
@@ -370,21 +353,20 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         and os.path.exists(SCALER_PATH)
     )
 
-    # Always build scaled data so we can run forecast() afterwards
-    df_feat        = create_features(df.copy())
-    scaled, scaler_fit = preprocess(df_feat)  # fresh fit for sequences
-    X, y           = create_sequences(scaled, window=cfg.sequence_window)
-    split          = int(len(X) * 0.8)
-    X_train, X_test = X[:split], X[split:]
-    y_train, y_test = y[:split], y[split:]
+    df_feat            = create_features(df.copy())
+    scaled, scaler_fit = preprocess(df_feat)
+    X, y               = create_sequences(scaled, window=cfg.sequence_window)
+    split              = int(len(X) * 0.8)
+    X_train, X_test    = X[:split], X[split:]
+    y_train, y_test    = y[:split], y[split:]
 
     if use_cache:
-        model, scaler = load_model_and_scaler()
+        # Use in-memory singleton — no disk I/O on cache hit
+        model, scaler = _get_singleton_model()
         if model is not None:
-            logger.info("Cache hit — skipping training.")
-            return model, scaler, scaled, X_train, y_train, X_test, y_test, True
+            logger.info("Cache hit — using in-memory model singleton (no disk load).")
+            return model, scaler, scaled, X_train, y_train, X_test, y_test, True, None, None
 
-    # ── Train ────────────────────────────────────────────────────────────────
     logger.info("Training new LSTM model (force=%s)…", force_retrain)
     model = build_model((X.shape[1], X.shape[2]), cfg)
 
@@ -395,22 +377,33 @@ def _get_or_train_model(df: pd.DataFrame, cfg: LSTMConfig, force_retrain: bool =
         min_delta=1e-4,
     )
 
-    model.fit(
+    reduce_lr = ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.5,
+        patience=5,
+        min_lr=1e-6,
+        verbose=0,
+    )
+
+    t_start = time.time()
+    history = model.fit(
         X_train, y_train,
         epochs=cfg.epochs,
         batch_size=cfg.batch_size,
         validation_split=cfg.validation_split,
-        callbacks=[early_stop],
+        callbacks=[early_stop, reduce_lr],
         verbose=0
     )
+    training_time = round(time.time() - t_start, 2)
 
     save_model_and_scaler(model, scaler_fit)
-    save_fingerprint(current_fp, datetime.now().isoformat(), int(len(X_train)))
+    trained_at = datetime.now().isoformat()
+    save_fingerprint(current_fp, trained_at, int(len(X_train)))
 
-    return model, scaler_fit, scaled, X_train, y_train, X_test, y_test, False
+    _set_singleton_model(model, scaler_fit)
+    _clear_prediction_cache()
 
-
-# ── MAIN PREDICTION ENDPOINT ──────────────────────────────────────────────────
+    return model, scaler_fit, scaled, X_train, y_train, X_test, y_test, False, history, training_time
 
 @app.post("/predict")
 def predict(request: RequestData):
@@ -433,17 +426,37 @@ def predict(request: RequestData):
             "predictions": []
         }
 
-    model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache = \
+    current_fp  = compute_fingerprint(cfg, df)
+    data_sig    = _data_signature(df)
+    cache_key   = _prediction_cache_key(current_fp, data_sig, request.forecast_days)
+
+    if not request.force_retrain and cache_key in _prediction_cache:
+        logger.info("Prediction cache hit — returning cached response (key=%s…)", cache_key[:16])
+        return _prediction_cache[cache_key]
+
+    model, scaler, scaled, X_train, y_train, X_test, y_test, from_cache, history, training_time = \
         _get_or_train_model(df, cfg, force_retrain=request.force_retrain)
 
-    # We need the feature-engineered df for forecast()
     df_feat = create_features(df.copy())
 
     preds = model.predict(X_test, verbose=0)
 
-    rmse = np.sqrt(mean_squared_error(y_test, preds))
-    mae  = mean_absolute_error(y_test, preds)
-    mape = mean_absolute_percentage_error(y_test, preds)
+    dummy_true = np.zeros((len(y_test), len(FEATURE_COLUMNS)))
+    dummy_true[:, 0] = y_test
+    y_test_real = scaler.inverse_transform(dummy_true)[:, 0]
+
+    dummy_pred = np.zeros((len(preds), len(FEATURE_COLUMNS)))
+    dummy_pred[:, 0] = preds.flatten()
+    preds_real = scaler.inverse_transform(dummy_pred)[:, 0]
+
+    y_test_real = np.maximum(y_test_real, 0.0)
+    preds_real  = np.maximum(preds_real,  0.0)
+
+    rmse  = float(np.sqrt(mean_squared_error(y_test_real, preds_real)))
+    mae   = float(mean_absolute_error(y_test_real, preds_real))
+    r2    = float(r2_score(y_test_real, preds_real))
+    smape = compute_smape(y_test_real, preds_real)
+    wape  = compute_wape(y_test_real, preds_real)
 
     future = forecast(
         model, scaled, scaler, df_feat,
@@ -455,20 +468,15 @@ def predict(request: RequestData):
     nonzero   = recent[recent > 0]
     hist_floor = float(nonzero.mean()) if len(nonzero) > 0 else 0.0
 
-    confidence_score = compute_confidence(rmse, y_test, cfg)
-
-    count_min   = scaler.data_min_[0]
-    count_max   = scaler.data_max_[0]
-    count_range = count_max - count_min if count_max > count_min else 1.0
-    rmse_real   = float(rmse) * count_range
+    confidence_score = compute_confidence(rmse, y_test_real, cfg)
 
     final = []
     for item in future:
         raw_pred = item["predicted"]
         if raw_pred < hist_floor * 0.1 and hist_floor > 0:
             raw_pred = hist_floor * 0.5
-        lower = max(0.0, raw_pred - 1.96 * rmse_real)
-        upper = raw_pred + 1.96 * rmse_real
+        lower = max(0.0, raw_pred - 1.96 * rmse)
+        upper = raw_pred + 1.96 * rmse
         final.append({
             "date":        item["date"],
             "predicted":   round(raw_pred, 2),
@@ -477,25 +485,125 @@ def predict(request: RequestData):
             "confidence":  confidence_score,
         })
 
-    return {
+
+    loss_history      = None
+    val_loss_history  = None
+    final_train_loss  = None
+    final_val_loss    = None
+    best_val_loss     = None
+    actual_epochs     = None
+    early_stop_epoch  = None
+    val_samples       = None
+    trainable_params  = None
+
+    try:
+        trainable_params = int(sum(
+            np.prod(v.shape) for v in model.trainable_weights
+        ))
+    except Exception:
+        trainable_params = None
+
+    if history is not None:
+        loss_history     = [round(v, 6) for v in history.history.get("loss", [])]
+        val_loss_history = [round(v, 6) for v in history.history.get("val_loss", [])]
+        actual_epochs    = len(loss_history)
+        final_train_loss = loss_history[-1]     if loss_history     else None
+        final_val_loss   = val_loss_history[-1] if val_loss_history else None
+        best_val_loss    = round(float(min(val_loss_history)), 6) if val_loss_history else None
+        if val_loss_history:
+            early_stop_epoch = int(np.argmin(val_loss_history)) + 1
+        val_samples = round(len(X_train) * cfg.validation_split)
+        logger.info(
+            "Metrics extracted from fresh training: epochs=%s "
+            "best_val_loss=%s early_stop_epoch=%s",
+            actual_epochs, best_val_loss, early_stop_epoch,
+        )
+    else:
+        stored = load_model_metrics()
+        if stored:
+            loss_history     = stored.get("loss_history")
+            val_loss_history = stored.get("val_loss_history")
+            actual_epochs    = stored.get("epochs_run")
+            final_train_loss = stored.get("training_loss")
+            final_val_loss   = stored.get("validation_loss")
+            best_val_loss    = stored.get("best_val_loss")
+            early_stop_epoch = stored.get("early_stop_epoch")
+            val_samples      = stored.get("validation_samples")
+            logger.info("Cache hit — reusing stored loss history (epochs=%s)", actual_epochs)
+        else:
+            logger.warning("Cache hit but no metrics file found — file will be bootstrapped now")
+
+    meta       = load_fingerprint_meta()
+    trained_at = meta.get("trained_at") or datetime.now().isoformat()
+
+    metrics_payload = {
+        "trained_at":          trained_at,
+        "from_cache":          from_cache,
+        "epochs_run":          actual_epochs,
+        "early_stop_epoch":    early_stop_epoch,
+        "training_loss":       final_train_loss,
+        "validation_loss":     final_val_loss,
+        "best_val_loss":       best_val_loss,
+        "mae":                 round(mae,   4),
+        "rmse":                round(rmse,  4),
+        "r2":                  round(r2,    4),
+        "mape":                round(smape, 4),
+        "smape":               round(smape, 4),
+        "wape":                round(wape,  4),
+        "trainable_params":    trainable_params,
+        "training_samples":    len(X_train),
+        "validation_samples":  val_samples,
+        "test_samples":        len(X_test),
+        "training_time":       training_time,
+        "loss_history":        loss_history,
+        "val_loss_history":    val_loss_history,
+        "hyperparameters": {
+            "lstm_units":          cfg.lstm_units,
+            "dropout_rate":        cfg.dropout_rate,
+            "l2_regularization":   cfg.l2_regularization,
+            "sequence_window":     cfg.sequence_window,
+            "epochs_max":          cfg.epochs,
+            "batch_size":          cfg.batch_size,
+            "validation_split":    cfg.validation_split,
+            "early_stop_patience": cfg.early_stop_patience,
+            "optimizer":           "adam",
+            "loss_fn":             "mse",
+        },
+    }
+
+    save_model_metrics(metrics_payload)
+    logger.info(
+        "Metrics persisted (from_cache=%s, mae=%.4f, rmse=%.4f, smape=%.2f%%, wape=%.2f%%, r2=%.4f)",
+        from_cache, mae, rmse, smape, wape, r2,
+    )
+
+
+    response = {
         "model":            "Improved LSTM Forecast Model",
         "features_used":    FEATURE_COLUMNS,
         "config_used":      cfg.dict(),
-        "from_cache":       from_cache,        # tells caller whether training ran
+        "from_cache":       from_cache,
         "metrics": {
-            "rmse": round(float(rmse), 4),
-            "mae":  round(float(mae),  4),
-            "mape": round(float(mape), 4)
+            "rmse":  round(rmse,  4),
+            "mae":   round(mae,   4),
+            "mape":  round(smape, 4),
+            "smape": round(smape, 4),
+            "wape":  round(wape,  4),
+            "r2":    round(r2,    4),
         },
-        "rmse":             round(float(rmse), 4),
+        "rmse":             round(rmse, 4),
         "predictions":      final,
         "data_source":      "dummy" if request.use_dummy_data else "real",
         "training_samples": len(X_train),
-        "test_samples":     len(X_test)
+        "test_samples":     len(X_test),
     }
 
+    # Store in prediction response cache (only for non-forced requests)
+    if not request.force_retrain:
+        _prediction_cache[cache_key] = response
+        logger.info("Prediction response cached (key=%s…)", cache_key[:16])
 
-# ── 3-WEEK FORECAST ENDPOINT ──────────────────────────────────────────────────
+    return response
 
 @app.post("/predict-3weeks")
 def predict_three_weeks(request: RequestData):
@@ -530,9 +638,6 @@ def predict_three_weeks(request: RequestData):
 
     return result
 
-
-# ── DEMO ENDPOINT ─────────────────────────────────────────────────────────────
-
 @app.get("/demo")
 def demo_prediction():
 
@@ -552,12 +657,8 @@ def demo_prediction():
         **result
     }
 
-
-# ── MODEL INFO ENDPOINT ───────────────────────────────────────────────────────
-
 @app.get("/model-info")
 def model_info():
-    """Returns the current cache status without running any prediction."""
     meta        = load_fingerprint_meta()
     model_exists  = os.path.exists(MODEL_PATH)
     scaler_exists = os.path.exists(SCALER_PATH)
@@ -583,13 +684,148 @@ def model_info():
     }
 
 
-# ── FORCE RETRAIN ENDPOINT ────────────────────────────────────────────────────
-
 @app.post("/retrain")
 def force_retrain(request: RequestData):
-    """
-    Same as /predict but always retrains regardless of cached fingerprint.
-    Useful after manually updating hyperparameters or after a large data refresh.
-    """
     request.force_retrain = True
     return predict(request)
+
+@app.on_event("startup")
+async def bootstrap_metrics_on_startup():
+
+    global _model_singleton, _scaler_singleton
+
+    if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+        logger.info("Startup: warming in-memory model singleton from disk…")
+        _model_singleton, _scaler_singleton = load_model_and_scaler()
+        if _model_singleton is not None:
+            logger.info("Startup: model singleton ready — first request will use in-memory model.")
+        else:
+            logger.warning("Startup: failed to load model into singleton.")
+    else:
+        logger.info("Startup: no trained model found — singleton will be populated after first train.")
+
+    if os.path.exists(METRICS_PATH):
+        logger.info("Startup: metrics file already present — no bootstrap needed.")
+        return
+
+    if not (os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH)):
+        logger.info("Startup: no trained model found — skipping metrics bootstrap.")
+        return
+
+    logger.warning(
+        "Startup: trained model found but model_metrics.json is missing. "
+        "Bootstrapping metrics from existing model…"
+    )
+
+    try:
+        meta           = load_fingerprint_meta()
+        trained_at     = meta.get("trained_at") or datetime.now().isoformat()
+        train_samples  = meta.get("training_samples")
+        bootstrap_payload = {
+            "trained_at":          trained_at,
+            "from_cache":          True,
+            "epochs_run":          None,
+            "early_stop_epoch":    None,
+            "training_loss":       None,
+            "validation_loss":     None,
+            "best_val_loss":       None,
+            "mae":                 None,
+            "rmse":                None,
+            "r2":                  None,
+            "mape":                None,
+            "smape":               None,
+            "wape":                None,
+            "trainable_params":    None,
+            "training_samples":    train_samples,
+            "validation_samples":  None,
+            "test_samples":        None,
+            "training_time":       None,
+            "loss_history":        None,
+            "val_loss_history":    None,
+            "hyperparameters":     None,
+            "_bootstrap":          True,
+        }
+        save_model_metrics(bootstrap_payload)
+        logger.info(
+            "Startup: bootstrap metrics written. Full metrics will populate "
+            "automatically after the next prediction request."
+        )
+    except Exception as exc:
+        logger.error("Startup: metrics bootstrap failed: %s", exc)
+
+@app.get("/model-metrics")
+def model_metrics():
+    stored = load_model_metrics()
+    if stored is not None:
+        logger.info("Serving model metrics from %s", METRICS_PATH)
+        stored_smape = stored.get("smape")
+        stored_mape  = stored.get("mape")
+        if stored_smape is None and stored_mape is not None:
+            if stored_mape > _MAPE_SANE_BOUND:
+                logger.warning(
+                    "/model-metrics: legacy mape value %.4f exceeds sane bound "
+                    "(%s) — returning mape=null to suppress corrupted data.",
+                    stored_mape, _MAPE_SANE_BOUND,
+                )
+                stored_mape = None
+
+        return {
+            "available":           True,
+            "trained_at":          stored.get("trained_at"),
+            "from_cache":          stored.get("from_cache"),
+            "epochs_run":          stored.get("epochs_run"),
+            "early_stop_epoch":    stored.get("early_stop_epoch"),
+            "training_loss":       stored.get("training_loss"),
+            "validation_loss":     stored.get("validation_loss"),
+            "best_val_loss":       stored.get("best_val_loss"),
+            "mae":                 stored.get("mae"),
+            "rmse":                stored.get("rmse"),
+            "r2":                  stored.get("r2"),
+            "mape":                stored_mape,
+            "smape":               stored_smape,
+            "wape":                stored.get("wape"),
+            "trainable_params":    stored.get("trainable_params"),
+            "training_samples":    stored.get("training_samples"),
+            "validation_samples":  stored.get("validation_samples"),
+            "test_samples":        stored.get("test_samples"),
+            "training_time":       stored.get("training_time"),
+            "loss_history":        stored.get("loss_history"),
+            "val_loss_history":    stored.get("val_loss_history"),
+            "hyperparameters":     stored.get("hyperparameters"),
+        }
+
+    model_exists = os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH)
+    if model_exists:
+        meta = load_fingerprint_meta()
+        logger.warning("/model-metrics: metrics file absent but model exists — returning partial record")
+        return {
+            "available":           True,
+            "trained_at":          meta.get("trained_at"),
+            "from_cache":          True,
+            "epochs_run":          None,
+            "early_stop_epoch":    None,
+            "training_loss":       None,
+            "validation_loss":     None,
+            "best_val_loss":       None,
+            "mae":                 None,
+            "rmse":                None,
+            "r2":                  None,
+            "mape":                None,
+            "smape":               None,
+            "wape":                None,
+            "trainable_params":    None,
+            "training_samples":    meta.get("training_samples"),
+            "validation_samples":  None,
+            "test_samples":        None,
+            "training_time":       None,
+            "loss_history":        None,
+            "val_loss_history":    None,
+            "hyperparameters":     None,
+            "_note": "Metrics file was not found. Run a prediction to populate full metrics.",
+        }
+
+    logger.info("/model-metrics: no model or metrics found")
+    return {
+        "available": False,
+        "message":   "No evaluation metrics found. Train the model at least once.",
+    }

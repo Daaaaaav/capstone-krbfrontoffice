@@ -19,9 +19,6 @@ class GoogleMeetService
         $this->calendarId = config('services.google.calendar_id', 'primary');
     }
 
-    /**
-     * Boot the Google Client using OAuth credentials if available, falling back to service account.
-     */
     private function bootClient(): Client
     {
         if ($this->client !== null) {
@@ -45,18 +42,15 @@ class GoogleMeetService
             $clientSecretPath = base_path($clientSecretPath);
         }
 
-        // 1. Try OAuth 2.0 flow (if token exists)
         if (file_exists($tokenPath) && file_exists($clientSecretPath)) {
             $this->client->setAuthConfig($clientSecretPath);
             
             $accessToken = json_decode(file_get_contents($tokenPath), true);
             $this->client->setAccessToken($accessToken);
 
-            // Refresh the token if it's expired
             if ($this->client->isAccessTokenExpired()) {
                 if ($this->client->getRefreshToken()) {
                     $this->client->fetchAccessTokenWithRefreshToken($this->client->getRefreshToken());
-                    // Save the new token
                     file_put_contents($tokenPath, json_encode($this->client->getAccessToken()));
                 } else {
                     throw new \RuntimeException("Google OAuth token is expired and no refresh token is available. Please re-authenticate.");
@@ -65,7 +59,6 @@ class GoogleMeetService
             return $this->client;
         }
 
-        // 2. Fallback to Service Account flow
         $credentialsPath = config('services.google.credentials_path', 'storage/app/google/google-service-account.json');
         if (!str_starts_with($credentialsPath, '/')) {
             $credentialsPath = base_path($credentialsPath);
@@ -85,9 +78,6 @@ class GoogleMeetService
         return $this->client;
     }
 
-    /**
-     * Check if the Google service is connected (either OAuth token or Service Account exists).
-     */
     public function isConnected(?int $userId = null): bool
     {
         try {
@@ -109,11 +99,6 @@ class GoogleMeetService
         }
     }
 
-    /**
-     * Create a Google Calendar event with a Google Meet link.
-     *
-     * @return array{url: string|null, code: string|null, password: string|null, event_id: string|null}
-     */
     public function createMeet(
         string $summary,
         Carbon $start,
@@ -159,10 +144,7 @@ class GoogleMeetService
             'event_id' => $created->id ?? null,
         ];
     }
-
-    /**
-     * Delete a Google Calendar event (to cancel a meeting).
-     */
+    
     public function deleteMeet(string $eventId): bool
     {
         try {

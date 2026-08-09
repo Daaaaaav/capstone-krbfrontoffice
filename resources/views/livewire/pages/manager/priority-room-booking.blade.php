@@ -251,10 +251,14 @@
                 <p class="text-muted-foreground">{{ $conflictingBooking->room?->room_name }} · {{ \Carbon\Carbon::parse($conflictingBooking->date)->format('d M Y') }} · {{ $conflictingBooking->start_time }} – {{ $conflictingBooking->end_time }}</p>
             </div>
             @endif
-            <p class="text-sm text-foreground">Do you want to <strong>request cancellation</strong> of the conflicting booking — even if it is currently ongoing — requiring receptionist approval, or go back?</p>
+            <p class="text-sm text-foreground">An existing regular booking conflicts with your Priority Booking. <strong>Cancel the conflicting booking immediately</strong> and continue with your Priority Booking?</p>
+            <p class="text-xs text-muted-foreground mt-2">
+                <svg class="w-3.5 h-3.5 inline -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Note: The conflicting booking can only be cancelled if it starts at least 3 hours from now. No Receptionist approval required.
+            </p>
             <div class="flex flex-col sm:flex-row gap-2 pt-1">
                 <button wire:click="confirmWithCancellation" class="{{ $btnPrimary }} flex-1 bg-orange-500 hover:bg-orange-600 focus:ring-orange-500/20">
-                    Request Cancellation
+                    Cancel & Continue
                 </button>
                 <button wire:click="closeConflictModal" class="{{ $btnOutline }} flex-1">
                     Go Back
@@ -300,7 +304,7 @@
                     <span class="inline-flex mt-0.5 px-2 py-0.5 text-[11px] font-bold rounded-full {{ $isPendingDetail ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700' }}">{{ $isPendingDetail ? 'Pending' : 'Approved' }}</span>
                 </div>
                 <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Date</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->date ? \Carbon\Carbon::parse($sidebarBooking->date)->format('d M Y') : '—' }}</p></div>
-                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Time</p><p class="text-foreground font-medium mt-0.5">{{ is_string($sidebarBooking->start_time) ? substr($sidebarBooking->start_time,0,5) : '—' }} – {{ is_string($sidebarBooking->end_time) ? substr($sidebarBooking->end_time,0,5) : '—' }}</p></div>
+                <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Time</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->start_time ? \Carbon\Carbon::parse($sidebarBooking->start_time)->format('H:i') : '—' }} – {{ $sidebarBooking->end_time ? \Carbon\Carbon::parse($sidebarBooking->end_time)->format('H:i') : '—' }}</p></div>
                 <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Requested By</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->user?->full_name ?? '—' }}</p></div>
                 <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Department</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->department?->department_name ?? $sidebarBooking->user?->department?->department_name ?? '—' }}</p></div>
                 <div><p class="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Attendees</p><p class="text-foreground font-medium mt-0.5">{{ $sidebarBooking->number_of_attendees ?? '—' }}</p></div>
@@ -318,13 +322,20 @@
             <button wire:click="closeSidebarDetail" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">Close</button>
             <div class="flex gap-2">
                 @if($isPendingDetail)
-                    @if(!$showSidebarReject)
-                    <button wire:click="openSidebarReject" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject
-                    </button>
+                    @if($this->canRejectSidebarBooking())
+                        @if(!$showSidebarReject)
+                        <button wire:click="openSidebarReject" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Reject
+                        </button>
+                        @else
+                        <button wire:click="$set('showSidebarReject', false)" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:bg-muted transition">Cancel</button>
+                        <button wire:click="submitSidebarReject" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive text-white hover:bg-destructive/90 transition disabled:opacity-60">Confirm Reject</button>
+                        @endif
                     @else
-                    <button wire:click="$set('showSidebarReject', false)" class="inline-flex items-center px-4 h-9 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:bg-muted transition">Cancel</button>
-                    <button wire:click="submitSidebarReject" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-4 h-9 text-xs font-semibold rounded-lg bg-destructive text-white hover:bg-destructive/90 transition disabled:opacity-60">Confirm Reject</button>
+                        <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-600 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="font-medium">Cannot reject within 3 hours of start time</span>
+                        </div>
                     @endif
                 @endif
             </div>

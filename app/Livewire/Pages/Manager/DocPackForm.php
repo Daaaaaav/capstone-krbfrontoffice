@@ -20,8 +20,8 @@ class DocPackForm extends Component
 {
     use WithFileUploads;
 
-    public string $direction = 'taken'; // taken | deliver
-    public string $itemType  = 'package'; // package | document
+    public string $direction = 'taken'; // taken (default) | deliver
+    public string $itemType  = 'package'; // package (default) | document
 
     public ?int   $departmentId = null;
     public ?int   $userId       = null;
@@ -45,7 +45,7 @@ class DocPackForm extends Component
             'itemName'     => ['required', 'string', 'max:255'],
             'departmentId' => ['required', 'integer'],
             'userId'       => ['required', 'integer'],
-            'photo'        => ['nullable', 'image', 'max:2048'],
+            'photo'        => ['required', 'image', 'max:2048'],
         ];
 
         if ($this->direction === 'taken') {
@@ -103,8 +103,15 @@ class DocPackForm extends Component
         $this->users        = [];
     }
 
+    public function updatedPhoto(): void
+    {
+        $this->validateOnly('photo');
+    }
+
     public function save(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         $this->validate();
 
         $now = Carbon::now('Asia/Jakarta');
@@ -157,7 +164,6 @@ class DocPackForm extends Component
     {
         $companyId = Auth::user()->company_id;
 
-        // Sidebar: recent pending & stored deliveries
         $sidebarPending = Delivery::byCompany($companyId)
             ->where('status', 'pending')
             ->orderByDesc('created_at')

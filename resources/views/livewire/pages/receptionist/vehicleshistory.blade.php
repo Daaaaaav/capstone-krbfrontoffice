@@ -29,10 +29,6 @@
 
 <div class="min-h-screen bg-gray-50" x-data="{ showFilterModal: false }">
     <main class="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-6">
-
-        {{-- Flash Messages (Replaced by Toast) --}}
-
-        {{-- HEADER --}}
         <x-page-header
             title="{{ __('app.vehicle_history_title') }}"
             subtitle="{{ $statusTab === 'rejected' ? __('app.vehicle_history_sub_rej') : __('app.vehicle_history_sub_done') }}">
@@ -53,13 +49,8 @@
             </x-slot:actions>
         </x-page-header>
 
-        {{-- MAIN GRID --}}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-            {{-- LIST --}}
             <section class="{{ $card }} md:col-span-3">
-
-                {{-- Header --}}
                 <div class="px-4 sm:px-6 pt-4 pb-3 border-b border-gray-200 space-y-3">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
@@ -84,7 +75,6 @@
                                 </button>
                             </div>
 
-                            {{-- Layout Toggler --}}
                             <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg shrink-0 border border-gray-200/50">
                                 <button type="button" 
                                         wire:click="setViewMode('card')" 
@@ -228,41 +218,56 @@
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-rose-100 text-rose-700';
                         @endphp
-                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-                            <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
-                                <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0 space-y-0.5">
-                                <p class="text-sm font-semibold text-gray-900 truncate">
-                                    {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
-                                </p>
-                                <p class="text-xs text-gray-500">
-                                    {{ $pvb->borrower_name }} &bull;
-                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
-                                </p>
-                                <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
-                                <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
-                                <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2 mb-1">
-                                    @if($pvb->created_at)
-                                        <div class="flex items-center gap-1.5">
-                                            <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                            <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($pvb->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
-                                        </div>
-                                    @endif
-                                    @if($pvb->updated_at)
-                                        <div class="flex items-center gap-1.5">
-                                            <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                            <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($pvb->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
-                                        </div>
+                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                            <div class="flex items-start gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                                    <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0 space-y-0.5">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">
+                                        {{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        {{ $pvb->borrower_name }} &bull;
+                                        {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
+                                    <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                    <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2 mb-1">
+                                        @if($pvb->created_at)
+                                            <div class="flex items-center gap-1.5">
+                                                <x-heroicon-o-clock class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                <span class="truncate font-medium text-[11px] text-gray-600">Created: <span class="text-gray-900 font-semibold">{{ optional($pvb->created_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                            </div>
+                                        @endif
+                                        @if($pvb->updated_at)
+                                            <div class="flex items-center gap-1.5">
+                                                <x-heroicon-o-pencil-square class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
+                                                <span class="truncate font-medium text-[11px] text-gray-600">Last Edited: <span class="text-gray-900 font-semibold">{{ optional($pvb->updated_at)->timezone('Asia/Jakarta')->format('d M Y H:i') }}</span></span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @if($pvb->rejection_reason)
+                                        <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
                                     @endif
                                 </div>
-                                @if($pvb->rejection_reason)
-                                    <p class="text-[11px] text-rose-500 italic">{{ $pvb->rejection_reason }}</p>
-                                @endif
+                                <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
+                                    {{ $pvb->statusLabel() }}
+                                </span>
                             </div>
-                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-full {{ $pvhBadge }}">
-                                {{ $pvb->statusLabel() }}
-                            </span>
+                            {{-- Priority entry actions — inside card, same pattern as normal bookings --}}
+                            <div class="pt-2 border-t border-blue-100 flex justify-end gap-2">
+                                <button type="button"
+                                    wire:click="openPriorityEdit({{ $pvb->id }})"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
+                                    {{ __('app.edit') }}
+                                </button>
+                                <button type="button"
+                                    wire:click="confirmPriorityDelete({{ $pvb->id }}, '{{ str_replace('\'', '', $pvb->purpose ?? 'Priority Booking') }}')"
+                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
+                                    {{ __('app.delete') }}
+                                </button>
+                            </div>
                         </div>
                         @endforeach
                     </div>
@@ -288,22 +293,17 @@
                                         : ['bg'=>'bg-emerald-100','text'=>'text-emerald-800','label'=>__('app.completed')];
                                 @endphp
                                 
-                                {{-- START: MODIFIED VEHICLE HISTORY CARD DESIGN --}}
                                 <div wire:key="history-{{ $b->vehiclebooking_id }}"
                                     class="bg-white border border-gray-200 rounded-xl p-4 space-y-3 flex flex-col h-full justify-between hover:shadow-sm hover:border-gray-300 transition">
                                     
                                     <div class="flex items-start gap-4">
-                                        {{-- 1. Avatar/Initial on the left --}}
                                         <div class="{{ $icoAvatar }} mt-0.5">{{ $avatarChar }}</div>
-                                        
                                         <div class="flex-1 min-w-0">
-                                            {{-- 2. TOP ROW: Title, Status, ID --}}
                                             <div class="flex items-center justify-between gap-3 min-w-0 mb-2">
                                                 <h4 class="font-semibold text-gray-900 text-base truncate pr-2">
                                                     {{ $b->purpose ? ucfirst($b->purpose) : __('app.vehicle_book') }}
                                                 </h4>
                                                 <div class="flex-shrink-0 flex items-center gap-2">
-                                                    {{-- Status Badge --}}
                                                     <span class="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 {{ $statusStyle['bg'] }} {{ $statusStyle['text'] }}">
                                                         {{ $statusStyle['label'] }}
                                                     </span>
@@ -321,10 +321,7 @@
                                                 </div>
                                             </div>
 
-                                            {{-- 3. MIDDLE SECTION: Vehicle, Date, Time --}}
                                             <div class="space-y-2 text-[13px] text-gray-600 mb-3 border-y border-gray-100 py-2">
-                                                
-                                                {{-- Vehicle Name Chip --}}
                                                 <div class="flex flex-wrap items-center gap-2">
                                                     <span class="{{ $chip }} text-xs px-2.5 py-0.5 bg-gray-100">
                                                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,7 +332,6 @@
                                                     </span>
                                                 </div>
 
-                                                {{-- Dates and Times --}}
                                                 <div class="flex flex-col gap-y-1.5 mt-1">
                                                     <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                         <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -350,7 +346,6 @@
                                                 </div>
                                             </div>
 
-                                            {{-- 4. BOTTOM LEFT: Borrower & Notes/Timestamp --}}
                                             <div class="text-[12px] text-gray-600 space-y-1">
                                                 @if(!empty($b->borrower_name))
                                                     <p>{{ __('app.borrower_label') }}: <span class="font-medium text-gray-800">{{ $b->borrower_name }}</span></p>
@@ -371,21 +366,37 @@
                                                 </div>
                                             </div>
 
-                                            {{-- Rejected Note --}}
                                             @if($isRejected && !empty($b->notes))
                                                 <div class="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg p-2">
                                                     <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->notes }}
                                                 </div>
                                             @endif
+
+                                            <div class="flex flex-wrap gap-2 mt-3">
+                                                @if($b->handover_photo && Storage::disk('public')->exists($b->handover_photo))
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
+                                                        <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                        Approve Photo
+                                                    </button>
+                                                @endif
+                                                @if($b->return_photo && Storage::disk('public')->exists($b->return_photo))
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs font-semibold transition">
+                                                        <x-heroicon-o-photo class="w-3.5 h-3.5 shrink-0"/>
+                                                        Mark Done Photo
+                                                    </button>
+                                                @endif
+                                            </div>
                                             
                                         </div>
                                     </div>
 
-                                    {{-- 5. BOTTOM ACTIONS (Horizontally aligned and right justified) --}}
                                     <div class="pt-3 border-t border-gray-100 flex justify-end gap-3 items-center">
                                         <span class="text-[11px] text-gray-500 mr-auto">No. {{ ($bookings->firstItem() ?? 1) + $loop->index }}</span>
                                         
-                                        {{-- Actions based on Trashed Status --}}
                                         @if(!$isTrashed)
                                             <button type="button"
                                                 class="px-3 py-2 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 transition shadow-sm"
@@ -406,7 +417,6 @@
                                         @endif
                                     </div>
                                 </div>
-                                {{-- END: MODIFIED VEHICLE HISTORY CARD DESIGN --}}
                             @endforeach
                         </div>
                     @else
@@ -481,6 +491,20 @@
                                             </td>
                                             <td class="h-12 px-4 py-0">
                                                 <div class="flex items-center justify-end gap-2">
+                                                    @if($b->handover_photo && Storage::disk('public')->exists($b->handover_photo))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition inline-flex items-center gap-1.5" title="Approve Photo">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                        </button>
+                                                    @endif
+                                                    @if($b->return_photo && Storage::disk('public')->exists($b->return_photo))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition inline-flex items-center gap-1.5" title="Mark Done Photo">
+                                                            <x-heroicon-o-photo class="w-3.5 h-3.5"/>
+                                                        </button>
+                                                    @endif
                                                     @if(!$isTrashed)
                                                         <button type="button"
                                                             class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm"
@@ -510,7 +534,6 @@
                 </div>
                 @endif
 
-                {{-- Pagination --}}
                 @if(method_exists($bookings, 'links'))
                     <div class="px-4 sm:px-6 py-5 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
                         <div class="w-full">
@@ -520,7 +543,6 @@
                 @endif
             </section>
 
-            {{-- SIDEBAR --}}
             <aside class="hidden md:flex md:flex-col md:col-span-1 gap-4">
                 <section class="{{ $card }}">
                     <div class="px-4 py-3.5 border-b border-gray-200 bg-gray-50">
@@ -571,7 +593,6 @@
         </div>
     </main>
 
-        {{-- MOBILE FILTER MODAL --}}
         <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
             <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
             <div x-show="showFilterModal" 
@@ -626,7 +647,123 @@
             </div>
         </div>
 
-    {{-- ===== EDIT MODAL ===== --}}
+    @if($showPriorityEdit)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showPriorityEdit', false)"></div>
+            <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-pencil class="w-4 h-4 text-[#CDDEA7]"/>
+                        </div>
+                        <h3 class="text-base font-bold tracking-tight">Edit Priority Booking</h3>
+                    </div>
+                    <button wire:click="$set('showPriorityEdit', false)" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">
+                        <x-heroicon-o-x-mark class="w-4 h-4"/>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                    @if($priorityEditLastEdited)
+                        <div class="text-[13px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
+                            <x-heroicon-o-information-circle class="w-4 h-4 text-gray-400"/>
+                            <span>Created: <strong class="text-gray-700">{{ $priorityEditCreatedAt ?? '—' }}</strong> | Last Edited: <strong class="text-gray-700">{{ $priorityEditLastEdited }}</strong></span>
+                        </div>
+                    @endif
+                    @php
+                        $mi = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
+                        $ml = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
+                    @endphp
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.borrower_label') ?? 'Borrower Name' }} <span class="text-rose-500">*</span></label>
+                        <input type="text" wire:model="priorityEdit.borrower_name" class="{{ $mi }}">
+                        @error('priorityEdit.borrower_name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="{{ $ml }}">{{ __('app.start') ?? 'Start' }} <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" wire:model="priorityEdit.start_at" class="{{ $mi }}">
+                            @error('priorityEdit.start_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="{{ $ml }}">{{ __('app.end') ?? 'End' }} <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" wire:model="priorityEdit.end_at" class="{{ $mi }}">
+                            @error('priorityEdit.end_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.purpose') ?? 'Purpose' }}</label>
+                        <input type="text" wire:model="priorityEdit.purpose" class="{{ $mi }}">
+                        @error('priorityEdit.purpose') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.destination') ?? 'Destination' }}</label>
+                        <input type="text" wire:model="priorityEdit.destination" class="{{ $mi }}">
+                        @error('priorityEdit.destination') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">Special Notes</label>
+                        <textarea wire:model="priorityEdit.special_notes" rows="3"
+                            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all resize-none"></textarea>
+                        @error('priorityEdit.special_notes') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 p-4">
+                    <button type="button" wire:click="$set('showPriorityEdit', false)"
+                        class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5"/>
+                        <span>{{ __('app.cancel') }}</span>
+                    </button>
+                    <button type="button" wire:click="savePriorityEdit" wire:loading.attr="disabled" wire:target="savePriorityEdit"
+                        class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="savePriorityEdit">{{ __('app.save_changes') }}</span>
+                        <span wire:loading wire:target="savePriorityEdit" class="flex items-center gap-1.5">
+                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                            {{ __('app.saving') }}...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if($showPriorityDeleteModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" wire:click="$set('showPriorityDeleteModal', false)"></div>
+            <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400"/>
+                        </div>
+                        <h3 class="font-bold tracking-tight text-base">Delete Priority Booking</h3>
+                    </div>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showPriorityDeleteModal', false)">✕</button>
+                </div>
+                <div class="p-6 text-center bg-white">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">{{ __('app.are_you_sure_delete') }}</h3>
+                    <p class="text-sm text-gray-500">This will permanently delete the priority booking record.</p>
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
+                        {{ $priorityDeletingSummary }}
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
+                    <button type="button" wire:click="$set('showPriorityDeleteModal', false)"
+                        class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
+                        {{ __('app.cancel') }}
+                    </button>
+                    <button type="button" wire:click="executePriorityDelete" wire:loading.attr="disabled"
+                        class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                        <span wire:loading.remove wire:target="executePriorityDelete">{{ __('app.delete') }}</span>
+                        <span wire:loading wire:target="executePriorityDelete" class="flex items-center gap-1.5">
+                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
+                            {{ __('app.delete') }}...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if($showDetailModal && $selectedBooking)
         <div x-data="{ show: @entangle('showDetailModal') }"
              x-show="show"
@@ -639,10 +776,8 @@
              class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
              style="display: none;">
 
-            {{-- Backdrop --}}
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeDetailModal"></div>
 
-            {{-- Modal Content --}}
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
@@ -652,7 +787,6 @@
                  x-transition:leave-end="opacity-0 scale-95"
                  class="relative z-10 w-full max-w-3xl bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
 
-                {{-- Header --}}
                 <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
@@ -701,11 +835,8 @@
                             <span class="text-sm font-semibold text-foreground">{{ fmtDate($selectedBooking->end_at) }}, {{ fmtTime($selectedBooking->end_at) }}</span>
                         </div>
                     </div>
-
-
                 </div>
 
-                {{-- Footer --}}
                 <div class="border-t border-border px-6 py-4 flex justify-end bg-muted/10">
                     <button type="button"
                             wire:click="closeDetailModal"
@@ -718,7 +849,6 @@
         </div>
     @endif
 
-    {{-- ===== EDIT MODAL ===== --}}
     @if($showEdit)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showEdit', false)"></div>
@@ -775,7 +905,6 @@
                         <textarea wire:model="edit.notes" class="{{ $mi }} py-2.5 h-20 resize-none"></textarea>
                     </div>
 
-                    {{-- Vehicle Logs (Status Timeline) Section --}}
                     @if(count($statusLogs) > 0)
                         <div class="mt-6 border-t border-gray-100 pt-5">
                             <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -828,7 +957,6 @@
                         </div>
                     @endif
 
-                    {{-- Footer actions --}}
                     <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 -mx-6 -mb-6 p-4 mt-6">
                         <button type="button"
                                 class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition text-xs font-semibold"
@@ -856,7 +984,6 @@
         </div>
     @endif
 
-    {{-- DELETE MODAL --}}
     @if($showDeleteModal)
         <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" wire:click="$set('showDeleteModal', false)"></div>
@@ -896,5 +1023,25 @@
             </div>
         </div>
     @endif
-
+    {{-- IMAGE LIGHTBOX --}}
+    <div
+        x-data="{ open: false, src: '' }"
+        @open-lightbox.window="open = true; src = $event.detail.src"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="open = false"
+        style="display:none">
+        <button type="button" @click="open = false"
+            class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img :src="src" alt="Bukti foto" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain">
+    </div>
 </div>

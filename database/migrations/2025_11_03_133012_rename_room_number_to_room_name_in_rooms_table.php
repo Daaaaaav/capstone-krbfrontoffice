@@ -8,8 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // NOTE: needs doctrine/dbal for renameColumn
-        // composer require doctrine/dbal
         Schema::table('rooms', function (Blueprint $table) {
             $table->renameColumn('room_number', 'room_name');
         });

@@ -8,6 +8,8 @@ $breadcrumbs = [];
 // Home / Dashboard base
 if (str_starts_with($routeName, 'manager.')) {
     $breadcrumbs[] = ['label' => __('app.dashboard'), 'url' => route('manager.dashboard')];
+} elseif (str_starts_with($routeName, 'it-officer.')) {
+    $breadcrumbs[] = ['label' => __('app.dashboard'), 'url' => route('it-officer.dashboard')];
 } elseif (str_starts_with($routeName, 'receptionist.')) {
     $breadcrumbs[] = ['label' => __('app.home'), 'url' => route('receptionist.dashboard')];
 } else {
@@ -68,11 +70,51 @@ $routeMappings = [
         ['label' => __('app.help'), 'url' => route('receptionist.help')]
     ],
 
-    // Manager Page Mappings
-    'manager.receptionists' => [
+    // IT Officer Page Mappings
+    'it-officer.receptionists' => [
         ['label' => __('app.user_management')],
-        ['label' => __('app.receptionists'), 'url' => route('manager.receptionists')]
+        ['label' => __('app.receptionists'), 'url' => route('it-officer.receptionists')]
     ],
+    'it-officer.managers' => [
+        ['label' => __('app.user_management')],
+        ['label' => __('app.managers'), 'url' => route('it-officer.managers')]
+    ],
+    'it-officer.users-per-department' => [
+        ['label' => __('app.user_management')],
+        ['label' => 'Users per Department', 'url' => route('it-officer.users-per-department')]
+    ],
+    'it-officer.manageroom' => [
+        ['label' => __('app.resource_management')],
+        ['label' => __('app.manage_rooms'), 'url' => route('it-officer.manageroom')]
+    ],
+    'it-officer.managevehicle' => [
+        ['label' => __('app.resource_management')],
+        ['label' => __('app.manage_vehicles'), 'url' => route('it-officer.managevehicle')]
+    ],
+    'it-officer.managestorage' => [
+        ['label' => __('app.resource_management')],
+        ['label' => __('app.manage_storages'), 'url' => route('it-officer.managestorage')]
+    ],
+    'it-officer.lstm-predictions' => [
+        ['label' => __('app.ai_security')],
+        ['label' => __('app.visitor_predictions'), 'url' => route('it-officer.lstm-predictions')]
+    ],
+    'it-officer.occupancy' => [
+        ['label' => __('app.ai_security')],
+        ['label' => __('app.occupancy_forecast'), 'url' => route('it-officer.occupancy')]
+    ],
+    'it-officer.ai-security' => [
+        ['label' => __('app.ai_security')],
+        ['label' => __('app.security_reports'), 'url' => route('it-officer.ai-security')]
+    ],
+    'it-officer.settings' => [
+        ['label' => __('app.settings'), 'url' => route('it-officer.settings')]
+    ],
+    'it-officer.help' => [
+        ['label' => __('app.help'), 'url' => route('it-officer.help')]
+    ],
+
+    // Manager Page Mappings
     'manager.room' => [
         ['label' => __('app.analytics')],
         ['label' => __('app.room_bookings'), 'url' => route('manager.room')]
@@ -107,6 +149,22 @@ $routeMappings = [
     'manager.help' => [
         ['label' => __('app.help'), 'url' => route('manager.help')]
     ],
+    'manager.priority-room' => [
+        ['label' => __('app.priority_booking')],
+        ['label' => __('app.priority_room_booking'), 'url' => route('manager.priority-room')]
+    ],
+    'manager.priority-vehicle' => [
+        ['label' => __('app.priority_booking')],
+        ['label' => __('app.priority_vehicle_booking'), 'url' => route('manager.priority-vehicle')]
+    ],
+    'manager.guestbook-form' => [
+        ['label' => __('app.forms')],
+        ['label' => __('app.guestbook_form'), 'url' => route('manager.guestbook-form')]
+    ],
+    'manager.docpack-form' => [
+        ['label' => __('app.forms')],
+        ['label' => __('app.docpack_form'), 'url' => route('manager.docpack-form')]
+    ],
 ];
 
 if (isset($routeMappings[$routeName])) {
@@ -115,7 +173,7 @@ if (isset($routeMappings[$routeName])) {
     // Fallback: parse URL path segments
     $segments = request()->segments();
     foreach ($segments as $index => $segment) {
-        if ($index === 0 && ($segment === 'manager-dashboard' || $segment === 'receptionist-dashboard')) {
+        if ($index === 0 && ($segment === 'manager-dashboard' || $segment === 'receptionist-dashboard' || $segment === 'it-officer-dashboard')) {
             continue;
         }
         $label = ucwords(str_replace(['-', '_'], ' ', $segment));

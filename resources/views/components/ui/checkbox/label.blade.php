@@ -1,6 +1,5 @@
 @aware(['label', 'size'])
 
-{{-- Label --}}
 @php
     $classes=[
         'font-medium [:where(&)]:text-neutral-900 font-semibold [:where(&)]:dark:text-white select-none',

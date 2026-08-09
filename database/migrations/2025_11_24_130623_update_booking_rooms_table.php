@@ -6,11 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 class UpdateBookingRoomsTable extends Migration
 {
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
     public function up()
     {
         Schema::table('booking_rooms', function (Blueprint $table) {
@@ -25,11 +20,6 @@ class UpdateBookingRoomsTable extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
     public function down()
     {
         Schema::table('booking_rooms', function (Blueprint $table) {

@@ -19,7 +19,6 @@ class TestLSTM3Weeks extends Command
 
         $lstmClient = new LSTMClient();
 
-        // Check service availability
         $this->info('Checking LSTM Service...');
         if (!$lstmClient->isAvailable()) {
             $this->error('✗ LSTM service is not running!');
@@ -29,7 +28,6 @@ class TestLSTM3Weeks extends Command
         $this->info('✓ LSTM service is running');
         $this->newLine();
 
-        // Get demo prediction
         $this->info('Fetching 3-week prediction with dummy data...');
         $result = $lstmClient->getDemo();
 
@@ -38,13 +36,11 @@ class TestLSTM3Weeks extends Command
             return 1;
         }
 
-        // Display title
         $this->info('===========================================');
         $this->line($result['title'] ?? 'LSTM Predictions');
         $this->info('===========================================');
         $this->newLine();
 
-        // Display metadata
         if (isset($result['description'])) {
             $this->line($result['description']);
             $this->newLine();
@@ -58,7 +54,6 @@ class TestLSTM3Weeks extends Command
         $this->line("  Data Source: " . ($result['data_source'] ?? 'unknown'));
         $this->newLine();
 
-        // Display weekly summary
         if (isset($result['weekly_summary'])) {
             $this->info('Weekly Summary:');
             $this->table(
@@ -76,7 +71,6 @@ class TestLSTM3Weeks extends Command
             $this->newLine();
         }
 
-        // Display daily predictions
         if (isset($result['predictions']) && !empty($result['predictions'])) {
             $this->info('Daily Predictions (First 7 days):');
             
@@ -96,7 +90,6 @@ class TestLSTM3Weeks extends Command
             );
             $this->newLine();
 
-            // Calculate totals
             $allPredictions = $result['predictions'];
             $totalPredicted = array_sum(array_column($allPredictions, 'predicted'));
             $avgDaily = $totalPredicted / count($allPredictions);

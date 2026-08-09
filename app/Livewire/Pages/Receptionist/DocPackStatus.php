@@ -25,7 +25,6 @@ class DocPackStatus extends Component
 
     protected string $paginationTheme = 'tailwind';
 
-    // Filters
     public string $q = '';
     public ?string $selectedDate = null;
     public string $dateMode = 'semua';
@@ -34,17 +33,9 @@ class DocPackStatus extends Component
     public ?int $userId = null;
     public string $departmentQ = '';
     public string $userQ = '';
-
-    // Tabs
     public string $activeTab = 'pending';
-
-    // Pagination per box
     public int $perPending = 6;
-
-    // Mobile filter modal
     public bool $showFilterModal = false;
-
-    // Edit modal
     public bool $showEdit = false;
     public ?int $editId = null;
     public ?string $editImageUrl = null;
@@ -68,12 +59,15 @@ class DocPackStatus extends Component
             $this->userId = null;
         }
 
+        if ($name === 'editPhoto') {
+            $this->validateOnly('editPhoto');
+        }
+
         if (in_array($name, ['q', 'selectedDate', 'dateMode', 'type', 'departmentId', 'userId', 'departmentQ', 'userQ'], true)) {
             $this->resetPage('pendingPage');
         }
     }
 
-    // ───────── Tabs ─────────
     public function setTab(string $tab): void
     {
         if (!in_array($tab, ['pending'], true)) {
@@ -83,7 +77,6 @@ class DocPackStatus extends Component
         $this->resetPage('pendingPage');
     }
 
-    // ───────── Mobile Filter Modal ─────────
     public function openFilterModal(): void
     {
         $this->showFilterModal = true;
@@ -182,6 +175,8 @@ class DocPackStatus extends Component
 
     public function saveEdit(): void
     {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
         if (!$this->editId)
             return;
 

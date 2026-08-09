@@ -561,7 +561,14 @@
                         @if ($photo)
                             <div class="mt-3">
                                 <p class="text-xs text-muted-foreground font-semibold mb-1.5">Preview bukti:</p>
-                                <img src="{{ $photo->temporaryUrl() }}" class="w-40 h-40 object-cover rounded-2xl border border-border shadow-sm">
+                                @if(method_exists($photo, 'temporaryUrl') && in_array($photo->getClientOriginalExtension(), ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']))
+                                    <img src="{{ $photo->temporaryUrl() }}" class="w-40 h-40 object-cover rounded-2xl border border-border shadow-sm">
+                                @else
+                                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <x-heroicon-o-document class="w-5 h-5" />
+                                        <span>{{ $photo->getClientOriginalName() }}</span>
+                                    </div>
+                                @endif
                             </div>
                         @endif
 
