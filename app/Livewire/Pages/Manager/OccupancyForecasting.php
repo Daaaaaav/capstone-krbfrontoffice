@@ -177,6 +177,9 @@ class OccupancyForecasting extends Component
             // ── Occupancy stats ─────────────────────────────────────────────────────────
             $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
+            // ── Model metrics ───────────────────────────────────────────────────────────
+            $lstmClient = new LSTMClient();
+
             return view('livewire.pages.manager.occupancy-forecasting', [
                 'isLSTMAvailable' => $isAvailable,
                 'roomForecast'    => $roomForecast,
@@ -191,6 +194,7 @@ class OccupancyForecasting extends Component
                 'uploadedCsvName' => $this->uploadedCsvName,
                 'uploadError'     => $this->uploadError,
                 'uploadSuccess'   => $this->uploadSuccess,
+                'modelMetrics'    => $lstmClient->getModelMetrics(),
             ]);
         } catch (\Exception $e) {
             Log::error('OccupancyForecasting render failed', ['error' => $e->getMessage()]);
@@ -209,6 +213,7 @@ class OccupancyForecasting extends Component
                 'uploadedCsvName' => $this->uploadedCsvName,
                 'uploadError'     => $this->uploadError,
                 'uploadSuccess'   => $this->uploadSuccess,
+                'modelMetrics'    => null,
             ]);
         }
     }
