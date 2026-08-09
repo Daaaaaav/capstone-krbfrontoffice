@@ -1,4 +1,4 @@
-@props([
+﻿@props([
     'id' => 'calendar_' . uniqid(),
     'modelKey' => 'selectedDate',
     'minDate' => null,
@@ -12,6 +12,7 @@
         maxDate: '{{ $maxDate }}'
     })"
     x-init="init()"
+    x-effect="updateMinDate($el.getAttribute('min-date'))"
     {{ $attributes->merge(['class' => 'cal-container']) }}>
     
     <div class="cal-header">
@@ -232,6 +233,16 @@ function customCalendar(config) {
             this.generateCalendar();
         },
         
+        updateMinDate(newMinDate) {
+            if (newMinDate && newMinDate !== 'null' && newMinDate !== '') {
+                const parsedDate = new Date(newMinDate);
+                if (!isNaN(parsedDate.getTime())) {
+                    this.minDate = parsedDate;
+                    this.generateCalendar();
+                }
+            }
+        },
+        
         generateCalendar() {
             const firstDay = new Date(this.currentYear, this.currentMonth, 1);
             const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
@@ -276,6 +287,12 @@ function customCalendar(config) {
         selectDate(day) {
             if (!day.enabled || day.empty) return;
             
+            // Double-check date is still valid (belt and suspenders approach)
+            if (!this.isDateEnabled(day.dateObj)) {
+                console.warn('Attempted to select disabled date:', day.dateStr);
+                return;
+            }
+            
             this.selectedDate = day.dateStr;
             this.$dispatch('date-selected', { date: day.dateStr });
             
@@ -315,8 +332,19 @@ function customCalendar(config) {
         },
         
         isDateEnabled(date) {
-            if (this.minDate && date < this.minDate) return false;
-            if (this.maxDate && date > this.maxDate) return false;
+            // Normalize dates to midnight for accurate comparison (date-only, no time)
+            const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            
+            if (this.minDate) {
+                const minDateOnly = new Date(this.minDate.getFullYear(), this.minDate.getMonth(), this.minDate.getDate());
+                if (dateOnly < minDateOnly) return false;
+            }
+            
+            if (this.maxDate) {
+                const maxDateOnly = new Date(this.maxDate.getFullYear(), this.maxDate.getMonth(), this.maxDate.getDate());
+                if (dateOnly > maxDateOnly) return false;
+            }
+            
             return true;
         },
         
