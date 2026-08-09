@@ -134,10 +134,10 @@ class OccupancyForecasting extends Component
         $companyId = Auth::user()->company_id;
         $reader    = new CsvDataReader();
 
-        // ΓöÇΓöÇ CSV INFO for server csv ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── CSV INFO for server csv ────────────────────────────────────────────────────
         $this->csvInfo = $reader->serverCsvInfo();
 
-        // ΓöÇΓöÇ Determine data source for training ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── Determine data source for training ──────────────────────────────────────────
         $roomHistory    = $this->buildTimeSeries('room');
         $vehicleHistory = $this->buildTimeSeries('vehicle');
 
@@ -167,10 +167,10 @@ class OccupancyForecasting extends Component
             }
         }
 
-        // ΓöÇΓöÇ Chart data ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── Chart data ──────────────────────────────────────────────────────────────────
         $chartData = $this->buildChartData($roomForecast, $vehicleForecast);
 
-        // ΓöÇΓöÇ Occupancy stats ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // ── Occupancy stats ─────────────────────────────────────────────────────────────
         $stats = $this->buildStats($roomHistory, $vehicleHistory, $roomForecast, $vehicleForecast);
 
         return view('livewire.pages.manager.occupancy-forecasting', [
@@ -310,7 +310,7 @@ class OccupancyForecasting extends Component
         }
     }
 
-    // ΓöÇΓöÇ Private helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ── Private helpers ─────────────────────────────────────────────────────────────
     private function getRoomHistory(int $companyId): array
     {
         return BookingRoom::where('company_id', $companyId)
@@ -351,7 +351,7 @@ class OccupancyForecasting extends Component
 
         // Build a day-of-week multiplier from historical data so the forecast
         // reflects real patterns (e.g. busier on Fridays) instead of random noise.
-        $dowTotals = array_fill(0, 7, 0.0);   // Sun=0 ΓÇª Sat=6
+        $dowTotals = array_fill(0, 7, 0.0);   // Sun=0 … Sat=6
         $dowCounts = array_fill(0, 7, 0);
 
         foreach ($history as $row) {
@@ -444,13 +444,13 @@ class OccupancyForecasting extends Component
         return [
             'avg_room_hist'    => round($avgRoomHist, 1),
             'avg_vehicle_hist' => round($avgVehicleHist, 1),
-            'avg_room_fc'      => $avgRoomFc    ? round($avgRoomFc, 1)    : 'ΓÇö',
-            'avg_vehicle_fc'   => $avgVehicleFc ? round($avgVehicleFc, 1) : 'ΓÇö',
+            'avg_room_fc'      => $avgRoomFc    ? round($avgRoomFc, 1)    : '—',
+            'avg_vehicle_fc'   => $avgVehicleFc ? round($avgVehicleFc, 1) : '—',
             'room_trend'       => $roomTrend,
             'vehicle_trend'    => $vehicleTrend,
-            'peak_day'         => $peakDay ?? 'ΓÇö',
-            'total_room_fc'    => $roomFc    ? round(array_sum(array_column($roomFc, 'predicted')))    : 'ΓÇö',
-            'total_vehicle_fc' => $vehicleFc ? round(array_sum(array_column($vehicleFc, 'predicted'))) : 'ΓÇö',
+            'peak_day'         => $peakDay ?? '—',
+            'total_room_fc'    => $roomFc    ? round(array_sum(array_column($roomFc, 'predicted')))    : '—',
+            'total_vehicle_fc' => $vehicleFc ? round(array_sum(array_column($vehicleFc, 'predicted'))) : '—',
         ];
     }
 
@@ -470,15 +470,15 @@ class OccupancyForecasting extends Component
                     if ($rain >= 60) {
                         $insights[] = [
                             'date'    => $day['date_label'],
-                            'icon'    => '≡ƒîº∩╕Å',
-                            'message' => "Rain likely ({$rain}% chance) on {$day['date_label']} ΓÇö expect lower walk-in occupancy (~{$predicted} bookings).",
+                            'icon'    => '🌧️',
+                            'message' => "Rain likely ({$rain}% chance) on {$day['date_label']} — expect lower walk-in occupancy (~{$predicted} bookings).",
                             'type'    => 'warning',
                         ];
                     } elseif ($rain <= 20 && in_array($day['summary']['weather'] ?? 99, [0, 1, 2])) {
                         $insights[] = [
                             'date'    => $day['date_label'],
-                            'icon'    => 'ΓÿÇ∩╕Å',
-                            'message' => "Clear weather on {$day['date_label']} ΓÇö good conditions for higher visitor turnout (~{$predicted} bookings).",
+                            'icon'    => '☀️',
+                            'message' => "Clear weather on {$day['date_label']} — good conditions for higher visitor turnout (~{$predicted} bookings).",
                             'type'    => 'positive',
                         ];
                     }
