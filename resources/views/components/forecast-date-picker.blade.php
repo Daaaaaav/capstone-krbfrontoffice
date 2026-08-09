@@ -1,4 +1,4 @@
-@props([
+﻿@props([
     'startDate' => null,
     'endDate' => null,
 ])
@@ -168,23 +168,42 @@
          },
          apply() {
              if (this.tempStart && this.tempEnd) {
-                 if (new Date(this.tempStart) <= new Date(this.tempEnd)) {
+                 const startDate = new Date(this.tempStart);
+                 const endDate = new Date(this.tempEnd);
+                 
+                 // Ensure End Date >= Start Date before applying
+                 if (endDate >= startDate) {
                      $wire.set('{{ $startKey }}', this.tempStart);
                      $wire.set('{{ $endKey }}', this.tempEnd);
                      this.close();
+                 } else {
+                     // This should never happen due to the UI restrictions, but safety check
+                     console.warn('Invalid date range: End Date must be >= Start Date');
+                     this.tempEnd = this.tempStart;
+                     this.syncCalendars();
                  }
              }
          },
          onStartDateSelected(event) {
              this.tempStart = event.detail.date;
              this.selectingStart = false;
+             
+             // Auto-correct End Date if it's now before the new Start Date
+             if (this.tempEnd && new Date(this.tempEnd) < new Date(this.tempStart)) {
+                 this.tempEnd = this.tempStart;
+             }
+             
              this.syncCalendars();
          },
          onEndDateSelected(event) {
              this.tempEnd = event.detail.date;
+             
+             // Ensure End Date >= Start Date
              if (this.tempStart && new Date(this.tempEnd) < new Date(this.tempStart)) {
+                 // Swap: user probably wants to change the range
                  [this.tempStart, this.tempEnd] = [this.tempEnd, this.tempStart];
              }
+             
              this.syncCalendars();
          },
          syncCalendars() {
