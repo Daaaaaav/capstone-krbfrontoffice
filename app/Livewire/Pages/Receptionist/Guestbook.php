@@ -240,12 +240,16 @@ class Guestbook extends Component
                 $emailLogOnly = true;
                 try {
                     $entry->load('qrCodes');
-                    Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry));
+                    $officerEmail = Auth::user()?->email ?: config('mail.from.address');
+                    Mail::alwaysFrom($officerEmail, 'Kebun Raya Bogor Receptionist');
+                    Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry, $officerEmail));
                 } catch (\Throwable $e) {}
             } else {
                 try {
                     $entry->load('qrCodes');
-                    Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry));
+                    $officerEmail = Auth::user()?->email ?: config('mail.from.address');
+                    Mail::alwaysFrom($officerEmail, 'Kebun Raya Bogor Receptionist');
+                    Mail::to($validatedData['email'])->send(new GuestbookQrMail($entry, $officerEmail));
                 } catch (\Throwable $e) {
                     Log::error('GuestbookQrMail failed: ' . $e->getMessage(), ['exception' => $e]);
                     $emailFailed = true;

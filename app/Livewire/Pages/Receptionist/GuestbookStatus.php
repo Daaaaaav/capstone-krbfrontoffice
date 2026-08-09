@@ -276,8 +276,10 @@ class GuestbookStatus extends Component
 
         try {
             $row->load('qrCodes');
+            $officerEmail = Auth::user()?->email ?: config('mail.from.address');
+            \Illuminate\Support\Facades\Mail::alwaysFrom($officerEmail, 'Kebun Raya Bogor Receptionist');
             \Illuminate\Support\Facades\Mail::to($row->email)
-                ->send(new \App\Mail\GuestbookQrMail($row));
+                ->send(new \App\Mail\GuestbookQrMail($row, $officerEmail));
 
             $this->dispatch('toast', type: 'success', title: 'QR Dikirim Ulang', message: 'QR code berhasil dikirim ulang ke ' . $row->email . '.', duration: 4000);
         } catch (\Throwable $e) {

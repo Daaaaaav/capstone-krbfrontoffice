@@ -173,7 +173,9 @@ class GuestbookForm extends Component
         if (!empty($validated['email'])) {
             try {
                 $entry->load('qrCodes');
-                Mail::to($validated['email'])->send(new GuestbookQrMail($entry));
+                $officerEmail = Auth::user()?->email ?: config('mail.from.address');
+                Mail::alwaysFrom($officerEmail, 'Kebun Raya Bogor Receptionist');
+                Mail::to($validated['email'])->send(new GuestbookQrMail($entry, $officerEmail));
             } catch (\Throwable $e) {
                 Log::error('GuestbookQrMail (manager) failed: ' . $e->getMessage());
                 $this->dispatch('toast', type: 'warning', title: 'Email Failed',
