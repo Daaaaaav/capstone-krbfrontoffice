@@ -153,9 +153,11 @@
                                         :class="roomId == item.id
                                             ? 'bg-primary text-primary-foreground'
                                             : 'text-foreground hover:bg-muted cursor-pointer'"
-                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
-                                        x-text="item.label"
-                                    ></li>
+                                        class="px-3.5 py-2.5 cursor-pointer transition-colors flex justify-between items-center"
+                                    >
+                                        <span x-text="item.label"></span>
+                                        <span x-show="item.capacity !== null" class="text-xs opacity-75 bg-background/20 px-1.5 py-0.5 rounded" x-text="item.capacity + ' person'"></span>
+                                    </li>
                                 </template>
                             </ul>
                             <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-border bg-card shadow-lg text-sm px-3.5 py-2.5 text-muted-foreground" style="display:none">

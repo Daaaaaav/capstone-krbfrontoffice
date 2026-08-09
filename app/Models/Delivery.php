@@ -25,7 +25,8 @@ class Delivery extends Model
         'direction',      
         'pengiriman',       
         'pengambilan',  
-        'image', 
+        'image',
+        'proof_image',
     ];
 
     protected $casts = [

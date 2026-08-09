@@ -272,6 +272,15 @@
                                     </button>
                                 @endif
 
+                                @if($row->proof_image && Storage::disk('public')->exists($row->proof_image))
+                                    <button type="button"
+                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->proof_image) }}' })"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-xs font-semibold transition mt-2">
+                                        <x-heroicon-o-check-circle class="w-3.5 h-3.5 shrink-0"/>
+                                        Lihat Bukti Selesai
+                                    </button>
+                                @endif
+
                                 <div class="pt-3 border-t border-gray-100 mt-4 flex items-center justify-between">
                                     <span class="text-[10px] font-semibold text-gray-400 font-mono">
                                         #{{ $rowNo }}
@@ -386,6 +395,14 @@
                                                             class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 focus:outline-none transition inline-flex items-center gap-1.5">
                                                             <x-heroicon-o-photo class="w-3.5 h-3.5"/>
                                                             {{ __('app.lihat_bukti_foto') }}
+                                                        </button>
+                                                    @endif
+                                                    @if($row->proof_image && Storage::disk('public')->exists($row->proof_image))
+                                                        <button type="button"
+                                                            @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $row->proof_image) }}' })"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 focus:outline-none transition inline-flex items-center gap-1.5">
+                                                            <x-heroicon-o-check-circle class="w-3.5 h-3.5"/>
+                                                            Lihat Bukti Selesai
                                                         </button>
                                                     @endif
                                                     <button type="button" wire:click="openEdit({{ $row->delivery_id }})"

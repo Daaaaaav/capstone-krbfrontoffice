@@ -40,6 +40,9 @@ class DocPackStatus extends Component
     public ?int $editId = null;
     public ?string $editImageUrl = null;
     public $editPhoto = null;
+    public bool $showDoneModal = false;
+    public ?int $doneId = null;
+    public ?string $photoData = null;
     public array $edit = [
         'item_name' => null,
         'nama_pengirim' => null,
@@ -251,9 +254,28 @@ class DocPackStatus extends Component
         return ($row->type === 'document') ? 'deliver' : 'taken';
     }
 
-    public function markDone(int $id): void
+    public function openDoneModal(int $id): void
     {
-        $row = $this->base()->where('status', 'pending')->findOrFail($id);
+        $this->doneId = $id;
+        $this->photoData = null;
+        $this->showDoneModal = true;
+    }
+
+    public function closeDoneModal(): void
+    {
+        $this->showDoneModal = false;
+        $this->doneId = null;
+        $this->photoData = null;
+    }
+
+    public function submitDone(): void
+    {
+        $this->validate([
+            'doneId'    => 'required|integer',
+            'photoData' => 'required|string',
+        ]);
+
+        $row = $this->base()->where('status', 'pending')->findOrFail($this->doneId);
         $dir = $this->getDirectionFor($row);
 
         $when = now();
@@ -266,10 +288,19 @@ class DocPackStatus extends Component
             $row->pengambilan = $when;
         }
 
+        if ($this->photoData) {
+            $row->proof_image = ImageHelper::storeBase64AsWebp(
+                $this->photoData,
+                'images/deliveries',
+                'done_' . $row->delivery_id
+            );
+        }
+
         $row->save();
 
+        $this->closeDoneModal();
         $this->resetPage('pendingPage');
-        $this->dispatch('toast', type: 'success', title: 'Done', message: 'Item successfully marked as done.', duration: 3000);
+        $this->dispatch('toast', type: 'success', title: 'Done', message: 'Item successfully marked as done with evidence.', duration: 3000);
     }
 
     public function render()

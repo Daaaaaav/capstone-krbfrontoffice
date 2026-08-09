@@ -34,7 +34,9 @@ class Guestbook extends Model
         'qr_status',
         'visitor_count',
         'storage_place',
-        'scheduled_by_manager', 
+        'scheduled_by_manager',
+        'id_type_id',
+        'visitor_lanyard_id',
     ];
 
     protected $casts = [
@@ -105,5 +107,25 @@ class Guestbook extends Model
             'completed' => 'Selesai',
             default     => ucfirst((string) $this->qr_status),
         };
+    }
+
+    public function idType()
+    {
+        return $this->belongsTo(IdType::class, 'id_type_id');
+    }
+
+    public function visitorLanyard()
+    {
+        return $this->belongsTo(VisitorLanyard::class, 'visitor_lanyard_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

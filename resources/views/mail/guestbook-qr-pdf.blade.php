@@ -186,6 +186,7 @@
     <div class="page">
         {{-- Header --}}
         <div class="header">
+            <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/logo/kebun-raya-bogor.png'))) }}" alt="Logo Kebun Raya Bogor" style="height: 50px; margin-bottom: 10px;">
             <h1>Konfirmasi Kunjungan</h1>
             <p>QR Code Tamu &ndash; Buku Tamu Digital</p>
             <div class="badge">{{ $entry->visitor_count }} Pengunjung</div>
