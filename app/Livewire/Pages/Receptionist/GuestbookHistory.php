@@ -52,7 +52,47 @@ class GuestbookHistory extends Component
         'keperluan' => null,
         'petugas_penjaga' => null,
         'visitor_count' => 1,
+        'department_id' => null,
+        'user_id' => null,
     ];
+
+    public array $departments_list = [];
+    public array $users_list = [];
+
+    public function mount(): void
+    {
+        $compId = $this->companyId();
+        if ($compId) {
+            $this->departments_list = \App\Models\Department::where('company_id', $compId)
+                ->get(['department_id', 'department_name'])
+                ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+        } else {
+            $this->departments_list = \App\Models\Department::all(['department_id', 'department_name'])
+                ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+        }
+    }
+
+    public function loadUsersForEdit($departmentId)
+    {
+        $this->edit['user_id'] = null;
+        if ($departmentId) {
+            $this->users_list = \App\Models\User::where('department_id', (int)$departmentId)
+                ->get(['user_id', 'full_name'])
+                ->map(fn($u) => ['id' => $u->user_id, 'full_name' => $u->full_name])
+                ->toArray();
+        } else {
+            $this->users_list = [];
+        }
+    }
+
+    public function updated($property, $value)
+    {
+        if ($property === 'edit.department_id') {
+            $this->loadUsersForEdit($value);
+        }
+    }
 
     public array $qrLogs = [];
     public array $scanLogs = [];
@@ -70,6 +110,8 @@ class GuestbookHistory extends Component
             'edit.keperluan' => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
             'edit.visitor_count' => ['required', 'integer', 'min:0', 'max:999'],
+            'edit.department_id' => ['nullable', 'exists:departments,department_id'],
+            'edit.user_id' => ['nullable', 'exists:users,user_id'],
         ];
     }
 
@@ -179,7 +221,8 @@ class GuestbookHistory extends Component
 
     public function getLatestProperty()
     {
-        $q = GuestbookModel::where('company_id', $this->companyId())
+        $q = GuestbookModel::with(['idType', 'visitorLanyard'])
+            ->where('company_id', $this->companyId())
             ->whereDate('date', now()->toDateString())
             ->whereNull('jam_out')
             ->whereNull('deleted_at'); 
@@ -196,6 +239,7 @@ class GuestbookHistory extends Component
     public function getEntriesProperty()
     {
         $q = GuestbookModel::query()
+            ->with(['idType', 'visitorLanyard'])
             ->where('company_id', $this->companyId())
             ->whereNotNull('jam_out');
         if ($this->withTrashed) {
@@ -251,7 +295,16 @@ class GuestbookHistory extends Component
             'keperluan' => $row->keperluan,
             'petugas_penjaga' => $row->petugas_penjaga,
             'visitor_count' => $row->visitor_count,
+            'department_id' => $row->department_id,
+            'user_id' => $row->user_id,
         ];
+        
+        if ($row->department_id) {
+            $this->loadUsersForEdit($row->department_id);
+            $this->edit['user_id'] = $row->user_id; // restore user_id since loadUsersForEdit clears it
+        } else {
+            $this->users_list = [];
+        }
 
         $this->qrLogs = GuestbookQrCode::where('guestbook_id', $row->guestbook_id)
             ->orderBy('visitor_number')
@@ -289,6 +342,8 @@ class GuestbookHistory extends Component
             'keperluan' => $this->edit['keperluan'],
             'petugas_penjaga' => $this->edit['petugas_penjaga'],
             'visitor_count' => $newVisitorCount,
+            'department_id' => $this->edit['department_id'] === '' ? null : $this->edit['department_id'],
+            'user_id' => $this->edit['user_id'] === '' ? null : $this->edit['user_id'],
         ]);
 
         $this->showEdit = false;
@@ -319,6 +374,11 @@ class GuestbookHistory extends Component
             'jam_out'    => Carbon::now()->format('H:i'),
             'qr_status'  => 'completed',
         ]);
+
+        // Reactivate the lanyard so it can be used again
+        if ($row->visitor_lanyard_id) {
+            \App\Models\VisitorLanyard::where('id', $row->visitor_lanyard_id)->update(['status' => 1]);
+        }
 
         $this->dispatch(
             'toast',

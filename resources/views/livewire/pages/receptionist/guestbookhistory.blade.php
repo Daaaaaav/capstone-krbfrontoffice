@@ -288,6 +288,18 @@
 
                                                 {{-- Middle: Details --}}
                                                 <div class="space-y-2 text-[13px] text-gray-600 mb-3 border-y border-gray-100 py-2 mt-3">
+                                                    @if($e->idType)
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <x-heroicon-o-identification class="w-4 h-4 text-gray-500 shrink-0"/>
+                                                            <span class="truncate">ID Type: <span class="font-semibold text-gray-900">{{ $e->idType->id_type_name }}</span></span>
+                                                        </div>
+                                                    @endif
+                                                    @if($e->visitorLanyard)
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <x-heroicon-o-tag class="w-4 h-4 text-gray-500 shrink-0"/>
+                                                            <span class="truncate">Lanyard: <span class="font-semibold text-gray-900">{{ $e->visitorLanyard->lanyard_name }}</span></span>
+                                                        </div>
+                                                    @endif
                                                     @if($e->instansi)
                                                         <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-building-office class="w-4 h-4 text-gray-500 shrink-0"/>
@@ -298,6 +310,18 @@
                                                         <div class="flex items-center gap-1.5 font-medium text-gray-800">
                                                             <x-heroicon-o-information-circle class="w-4 h-4 text-gray-500 shrink-0"/>
                                                             <span class="truncate">{{ __('app.visit_purpose') }}: <span class="font-semibold text-gray-900">{{ $e->keperluan }}</span></span>
+                                                        </div>
+                                                    @endif
+                                                    @if($e->department)
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <x-heroicon-o-building-office-2 class="w-4 h-4 text-gray-500 shrink-0"/>
+                                                            <span class="truncate">Department: <span class="font-semibold text-gray-900">{{ $e->department->department_name }}</span></span>
+                                                        </div>
+                                                    @endif
+                                                    @if($e->user)
+                                                        <div class="flex items-center gap-1.5 font-medium text-gray-800">
+                                                            <x-heroicon-o-user-circle class="w-4 h-4 text-gray-500 shrink-0"/>
+                                                            <span class="truncate">Meet With: <span class="font-semibold text-gray-900">{{ $e->user->full_name }}</span></span>
                                                         </div>
                                                     @endif
                                                     @if($e->visitor_count !== null)
@@ -388,6 +412,7 @@
                                             <tr class="border-b border-gray-200 bg-gray-50/50">
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.name_col') }}</th>
+                                                <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lanyard / ID</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.institution_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
                                                 <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.date_col') }}</th>
@@ -428,11 +453,29 @@
                                                     </td>
                                                     
                                                     <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
+                                                        @if($e->visitorLanyard || $e->idType)
+                                                            <div class="flex flex-col">
+                                                                @if($e->visitorLanyard) <span class="text-gray-900">{{ $e->visitorLanyard->lanyard_name }}</span> @endif
+                                                                @if($e->idType) <span class="text-[10px] text-gray-500">{{ $e->idType->id_type_name }}</span> @endif
+                                                            </div>
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    
+                                                    <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                         {{ $e->instansi ?? '-' }}
                                                     </td>
                                                     
                                                     <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                         {{ $e->keperluan ?? '-' }}
+                                                        @if($e->department || $e->user)
+                                                            <div class="text-[10px] text-gray-500 font-normal mt-0.5">
+                                                                @if($e->department) <span>Dept: {{ $e->department->department_name }}</span> @endif
+                                                                @if($e->department && $e->user) <span class="mx-0.5">•</span> @endif
+                                                                @if($e->user) <span>Meet: {{ $e->user->full_name }}</span> @endif
+                                                            </div>
+                                                        @endif
                                                     </td>
                                                     
                                                     <td class="h-12 px-4 py-0 text-gray-900 font-medium whitespace-nowrap">
@@ -675,6 +718,30 @@
                                 <label for="edit_visitor_count" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.visitors_count') ?? 'Visitor Count' }} <span class="text-rose-500">*</span></label>
                                 <input type="number" min="1" max="999" id="edit_visitor_count" class="{{ $input }}" wire:model="edit.visitor_count">
                                 @error('edit.visitor_count') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Target Department --}}
+                            <div>
+                                <label for="edit_department_id" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.target_department_opt') ?? 'Target Department' }}</label>
+                                <select id="edit_department_id" wire:model.live="edit.department_id" class="{{ $input }}">
+                                    <option value="">{{ __('app.select_department_opt') ?? '-- Select Department --' }}</option>
+                                    @foreach($departments_list as $dept)
+                                        <option value="{{ $dept['id'] }}">{{ $dept['name'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('edit.department_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            {{-- Meet With --}}
+                            <div>
+                                <label for="edit_user_id" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">{{ __('app.meet_with_opt') ?? 'Meet With' }}</label>
+                                <select id="edit_user_id" wire:model.defer="edit.user_id" class="{{ $input }}" @if(empty($users_list)) disabled @endif>
+                                    <option value="">{{ __('app.select_employee') ?? '-- Select Employee --' }}</option>
+                                    @foreach($users_list as $user)
+                                        <option value="{{ $user['id'] }}">{{ $user['full_name'] }}</option>
+                                    @endforeach
+                                </select>
+                                @error('edit.user_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             {{-- Date / Jam In / Jam Out --}}

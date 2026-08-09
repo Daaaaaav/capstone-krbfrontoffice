@@ -281,7 +281,7 @@
                                                     class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-50 text-gray-700 border border-gray-300 hover:bg-gray-100 focus:ring-2 focus:ring-gray-900/10 focus:outline-none transition shadow-sm">
                                                     Edit
                                                 </button>
-                                                <button type="button" wire:click="markDone({{ $row->delivery_id }})"
+                                                <button type="button" wire:click.stop="openDoneModal({{ $row->delivery_id }})"
                                                     wire:loading.attr="disabled"
                                                     class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:ring-2 focus:ring-[#4E653D]/20 focus:outline-none transition shadow-sm">
                                                     {{ __('app.mark_done') }}
@@ -357,7 +357,7 @@
                                                             class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition shadow-sm">
                                                             {{ __('app.edit') }}
                                                         </button>
-                                                        <button type="button" wire:click="markDone({{ $row->delivery_id }})"
+                                                        <button type="button" wire:click.stop="openDoneModal({{ $row->delivery_id }})"
                                                             class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
                                                             {{ __('app.mark_done') }}
                                                         </button>
@@ -823,6 +823,172 @@
             </div>
         </div>
     @endif
+
+    {{-- DONE MODAL (Camera) --}}
+    <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+        role="dialog" aria-modal="true"
+        wire:key="done-modal-container"
+        x-data="{
+            show: @entangle('showDoneModal').live,
+            stream: null,
+            devices: [],
+            selectedDeviceId: null,
+            init() {
+                this.$watch('show', value => {
+                    if (value) {
+                        this.getDevices();
+                    } else {
+                        this.stopCamera();
+                    }
+                });
+            },
+            async getDevices() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                    alert('Browser tidak mendukung kamera.');
+                    return;
+                }
+                try {
+                    const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    initialStream.getTracks().forEach(t => t.stop());
+                    const allDevices = await navigator.mediaDevices.enumerateDevices();
+                    this.devices = allDevices.filter(d => d.kind === 'videoinput');
+                    if (this.devices.length > 0) {
+                        this.selectedDeviceId = this.devices[0].deviceId;
+                        this.startCamera();
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Gagal mengakses kamera: ' + e.message);
+                }
+            },
+            async startCamera() {
+                this.stopCamera();
+                if (!this.selectedDeviceId) return;
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: { exact: this.selectedDeviceId } }
+                    });
+                    this.$refs.video.srcObject = this.stream;
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+            stopCamera() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(t => t.stop());
+                    this.stream = null;
+                }
+            },
+            capture() {
+                const canvas = this.$refs.canvas;
+                const video = this.$refs.video;
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                $wire.set('photoData', canvas.toDataURL('image/png'));
+            },
+            handleFile(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    $wire.set('photoData', ev.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }"
+        x-show="show"
+        x-transition.opacity
+        style="display: none;"
+        >
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
+            wire:click="closeDoneModal"></div>
+
+        <div x-show="show"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
+            
+            {{-- Flush Header --}}
+            <div class="px-5 py-4 bg-[#4A2F24] flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full border border-[#CDDEA7]/30 flex items-center justify-center bg-white/5">
+                        <x-heroicon-o-camera class="w-4 h-4 text-[#CDDEA7]" />
+                    </div>
+                    <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Bukti Selesai (Evidence)</h3>
+                </div>
+                <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
+                    wire:click="closeDoneModal">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            {{-- Body --}}
+            <div class="p-5 flex flex-col gap-4">
+                <div class="flex justify-between items-center text-sm px-2" x-show="devices.length > 1">
+                    <label class="font-medium text-gray-700 text-xs">Pilih Kamera:</label>
+                    <select x-model="selectedDeviceId" @change="startCamera()" class="p-1 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring focus:ring-[#CDDEA7]/50 outline-none">
+                        <template x-for="(device, index) in devices" :key="device.deviceId">
+                            <option :value="device.deviceId" x-text="device.label || 'Kamera ' + (index + 1)"></option>
+                        </template>
+                    </select>
+                </div>
+
+                {{-- Camera Viewport --}}
+                <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <canvas x-ref="canvas" style="display: none;"></canvas>
+                    
+                    {{-- Reticle --}}
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <svg width="220" height="220" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M50 30H30V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M190 30H210V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M50 210H30V190" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M190 210H210V190" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                {{-- Preview --}}
+                <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                    <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                        <x-heroicon-o-arrow-path class="w-4 h-4"/>
+                        Retake
+                    </button>
+                </div>
+
+                {{-- Actions (Capture/Gallery) --}}
+                <div x-show="!$wire.photoData" class="flex items-center gap-3">
+                    <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
+                        <x-heroicon-o-photo class="w-5 h-5"/>
+                        Buka Galeri
+                    </button>
+                    <input type="file" accept="image/*" x-ref="fileInput" @change="handleFile" class="hidden">
+                    
+                    <button type="button" @click="capture()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#4A2F24] text-white font-bold text-sm hover:bg-[#38221A] transition shadow-md">
+                        <x-heroicon-o-camera class="w-5 h-5 text-[#CDDEA7]"/>
+                        Ambil Foto
+                    </button>
+                </div>
+
+                {{-- Actions (Submit) --}}
+                <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
+                    <button type="button" wire:click="submitDone" @click="stopCamera()"
+                        class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4E653D] text-white font-bold text-sm hover:bg-[#354C2B] transition shadow-md"
+                        wire:loading.attr="disabled" wire:target="submitDone">
+                        <x-heroicon-o-check class="w-5 h-5" />
+                        <span>Simpan & Submit</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- IMAGE LIGHTBOX --}}
     <div

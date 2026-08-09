@@ -14,6 +14,8 @@ use App\Models\Guestbook as GuestbookModel;
 use App\Models\GuestbookQrCode;
 use App\Models\Department;
 use App\Models\User;
+use App\Models\IdType;
+use App\Models\VisitorLanyard;
 use App\Mail\GuestbookQrMail;
 
 #[Layout('layouts.manager')]
@@ -36,8 +38,12 @@ class GuestbookForm extends Component
     public string $scheduled_time = '';
     public ?int $department_id = null;
     public ?int $user_id       = null;
+    public ?int $id_type_id    = null;
+    public ?int $visitor_lanyard_id = null;
     public array $departments_list = [];
     public array $users_list       = [];
+    public array $id_types_list    = [];
+    public array $visitor_lanyards_list = [];
     public string $q = '';
     public int $perPage = 8;
 
@@ -49,6 +55,19 @@ class GuestbookForm extends Component
             ->orderBy('department_name')
             ->get(['department_id', 'department_name'])
             ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+            ->toArray();
+            
+        $this->id_types_list = IdType::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->orderBy('id_type_name')
+            ->get(['id', 'id_type_name'])
+            ->map(fn($t) => ['id' => $t->id, 'name' => $t->id_type_name])
+            ->toArray();
+
+        $this->visitor_lanyards_list = VisitorLanyard::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', 1)
+            ->orderBy('lanyard_name')
+            ->get(['id', 'lanyard_name'])
+            ->map(fn($l) => ['id' => $l->id, 'name' => $l->lanyard_name])
             ->toArray();
 
         // Default to tomorrow so it's clearly a future booking
@@ -94,6 +113,8 @@ class GuestbookForm extends Component
             'scheduled_time' => ['required', 'string'],
             'department_id'  => ['nullable', 'exists:departments,department_id'],
             'user_id'        => ['nullable', 'exists:users,user_id'],
+            'id_type_id'         => ['nullable', 'exists:id_types,id'],
+            'visitor_lanyard_id' => ['nullable', 'exists:visitor_lanyards,id'],
         ];
     }
 
@@ -103,6 +124,8 @@ class GuestbookForm extends Component
 
         $this->department_id = $this->department_id === '' ? null : $this->department_id;
         $this->user_id       = $this->user_id === '' ? null : $this->user_id;
+        $this->id_type_id    = $this->id_type_id === '' ? null : $this->id_type_id;
+        $this->visitor_lanyard_id = $this->visitor_lanyard_id === '' ? null : $this->visitor_lanyard_id;
 
         $validated = $this->validate();
 
@@ -129,6 +152,8 @@ class GuestbookForm extends Component
             'qr_token'             => $qrToken,
             'qr_status'            => 'pending',
             'scheduled_by_manager' => true,  // only for visual display of "Scheduled Guest" in status
+            'id_type_id'           => $validated['id_type_id'] ?? null,
+            'visitor_lanyard_id'   => $validated['visitor_lanyard_id'] ?? null,
         ]);
 
         $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
@@ -140,10 +165,17 @@ class GuestbookForm extends Component
             ]);
         }
 
+        // Mark the selected lanyard as unavailable
+        if (!empty($validated['visitor_lanyard_id'])) {
+            VisitorLanyard::where('id', $validated['visitor_lanyard_id'])->update(['status' => 0]);
+        }
+
         if (!empty($validated['email'])) {
             try {
                 $entry->load('qrCodes');
-                Mail::to($validated['email'])->send(new GuestbookQrMail($entry));
+                $officerEmail = Auth::user()?->email ?: config('mail.from.address');
+                Mail::alwaysFrom($officerEmail, 'Kebun Raya Bogor Receptionist');
+                Mail::to($validated['email'])->send(new GuestbookQrMail($entry, $officerEmail));
             } catch (\Throwable $e) {
                 Log::error('GuestbookQrMail (manager) failed: ' . $e->getMessage());
                 $this->dispatch('toast', type: 'warning', title: 'Email Failed',
@@ -155,12 +187,22 @@ class GuestbookForm extends Component
         $this->reset([
             'name', 'email', 'phone_number', 'instansi', 'keperluan',
             'visitor_count', 'storage_place', 'department_id', 'user_id',
+            'id_type_id', 'visitor_lanyard_id',
         ]);
         $this->visitor_count   = 1;
         $this->users_list      = [];
         $this->scheduled_date  = now($this->tz)->addDay()->toDateString();
         $this->scheduled_time  = '09:00';
         $this->activeTab       = 'upcoming';
+
+        // Refresh lanyards list so the used lanyard no longer appears
+        $companyId = Auth::user()?->company_id;
+        $this->visitor_lanyards_list = VisitorLanyard::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', 1)
+            ->orderBy('lanyard_name')
+            ->get(['id', 'lanyard_name'])
+            ->map(fn($l) => ['id' => $l->id, 'name' => $l->lanyard_name])
+            ->toArray();
 
         $this->dispatch('guestbook-form-reset');
 
