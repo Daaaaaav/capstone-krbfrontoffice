@@ -35,9 +35,9 @@ class Package extends Component
     protected function rules(): array
     {
         return [
-            'form.package_name' => ['required', 'string', 'max:255'],
-            'form.nama_pengirim' => ['required', 'string', 'max:255'],
-            'form.nama_penerima' => ['required', 'string', 'max:255'],
+            'form.package_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'form.nama_pengirim' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'form.nama_penerima' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
             'form.penyimpanan' => ['nullable', 'integer', 'exists:storages,storage_id'],
             'form.pengambilan' => ['nullable', 'date_format:Y-m-d\TH:i'],
         ];
