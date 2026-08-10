@@ -700,6 +700,25 @@ class BookingsApproval extends Component
         $roomNotifs = $this->getRoomNotifsProperty();
         $roomNotifCount = $roomNotifs->where('is_read', false)->count();
 
+        // Priority Room Bookings - separate into pending/approved based on status
+        // Receptionists can view these but cannot approve/reject (read-only)
+        $priorityRoomQuery = PriorityRoomBooking::query()
+            ->with(['room', 'manager', 'cancelledBooking'])
+            ->forCompany($companyId);
+
+        $priorityRoomPending = (clone $priorityRoomQuery)
+            ->whereIn('status', [
+                PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $priorityRoomApproved = (clone $priorityRoomQuery)
+            ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+            ->orderByDesc('created_at')
+            ->get();
+
         return view('livewire.pages.receptionist.bookings-approval', compact(
             'pending',
             'ongoing',
@@ -709,6 +728,8 @@ class BookingsApproval extends Component
             'googleConnected'             => $this->googleConnected,
             'roomNotifCount'              => $roomNotifCount,
             'roomNotifs'                  => $roomNotifs,
+            'priorityRoomPending'         => $priorityRoomPending,
+            'priorityRoomApproved'        => $priorityRoomApproved,
         ]);
     }
 
