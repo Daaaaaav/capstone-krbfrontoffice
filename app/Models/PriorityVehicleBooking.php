@@ -26,6 +26,8 @@ class PriorityVehicleBooking extends Model
         'cancels_booking_id',
         'handled_by',
         'rejection_reason',
+        'handover_photo',
+        'return_photo',
     ];
 
     protected $casts = [
