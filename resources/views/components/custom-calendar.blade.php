@@ -233,11 +233,30 @@ function customCalendar(config) {
             this.generateCalendar();
         },
         
-        updateMinDate(newMinDate) {
-            if (newMinDate && newMinDate !== 'null' && newMinDate !== '') {
-                const parsedDate = new Date(newMinDate);
-                if (!isNaN(parsedDate.getTime())) {
-                    this.minDate = parsedDate;
+        updateMinDate() {
+            // Read the actual min-date attribute value (which may be bound via x-bind)
+            const minDateValue = this.$el.getAttribute('min-date');
+            
+            if (minDateValue && minDateValue !== 'null' && minDateValue !== '' && minDateValue !== 'undefined') {
+                try {
+                    const newMinDate = new Date(minDateValue);
+                    if (!isNaN(newMinDate.getTime())) {
+                        // Compare date values to avoid unnecessary regeneration
+                        const currentMinTime = this.minDate ? this.minDate.getTime() : null;
+                        const newMinTime = newMinDate.getTime();
+                        
+                        if (currentMinTime !== newMinTime) {
+                            this.minDate = newMinDate;
+                            this.generateCalendar();
+                        }
+                    }
+                } catch (e) {
+                    // Invalid date, ignore
+                }
+            } else {
+                // No min date restriction
+                if (this.minDate !== null) {
+                    this.minDate = null;
                     this.generateCalendar();
                 }
             }
