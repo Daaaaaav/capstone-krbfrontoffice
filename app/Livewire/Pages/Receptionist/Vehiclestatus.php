@@ -52,6 +52,10 @@ class Vehiclestatus extends Component
     public string $priorityVehicleRejectReason     = '';
     public bool $showFilterModal = false;
 
+    // Priority vehicle approval modal state (for conflict resolution UI)
+    public bool $showPriorityApprovalModal = false;
+    public ?int $priorityApprovalBookingId = null;
+
     // Notification panel state
     public bool $showNotifPanel = false;
 
