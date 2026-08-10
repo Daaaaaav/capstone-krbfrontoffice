@@ -231,53 +231,67 @@
                                         </div>
                                     </div>
 
-                                    {{-- Details --}}
+                                   {{-- Details --}}
                                     <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-violet-50 border-violet-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
+
                                         @if($e->idType)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">ID Type:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->idType->id_type_name }}</span>
                                             </div>
                                         @endif
+
                                         @if($e->visitorLanyard)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">Lanyard:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->visitorLanyard->lanyard_name }}</span>
                                             </div>
                                         @endif
-                                    <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
+
                                         @if($e->keperluan)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.visit_purpose_label') }}:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->keperluan }}</span>
                                             </div>
                                         @endif
+
                                         @if($e->department)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">Department:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->department->department_name }}</span>
                                             </div>
                                         @endif
+
                                         @if($e->user)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">Meet With:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->user->full_name }}</span>
                                             </div>
                                         @endif
-                                        <div class="flex gap-1.5">
-                                            <span class="text-gray-400 shrink-0">{{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:</span>
-                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} Â· {{ gbsFmtTime($e->jam_in) }}</span>
+
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-gray-400 shrink-0">
+                                                {{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:
+                                            </span>
+                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">
+                                                {{ gbsFmtDate($e->date) }} · {{ gbsFmtTime($e->jam_in) }}
+                                            </span>
                                         </div>
+
                                         @if($e->email && !$e->qr_status)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.email') }}:</span>
                                                 <span class="font-medium text-gray-700 truncate">{{ $e->email }}</span>
                                             </div>
                                         @endif
-                                        <div class="flex gap-1.5">
+
+                                        <div class="flex items-center gap-1.5">
                                             <span class="text-gray-400 shrink-0">{{ __('app.officer_label') }}:</span>
-                                            <span class="font-medium {{ $isScheduled ? 'text-amber-700' : 'text-gray-700' }} truncate">{{ $e->petugas_penjaga }}</span>
+                                            <span class="font-medium {{ $isScheduled ? 'text-amber-700' : 'text-gray-700' }} truncate">
+                                                {{ $e->petugas_penjaga }}
+                                            </span>
                                         </div>
+
                                     </div>
 
                                     {{-- QR Info / Recent Scans --}}
