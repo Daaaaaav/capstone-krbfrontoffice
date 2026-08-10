@@ -423,7 +423,7 @@
                         {{-- NAME --}}
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.name') }}</label>
-                            <input type="text" wire:model="name"
+                            <input type="text" wire:model="name" data-validate="text"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @error('name') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
                         </div>
@@ -431,9 +431,18 @@
                         {{-- EMAIL --}}
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.email') }}</label>
-                            <input type="email" wire:model="email"
+                            <input type="email" wire:model="email" data-validate="email"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @error('email') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- PHONE --}}
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.phone_optional') }}</label>
+                            <input type="text" wire:model="phone" placeholder="e.g. +62-812-3456-7890" data-validate="phone"
+                                class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                            @error('phone') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                        </div>) <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
                         </div>
 
                         {{-- PHONE --}}
