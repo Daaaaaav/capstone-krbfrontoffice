@@ -198,12 +198,9 @@ class DatabaseSeeder extends Seeder
         });
     }
 
-    /**
-     * Seed ID Types for the company
-     */
     protected function seedIdTypes($companyId)
     {
-        $idTypeNames = ['KTP', 'SIM', 'Passport', 'KITAS', 'KITAP'];
+        $idTypeNames = ['KTP', 'SIM', 'Kartu Mahasiswa/Pelajar (Student ID)', 'KITAS/KITAP (Foreign Identity Card)'];
         $idTypes = collect();
 
         foreach ($idTypeNames as $typeName) {
@@ -217,26 +214,10 @@ class DatabaseSeeder extends Seeder
         return $idTypes;
     }
 
-    /**
-     * Seed Visitor Lanyards for the company
-     */
     protected function seedVisitorLanyards($companyId)
     {
         $lanyards = collect();
-        $lanyardCount = 30; // Create 30 lanyards per company
-
-        for ($i = 1; $i <= $lanyardCount; $i++) {
-            $lanyardName = sprintf('Lanyard-%03d', $i);
-            $lanyards->push(VisitorLanyard::firstOrCreate(
-                [
-                    'company_id' => $companyId,
-                    'lanyard_name' => $lanyardName,
-                ],
-                [
-                    'status' => 1, // Available
-                ]
-            ));
-        }
+        $lanyardCount = 10;
 
         echo "  ✅ Created " . $lanyards->count() . " visitor lanyards.\n";
         return $lanyards;
