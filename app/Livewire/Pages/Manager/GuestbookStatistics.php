@@ -93,6 +93,7 @@ class GuestbookStatistics extends Component
             $guestbooks = $this->showList
                 ? Guestbook::where('company_id', $companyId)
                     ->whereBetween('created_at', [$since, $until])
+                    ->with('idType')
                     ->orderBy('created_at', 'desc')
                     ->get()
                 : collect();

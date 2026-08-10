@@ -49,13 +49,14 @@
                     <h3 class="font-semibold text-card-foreground">{{ __('app.recent_visitors') }}</h3>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm min-w-[700px]">
+                    <table class="w-full text-sm min-w-[900px]">
                         <thead class="bg-muted text-muted-foreground uppercase text-xs border-b border-border">
                             <tr>
-                                <th class="px-6 py-3 text-left font-medium">ID</th>
                                 <th class="px-6 py-3 text-left font-medium">{{ __('app.name') }}</th>
                                 <th class="px-6 py-3 text-left font-medium">{{ __('app.institution') }}</th>
                                 <th class="px-6 py-3 text-left font-medium">{{ __('app.visit_purpose') }}</th>
+                                <th class="px-6 py-3 text-left font-medium">{{ __('app.id_card_type') }}</th>
+                                <th class="px-6 py-3 text-left font-medium">{{ __('app.date_label') }}</th>
                                 <th class="px-6 py-3 text-left font-medium">{{ __('app.check_in') }}</th>
                                 <th class="px-6 py-3 text-left font-medium">{{ __('app.check_out') }}</th>
                                 <th class="px-6 py-3 text-left font-medium">{{ __('app.status') }}</th>
@@ -64,10 +65,11 @@
                         <tbody class="divide-y divide-border">
                             @forelse($guestbooks as $guest)
                                 <tr class="hover:bg-muted/50 transition-colors">
-                                    <td class="px-6 py-4 text-card-foreground">#{{ $guest->guestbook_id }}</td>
                                     <td class="px-6 py-4 text-card-foreground font-medium">{{ $guest->name }}</td>
                                     <td class="px-6 py-4 text-card-foreground">{{ $guest->instansi ?? 'N/A' }}</td>
                                     <td class="px-6 py-4 text-card-foreground">{{ Str::limit($guest->keperluan, 30) }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $guest->idType->id_type_name ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $guest->date ? $guest->date->format('d/m/Y') : '-' }}</td>
                                     <td class="px-6 py-4 text-card-foreground">{{ $guest->jam_in ?? '-' }}</td>
                                     <td class="px-6 py-4 text-card-foreground">{{ $guest->jam_out ?? '-' }}</td>
                                     <td class="px-6 py-4">
@@ -88,7 +90,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-6 py-8 text-center text-muted-foreground">{{ __('app.no_visitors_found') }}</td>
+                                    <td colspan="8" class="px-6 py-8 text-center text-muted-foreground">{{ __('app.no_visitors_found') }}</td>
                                 </tr>
                             @endforelse
                         </tbody>

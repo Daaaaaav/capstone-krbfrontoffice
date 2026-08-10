@@ -350,6 +350,7 @@ return [
     'checked_out'               => 'Checked Out',
     'in_building'               => 'In Building',
     'registered_status'         => 'Registered',
+    'id_card_type'              => 'ID Card Type',
 
     'security_reports_title'    => 'Wazuh Security Reports',
     'security_reports_sub'      => 'Live alerts from the Wazuh manager log',
