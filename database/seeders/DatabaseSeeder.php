@@ -112,7 +112,6 @@ class DatabaseSeeder extends Seeder
                             'full_name' => $data['full_name'],
                             'phone_number' => $data['phone_number'],
                             'password' => Hash::make('test123'),
-                            'is_agent' => 'no',
                         ]
                     );
                 }
