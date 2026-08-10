@@ -31,6 +31,7 @@ class GuestbookHistory extends Component
     public string $dateMode = 'semua';  // semua (default) | terbaru | terlama
     public bool $withTrashed = false;
     public ?string $petugasFilter = null;
+    public ?string $priorityFilter = null; // null = all, 'priority' = scheduled_by_manager, 'regular' = not scheduled
     public bool $showEdit = false;
     public ?int $editId = null;
     public ?string $editLastEdited = null;
@@ -52,7 +53,47 @@ class GuestbookHistory extends Component
         'keperluan' => null,
         'petugas_penjaga' => null,
         'visitor_count' => 1,
+        'department_id' => null,
+        'user_id' => null,
     ];
+
+    public array $departments_list = [];
+    public array $users_list = [];
+
+    public function mount(): void
+    {
+        $compId = $this->companyId();
+        if ($compId) {
+            $this->departments_list = \App\Models\Department::where('company_id', $compId)
+                ->get(['department_id', 'department_name'])
+                ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+        } else {
+            $this->departments_list = \App\Models\Department::all(['department_id', 'department_name'])
+                ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+        }
+    }
+
+    public function loadUsersForEdit($departmentId)
+    {
+        $this->edit['user_id'] = null;
+        if ($departmentId) {
+            $this->users_list = \App\Models\User::where('department_id', (int)$departmentId)
+                ->get(['user_id', 'full_name'])
+                ->map(fn($u) => ['id' => $u->user_id, 'full_name' => $u->full_name])
+                ->toArray();
+        } else {
+            $this->users_list = [];
+        }
+    }
+
+    public function updated($property, $value)
+    {
+        if ($property === 'edit.department_id') {
+            $this->loadUsersForEdit($value);
+        }
+    }
 
     public array $qrLogs = [];
     public array $scanLogs = [];
@@ -70,6 +111,8 @@ class GuestbookHistory extends Component
             'edit.keperluan' => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
             'edit.visitor_count' => ['required', 'integer', 'min:0', 'max:999'],
+            'edit.department_id' => ['nullable', 'exists:departments,department_id'],
+            'edit.user_id' => ['nullable', 'exists:users,user_id'],
         ];
     }
 
@@ -150,6 +193,19 @@ class GuestbookHistory extends Component
         $this->resetPage('entriesPage');
     }
 
+    public function updatingPriorityFilter(): void
+    {
+        $this->resetPage('entriesPage');
+        $this->resetPage('latestPage');
+    }
+
+    public function togglePriorityFilter(?string $value = null): void
+    {
+        $this->priorityFilter = $value;
+        $this->resetPage('entriesPage');
+        $this->resetPage('latestPage');
+    }
+
     public function updatedSelectedPerPage($value): void
     {
         $this->perLatest = (int) $value;
@@ -179,13 +235,22 @@ class GuestbookHistory extends Component
 
     public function getLatestProperty()
     {
-        $q = GuestbookModel::where('company_id', $this->companyId())
+        $q = GuestbookModel::with(['idType', 'visitorLanyard'])
+            ->where('company_id', $this->companyId())
             ->whereDate('date', now()->toDateString())
             ->whereNull('jam_out')
             ->whereNull('deleted_at'); 
 
         if ($this->petugasFilter) {
             $q->where('petugas_penjaga', $this->petugasFilter);
+        }
+
+        if ($this->priorityFilter === 'priority') {
+            $q->where('scheduled_by_manager', true);
+        } elseif ($this->priorityFilter === 'regular') {
+            $q->where(function ($w) {
+                $w->where('scheduled_by_manager', false)->orWhereNull('scheduled_by_manager');
+            });
         }
 
         $q->orderByDesc('created_at');
@@ -196,6 +261,7 @@ class GuestbookHistory extends Component
     public function getEntriesProperty()
     {
         $q = GuestbookModel::query()
+            ->with(['idType', 'visitorLanyard'])
             ->where('company_id', $this->companyId())
             ->whereNotNull('jam_out');
         if ($this->withTrashed) {
@@ -206,6 +272,14 @@ class GuestbookHistory extends Component
 
         if ($this->petugasFilter) {
             $q->where('petugas_penjaga', $this->petugasFilter);
+        }
+
+        if ($this->priorityFilter === 'priority') {
+            $q->where('scheduled_by_manager', true);
+        } elseif ($this->priorityFilter === 'regular') {
+            $q->where(function ($w) {
+                $w->where('scheduled_by_manager', false)->orWhereNull('scheduled_by_manager');
+            });
         }
 
         if ($this->filter_date) {
@@ -251,7 +325,16 @@ class GuestbookHistory extends Component
             'keperluan' => $row->keperluan,
             'petugas_penjaga' => $row->petugas_penjaga,
             'visitor_count' => $row->visitor_count,
+            'department_id' => $row->department_id,
+            'user_id' => $row->user_id,
         ];
+        
+        if ($row->department_id) {
+            $this->loadUsersForEdit($row->department_id);
+            $this->edit['user_id'] = $row->user_id; // restore user_id since loadUsersForEdit clears it
+        } else {
+            $this->users_list = [];
+        }
 
         $this->qrLogs = GuestbookQrCode::where('guestbook_id', $row->guestbook_id)
             ->orderBy('visitor_number')
@@ -277,11 +360,16 @@ class GuestbookHistory extends Component
 
         $oldVisitorCount = $row->visitor_count;
         $newVisitorCount = (int) $this->edit['visitor_count'];
+        
+        // Track jam_out changes for lanyard management
+        $oldJamOut = $row->jam_out;
+        $newJamOut = $this->edit['jam_out'] ?: null;
+        $lanyardId = $row->visitor_lanyard_id;
 
         $row->update([
             'date' => $this->edit['date'],
             'jam_in' => $this->edit['jam_in'],
-            'jam_out' => $this->edit['jam_out'] ?: null,
+            'jam_out' => $newJamOut,
             'name' => $this->edit['name'],
             'email' => $this->edit['email'],
             'phone_number' => $this->edit['phone_number'],
@@ -289,7 +377,24 @@ class GuestbookHistory extends Component
             'keperluan' => $this->edit['keperluan'],
             'petugas_penjaga' => $this->edit['petugas_penjaga'],
             'visitor_count' => $newVisitorCount,
+            'department_id' => $this->edit['department_id'] === '' ? null : $this->edit['department_id'],
+            'user_id' => $this->edit['user_id'] === '' ? null : $this->edit['user_id'],
         ]);
+
+        // Handle lanyard status when jam_out changes
+        if ($lanyardId) {
+            $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+            if ($lanyard) {
+                // If jam_out was null and is now set (checkout), make lanyard available
+                if (!$oldJamOut && $newJamOut) {
+                    $lanyard->update(['status' => 1]);
+                }
+                // If jam_out was set and is now null (re-opening visit), make lanyard unavailable
+                elseif ($oldJamOut && !$newJamOut) {
+                    $lanyard->update(['status' => 0]);
+                }
+            }
+        }
 
         $this->showEdit = false;
 
@@ -315,10 +420,21 @@ class GuestbookHistory extends Component
     {
         $row = $this->findOwnedOrFail($id);
 
+        // Store lanyard ID before updating
+        $lanyardId = $row->visitor_lanyard_id;
+
         $row->update([
             'jam_out'    => Carbon::now()->format('H:i'),
             'qr_status'  => 'completed',
         ]);
+
+        // Return the lanyard to available status
+        if ($lanyardId) {
+            $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+            if ($lanyard) {
+                $lanyard->update(['status' => 1]);
+            }
+        }
 
         $this->dispatch(
             'toast',

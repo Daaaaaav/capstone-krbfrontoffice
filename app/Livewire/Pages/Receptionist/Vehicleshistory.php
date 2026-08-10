@@ -73,6 +73,12 @@ class Vehicleshistory extends Component
     public function updatingSelectedDate(): void     { $this->resetPage(); }
     public function updatingSortFilter(): void       { $this->resetPage(); }
 
+    public function togglePriorityFilter(?string $value = null): void
+    {
+        $this->priorityFilter = $value;
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         if (!in_array($this->statusTab, ['done', 'rejected'], true)) {
@@ -375,7 +381,7 @@ class Vehicleshistory extends Component
             'bookings'               => $bookings,
             'vehicleMap'             => $vehicleMap,
             'vehicles'               => $vehicles,
-            'priorityVehicleHistory' => $priorityVehicleHistory,
+            'priorityVehicleHistory' => $this->priorityFilter === 'regular' ? collect() : $priorityVehicleHistory,
             'priorityDetailBooking'  => $this->priorityDetailBooking,
         ]);
     }

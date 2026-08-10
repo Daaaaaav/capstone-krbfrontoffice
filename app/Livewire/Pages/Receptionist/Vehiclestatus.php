@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\VehicleBooking;
 use App\Models\Vehicle;
 use App\Models\PriorityVehicleBooking;
+use App\Models\ManagerNotification;
+use App\Services\ImageHelper;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -98,6 +100,19 @@ class Vehiclestatus extends Component
 
     public function render()
     {
+        // Auto-transition 'approved' regular bookings to 'on_progress' when start time arrives
+        VehicleBooking::where('status', 'approved')
+            ->where('start_at', '<=', now($this->tz))
+            ->update(['status' => 'on_progress']);
+
+        // Auto-transition priority bookings to 'on_progress' when start time arrives
+        \App\Models\PriorityVehicleBooking::whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT
+            ])
+            ->where('start_at', '<=', now($this->tz))
+            ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS]);
+
         $bookings = VehicleBooking::query()
             ->when($this->vehicleFilter, fn(Builder $q) => $q->where('vehicle_id', $this->vehicleFilter))
             ->when($this->q !== '', function (Builder $q) {
@@ -134,7 +149,7 @@ class Vehiclestatus extends Component
                     \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
                 ]))
                 ->when($this->statusTab === 'approved', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
-                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS))
                 ->when($this->q !== '', fn($q) => $q->where(function($qq) {
                     $like = '%' . $this->q . '%';
                     $qq->where('purpose', 'like', $like)
@@ -182,19 +197,12 @@ class Vehiclestatus extends Component
                 }
 
                 // Save photo
-                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
-                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
-                    $type = strtolower($type[1]);
-                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
-                        throw new \Exception('Invalid image type');
-                    }
-                    $data = base64_decode($data);
-                    if ($data === false) {
-                        throw new \Exception('Base64 decode failed');
-                    }
-                    $filename = 'vehicle_evidences/handover_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
-                    $b->handover_photo = $filename;
+                if ($this->photoData) {
+                    $b->handover_photo = ImageHelper::storeBase64AsWebp(
+                        $this->photoData,
+                        'vehicle_evidences',
+                        'handover_' . $b->vehiclebooking_id
+                    );
                 }
 
                 $b->save();
@@ -324,19 +332,12 @@ class Vehiclestatus extends Component
                 $b->status = 'completed';
 
                 // Save photo
-                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
-                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
-                    $type = strtolower($type[1]);
-                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
-                        throw new \Exception('Invalid image type');
-                    }
-                    $data = base64_decode($data);
-                    if ($data === false) {
-                        throw new \Exception('Base64 decode failed');
-                    }
-                    $filename = 'vehicle_evidences/return_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
-                    $b->return_photo = $filename;
+                if ($this->photoData) {
+                    $b->return_photo = ImageHelper::storeBase64AsWebp(
+                        $this->photoData,
+                        'vehicle_evidences',
+                        'return_' . $b->vehiclebooking_id
+                    );
                 }
 
                 $b->save();

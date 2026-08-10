@@ -240,6 +240,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/it-officer-manage-rooms', \App\Livewire\Pages\ItOfficer\Manageroom::class)->name('it-officer.manageroom');
         Route::get('/it-officer-manage-vehicles', \App\Livewire\Pages\ItOfficer\Vehicle::class)->name('it-officer.managevehicle');
         Route::get('/it-officer-manage-storages', \App\Livewire\Pages\ItOfficer\Storage::class)->name('it-officer.managestorage');
+        Route::get('/it-officer-id-types', \App\Livewire\Pages\ItOfficer\IdTypes::class)->name('it-officer.id-types');
+        Route::get('/it-officer-visitor-lanyards', \App\Livewire\Pages\ItOfficer\VisitorLanyards::class)->name('it-officer.visitor-lanyards');
+        Route::get('/it-officer-requirements', \App\Livewire\Pages\ItOfficer\Requirements::class)->name('it-officer.requirements');
         Route::get('/it-officer-lstm-predictions', \App\Livewire\Pages\ItOfficer\LSTMPredictions::class)->name('it-officer.lstm-predictions');
         Route::get('/it-officer-occupancy', \App\Livewire\Pages\ItOfficer\OccupancyForecasting::class)->name('it-officer.occupancy');
         Route::get('/it-officer-ai-security', \App\Livewire\Pages\ItOfficer\AISecurityReports::class)->name('it-officer.ai-security');

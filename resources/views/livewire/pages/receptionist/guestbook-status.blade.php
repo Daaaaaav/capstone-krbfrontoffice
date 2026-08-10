@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
     {{-- Polling trigger: refreshes data every 30s without putting wire:poll on the root element --}}
     <div wire:poll.30s wire:key="guestbook-poll-trigger" class="hidden" aria-hidden="true"></div>
     @php
@@ -79,7 +79,7 @@
                         <label class="{{ $label }}">{{ __('app.search') }}</label>
                         <div class="relative">
                             <input type="text"
-                                   class="{{ $input }} pl-9"
+                                   class="{{ $input }} !pl-9 sm:!pl-10"
                                    placeholder="{{ __('app.search') }}..."
                                    wire:model.live.debounce.300ms="q">
                             <x-heroicon-o-magnifying-glass class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
@@ -90,7 +90,7 @@
                         <label class="{{ $label }}">{{ __('app.date') }}</label>
                         <div class="relative">
                             <input type="date"
-                                   class="{{ $input }} pl-9"
+                                   class="{{ $input }} !pl-9 sm:!pl-10"
                                    wire:model.live="filter_date">
                             <x-heroicon-o-calendar class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
                         </div>
@@ -231,28 +231,67 @@
                                         </div>
                                     </div>
 
-                                    {{-- Details --}}
-                                    <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
+                                   {{-- Details --}}
+                                    <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-violet-50 border-violet-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
+
+                                        @if($e->idType)
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-gray-400 shrink-0">ID Type:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->idType->id_type_name }}</span>
+                                            </div>
+                                        @endif
+
+                                        @if($e->visitorLanyard)
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Lanyard:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->visitorLanyard->lanyard_name }}</span>
+                                            </div>
+                                        @endif
+
                                         @if($e->keperluan)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.visit_purpose_label') }}:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->keperluan }}</span>
                                             </div>
                                         @endif
-                                        <div class="flex gap-1.5">
-                                            <span class="text-gray-400 shrink-0">{{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:</span>
-                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} Â· {{ gbsFmtTime($e->jam_in) }}</span>
+
+                                        @if($e->department)
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Department:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->department->department_name }}</span>
+                                            </div>
+                                        @endif
+
+                                        @if($e->user)
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Meet With:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->user->full_name }}</span>
+                                            </div>
+                                        @endif
+
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-gray-400 shrink-0">
+                                                {{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:
+                                            </span>
+                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">
+                                                {{ gbsFmtDate($e->date) }} · {{ gbsFmtTime($e->jam_in) }}
+                                            </span>
                                         </div>
+
                                         @if($e->email && !$e->qr_status)
-                                            <div class="flex gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.email') }}:</span>
                                                 <span class="font-medium text-gray-700 truncate">{{ $e->email }}</span>
                                             </div>
                                         @endif
-                                        <div class="flex gap-1.5">
+
+                                        <div class="flex items-center gap-1.5">
                                             <span class="text-gray-400 shrink-0">{{ __('app.officer_label') }}:</span>
-                                            <span class="font-medium {{ $isScheduled ? 'text-amber-700' : 'text-gray-700' }} truncate">{{ $e->petugas_penjaga }}</span>
+                                            <span class="font-medium {{ $isScheduled ? 'text-amber-700' : 'text-gray-700' }} truncate">
+                                                {{ $e->petugas_penjaga }}
+                                            </span>
                                         </div>
+
                                     </div>
 
                                     {{-- QR Info / Recent Scans --}}
@@ -276,7 +315,7 @@
                                                 <span class="truncate">{{ __('app.qr_sent_not_scanned') }}</span>
                                             </div>
                                             @if($e->email)
-                                                <button wire:click="resendQr({{ $e->guestbook_id }})"
+                                                <button type="button" wire:click="resendQr({{ $e->guestbook_id }})"
                                                         wire:loading.attr="disabled"
                                                         wire:target="resendQr({{ $e->guestbook_id }})"
                                                         class="shrink-0 text-[#4A2F24] hover:underline font-semibold ml-2 focus:outline-none flex items-center gap-1">
@@ -294,7 +333,7 @@
 
                                     {{-- Actions --}}
                                     <div class="pt-2 {{ $isScheduled ? 'border-amber-100' : 'border-gray-100' }} border-t flex items-center justify-end gap-1.5 mt-auto">
-                                        <button wire:click="openEdit({{ $e->guestbook_id }})"
+                                        <button type="button" wire:click="openEdit({{ $e->guestbook_id }})"
                                                 class="px-2 py-1.5 sm:px-2.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition focus:outline-none">
                                             <span class="hidden sm:inline">{{ __('app.edit') }}</span>
                                             <x-heroicon-o-pencil-square class="w-3.5 h-3.5 sm:hidden"/>
@@ -309,7 +348,7 @@
                                                 @endif
                                             </a>
                                         @endif
-                                        <button wire:click="checkOutNow({{ $e->guestbook_id }})"
+                                        <button type="button" wire:click="checkOutNow({{ $e->guestbook_id }})"
                                                 wire:confirm="{{ __('app.checkout_confirm') }}"
                                                 class="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm focus:outline-none">
                                             <x-heroicon-o-arrow-right-start-on-rectangle class="w-3.5 h-3.5 shrink-0"/>
@@ -327,6 +366,7 @@
                                     <tr class="border-b border-gray-200 bg-gray-50/50">
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.name_col') }}</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lanyard / ID</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.institution_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_label') }}</th>
@@ -375,11 +415,29 @@
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
+                                                @if($e->visitorLanyard || $e->idType)
+                                                    <div class="flex flex-col">
+                                                        @if($e->visitorLanyard) <span class="text-gray-900">{{ $e->visitorLanyard->lanyard_name }}</span> @endif
+                                                        @if($e->idType) <span class="text-[10px] text-gray-500">{{ $e->idType->id_type_name }}</span> @endif
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+
+                                            <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                 {{ $e->instansi ?? '-' }}
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                 {{ $e->keperluan ?? '-' }}
+                                                @if($e->department || $e->user)
+                                                    <div class="text-[10px] text-gray-500 font-normal mt-0.5">
+                                                        @if($e->department) <span>Dept: {{ $e->department->department_name }}</span> @endif
+                                                        @if($e->department && $e->user) <span class="mx-0.5">•</span> @endif
+                                                        @if($e->user) <span>Meet: {{ $e->user->full_name }}</span> @endif
+                                                    </div>
+                                                @endif
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-500 whitespace-nowrap">
@@ -421,7 +479,7 @@
                                                                 QR: Pending ({{ $e->visitor_count ?? 0 }} org)
                                                             </span>
                                                             @if($e->email)
-                                                                <button wire:click="resendQr({{ $e->guestbook_id }})"
+                                                                <button type="button" wire:click="resendQr({{ $e->guestbook_id }})"
                                                                         wire:loading.attr="disabled"
                                                                         wire:target="resendQr({{ $e->guestbook_id }})"
                                                                         class="text-[10px] text-[#4A2F24] hover:underline font-semibold focus:outline-none flex items-center gap-1">
@@ -440,7 +498,7 @@
                                             
                                             <td class="h-12 px-4 py-0">
                                                 <div class="flex items-center justify-end gap-1.5">
-                                                    <button wire:click="openEdit({{ $e->guestbook_id }})"
+                                                    <button type="button" wire:click="openEdit({{ $e->guestbook_id }})"
                                                             wire:loading.attr="disabled"
                                                             class="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#4E653D] transition-colors"
                                                             title="{{ __('app.edit') }}">
@@ -453,7 +511,7 @@
                                                             <x-heroicon-o-qr-code class="w-4 h-4" />
                                                         </a>
                                                     @endif
-                                                    <button wire:click="checkOutNow({{ $e->guestbook_id }})"
+                                                    <button type="button" wire:click="checkOutNow({{ $e->guestbook_id }})"
                                                             wire:confirm="{{ __('app.checkout_confirm') }}"
                                                             class="p-1.5 rounded-lg text-white bg-[#4E653D] hover:bg-[#354C2B] transition-colors"
                                                             title="{{ __('app.checkout_btn') }}">
@@ -524,13 +582,33 @@
                         <input type="number" min="1" max="999" wire:model.defer="edit.visitor_count" class="{{ $mi }}">
                         @error('edit.visitor_count') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.target_department_opt') ?? 'Target Department' }}</label>
+                        <select wire:model.live="edit.department_id" class="{{ $mi }}">
+                            <option value="">{{ __('app.select_department_opt') ?? '-- Select Department --' }}</option>
+                            @foreach($departments_list as $dept)
+                                <option value="{{ $dept['id'] }}">{{ $dept['name'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('edit.department_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.meet_with_opt') ?? 'Meet With' }}</label>
+                        <select wire:model.defer="edit.user_id" class="{{ $mi }}" @if(empty($users_list)) disabled @endif>
+                            <option value="">{{ __('app.select_employee') ?? '-- Select Employee --' }}</option>
+                            @foreach($users_list as $user)
+                                <option value="{{ $user['id'] }}">{{ $user['full_name'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('edit.user_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
                 <div class="px-6 pb-6 flex justify-end gap-2">
-                    <button wire:click="$set('showEdit', false)"
+                    <button type="button" wire:click="$set('showEdit', false)"
                             class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
                         {{ __('app.cancel') }}
                     </button>
-                    <button wire:click="saveEdit"
+                    <button type="button" wire:click="saveEdit"
                             wire:loading.attr="disabled"
                             class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm">
                         {{ __('app.save') }}

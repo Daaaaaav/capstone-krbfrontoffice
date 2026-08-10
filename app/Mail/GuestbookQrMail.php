@@ -9,6 +9,7 @@ use Illuminate\Queue\SerializesModels;
 use BaconQrCode\Encoder\Encoder;
 use BaconQrCode\Common\ErrorCorrectionLevel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 
 class GuestbookQrMail extends Mailable
 {
@@ -18,7 +19,7 @@ class GuestbookQrMail extends Mailable
 
     private string $pdfContent;
 
-    public function __construct(public Guestbook $entry)
+    public function __construct(public Guestbook $entry, public ?string $senderEmail = null)
     {
         if (!$entry->relationLoaded('qrCodes')) {
             $entry->load('qrCodes');
@@ -39,8 +40,18 @@ class GuestbookQrMail extends Mailable
 
     public function build(): static
     {
+        $fromEmail = $this->senderEmail ?: config('mail.from.address');
+
+        // Dynamically override the global config for the envelope
+        config(['mail.from.address' => $fromEmail]);
+        config(['mail.from.name' => 'Kebun Raya Bogor Receptionist']);
+
         $mail = $this->subject('Konfirmasi Kunjungan – ' . $this->entry->visitor_count . ' QR Code Tamu')
                      ->view('mail.guestbook-qr');
+
+        $mail->from($fromEmail, 'Kebun Raya Bogor Receptionist')
+             ->replyTo($fromEmail, 'Kebun Raya Bogor Receptionist');
+
         $mail->attachData(
             $this->pdfContent,
             'QR-Code-Kunjungan-' . $this->entry->name . '.pdf',

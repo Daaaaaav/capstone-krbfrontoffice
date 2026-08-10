@@ -64,6 +64,7 @@ class BookingHistory extends Component
     public bool $showPriorityDetailModal = false;
     public ?int $priorityDetailId        = null;
     public string $activeTab = 'done'; // done (default) | rejected
+    public ?string $priorityFilter = null; // null = all, 'priority' = show only priority, 'regular' = hide priority
 
     private const DONE_SET     = ['done', 'completed', '3'];
     private const REJECTED_SET = ['rejected', '2'];
@@ -166,6 +167,13 @@ class BookingHistory extends Component
 
     public function updatedDateMode(): void
     {
+        $this->resetPage('pageDone');
+        $this->resetPage('pageRejected');
+    }
+
+    public function togglePriorityFilter(?string $value = null): void
+    {
+        $this->priorityFilter = $value;
         $this->resetPage('pageDone');
         $this->resetPage('pageRejected');
     }
@@ -638,8 +646,8 @@ class BookingHistory extends Component
             'recentCompleted'      => $this->recentCompleted,
             'roomFilterId'         => $this->roomFilterId,
             'showFilterModal'      => $this->showFilterModal,
-            'priorityRoomHistory'  => $priorityRoomHistory,
-            'priorityRoomRejected' => $priorityRoomRejected,
+            'priorityRoomHistory'  => $this->priorityFilter === 'regular' ? collect() : $priorityRoomHistory,
+            'priorityRoomRejected' => $this->priorityFilter === 'regular' ? collect() : $priorityRoomRejected,
             'priorityDetailBooking' => $this->priorityDetailBooking,
         ]);
     }

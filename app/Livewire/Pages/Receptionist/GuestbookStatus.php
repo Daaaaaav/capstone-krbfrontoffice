@@ -34,7 +34,47 @@ class GuestbookStatus extends Component
         'keperluan'       => null,
         'petugas_penjaga' => null,
         'visitor_count'   => 1,
+        'department_id'   => null,
+        'user_id'         => null,
     ];
+
+    public array $departments_list = [];
+    public array $users_list = [];
+
+    public function mount(): void
+    {
+        $compId = $this->companyId();
+        if ($compId) {
+            $this->departments_list = \App\Models\Department::where('company_id', $compId)
+                ->get(['department_id', 'department_name'])
+                ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+        } else {
+            $this->departments_list = \App\Models\Department::all(['department_id', 'department_name'])
+                ->map(fn($d) => ['id' => $d->department_id, 'name' => $d->department_name])
+                ->toArray();
+        }
+    }
+
+    public function loadUsersForEdit($departmentId)
+    {
+        $this->edit['user_id'] = null;
+        if ($departmentId) {
+            $this->users_list = \App\Models\User::where('department_id', (int)$departmentId)
+                ->get(['user_id', 'full_name'])
+                ->map(fn($u) => ['id' => $u->user_id, 'full_name' => $u->full_name])
+                ->toArray();
+        } else {
+            $this->users_list = [];
+        }
+    }
+
+    public function updated($property, $value)
+    {
+        if ($property === 'edit.department_id') {
+            $this->loadUsersForEdit($value);
+        }
+    }
 
     protected function rulesEdit(): array
     {
@@ -46,6 +86,8 @@ class GuestbookStatus extends Component
             'edit.keperluan'       => ['nullable', 'string', 'max:255'],
             'edit.petugas_penjaga' => ['required', 'string', 'max:255'],
             'edit.visitor_count'   => ['required', 'integer', 'min:1', 'max:999'],
+            'edit.department_id'   => ['nullable', 'exists:departments,department_id'],
+            'edit.user_id'         => ['nullable', 'exists:users,user_id'],
         ];
     }
 
@@ -90,6 +132,7 @@ class GuestbookStatus extends Component
     public function getActiveEntriesProperty()
     {
         $q = GuestbookModel::query()
+            ->with(['idType', 'visitorLanyard'])
             ->where('company_id', $this->companyId())
             ->whereNull('jam_out')
             ->whereNull('deleted_at');
@@ -142,7 +185,16 @@ class GuestbookStatus extends Component
             'keperluan'       => $row->keperluan,
             'petugas_penjaga' => $row->petugas_penjaga,
             'visitor_count'   => $row->visitor_count,
+            'department_id'   => $row->department_id,
+            'user_id'         => $row->user_id,
         ];
+        
+        if ($row->department_id) {
+            $this->loadUsersForEdit($row->department_id);
+            $this->edit['user_id'] = $row->user_id; // restore user_id since loadUsersForEdit clears it
+        } else {
+            $this->users_list = [];
+        }
         $this->resetValidation();
         $this->showEdit = true;
     }
@@ -166,6 +218,8 @@ class GuestbookStatus extends Component
             'keperluan'       => $this->edit['keperluan'],
             'petugas_penjaga' => $this->edit['petugas_penjaga'],
             'visitor_count'   => $newVisitorCount,
+            'department_id'   => $this->edit['department_id'] === '' ? null : $this->edit['department_id'],
+            'user_id'         => $this->edit['user_id'] === '' ? null : $this->edit['user_id'],
         ]);
 
         $this->showEdit = false;
@@ -191,6 +245,10 @@ class GuestbookStatus extends Component
     public function checkOutNow(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
+        
+        // Store lanyard ID before updating the guestbook entry
+        $lanyardId = $row->visitor_lanyard_id;
+        
         $row->update([
             'jam_out'    => Carbon::now()->format('H:i'),
             'qr_status'  => 'completed',
@@ -201,6 +259,14 @@ class GuestbookStatus extends Component
                 'is_scanned' => true,
                 'scanned_at' => now(),
             ]);
+
+        // Return the lanyard to available status so it can be used again
+        if ($lanyardId) {
+            $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+            if ($lanyard) {
+                $lanyard->update(['status' => 1]);
+            }
+        }
 
         $this->dispatch('toast', type: 'success', title: __('app.toast_checkout_title'), message: __('app.toast_checkout_message'), duration: 3000);
         $this->dispatch('$refresh');
@@ -217,8 +283,10 @@ class GuestbookStatus extends Component
 
         try {
             $row->load('qrCodes');
+            $officerEmail = Auth::user()?->email ?: config('mail.from.address');
+            \Illuminate\Support\Facades\Mail::alwaysFrom($officerEmail, 'Kebun Raya Bogor Receptionist');
             \Illuminate\Support\Facades\Mail::to($row->email)
-                ->send(new \App\Mail\GuestbookQrMail($row));
+                ->send(new \App\Mail\GuestbookQrMail($row, $officerEmail));
 
             $this->dispatch('toast', type: 'success', title: 'QR Dikirim Ulang', message: 'QR code berhasil dikirim ulang ke ' . $row->email . '.', duration: 4000);
         } catch (\Throwable $e) {
