@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ mobileFilterOpen: false }">
     @php
     use Carbon\Carbon;
 
@@ -42,7 +42,7 @@
             <x-slot:actions>
                 <button type="button"
                         class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
-                        @click="showFilterModal = true">
+                        @click="mobileFilterOpen = true">
                     <x-heroicon-o-funnel class="w-4 h-4"/>
                     <span>{{ __('app.filter') }}</span>
                 </button>
@@ -65,7 +65,7 @@
                             <div class="inline-flex items-center bg-gray-100 rounded-full p-1 text-xs font-medium">
                                 @foreach(['pending'=>__('app.pending'),'approved'=>__('app.approved'),'on_progress'=>__('app.on_progress')] as $key=>$lbl)
                                     <button type="button"
-                                            wire:click="$set('statusTab','{{ $key }}')"
+                                            wire:click="setStatusTab('{{ $key }}')"
                                             class="px-3.5 py-1 rounded-full transition {{ $statusTab === $key ? 'bg-[#4E653D] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200' }}">
                                         {{ $lbl }}
                                     </button>
@@ -613,9 +613,9 @@
         </div>
 
         {{-- MOBILE FILTER MODAL --}}
-        <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
-            <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
-            <div x-show="showFilterModal" 
+        <div x-show="mobileFilterOpen" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
+            <div x-show="mobileFilterOpen" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="mobileFilterOpen = false"></div>
+            <div x-show="mobileFilterOpen" 
                  x-transition:enter="transform transition ease-out duration-300"
                  x-transition:enter-start="translate-y-full"
                  x-transition:enter-end="translate-y-0"
@@ -628,14 +628,14 @@
                         <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
                         <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_vehicle_history') }}</p>
                     </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="showFilterModal = false">âœ•</button>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="mobileFilterOpen = false">âœ•</button>
                 </div>
 
                 <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-white">
                     {{-- All vehicles option --}}
                     <button type="button"
                             wire:click="clearVehicleFilter"
-                            @click="showFilterModal = false"
+                            @click="mobileFilterOpen = false"
                             class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
                                 {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                         <span class="flex items-center gap-2">
@@ -652,7 +652,7 @@
                             @endphp
                             <button type="button"
                                     wire:click="selectVehicle({{ $v->vehicle_id }})"
-                                    @click="showFilterModal = false"
+                                    @click="mobileFilterOpen = false"
                                     class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                                 <span class="flex items-center gap-2">
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
