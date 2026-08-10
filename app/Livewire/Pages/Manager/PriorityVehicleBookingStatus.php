@@ -25,7 +25,6 @@ class PriorityVehicleBookingStatus extends Component
     
     // Filters
     public string $q = '';
-    public string $statusFilter = 'pending'; // pending | approved | all
     public int $perPage = 10;
     
     // Detail modal
@@ -49,16 +48,10 @@ class PriorityVehicleBookingStatus extends Component
     
     protected $queryString = [
         'q' => ['except' => ''],
-        'statusFilter' => ['except' => 'pending'],
         'page' => ['except' => 1],
     ];
     
     public function updatedQ(): void
-    {
-        $this->resetPage();
-    }
-    
-    public function updatedStatusFilter(): void
     {
         $this->resetPage();
     }
@@ -269,15 +262,12 @@ class PriorityVehicleBookingStatus extends Component
                 $booking = PriorityVehicleBooking::lockForUpdate()
                     ->where('id', $this->doneId)
                     ->forCompany($companyId)
-                    ->whereIn('status', [
-                        PriorityVehicleBooking::STATUS_APPROVED,
-                        PriorityVehicleBooking::STATUS_ON_PROGRESS,
-                    ])
                     ->firstOrFail();
                 
-                // Mark as completed (we can add a new status constant if needed, or use a custom field)
-                // For now, we'll keep status as approved but add the return photo
-                // If you want a "completed" status, add it to the model constants first
+                // Validate current status - only on_progress bookings can be marked as done
+                if ($booking->status !== PriorityVehicleBooking::STATUS_ON_PROGRESS) {
+                    throw new \RuntimeException("Booking #{$booking->id} cannot be completed from status '{$booking->status}'. Only 'On the Road' bookings can be marked as done.");
+                }
                 
                 // Save after photo (return photo)
                 if ($this->donePhotoData) {
@@ -288,12 +278,16 @@ class PriorityVehicleBookingStatus extends Component
                     );
                 }
                 
+                // Mark as completed - following the same pattern as Receptionist Vehicle Status
+                $booking->status = PriorityVehicleBooking::STATUS_COMPLETED;
                 $booking->save();
             });
             
             $this->closeDone();
             $this->resetPage();
             $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Priority vehicle booking marked as completed with return photo evidence.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Complete', message: $e->getMessage());
         } catch (\Throwable $e) {
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to mark booking as done: ' . $e->getMessage());
@@ -304,31 +298,19 @@ class PriorityVehicleBookingStatus extends Component
     {
         $companyId = Auth::user()->company_id ?? null;
         
-        $query = PriorityVehicleBooking::with(['vehicle', 'manager', 'department', 'cancelledBooking', 'handledBy'])
-            ->forCompany($companyId);
+        // Auto-transition approved bookings to on_progress when start time arrives
+        PriorityVehicleBooking::where('company_id', $companyId)
+            ->where('status', PriorityVehicleBooking::STATUS_APPROVED)
+            ->where('start_at', '<=', now())
+            ->update(['status' => PriorityVehicleBooking::STATUS_ON_PROGRESS]);
         
-        // Apply status filter
-        if ($this->statusFilter === 'pending') {
-            $query->whereIn('status', [
-                PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
-                PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
-            ]);
-        } elseif ($this->statusFilter === 'approved') {
-            $query->where('status', PriorityVehicleBooking::STATUS_APPROVED);
-        }
-        // 'all' shows all non-history statuses (pending and approved)
-        elseif ($this->statusFilter === 'all') {
-            $query->whereIn('status', [
-                PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
-                PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
-                PriorityVehicleBooking::STATUS_APPROVED,
-            ]);
-        }
+        $baseQuery = PriorityVehicleBooking::with(['vehicle', 'manager', 'department', 'cancelledBooking', 'handledBy'])
+            ->forCompany($companyId);
         
         // Apply search filter
         if ($this->q !== '') {
             $like = '%' . $this->q . '%';
-            $query->where(function ($q) use ($like) {
+            $baseQuery->where(function ($q) use ($like) {
                 $q->where('purpose', 'like', $like)
                   ->orWhere('borrower_name', 'like', $like)
                   ->orWhere('destination', 'like', $like)
@@ -343,11 +325,36 @@ class PriorityVehicleBookingStatus extends Component
             });
         }
         
-        $bookings = $query->orderByDesc('created_at')
-            ->paginate($this->perPage);
+        // Get bookings by status groups
+        $pendingBookings = (clone $baseQuery)
+            ->whereIn('status', [
+                PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+        
+        $approvedBookings = (clone $baseQuery)
+            ->where('status', PriorityVehicleBooking::STATUS_APPROVED)
+            ->orderBy('start_at')
+            ->get();
+        
+        $onProgressBookings = (clone $baseQuery)
+            ->where('status', PriorityVehicleBooking::STATUS_ON_PROGRESS)
+            ->orderBy('start_at')
+            ->get();
+        
+        $completedBookings = (clone $baseQuery)
+            ->where('status', PriorityVehicleBooking::STATUS_COMPLETED)
+            ->orderByDesc('updated_at')
+            ->limit(20)
+            ->get();
         
         return view('livewire.pages.manager.priority-vehicle-booking-status', [
-            'bookings' => $bookings,
+            'pendingBookings' => $pendingBookings,
+            'approvedBookings' => $approvedBookings,
+            'onProgressBookings' => $onProgressBookings,
+            'completedBookings' => $completedBookings,
             'detailBooking' => $this->detailBooking,
         ]);
     }

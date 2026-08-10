@@ -6,7 +6,8 @@
             subtitle="View and manage pending and approved priority vehicle bookings">
         </x-page-header>
 
-        <div class="bg-white border border-[#d4dfc8] rounded-2xl p-4 shadow-sm space-y-4">
+        {{-- SEARCH BAR --}}
+        <div class="bg-white border border-[#d4dfc8] rounded-2xl p-4 shadow-sm">
             <div class="relative flex items-center">
                 <div class="absolute left-3 text-[#9aaa8a]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,133 +25,177 @@
                         class="absolute right-3 text-[#9aaa8a] hover:text-[#4E653D] transition">✕</button>
                 @endif
             </div>
-
-            <div class="flex flex-wrap gap-2">
-                <button wire:click="$set('statusFilter', 'pending')"
-                    class="px-4 py-2 text-sm font-medium rounded-lg transition
-                        {{ $statusFilter === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-300' : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200' }}">
-                    Pending
-                </button>
-                <button wire:click="$set('statusFilter', 'approved')"
-                    class="px-4 py-2 text-sm font-medium rounded-lg transition
-                        {{ $statusFilter === 'approved' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200' }}">
-                    Approved
-                </button>
-                <button wire:click="$set('statusFilter', 'all')"
-                    class="px-4 py-2 text-sm font-medium rounded-lg transition
-                        {{ $statusFilter === 'all' ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200' }}">
-                    All Status
-                </button>
-            </div>
         </div>
 
-        <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm min-w-[800px]">
-                    <thead class="bg-[#f0f4eb] text-[#7a8f6a] uppercase text-xs border-b">
-                        <tr>
-                            <th class="px-6 py-3 text-left">Purpose</th>
-                            <th class="px-6 py-3 text-left">Vehicle</th>
-                            <th class="px-6 py-3 text-left">Borrower</th>
-                            <th class="px-6 py-3 text-left">Period</th>
-                            <th class="px-6 py-3 text-left">Manager</th>
-                            <th class="px-6 py-3 text-left">Status</th>
-                            <th class="px-6 py-3 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-[#d4dfc8]">
-                        @forelse($bookings as $booking)
-                            <tr class="hover:bg-[#f0f4eb] transition">
-                                <td class="px-6 py-4">
-                                    <div class="font-medium text-[#2d3a24]">{{ $booking->purpose }}</div>
-                                    @if($booking->destination)
-                                        <div class="text-xs text-[#9aaa8a]">To: {{ $booking->destination }}</div>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4 text-[#5a6e4a]">
-                                    {{ $booking->vehicle->name ?? 'N/A' }}
-                                    @if($booking->vehicle->plate_number)
-                                        <div class="text-xs text-[#9aaa8a]">{{ $booking->vehicle->plate_number }}</div>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4 text-[#5a6e4a]">
-                                    {{ $booking->borrower_name }}
-                                </td>
-
-                                <td class="px-6 py-4 text-[#5a6e4a]">
-                                    <div>{{ \Carbon\Carbon::parse($booking->start_at)->format('d M Y H:i') }}</div>
-                                    <div class="text-xs text-[#9aaa8a]">
-                                        to {{ \Carbon\Carbon::parse($booking->end_at)->format('d M Y H:i') }}
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-4 text-[#5a6e4a]">
-                                    {{ $booking->manager->full_name ?? $booking->manager->name ?? 'N/A' }}
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    @php
-                                        $color = match($booking->status) {
-                                            'pending_receipt' => 'bg-amber-100 text-amber-700',
-                                            'pending_cancellation' => 'bg-orange-100 text-orange-700',
-                                            'approved' => 'bg-green-100 text-green-700',
-                                            default => 'bg-gray-100 text-gray-700',
-                                        };
-                                    @endphp
-                                    <span class="px-2.5 py-1 rounded-full text-xs font-medium {{ $color }}">
-                                        {{ $booking->statusLabel() }}
-                                    </span>
-                                </td>
-
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-2">
-                                        <button wire:click="openDetail({{ $booking->id }})"
-                                            class="text-blue-600 hover:text-blue-800 text-xs font-medium">
-                                            View
-                                        </button>
-                                        @if($booking->isActionable())
-                                            <button wire:click="openApprove({{ $booking->id }})"
-                                                class="text-green-600 hover:text-green-800 text-xs font-medium">
-                                                Approve
-                                            </button>
-                                            <button wire:click="openReject({{ $booking->id }})"
-                                                class="text-red-600 hover:text-red-800 text-xs font-medium">
-                                                Reject
-                                            </button>
-                                        @elseif(in_array($booking->status, ['approved', 'on_progress']) && !$booking->return_photo)
-                                            <button wire:click="openDone({{ $booking->id }})"
-                                                class="text-purple-600 hover:text-purple-800 text-xs font-medium">
-                                                Mark Done
-                                            </button>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-6 py-12 text-center">
-                                    <div class="text-[#9aaa8a]">
-                                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                                        </svg>
-                                        <p class="text-sm font-medium">No priority vehicle bookings found</p>
-                                        <p class="text-xs mt-1">Try adjusting your filters</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+        {{-- PENDING BOOKINGS --}}
+        @if($pendingBookings->isNotEmpty())
+        <div class="bg-white border border-amber-300 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-amber-50 border-b border-amber-200">
+                <h3 class="text-base font-bold text-amber-900">Pending Approval ({{ $pendingBookings->count() }})</h3>
+                <p class="text-xs text-amber-700 mt-0.5">Requires your action to approve or reject</p>
             </div>
-
-            @if($bookings->hasPages())
-                <div class="px-6 py-4 border-t border-[#d4dfc8]">
-                    {{ $bookings->links() }}
+            <div class="divide-y divide-amber-100">
+                @foreach($pendingBookings as $booking)
+                <div class="px-6 py-4 hover:bg-amber-50/50 transition">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center text-amber-700">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-[#2d3a24]">{{ $booking->purpose }}</p>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#5a6e4a] mt-1">
+                                        <span>{{ $booking->vehicle->name ?? 'N/A' }}{{ $booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '' }}</span>
+                                        <span>Borrower: {{ $booking->borrower_name }}</span>
+                                        <span>{{ \Carbon\Carbon::parse($booking->start_at)->format('d M Y, H:i') }}</span>
+                                    </div>
+                                    @if($booking->status === 'pending_cancellation' && $booking->cancels_booking_id)
+                                        <div class="mt-2 text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded inline-block">
+                                            ⚠ Conflicts with regular booking #{{ $booking->cancels_booking_id }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">View</button>
+                            <button wire:click="openApprove({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition">Approve</button>
+                            <button wire:click="openReject({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition">Reject</button>
+                        </div>
+                    </div>
                 </div>
-            @endif
+                @endforeach
+            </div>
         </div>
+        @endif
+
+        {{-- APPROVED / UPCOMING BOOKINGS --}}
+        @if($approvedBookings->isNotEmpty())
+        <div class="bg-white border border-green-300 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-green-50 border-b border-green-200">
+                <h3 class="text-base font-bold text-green-900">Approved / Upcoming ({{ $approvedBookings->count() }})</h3>
+                <p class="text-xs text-green-700 mt-0.5">Scheduled to start soon</p>
+            </div>
+            <div class="divide-y divide-green-100">
+                @foreach($approvedBookings as $booking)
+                <div class="px-6 py-4 hover:bg-green-50/50 transition">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-700">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-[#2d3a24]">{{ $booking->purpose }}</p>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#5a6e4a] mt-1">
+                                        <span>{{ $booking->vehicle->name ?? 'N/A' }}{{ $booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '' }}</span>
+                                        <span>Borrower: {{ $booking->borrower_name }}</span>
+                                        <span>Starts: {{ \Carbon\Carbon::parse($booking->start_at)->format('d M Y, H:i') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">View Details</button>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- ON THE ROAD (ON_PROGRESS) BOOKINGS --}}
+        @if($onProgressBookings->isNotEmpty())
+        <div class="bg-white border border-blue-300 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-blue-50 border-b border-blue-200">
+                <h3 class="text-base font-bold text-blue-900">On the Road ({{ $onProgressBookings->count() }})</h3>
+                <p class="text-xs text-blue-700 mt-0.5">Vehicles currently in use</p>
+            </div>
+            <div class="divide-y divide-blue-100">
+                @foreach($onProgressBookings as $booking)
+                <div class="px-6 py-4 hover:bg-blue-50/50 transition">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-[#2d3a24]">{{ $booking->purpose }}</p>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#5a6e4a] mt-1">
+                                        <span>{{ $booking->vehicle->name ?? 'N/A' }}{{ $booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '' }}</span>
+                                        <span>Borrower: {{ $booking->borrower_name }}</span>
+                                        <span>Until: {{ \Carbon\Carbon::parse($booking->end_at)->format('d M Y, H:i') }}</span>
+                                    </div>
+                                    @if($booking->destination)
+                                        <div class="mt-1 text-xs text-[#9aaa8a]">
+                                            → {{ $booking->destination }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">View</button>
+                            <button wire:click="openDone({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition">Mark Done</button>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- COMPLETED BOOKINGS --}}
+        @if($completedBookings->isNotEmpty())
+        <div class="bg-white border border-gray-300 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-base font-bold text-gray-900">Recently Completed ({{ $completedBookings->count() }})</h3>
+                <p class="text-xs text-gray-600 mt-0.5">Latest 20 completed bookings</p>
+            </div>
+            <div class="divide-y divide-gray-100">
+                @foreach($completedBookings as $booking)
+                <div class="px-6 py-4 hover:bg-gray-50/50 transition">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start gap-3">
+                                <div class="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-semibold text-gray-700">{{ $booking->purpose }}</p>
+                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                                        <span>{{ $booking->vehicle->name ?? 'N/A' }}{{ $booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '' }}</span>
+                                        <span>Borrower: {{ $booking->borrower_name }}</span>
+                                        <span>Completed: {{ \Carbon\Carbon::parse($booking->updated_at)->format('d M Y, H:i') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition">View Details</button>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- EMPTY STATE --}}
+        @if($pendingBookings->isEmpty() && $approvedBookings->isEmpty() && $onProgressBookings->isEmpty() && $completedBookings->isEmpty())
+        <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm p-12">
+            <div class="text-center text-[#9aaa8a]">
+                <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
+                </svg>
+                <p class="text-base font-medium text-[#5a6e4a]">No Priority Vehicle Bookings</p>
+                <p class="text-sm mt-1">{{ $q ? 'Try adjusting your search' : 'Priority vehicle bookings will appear here' }}</p>
+            </div>
+        </div>
+        @endif
 
     </main>
 
