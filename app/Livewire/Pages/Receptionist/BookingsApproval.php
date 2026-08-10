@@ -717,6 +717,52 @@ class BookingsApproval extends Component
     public bool $showPriorityRoomDetailModal = false;
     public ?int $priorityRoomDetailId        = null;
 
+    // Room notification panel state
+    public bool $showRoomNotifPanel = false;
+
+    public function toggleRoomNotifPanel(): void
+    {
+        $this->showRoomNotifPanel = !$this->showRoomNotifPanel;
+    }
+
+    public function closeRoomNotifPanel(): void
+    {
+        $this->showRoomNotifPanel = false;
+    }
+
+    /**
+     * Get unread priority room notifications for the current receptionist.
+     */
+    public function getRoomNotifsProperty()
+    {
+        $userId = Auth::id();
+        $companyId = Auth::user()->company_id ?? null;
+
+        if (!$userId || !$companyId) {
+            return collect();
+        }
+
+        return ManagerNotification::query()
+            ->forCompany($companyId)
+            ->forRecipient($userId)
+            ->whereIn('type', [
+                ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+                ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Get count of unread priority room notifications.
+     */
+    public function getRoomNotifCountProperty(): int
+    {
+        return $this->roomNotifs
+            ->where('is_read', false)
+            ->count();
+    }
+
     public function openPriorityRoomDetail(int $id): void
     {
         $booking = \App\Models\PriorityRoomBooking::with(['room', 'manager', 'cancelledBooking'])
