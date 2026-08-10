@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\Department;
 use App\Models\Company;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.it-officer')]
 #[Title('Manage Users per Department')]

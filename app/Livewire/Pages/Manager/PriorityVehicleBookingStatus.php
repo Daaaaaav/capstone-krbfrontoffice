@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use App\Models\PriorityVehicleBooking;
 use App\Models\VehicleBooking;
 use App\Models\ManagerNotification;
+use App\Services\ImageHelper;
 
 #[Layout('layouts.manager')]
 #[Title('Priority Vehicle Booking Status')]
@@ -34,11 +35,17 @@ class PriorityVehicleBookingStatus extends Component
     // Approve modal
     public bool $showApproveModal = false;
     public ?int $approveId = null;
+    public ?string $photoData = null;
     
     // Reject modal
     public bool $showRejectModal = false;
     public ?int $rejectId = null;
     public string $rejectReason = '';
+    
+    // Done modal (for marking completed with after photo)
+    public bool $showDoneModal = false;
+    public ?int $doneId = null;
+    public ?string $donePhotoData = null;
     
     protected $queryString = [
         'q' => ['except' => ''],
@@ -88,6 +95,7 @@ class PriorityVehicleBookingStatus extends Component
     public function openApprove(int $id): void
     {
         $this->approveId = $id;
+        $this->photoData = null;
         $this->showApproveModal = true;
     }
     
@@ -95,10 +103,15 @@ class PriorityVehicleBookingStatus extends Component
     {
         $this->showApproveModal = false;
         $this->approveId = null;
+        $this->photoData = null;
     }
     
     public function confirmApprove(): void
     {
+        $this->validate([
+            'photoData' => 'required|string',
+        ]);
+        
         if (!$this->approveId) {
             return;
         }
@@ -129,8 +142,24 @@ class PriorityVehicleBookingStatus extends Component
                         ]);
                 }
                 
-                $booking->status = PriorityVehicleBooking::STATUS_APPROVED;
+                // Determine if booking should be approved or on_progress based on start time
+                if (now() < $booking->start_at) {
+                    $booking->status = PriorityVehicleBooking::STATUS_APPROVED;
+                } else {
+                    $booking->status = PriorityVehicleBooking::STATUS_ON_PROGRESS;
+                }
+                
                 $booking->handled_by = $user->user_id;
+                
+                // Save before photo (handover photo)
+                if ($this->photoData) {
+                    $booking->handover_photo = ImageHelper::storeBase64AsWebp(
+                        $this->photoData,
+                        'vehicle_evidences',
+                        'priority_handover_' . $booking->id
+                    );
+                }
+                
                 $booking->save();
                 
                 // Update related notifications
@@ -142,7 +171,7 @@ class PriorityVehicleBookingStatus extends Component
             
             $this->closeApprove();
             $this->resetPage();
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking has been approved.');
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking has been approved with handover photo evidence.');
         } catch (\Throwable $e) {
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve booking: ' . $e->getMessage());
@@ -205,6 +234,69 @@ class PriorityVehicleBookingStatus extends Component
         } catch (\Throwable $e) {
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to reject booking: ' . $e->getMessage());
+        }
+    }
+    
+    public function openDone(int $id): void
+    {
+        $this->doneId = $id;
+        $this->donePhotoData = null;
+        $this->showDoneModal = true;
+    }
+    
+    public function closeDone(): void
+    {
+        $this->showDoneModal = false;
+        $this->doneId = null;
+        $this->donePhotoData = null;
+    }
+    
+    public function confirmDone(): void
+    {
+        $this->validate([
+            'donePhotoData' => 'required|string',
+        ]);
+        
+        if (!$this->doneId) {
+            return;
+        }
+        
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
+        
+        try {
+            DB::transaction(function () use ($user, $companyId) {
+                $booking = PriorityVehicleBooking::lockForUpdate()
+                    ->where('id', $this->doneId)
+                    ->forCompany($companyId)
+                    ->whereIn('status', [
+                        PriorityVehicleBooking::STATUS_APPROVED,
+                        PriorityVehicleBooking::STATUS_ON_PROGRESS,
+                    ])
+                    ->firstOrFail();
+                
+                // Mark as completed (we can add a new status constant if needed, or use a custom field)
+                // For now, we'll keep status as approved but add the return photo
+                // If you want a "completed" status, add it to the model constants first
+                
+                // Save after photo (return photo)
+                if ($this->donePhotoData) {
+                    $booking->return_photo = ImageHelper::storeBase64AsWebp(
+                        $this->donePhotoData,
+                        'vehicle_evidences',
+                        'priority_return_' . $booking->id
+                    );
+                }
+                
+                $booking->save();
+            });
+            
+            $this->closeDone();
+            $this->resetPage();
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Priority vehicle booking marked as completed with return photo evidence.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to mark booking as done: ' . $e->getMessage());
         }
     }
     
