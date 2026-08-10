@@ -31,6 +31,7 @@ class GuestbookHistory extends Component
     public string $dateMode = 'semua';  // semua (default) | terbaru | terlama
     public bool $withTrashed = false;
     public ?string $petugasFilter = null;
+    public ?string $priorityFilter = null; // null = all, 'priority' = scheduled_by_manager, 'regular' = not scheduled
     public bool $showEdit = false;
     public ?int $editId = null;
     public ?string $editLastEdited = null;
@@ -192,6 +193,19 @@ class GuestbookHistory extends Component
         $this->resetPage('entriesPage');
     }
 
+    public function updatingPriorityFilter(): void
+    {
+        $this->resetPage('entriesPage');
+        $this->resetPage('latestPage');
+    }
+
+    public function togglePriorityFilter(?string $value = null): void
+    {
+        $this->priorityFilter = $value;
+        $this->resetPage('entriesPage');
+        $this->resetPage('latestPage');
+    }
+
     public function updatedSelectedPerPage($value): void
     {
         $this->perLatest = (int) $value;
@@ -231,6 +245,14 @@ class GuestbookHistory extends Component
             $q->where('petugas_penjaga', $this->petugasFilter);
         }
 
+        if ($this->priorityFilter === 'priority') {
+            $q->where('scheduled_by_manager', true);
+        } elseif ($this->priorityFilter === 'regular') {
+            $q->where(function ($w) {
+                $w->where('scheduled_by_manager', false)->orWhereNull('scheduled_by_manager');
+            });
+        }
+
         $q->orderByDesc('created_at');
 
         return $q->paginate($this->perLatest, ['*'], 'latestPage');
@@ -250,6 +272,14 @@ class GuestbookHistory extends Component
 
         if ($this->petugasFilter) {
             $q->where('petugas_penjaga', $this->petugasFilter);
+        }
+
+        if ($this->priorityFilter === 'priority') {
+            $q->where('scheduled_by_manager', true);
+        } elseif ($this->priorityFilter === 'regular') {
+            $q->where(function ($w) {
+                $w->where('scheduled_by_manager', false)->orWhereNull('scheduled_by_manager');
+            });
         }
 
         if ($this->filter_date) {
