@@ -1487,9 +1487,9 @@
                         <p class="text-[10px] text-muted-foreground/60 mt-1">{{ $n->created_at->diffForHumans() }}</p>
                     </div>
                     @if($n->isPendingAction())
-                    <button wire:click="openRoomPriorityApprovalModal({{ $n->id }})"
+                    <button wire:click="openPriorityRoomDetail({{ $n->notifiable_id }})"
                         class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
-                        Review
+                        View
                     </button>
                     @elseif($n->action_taken)
                     <span class="shrink-0 text-[11px] font-semibold {{ $n->action_taken === 'approved' ? 'text-emerald-600' : 'text-red-500' }}">
@@ -1506,139 +1506,12 @@
 </div>
 @endif
 
-@if($showRoomPriorityApprovalModal && $roomPriorityBookingId)
-@php
-    $prb = \App\Models\PriorityRoomBooking::with(['room','manager','cancelledBooking'])->find($roomPriorityBookingId);
-    $prbHasConflict = $prb && $prb->cancels_booking_id && $prb->cancelledBooking;
-@endphp
-<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-     wire:keydown.escape.window="closeRoomPriorityApprovalModal">
-    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        {{-- Modal header --}}
-        <div class="px-6 py-5 border-b border-border flex items-center gap-3 {{ $prbHasConflict ? 'bg-orange-600' : 'bg-emerald-700' }}">
-            <div class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                @if($prbHasConflict)
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                @else
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                @endif
-            </div>
-            <div class="flex-1 min-w-0">
-                <p class="font-bold text-white text-sm">
-                    {{ $prbHasConflict ? 'Priority Booking â€” Conflict Resolution Required' : 'Priority Room Booking â€” Confirm Acceptance' }}
-                </p>
-                <p class="text-[11px] text-white/70 mt-0.5">
-                    {{ $prbHasConflict ? 'Accepting will cancel the conflicting booking and grant priority access.' : 'No conflict detected. Accepting will approve this priority booking directly.' }}
-                </p>
-            </div>
-            <button wire:click="closeRoomPriorityApprovalModal"
-                class="w-8 h-8 flex items-center justify-center rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition shrink-0">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
 
-        {{-- Modal body --}}
-        <div class="p-6 space-y-4">
-            @if($prb)
-            {{-- Priority booking details --}}
-            <div class="bg-muted/40 rounded-xl p-4 space-y-2.5 text-sm border border-border/60">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Priority Booking</p>
-                <div class="flex justify-between gap-3">
-                    <span class="text-muted-foreground shrink-0">Meeting</span>
-                    <span class="font-semibold text-right">{{ $prb->meeting_title }}</span>
-                </div>
-                <div class="flex justify-between gap-3">
-                    <span class="text-muted-foreground shrink-0">Room</span>
-                    <span class="font-semibold">{{ $prb->room?->room_name ?? 'â€”' }}</span>
-                </div>
-                <div class="flex justify-between gap-3">
-                    <span class="text-muted-foreground shrink-0">Schedule</span>
-                    <span class="font-semibold">{{ \Carbon\Carbon::parse($prb->date)->format('d M Y') }} Â· {{ $prb->start_time }} â€“ {{ $prb->end_time }}</span>
-                </div>
-                <div class="flex justify-between gap-3">
-                    <span class="text-muted-foreground shrink-0">Requested by</span>
-                    <span class="font-semibold">{{ $prb->manager?->full_name ?? $prb->manager?->name ?? 'â€”' }}</span>
-                </div>
-            </div>
+{{-- REMOVED: Priority Room Approval Modal (originally lines 1509-1641) --}}
+{{-- Receptionists can only VIEW priority room bookings (read-only). --}}
+{{-- Approval/rejection is reserved for managers only. --}}
+{{-- The notification 'Review' button now calls openPriorityRoomDetail() to show read-only details. --}}
 
-            @if($prbHasConflict)
-            {{-- Conflict details --}}
-            <div class="bg-rose-50 border border-rose-200 rounded-xl p-4 space-y-2 text-sm">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600 flex items-center gap-1.5 mb-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-                    Booking That Will Be Cancelled
-                </p>
-                <div class="flex justify-between gap-3">
-                    <span class="text-rose-700/70 shrink-0">Meeting</span>
-                    <span class="font-semibold text-rose-900 text-right">"{{ $prb->cancelledBooking->meeting_title }}"</span>
-                </div>
-                <div class="flex justify-between gap-3">
-                    <span class="text-rose-700/70 shrink-0">Schedule</span>
-                    <span class="font-semibold text-rose-900">
-                        {{ \Carbon\Carbon::parse($prb->cancelledBooking->date)->format('d M Y') }}
-                        {{ $prb->cancelledBooking->start_time }}â€“{{ $prb->cancelledBooking->end_time }}
-                    </span>
-                </div>
-                <div class="flex justify-between gap-3">
-                    <span class="text-rose-700/70 shrink-0">Status</span>
-                    <span class="font-semibold text-rose-900 capitalize">{{ $prb->cancelledBooking->status }}</span>
-                </div>
-                <p class="text-[11px] text-rose-600 pt-1 border-t border-rose-200">
-                    The requester will be notified that their booking was cancelled due to a manager priority override.
-                </p>
-            </div>
-
-            <p class="text-sm text-foreground leading-relaxed">
-                <strong>Accept</strong> to cancel the conflicting booking and grant the manager priority access, or <strong>Deny</strong> to keep the original booking.
-            </p>
-
-            <div class="flex flex-col sm:flex-row gap-2">
-                <button wire:click="approveRoomPriority"
-                    wire:loading.attr="disabled"
-                    wire:target="approveRoomPriority"
-                    class="flex-1 inline-flex items-center justify-center gap-2 h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Accept &amp; Cancel Conflict
-                </button>
-                <button wire:click="denyRoomPriority"
-                    wire:loading.attr="disabled"
-                    wire:target="denyRoomPriority"
-                    class="flex-1 inline-flex items-center justify-center gap-2 h-10 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition focus:outline-none focus:ring-2 focus:ring-rose-500/30">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    Deny â€” Keep Original
-                </button>
-                <button wire:click="closeRoomPriorityApprovalModal"
-                    class="sm:w-auto inline-flex items-center justify-center h-10 px-4 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
-                    Later
-                </button>
-            </div>
-
-            @else
-            {{-- No conflict â€” simple accept --}}
-            <p class="text-sm text-foreground leading-relaxed">
-                No conflicting bookings detected. Accepting will mark this priority booking as approved.
-            </p>
-
-            <div class="flex flex-col sm:flex-row gap-2">
-                <button wire:click="approveRoomPriority"
-                    wire:loading.attr="disabled"
-                    wire:target="approveRoomPriority"
-                    class="flex-1 inline-flex items-center justify-center gap-2 h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Accept Priority Booking
-                </button>
-                <button wire:click="closeRoomPriorityApprovalModal"
-                    class="sm:w-auto inline-flex items-center justify-center h-10 px-4 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
-                    Cancel
-                </button>
-            </div>
-            @endif
-
-            @endif
-        </div>
-    </div>
-</div>
-@endif
 
 {{-- Priority Room Booking Detail Modal --}}
 @if($showPriorityRoomDetailModal && $priorityRoomDetailBooking)
