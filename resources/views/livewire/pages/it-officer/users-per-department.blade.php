@@ -7,6 +7,16 @@
         <x-page-header
             title="Manage Users per Department"
             subtitle="View and manage users organized by their assigned department">
+            <x-slot name="actions">
+                <button wire:click="openCreateModal"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-sm"
+                    style="background:#CDDEA7; color:#2d3a24;">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    <span>Create New User</span>
+                </button>
+            </x-slot>
         </x-page-header>
 
         {{-- ================= SEARCH ================= --}}
@@ -394,16 +404,16 @@
         </div>
     </template>
 
-    {{-- ================= EDIT MODAL ================= --}}
+    {{-- ================= CREATE / EDIT MODAL ================= --}}
     @if($showModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
             {{-- Backdrop --}}
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300" wire:click="closeModal"></div>
 
             {{-- Modal Content --}}
-            <div class="relative w-full max-w-md bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col">
+            <div class="relative w-full max-w-md bg-card rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 {{-- Header --}}
-                <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between">
+                <div class="px-6 py-5 border-b border-border bg-muted/10 flex items-center justify-between shrink-0">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                             <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,18 +421,20 @@
                             </svg>
                         </div>
                         <h3 class="font-bold text-foreground text-base tracking-tight">
-                            {{ __('app.edit_user') ?? 'Edit User' }}
+                            {{ $editMode ? (__('app.edit_user') ?? 'Edit User') : (__('app.create_user') ?? 'Create New User') }}
                         </h3>
                     </div>
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" wire:click="closeModal">✕</button>
                 </div>
 
-                <form wire:submit.prevent="save">
+                <form wire:submit.prevent="save" class="flex flex-col overflow-hidden">
                     {{-- Body --}}
-                    <div class="p-6 space-y-4">
+                    <div class="p-6 space-y-4 overflow-y-auto">
                         {{-- NAME --}}
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.name') }}</label>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                {{ __('app.name') }} <span class="text-red-500">*</span>
+                            </label>
                             <input type="text" wire:model="name"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @error('name') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
@@ -430,7 +442,9 @@
 
                         {{-- EMAIL --}}
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.email') }}</label>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                {{ __('app.email') }} <span class="text-red-500">*</span>
+                            </label>
                             <input type="email" wire:model="email"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @error('email') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
@@ -444,12 +458,71 @@
                             @error('phone') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
                         </div>
 
+                        {{-- COMPANY --}}
+                        @if(!$editMode || $selectedCompanyId)
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                    Company <span class="text-red-500">*</span>
+                                </label>
+                                <select wire:model.live="selectedCompanyId"
+                                    class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                                    <option value="">Select Company</option>
+                                    @foreach($companies as $company)
+                                        <option value="{{ $company->company_id }}">{{ $company->company_name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('selectedCompanyId') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                            </div>
+                        @endif
+
+                        {{-- DEPARTMENT --}}
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                Department <span class="text-muted-foreground text-xs normal-case">(Optional)</span>
+                            </label>
+                            <select wire:model="selectedDepartmentId"
+                                class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                                @if(!$selectedCompanyId) disabled @endif>
+                                <option value="">No Department (Unassigned)</option>
+                                @foreach($this->availableDepartments as $dept)
+                                    <option value="{{ $dept->department_id }}">{{ $dept->department_name }}</option>
+                                @endforeach
+                            </select>
+                            @if(!$selectedCompanyId)
+                                <p class="text-xs text-muted-foreground mt-1.5">Select a company first</p>
+                            @endif
+                            @error('selectedDepartmentId') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- ROLE --}}
+                        @if(!$editMode || $selectedRoleId)
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                                    Role <span class="text-red-500">*</span>
+                                </label>
+                                <select wire:model="selectedRoleId"
+                                    class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                                    <option value="">Select Role</option>
+                                    @foreach($roles as $role)
+                                        <option value="{{ $role->role_id }}">{{ $role->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('selectedRoleId') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                            </div>
+                        @endif
+
                         {{-- PASSWORD --}}
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                                {{ __('app.password') }} ({{ __('app.optional') }})
+                                {{ __('app.password') }} 
+                                @if($editMode)
+                                    <span class="text-muted-foreground text-xs normal-case">({{ __('app.optional') }} - leave blank to keep current)</span>
+                                @else
+                                    <span class="text-red-500">*</span>
+                                @endif
                             </label>
                             <input type="password" wire:model="password"
+                                placeholder="{{ $editMode ? 'Leave blank to keep current password' : 'Enter password' }}"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @error('password') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
                         </div>
@@ -462,24 +535,42 @@
                                 <option value="active">{{ __('app.active') }}</option>
                                 <option value="inactive">{{ __('app.inactive') }}</option>
                             </select>
+                            @error('status') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
                         </div>
+
+                        {{-- Info box for create mode --}}
+                        @if(!$editMode)
+                            <div class="p-3 rounded-lg border border-input bg-muted/5">
+                                <p class="text-xs text-muted-foreground">
+                                    <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    The user will be created with these credentials. Make sure to provide a secure password.
+                                </p>
+                            </div>
+                        @endif
                     </div>
 
                     {{-- Footer --}}
-                    <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5">
+                    <div class="border-t border-border px-6 py-4 flex items-center justify-end gap-3 bg-muted/5 shrink-0">
                         <button type="button" wire:click="closeModal"
                             class="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-semibold hover:bg-secondary/80 border border-border transition inline-flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                             <span>{{ __('app.cancel') }}</span>
                         </button>
                         <button type="submit"
-                            class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/95 transition shadow-sm inline-flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            wire:loading.attr="disabled"
+                            class="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/95 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
+                            <svg wire:loading wire:target="save" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            <svg wire:loading.remove wire:target="save" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span>{{ __('app.update') }}</span>
+                            <span>{{ $editMode ? __('app.update') : __('app.create') }}</span>
                         </button>
                     </div>
                 </form>
