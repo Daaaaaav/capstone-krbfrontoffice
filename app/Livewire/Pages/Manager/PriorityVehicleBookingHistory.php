@@ -31,7 +31,7 @@ class PriorityVehicleBookingHistory extends Component
     public bool $showDetailModal = false;
     public ?int $detailId = null;
     
-    // Photo modal (for viewing before/after photos if vehicle booking was created)
+    // Photo modal (for viewing before/after photos)
     public bool $showPhotoModal = false;
     public array $photoUrls = ['before' => null, 'after' => null];
     
@@ -88,8 +88,7 @@ class PriorityVehicleBookingHistory extends Component
     
     public function viewPhotos(int $priorityBookingId): void
     {
-        // Try to find the corresponding VehicleBooking created from this priority booking
-        // This is a best-effort lookup based on timing and vehicle_id
+        // Get photos directly from the PriorityVehicleBooking record
         $priority = PriorityVehicleBooking::find($priorityBookingId);
         
         if (!$priority) {
@@ -97,28 +96,21 @@ class PriorityVehicleBookingHistory extends Component
             return;
         }
         
-        // Look for a vehicle booking that matches the priority booking criteria
-        $vehicleBooking = VehicleBooking::where('vehicle_id', $priority->vehicle_id)
-            ->where('borrower_name', $priority->borrower_name)
-            ->whereBetween('start_at', [
-                Carbon::parse($priority->start_at)->subMinutes(5),
-                Carbon::parse($priority->start_at)->addMinutes(5)
-            ])
-            ->first();
+        $this->photoUrls = [
+            'before' => $priority->handover_photo 
+                ? asset('storage/' . $priority->handover_photo) 
+                : null,
+            'after' => $priority->return_photo 
+                ? asset('storage/' . $priority->return_photo) 
+                : null,
+        ];
         
-        if ($vehicleBooking) {
-            $this->photoUrls = [
-                'before' => $vehicleBooking->handover_photo 
-                    ? asset('storage/' . $vehicleBooking->handover_photo) 
-                    : null,
-                'after' => $vehicleBooking->return_photo 
-                    ? asset('storage/' . $vehicleBooking->return_photo) 
-                    : null,
-            ];
-            $this->showPhotoModal = true;
-        } else {
+        if (!$this->photoUrls['before'] && !$this->photoUrls['after']) {
             $this->dispatch('toast', type: 'info', title: 'No Photos', message: 'No photo evidence found for this booking.');
+            return;
         }
+        
+        $this->showPhotoModal = true;
     }
     
     public function closePhotoModal(): void

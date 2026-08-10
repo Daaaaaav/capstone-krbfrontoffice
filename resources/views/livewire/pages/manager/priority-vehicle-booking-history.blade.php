@@ -127,10 +127,33 @@
                                 </td>
 
                                 <td class="px-6 py-4">
-                                    <button wire:click="openDetail({{ $booking->id }})"
-                                        class="text-blue-600 hover:text-blue-800 text-xs font-medium">
-                                        View Details
-                                    </button>
+                                    <div class="flex flex-col gap-1.5">
+                                        <button wire:click="openDetail({{ $booking->id }})"
+                                            class="text-blue-600 hover:text-blue-800 text-xs font-medium text-left">
+                                            View Details
+                                        </button>
+                                        
+                                        @if($booking->handover_photo || $booking->return_photo)
+                                            <div class="flex flex-wrap gap-1">
+                                                @if($booking->handover_photo && Storage::disk('public')->exists($booking->handover_photo))
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $booking->handover_photo) }}' })"
+                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                        Before
+                                                    </button>
+                                                @endif
+                                                @if($booking->return_photo && Storage::disk('public')->exists($booking->return_photo))
+                                                    <button type="button"
+                                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $booking->return_photo) }}' })"
+                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition">
+                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                        After
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -237,6 +260,31 @@
                         <div class="bg-red-50 border border-red-200 rounded-lg p-3">
                             <p class="text-xs font-semibold text-red-700 uppercase">Rejection Reason</p>
                             <p class="text-sm text-red-900">{{ $detailBooking->rejection_reason }}</p>
+                        </div>
+                    @endif
+                    
+                    {{-- Photo Evidence Display --}}
+                    @if($detailBooking->handover_photo || $detailBooking->return_photo)
+                        <div>
+                            <label class="text-xs font-semibold text-[#7a8f6a] uppercase mb-2 block">Photo Evidence</label>
+                            <div class="flex flex-wrap gap-3">
+                                @if($detailBooking->handover_photo && Storage::disk('public')->exists($detailBooking->handover_photo))
+                                    <button type="button"
+                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $detailBooking->handover_photo) }}' })"
+                                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-semibold transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Handover Photo
+                                    </button>
+                                @endif
+                                @if($detailBooking->return_photo && Storage::disk('public')->exists($detailBooking->return_photo))
+                                    <button type="button"
+                                        @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $detailBooking->return_photo) }}' })"
+                                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs font-semibold transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        Return Photo
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     @endif
                 </div>
