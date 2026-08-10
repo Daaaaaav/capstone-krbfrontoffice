@@ -330,11 +330,16 @@ class GuestbookHistory extends Component
 
         $oldVisitorCount = $row->visitor_count;
         $newVisitorCount = (int) $this->edit['visitor_count'];
+        
+        // Track jam_out changes for lanyard management
+        $oldJamOut = $row->jam_out;
+        $newJamOut = $this->edit['jam_out'] ?: null;
+        $lanyardId = $row->visitor_lanyard_id;
 
         $row->update([
             'date' => $this->edit['date'],
             'jam_in' => $this->edit['jam_in'],
-            'jam_out' => $this->edit['jam_out'] ?: null,
+            'jam_out' => $newJamOut,
             'name' => $this->edit['name'],
             'email' => $this->edit['email'],
             'phone_number' => $this->edit['phone_number'],
@@ -345,6 +350,21 @@ class GuestbookHistory extends Component
             'department_id' => $this->edit['department_id'] === '' ? null : $this->edit['department_id'],
             'user_id' => $this->edit['user_id'] === '' ? null : $this->edit['user_id'],
         ]);
+
+        // Handle lanyard status when jam_out changes
+        if ($lanyardId) {
+            $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+            if ($lanyard) {
+                // If jam_out was null and is now set (checkout), make lanyard available
+                if (!$oldJamOut && $newJamOut) {
+                    $lanyard->update(['status' => 1]);
+                }
+                // If jam_out was set and is now null (re-opening visit), make lanyard unavailable
+                elseif ($oldJamOut && !$newJamOut) {
+                    $lanyard->update(['status' => 0]);
+                }
+            }
+        }
 
         $this->showEdit = false;
 
@@ -370,14 +390,20 @@ class GuestbookHistory extends Component
     {
         $row = $this->findOwnedOrFail($id);
 
+        // Store lanyard ID before updating
+        $lanyardId = $row->visitor_lanyard_id;
+
         $row->update([
             'jam_out'    => Carbon::now()->format('H:i'),
             'qr_status'  => 'completed',
         ]);
 
-        // Reactivate the lanyard so it can be used again
-        if ($row->visitor_lanyard_id) {
-            \App\Models\VisitorLanyard::where('id', $row->visitor_lanyard_id)->update(['status' => 1]);
+        // Return the lanyard to available status
+        if ($lanyardId) {
+            $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+            if ($lanyard) {
+                $lanyard->update(['status' => 1]);
+            }
         }
 
         $this->dispatch(

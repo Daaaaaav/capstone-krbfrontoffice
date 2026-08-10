@@ -245,6 +245,10 @@ class GuestbookStatus extends Component
     public function checkOutNow(int $id): void
     {
         $row = $this->findOwnedOrFail($id);
+        
+        // Store lanyard ID before updating the guestbook entry
+        $lanyardId = $row->visitor_lanyard_id;
+        
         $row->update([
             'jam_out'    => Carbon::now()->format('H:i'),
             'qr_status'  => 'completed',
@@ -256,9 +260,12 @@ class GuestbookStatus extends Component
                 'scanned_at' => now(),
             ]);
 
-        // Reactivate the lanyard so it can be used again
-        if ($row->visitor_lanyard_id) {
-            \App\Models\VisitorLanyard::where('id', $row->visitor_lanyard_id)->update(['status' => 1]);
+        // Return the lanyard to available status so it can be used again
+        if ($lanyardId) {
+            $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+            if ($lanyard) {
+                $lanyard->update(['status' => 1]);
+            }
         }
 
         $this->dispatch('toast', type: 'success', title: __('app.toast_checkout_title'), message: __('app.toast_checkout_message'), duration: 3000);
