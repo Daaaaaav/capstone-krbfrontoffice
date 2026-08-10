@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
     {{-- Polling trigger: refreshes data every 30s without putting wire:poll on the root element --}}
     <div wire:poll.30s wire:key="guestbook-poll-trigger" class="hidden" aria-hidden="true"></div>
     @php
@@ -315,7 +315,7 @@
                                                 <span class="truncate">{{ __('app.qr_sent_not_scanned') }}</span>
                                             </div>
                                             @if($e->email)
-                                                <button wire:click="resendQr({{ $e->guestbook_id }})"
+                                                <button type="button" wire:click="resendQr({{ $e->guestbook_id }})"
                                                         wire:loading.attr="disabled"
                                                         wire:target="resendQr({{ $e->guestbook_id }})"
                                                         class="shrink-0 text-[#4A2F24] hover:underline font-semibold ml-2 focus:outline-none flex items-center gap-1">
@@ -333,7 +333,7 @@
 
                                     {{-- Actions --}}
                                     <div class="pt-2 {{ $isScheduled ? 'border-amber-100' : 'border-gray-100' }} border-t flex items-center justify-end gap-1.5 mt-auto">
-                                        <button wire:click="openEdit({{ $e->guestbook_id }})"
+                                        <button type="button" wire:click="openEdit({{ $e->guestbook_id }})"
                                                 class="px-2 py-1.5 sm:px-2.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition focus:outline-none">
                                             <span class="hidden sm:inline">{{ __('app.edit') }}</span>
                                             <x-heroicon-o-pencil-square class="w-3.5 h-3.5 sm:hidden"/>
@@ -348,7 +348,7 @@
                                                 @endif
                                             </a>
                                         @endif
-                                        <button wire:click="checkOutNow({{ $e->guestbook_id }})"
+                                        <button type="button" wire:click="checkOutNow({{ $e->guestbook_id }})"
                                                 wire:confirm="{{ __('app.checkout_confirm') }}"
                                                 class="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm focus:outline-none">
                                             <x-heroicon-o-arrow-right-start-on-rectangle class="w-3.5 h-3.5 shrink-0"/>
@@ -479,7 +479,7 @@
                                                                 QR: Pending ({{ $e->visitor_count ?? 0 }} org)
                                                             </span>
                                                             @if($e->email)
-                                                                <button wire:click="resendQr({{ $e->guestbook_id }})"
+                                                                <button type="button" wire:click="resendQr({{ $e->guestbook_id }})"
                                                                         wire:loading.attr="disabled"
                                                                         wire:target="resendQr({{ $e->guestbook_id }})"
                                                                         class="text-[10px] text-[#4A2F24] hover:underline font-semibold focus:outline-none flex items-center gap-1">
@@ -498,7 +498,7 @@
                                             
                                             <td class="h-12 px-4 py-0">
                                                 <div class="flex items-center justify-end gap-1.5">
-                                                    <button wire:click="openEdit({{ $e->guestbook_id }})"
+                                                    <button type="button" wire:click="openEdit({{ $e->guestbook_id }})"
                                                             wire:loading.attr="disabled"
                                                             class="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#4E653D] transition-colors"
                                                             title="{{ __('app.edit') }}">
@@ -511,7 +511,7 @@
                                                             <x-heroicon-o-qr-code class="w-4 h-4" />
                                                         </a>
                                                     @endif
-                                                    <button wire:click="checkOutNow({{ $e->guestbook_id }})"
+                                                    <button type="button" wire:click="checkOutNow({{ $e->guestbook_id }})"
                                                             wire:confirm="{{ __('app.checkout_confirm') }}"
                                                             class="p-1.5 rounded-lg text-white bg-[#4E653D] hover:bg-[#354C2B] transition-colors"
                                                             title="{{ __('app.checkout_btn') }}">
@@ -604,11 +604,11 @@
                     </div>
                 </div>
                 <div class="px-6 pb-6 flex justify-end gap-2">
-                    <button wire:click="$set('showEdit', false)"
+                    <button type="button" wire:click="$set('showEdit', false)"
                             class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
                         {{ __('app.cancel') }}
                     </button>
-                    <button wire:click="saveEdit"
+                    <button type="button" wire:click="saveEdit"
                             wire:loading.attr="disabled"
                             class="px-5 py-2 text-xs font-semibold rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition shadow-sm">
                         {{ __('app.save') }}
