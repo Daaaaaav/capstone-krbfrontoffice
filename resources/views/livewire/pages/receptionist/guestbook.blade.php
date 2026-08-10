@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-gray-50">
     @php
-        $card   = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
+        $card   = 'bg-white rounded-2xl border border-gray-200 shadow-sm';
         $head   = 'bg-[#4A2F24]';
         $label  = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
         $input  = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
@@ -117,8 +117,174 @@
                         @error('instansi') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
 
+                    {{-- ID Type Combobox --}}
                     <div>
-                        <label class="{{ $label }}">{{ __('app.storage_place') ?? 'Storage / Locker' }}</label>
+                        <label class="{{ $label }}">ID Type</label>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: @entangle('id_type_id'),
+                                options: @js(collect($id_types_list)->map(fn($t) => ['id' => $t['id'], 'label' => $t['name']])->values()->toArray()),
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.selectedId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.selectedId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.selectedId = null;
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('selectedId', val => { search = selectedLabel; });
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    x-model="search"
+                                    @focus="open = true"
+                                    @input="open = true"
+                                    @keydown.escape="open = false"
+                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                    autocomplete="off"
+                                    placeholder="Search ID Type..."
+                                    class="{{ $input }} pr-8"
+                                >
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
+                            </div>
+                            <ul
+                                x-show="open && items.length > 0"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                style="display:none"
+                            >
+                                <template x-for="item in items" :key="item.id">
+                                    <li
+                                        @click="select(item.id, item.label)"
+                                        :class="selectedId == item.id
+                                            ? 'bg-[#4E653D] text-white'
+                                            : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                        x-text="item.label"
+                                    ></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">
+                                No data found
+                            </p>
+                            <input type="hidden" wire:model="id_type_id">
+                        </div>
+                        @error('id_type_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- Visitor Lanyard Combobox --}}
+                    <div>
+                        <label class="{{ $label }}">Visitor Lanyard</label>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: @entangle('visitor_lanyard_id'),
+                                options: @js(collect($visitor_lanyards_list)->map(fn($l) => ['id' => $l['id'], 'label' => $l['name']])->values()->toArray()),
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.selectedId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.selectedId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.selectedId = null;
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('selectedId', val => { search = selectedLabel; });
+                            "
+                            @lanyards-list-updated.window="
+                                options = ($event.detail.lanyards || []).map(l => ({ id: l.id, label: l.name }));
+                                search = selectedLabel;
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    x-model="search"
+                                    @focus="open = true"
+                                    @input="open = true"
+                                    @keydown.escape="open = false"
+                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                    autocomplete="off"
+                                    placeholder="Search Lanyard..."
+                                    class="{{ $input }} pr-8"
+                                >
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
+                            </div>
+                            <ul
+                                x-show="open && items.length > 0"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                style="display:none"
+                            >
+                                <template x-for="item in items" :key="item.id">
+                                    <li
+                                        @click="select(item.id, item.label)"
+                                        :class="selectedId == item.id
+                                            ? 'bg-[#4E653D] text-white'
+                                            : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                        x-text="item.label"
+                                    ></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">
+                                No data found
+                            </p>
+                            <input type="hidden" wire:model="visitor_lanyard_id">
+                        </div>
+                        @error('visitor_lanyard_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label class="{{ $label }}">ID STORAGE</label>
                         <input type="number" wire:model.defer="storage_place" min="1" max="100" placeholder="e.g. 12" class="{{ $input }}">
                         @error('storage_place') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
@@ -129,46 +295,177 @@
                         @error('keperluan') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Departemen yang Dituju --}}
+                    {{-- Department Combobox --}}
                     <div>
                         <label class="{{ $label }}">
                             {{ __('app.target_department_opt') }}
                         </label>
-                        <div class="relative">
-                            <select wire:model.live="department_id" class="{{ $input }} appearance-none pr-8">
-                                <option value="">{{ __('app.select_department_opt') }}</option>
-                                @foreach($departments_list as $dept)
-                                    <option value="{{ $dept['id'] }}">{{ $dept['name'] }}</option>
-                                @endforeach
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                deptId: @entangle('department_id').live,
+                                options: @js(collect($departments_list)->map(fn($d) => ['id' => $d['id'], 'label' => $d['name']])->values()->toArray()),
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return this.options;
+                                    return this.options.filter(i => !q || i.label.toLowerCase().includes(q));
+                                },
+                                get selectedLabel() {
+                                    const found = this.options.find(i => i.id == this.deptId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.deptId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.deptId = null;
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('deptId', val => { search = selectedLabel; });
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    x-model="search"
+                                    @focus="open = true"
+                                    @input="open = true"
+                                    @keydown.escape="open = false"
+                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                    autocomplete="off"
+                                    placeholder="{{ __('app.select_department_opt') }}"
+                                    class="{{ $input }} pr-8"
+                                >
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
+                            <ul
+                                x-show="open && items.length > 0"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                style="display:none"
+                            >
+                                <template x-for="item in items" :key="item.id">
+                                    <li
+                                        @click="select(item.id, item.label)"
+                                        :class="deptId == item.id
+                                            ? 'bg-[#4E653D] text-white'
+                                            : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                        x-text="item.label"
+                                    ></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">
+                                No data found
+                            </p>
+                            <input type="hidden" wire:model="department_id">
                         </div>
                         @error('department_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Bertemu dengan --}}
+                    {{-- User Combobox (filtered by department) --}}
                     <div>
                         <label class="{{ $label }}">
                             {{ __('app.meet_with_opt') }}
                         </label>
-                        <div class="relative">
-                            <select wire:model.defer="user_id"
-                                    class="{{ $input }} appearance-none pr-8 disabled:bg-gray-100 disabled:text-gray-400"
-                                    @if(empty($users_list) && $department_id) disabled @endif>
-                                <option value="">{{ __('app.select_employee') }}</option>
-                                @foreach($users_list as $user)
-                                    <option value="{{ $user['id'] }}">{{ $user['full_name'] }}</option>
-                                @endforeach
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        <div
+                            x-data="{
+                                open: false,
+                                search: '',
+                                deptId: @entangle('department_id').live,
+                                userId: @entangle('user_id'),
+                                users: @js(collect($users_list)->map(fn($u) => ['id' => $u['id'], 'label' => $u['full_name']])->values()->toArray()),
+                                get items() {
+                                    const q = (this.search || '').toLowerCase().trim();
+                                    const list = this.users;
+                                    if (q === (this.selectedLabel || '').toLowerCase().trim()) return list;
+                                    return q ? list.filter(i => i.label.toLowerCase().includes(q)) : list;
+                                },
+                                get selectedLabel() {
+                                    const found = this.users.find(i => i.id == this.userId);
+                                    return found ? found.label : '';
+                                },
+                                select(id, label) {
+                                    this.search = label;
+                                    this.userId = id;
+                                    this.open = false;
+                                },
+                                clear() {
+                                    this.search = '';
+                                    this.userId = null;
+                                }
+                            }"
+                            x-init="
+                                search = selectedLabel;
+                                $watch('deptId', () => { search = ''; userId = null; });
+                                $watch('userId', val => { search = selectedLabel; });
+                            "
+                            @users-list-updated.window="
+                                users = ($event.detail.users || []).map(u => ({ id: u.id, label: u.full_name }));
+                                search = selectedLabel;
+                            "
+                            class="relative"
+                            @click.outside="open = false"
+                        >
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    x-model="search"
+                                    @focus="if (deptId) open = true"
+                                    @input="if (deptId) open = true"
+                                    @keydown.escape="open = false"
+                                    @keydown.enter.prevent="items.length === 1 && select(items[0].id, items[0].label)"
+                                    autocomplete="off"
+                                    placeholder="{{ __('app.select_employee') }}"
+                                    :disabled="!deptId"
+                                    class="{{ $input }} pr-8 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                >
+                                <div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2.5">
+                                    <button x-show="search" type="button" @click.stop="clear()" class="text-gray-400 hover:text-gray-700">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                    <svg class="fill-current h-4 w-4 text-gray-400 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
                             </div>
+                            <ul
+                                x-show="open && items.length > 0"
+                                x-transition:enter="transition ease-out duration-100"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute z-30 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm"
+                                style="display:none"
+                            >
+                                <template x-for="item in items" :key="item.id">
+                                    <li
+                                        @click="select(item.id, item.label)"
+                                        :class="userId == item.id
+                                            ? 'bg-[#4E653D] text-white'
+                                            : 'text-gray-800 hover:bg-gray-100 cursor-pointer'"
+                                        class="px-3.5 py-2.5 cursor-pointer transition-colors"
+                                        x-text="item.label"
+                                    ></li>
+                                </template>
+                            </ul>
+                            <p x-show="open && items.length === 0 && search" class="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-2.5 text-gray-500" style="display:none">
+                                No data found
+                            </p>
+                            <input type="hidden" wire:model="user_id">
                         </div>
-                        @if(empty($users_list) && $department_id)
-                            <p class="mt-1.5 text-xs text-amber-600 font-semibold">{{ __('app.no_users_dept') }}</p>
-                        @endif
                         @error('user_id') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
                     </div>
                 </div>

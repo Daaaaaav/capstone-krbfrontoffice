@@ -1,4 +1,6 @@
-<div class="min-h-screen bg-background" wire:poll.30s>
+﻿<div class="min-h-screen bg-background">
+    {{-- Polling trigger: refreshes data every 30s without putting wire:poll on the root element --}}
+    <div wire:poll.30s wire:key="guestbook-poll-trigger" class="hidden" aria-hidden="true"></div>
     @php
         use Carbon\Carbon;
         $card      = 'bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden';
@@ -7,12 +9,12 @@
         $icoAvatar = 'w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm shrink-0';
 
         function gbsFmtTime($v) {
-            if (!$v) return '—';
-            try { return Carbon::parse($v)->format('H:i'); } catch (\Throwable $e) { return is_string($v) ? substr($v, 0, 5) : '—'; }
+            if (!$v) return 'â€”';
+            try { return Carbon::parse($v)->format('H:i'); } catch (\Throwable $e) { return is_string($v) ? substr($v, 0, 5) : 'â€”'; }
         }
         function gbsFmtDate($v) {
-            if (!$v) return '—';
-            try { return Carbon::parse($v)->format('d M Y'); } catch (\Throwable $e) { return '—'; }
+            if (!$v) return 'â€”';
+            try { return Carbon::parse($v)->format('d M Y'); } catch (\Throwable $e) { return 'â€”'; }
         }
     @endphp
 
@@ -43,7 +45,7 @@
                             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4A2F24] text-[#CDDEA7] text-xs font-semibold">
                                 <x-heroicon-o-user class="w-3 h-3"/>
                                 {{ $petugasFilter }}
-                                <button type="button" wire:click="clearPetugasFilter" class="ml-0.5 hover:text-white font-bold">×</button>
+                                <button type="button" wire:click="clearPetugasFilter" class="ml-0.5 hover:text-white font-bold">Ã—</button>
                             </span>
                         @endif
 
@@ -77,7 +79,7 @@
                         <label class="{{ $label }}">{{ __('app.search') }}</label>
                         <div class="relative">
                             <input type="text"
-                                   class="{{ $input }} pl-9"
+                                   class="{{ $input }} !pl-9 sm:!pl-10"
                                    placeholder="{{ __('app.search') }}..."
                                    wire:model.live.debounce.300ms="q">
                             <x-heroicon-o-magnifying-glass class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
@@ -88,7 +90,7 @@
                         <label class="{{ $label }}">{{ __('app.date') }}</label>
                         <div class="relative">
                             <input type="date"
-                                   class="{{ $input }} pl-9"
+                                   class="{{ $input }} !pl-9 sm:!pl-10"
                                    wire:model.live="filter_date">
                             <x-heroicon-o-calendar class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
                         </div>
@@ -193,9 +195,9 @@
                                      class="{{ $cardBorder }} border rounded-xl p-3 sm:p-4 flex flex-col gap-2 sm:gap-3 hover:shadow-md {{ $cardHover }} transition">
                                     {{-- Scheduled Guest banner --}}
                                     @if($isScheduled)
-                                        <div class="flex items-center gap-1.5 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 px-3 sm:px-4 py-1.5 bg-violet-600 rounded-t-xl">
-                                            <svg class="w-3 h-3 text-violet-200 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                            <span class="text-[10px] font-bold uppercase tracking-wider text-violet-100">Scheduled Guest</span>
+                                        <div class="flex items-center gap-1.5 -mx-3 sm:-mx-4 -mt-3 sm:-mt-4 px-3 sm:px-4 py-1.5 bg-amber-500 rounded-t-xl">
+                                            <svg class="w-3 h-3 text-amber-100 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-50">Scheduled Guest</span>
                                         </div>
                                     @endif
                                     {{-- Header --}}
@@ -231,15 +233,40 @@
 
                                     {{-- Details --}}
                                     <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-violet-50 border-violet-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
+                                        @if($e->idType)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">ID Type:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->idType->id_type_name }}</span>
+                                            </div>
+                                        @endif
+                                        @if($e->visitorLanyard)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Lanyard:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->visitorLanyard->lanyard_name }}</span>
+                                            </div>
+                                        @endif
+                                    <div class="space-y-1 text-xs text-gray-600 {{ $isScheduled ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100' }} rounded-lg p-2.5 border">
                                         @if($e->keperluan)
                                             <div class="flex gap-1.5">
                                                 <span class="text-gray-400 shrink-0">{{ __('app.visit_purpose_label') }}:</span>
                                                 <span class="font-medium text-gray-800 truncate">{{ $e->keperluan }}</span>
                                             </div>
                                         @endif
+                                        @if($e->department)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Department:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->department->department_name }}</span>
+                                            </div>
+                                        @endif
+                                        @if($e->user)
+                                            <div class="flex gap-1.5">
+                                                <span class="text-gray-400 shrink-0">Meet With:</span>
+                                                <span class="font-medium text-gray-800 truncate">{{ $e->user->full_name }}</span>
+                                            </div>
+                                        @endif
                                         <div class="flex gap-1.5">
                                             <span class="text-gray-400 shrink-0">{{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:</span>
-                                            <span class="font-semibold {{ $isScheduled ? 'text-violet-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} · {{ gbsFmtTime($e->jam_in) }}</span>
+                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} Â· {{ gbsFmtTime($e->jam_in) }}</span>
                                         </div>
                                         @if($e->email && !$e->qr_status)
                                             <div class="flex gap-1.5">
@@ -249,7 +276,7 @@
                                         @endif
                                         <div class="flex gap-1.5">
                                             <span class="text-gray-400 shrink-0">{{ __('app.officer_label') }}:</span>
-                                            <span class="font-medium {{ $isScheduled ? 'text-violet-700' : 'text-gray-700' }} truncate">{{ $e->petugas_penjaga }}</span>
+                                            <span class="font-medium {{ $isScheduled ? 'text-amber-700' : 'text-gray-700' }} truncate">{{ $e->petugas_penjaga }}</span>
                                         </div>
                                     </div>
 
@@ -291,7 +318,7 @@
                                     @endif
 
                                     {{-- Actions --}}
-                                    <div class="pt-2 {{ $isScheduled ? 'border-violet-100' : 'border-gray-100' }} border-t flex items-center justify-end gap-1.5 mt-auto">
+                                    <div class="pt-2 {{ $isScheduled ? 'border-amber-100' : 'border-gray-100' }} border-t flex items-center justify-end gap-1.5 mt-auto">
                                         <button wire:click="openEdit({{ $e->guestbook_id }})"
                                                 class="px-2 py-1.5 sm:px-2.5 text-xs font-semibold rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition focus:outline-none">
                                             <span class="hidden sm:inline">{{ __('app.edit') }}</span>
@@ -325,6 +352,7 @@
                                     <tr class="border-b border-gray-200 bg-gray-50/50">
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.name_col') }}</th>
+                                        <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Lanyard / ID</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.institution_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.purpose_col') }}</th>
                                         <th class="h-10 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ __('app.check_in_label') }}</th>
@@ -341,7 +369,7 @@
                                             $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
                                             $isScheduled = (bool) ($e->scheduled_by_manager ?? false);
                                         @endphp
-                                        <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="{{ $isScheduled ? 'bg-violet-50/50 hover:bg-violet-50' : 'hover:bg-gray-50/50' }} transition-colors">
+                                        <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="{{ $isScheduled ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50/50' }} transition-colors">
                                             
                                             <td class="h-12 px-4 py-0 text-gray-400 text-xs font-mono">
                                                 {{ $rowNo }}
@@ -349,14 +377,14 @@
                                             
                                             <td class="h-12 px-4 py-0 ">
                                                 <div class="flex items-center gap-2.5">
-                                                    <div class="w-7 h-7 rounded-full {{ $isScheduled ? 'bg-violet-600' : 'bg-[#4E653D]' }} text-white flex items-center justify-center text-xs font-semibold shrink-0">
+                                                    <div class="w-7 h-7 rounded-full {{ $isScheduled ? 'bg-amber-500' : 'bg-[#4E653D]' }} text-white flex items-center justify-center text-xs font-semibold shrink-0">
                                                         {{ $avatarChar }}
                                                     </div>
                                                     <div class="min-w-0">
                                                         <div class="flex items-center justify-end gap-2">
                                                             <p class="font-semibold text-gray-900 truncate">{{ $e->name }}</p>
                                                             @if($isScheduled)
-                                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-violet-600 text-white text-[9px] font-bold uppercase tracking-wide shrink-0">
+                                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wide shrink-0">
                                                                     <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                                                     Sched.
                                                                 </span>
@@ -373,19 +401,37 @@
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
+                                                @if($e->visitorLanyard || $e->idType)
+                                                    <div class="flex flex-col">
+                                                        @if($e->visitorLanyard) <span class="text-gray-900">{{ $e->visitorLanyard->lanyard_name }}</span> @endif
+                                                        @if($e->idType) <span class="text-[10px] text-gray-500">{{ $e->idType->id_type_name }}</span> @endif
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+
+                                            <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                 {{ $e->instansi ?? '-' }}
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-600 truncate font-medium">
                                                 {{ $e->keperluan ?? '-' }}
+                                                @if($e->department || $e->user)
+                                                    <div class="text-[10px] text-gray-500 font-normal mt-0.5">
+                                                        @if($e->department) <span>Dept: {{ $e->department->department_name }}</span> @endif
+                                                        @if($e->department && $e->user) <span class="mx-0.5">•</span> @endif
+                                                        @if($e->user) <span>Meet: {{ $e->user->full_name }}</span> @endif
+                                                    </div>
+                                                @endif
                                             </td>
                                             
                                             <td class="h-12 px-4 py-0 text-gray-500 whitespace-nowrap">
                                                 <div class="flex flex-col">
                                                     <div>
                                                         <span class="text-gray-900 font-medium">{{ gbsFmtDate($e->date) }}</span>
-                                                        <span class="mx-1 text-gray-300">·</span>
-                                                        <span class="font-semibold {{ $isScheduled ? 'text-violet-600' : 'text-emerald-600' }}">{{ gbsFmtTime($e->jam_in) }}</span>
+                                                        <span class="mx-1 text-gray-300">Â·</span>
+                                                        <span class="font-semibold {{ $isScheduled ? 'text-amber-600' : 'text-emerald-600' }}">{{ gbsFmtTime($e->jam_in) }}</span>
                                                     </div>
                                                     <div class="text-[10px] text-gray-400 mt-0.5 truncate">{{ __('app.officer_label') }}: {{ $e->petugas_penjaga }}</div>
                                                 </div>
@@ -403,7 +449,7 @@
                                                         <span class="timer-text">00:00:00</span>
                                                     </span>
                                                 @else
-                                                    <span class="text-xs text-gray-400">—</span>
+                                                    <span class="text-xs text-gray-400">â€”</span>
                                                 @endif
                                             </td>
                                             
@@ -465,7 +511,7 @@
                             </table>
                         </div>
                     @endif
-                    <div class="mt-5">{{ $activeEntries->links() }}</div>
+                    <div class="mt-5" wire:key="guestbook-pagination">{{ $activeEntries->links() }}</div>
                 @endif
 
             </div>
@@ -474,6 +520,7 @@
     </main>
 
     {{-- ===== EDIT MODAL ===== --}}
+    <div wire:key="guestbook-edit-modal-wrapper">
     @if($showEdit)
         <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="$set('showEdit', false)"></div>
@@ -521,6 +568,26 @@
                         <input type="number" min="1" max="999" wire:model.defer="edit.visitor_count" class="{{ $mi }}">
                         @error('edit.visitor_count') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.target_department_opt') ?? 'Target Department' }}</label>
+                        <select wire:model.live="edit.department_id" class="{{ $mi }}">
+                            <option value="">{{ __('app.select_department_opt') ?? '-- Select Department --' }}</option>
+                            @foreach($departments_list as $dept)
+                                <option value="{{ $dept['id'] }}">{{ $dept['name'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('edit.department_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div>
+                        <label class="{{ $ml }}">{{ __('app.meet_with_opt') ?? 'Meet With' }}</label>
+                        <select wire:model.defer="edit.user_id" class="{{ $mi }}" @if(empty($users_list)) disabled @endif>
+                            <option value="">{{ __('app.select_employee') ?? '-- Select Employee --' }}</option>
+                            @foreach($users_list as $user)
+                                <option value="{{ $user['id'] }}">{{ $user['full_name'] }}</option>
+                            @endforeach
+                        </select>
+                        @error('edit.user_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
                 </div>
                 <div class="px-6 pb-6 flex justify-end gap-2">
                     <button wire:click="$set('showEdit', false)"
@@ -536,6 +603,7 @@
             </div>
         </div>
     @endif
+    </div>{{-- end wire:key="guestbook-edit-modal-wrapper" --}}
 
     <script>
         function updateElapsedTimers() {
@@ -562,3 +630,4 @@
     </script>
 
 </div>
+

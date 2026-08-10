@@ -18,13 +18,13 @@
 
 <body class="min-h-screen font-sans animate-fade-in-up" data-theme="light">
 
-    @livewire('components.partials.navbar')
+    @livewire('components.partials.navbar', [], 'layout-navbar')
 
     <main class="w-full pt-9 pb-4 px-4 sm:px-6 lg:px-8">
         {{ $slot }}
     </main>
     
-    @livewire('components.ui.chat-modal')
+    @livewire('components.ui.chat-modal', [], 'layout-chat-modal')
 
     @livewire('booking.quick-book-modal')
     @livewire('booking.quick-vehicle-book-modal')
@@ -45,7 +45,7 @@
     </div>
 
     @include('livewire.components.partials.footer')
-    @livewire('components.ui.toast')
+    @livewire('components.ui.toast', [], 'layout-toast')
 
 
     @livewireScripts

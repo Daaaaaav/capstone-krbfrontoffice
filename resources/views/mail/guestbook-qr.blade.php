@@ -35,6 +35,7 @@
                 <table role="presentation" class="wrapper-table" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
                     <tr>
                         <td class="header-cell" align="center" style="background-color:#4A2F24; padding:32px 40px;">
+                            <img src="{{ $message->embed(public_path('images/logo/kebun-raya-bogor.png')) }}" alt="Logo Kebun Raya Bogor" style="height: 60px; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;">
                             <p style="color:#CDDEA7; font-size:22px; font-weight:700; letter-spacing:0.3px; margin:0 0 6px 0;">&#128210; Konfirmasi Kunjungan</p>
                             <p style="color:rgba(205,222,167,0.75); font-size:13px; margin:0 0 12px 0;">QR Code Tamu &ndash; Buku Tamu Digital</p>
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">

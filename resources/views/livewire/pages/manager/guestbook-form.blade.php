@@ -78,7 +78,27 @@
                             @error('keperluan') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <label class="{{ $label }}">Storage Slot (1-100)</label>
+                            <label class="{{ $label }}">ID Type</label>
+                            <select wire:model.defer="id_type_id" class="{{ $input }}">
+                                <option value="">— None —</option>
+                                @foreach($id_types_list as $type)
+                                    <option value="{{ $type['id'] }}">{{ $type['name'] }}</option>
+                                @endforeach
+                            </select>
+                            @error('id_type_id') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Visitor Lanyard</label>
+                            <select wire:model.defer="visitor_lanyard_id" class="{{ $input }}">
+                                <option value="">— None —</option>
+                                @foreach($visitor_lanyards_list as $lanyard)
+                                    <option value="{{ $lanyard['id'] }}">{{ $lanyard['name'] }}</option>
+                                @endforeach
+                            </select>
+                            @error('visitor_lanyard_id') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">ID STORAGE</label>
                             <input type="number" wire:model.defer="storage_place" min="1" max="100" class="{{ $input }}" placeholder="e.g. 12">
                         </div>
                         <div>

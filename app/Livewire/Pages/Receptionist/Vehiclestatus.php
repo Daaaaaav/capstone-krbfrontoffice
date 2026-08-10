@@ -12,6 +12,7 @@ use App\Models\VehicleBooking;
 use App\Models\Vehicle;
 use App\Models\PriorityVehicleBooking;
 use App\Models\ManagerNotification;
+use App\Services\ImageHelper;
 
 use App\Livewire\Pages\Receptionist\Traits\HasViewMode;
 
@@ -185,19 +186,12 @@ class Vehiclestatus extends Component
                 }
 
                 // Save photo
-                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
-                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
-                    $type = strtolower($type[1]);
-                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
-                        throw new \Exception('Invalid image type');
-                    }
-                    $data = base64_decode($data);
-                    if ($data === false) {
-                        throw new \Exception('Base64 decode failed');
-                    }
-                    $filename = 'vehicle_evidences/handover_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
-                    $b->handover_photo = $filename;
+                if ($this->photoData) {
+                    $b->handover_photo = ImageHelper::storeBase64AsWebp(
+                        $this->photoData,
+                        'vehicle_evidences',
+                        'handover_' . $b->vehiclebooking_id
+                    );
                 }
 
                 $b->save();
@@ -327,19 +321,12 @@ class Vehiclestatus extends Component
                 $b->status = 'completed';
 
                 // Save photo
-                if (preg_match('/^data:image\/(\w+);base64,/', $this->photoData, $type)) {
-                    $data = substr($this->photoData, strpos($this->photoData, ',') + 1);
-                    $type = strtolower($type[1]);
-                    if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
-                        throw new \Exception('Invalid image type');
-                    }
-                    $data = base64_decode($data);
-                    if ($data === false) {
-                        throw new \Exception('Base64 decode failed');
-                    }
-                    $filename = 'vehicle_evidences/return_' . $b->vehiclebooking_id . '_' . time() . '.' . $type;
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $data);
-                    $b->return_photo = $filename;
+                if ($this->photoData) {
+                    $b->return_photo = ImageHelper::storeBase64AsWebp(
+                        $this->photoData,
+                        'vehicle_evidences',
+                        'return_' . $b->vehiclebooking_id
+                    );
                 }
 
                 $b->save();

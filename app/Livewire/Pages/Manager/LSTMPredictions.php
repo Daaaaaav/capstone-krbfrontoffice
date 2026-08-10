@@ -19,24 +19,66 @@ class LSTMPredictions extends Component
 {
     use WithFileUploads;
 
+    // ── Forecast controls ───────────────────────────────────────────────────────────
     public int $forecastDays = 21;
     public ?string $forecastStartDate = null;
     public ?string $forecastEndDate = null;
+
+    /**
+     * Active training-data source:
+     *   'csv_server'  — bundled historical CSV (default)
+     *   'csv_upload'  — user-uploaded CSV
+     *   'live_db'     — live guestbook records from the database
+     */
     public string $trainingSource = 'csv_server';
+
+    // ── Upload state ────────────────────────────────────────────────────────────────
+    /** @var \Livewire\Features\SupportFileUploads\TemporaryUploadedFile|null */
     public $uploadedCsv = null;
 
+    /** Stored path of the validated upload (relative to the private disk). */
     public ?string $uploadedCsvPath = null;
+
+    /** Human-readable name of the last accepted upload. */
     public ?string $uploadedCsvName = null;
+
+    /** Validation / upload error message shown to the user. */
     public ?string $uploadError = null;
+
+    /** Success message shown after a successful upload. */
     public ?string $uploadSuccess = null;
 
-    public ?array $csvInfo = null;
-
+    // ── Status flags ────────────────────────────────────────────────────────────────
     public bool $isRetraining = false;
 
-    /** Reused across render() → buildTimeSeries() within the same request. Not serialized by Livewire. */
-    private CsvDataReader $csvReader;
+    // ── Request-scoped memoization ──────────────────────────────────────────────────
+    private ?array $_timeSeriesCache = null;
+    private ?array $_csvInfoCache = null;
+    private ?array $_predictionResultCache = null;
+    private ?bool $_lstmAvailableCache = null;
 
+    // ── Lifecycle ───────────────────────────────────────────────────────────────────
+    public function mount(): void
+    {
+        // Initialize default date range if not set
+        if (!$this->forecastStartDate || !$this->forecastEndDate) {
+            $this->setForecastDays($this->forecastDays);
+        }
+    }
+
+    /**
+     * Reset request-scoped caches when properties change
+     */
+    public function updated($property): void
+    {
+        // Clear memoization when forecast parameters change
+        if (in_array($property, ['forecastDays', 'forecastStartDate', 'forecastEndDate', 'trainingSource'])) {
+            $this->_timeSeriesCache = null;
+            $this->_predictionResultCache = null;
+        }
+    }
+
+    // ── Validation ──────────────────────────────────────────────────────────────────
     protected function rules(): array
     {
         return [
@@ -49,40 +91,41 @@ class LSTMPredictions extends Component
         ];
     }
 
-    public function mount(): void
-    {
-        $this->initializeForecastDates();
-    }
-
-    public function updated($propertyName): void
-    {
-        if ($propertyName === 'forecastStartDate' || $propertyName === 'forecastEndDate') {
-            $this->syncForecastDaysFromDates();
-        }
-    }
-
-    private function initializeForecastDates(): void
-    {
-        if (!$this->forecastStartDate || !$this->forecastEndDate) {
-            $this->forecastStartDate = now()->addDay()->format('Y-m-d');
-            $this->forecastEndDate = now()->addDays($this->forecastDays)->format('Y-m-d');
-        }
-    }
-
-    private function syncForecastDaysFromDates(): void
-    {
-        if ($this->forecastStartDate && $this->forecastEndDate) {
-            $start = \Carbon\Carbon::parse($this->forecastStartDate);
-            $end = \Carbon\Carbon::parse($this->forecastEndDate);
-            $this->forecastDays = max(1, $start->diffInDays($end));
-        }
-    }
+    // ── Actions ─────────────────────────────────────────────────────────────────────
 
     public function setForecastDays(int $days): void
     {
         $this->forecastDays = $days;
-        $this->forecastStartDate = now()->addDay()->format('Y-m-d');
-        $this->forecastEndDate = now()->addDays($days)->format('Y-m-d');
+        
+        // Auto-set date range based on preset
+        $start = now()->addDay();
+        $end = now()->addDays($days);
+        
+        $this->forecastStartDate = $start->format('Y-m-d');
+        $this->forecastEndDate = $end->format('Y-m-d');
+    }
+    
+    public function updatedForecastStartDate(): void
+    {
+        $this->recalculateForecastDays();
+    }
+    
+    public function updatedForecastEndDate(): void
+    {
+        $this->recalculateForecastDays();
+    }
+    
+    private function recalculateForecastDays(): void
+    {
+        if ($this->forecastStartDate && $this->forecastEndDate) {
+            $start = \Carbon\Carbon::parse($this->forecastStartDate);
+            $end = \Carbon\Carbon::parse($this->forecastEndDate);
+            
+            // Ensure End >= Start
+            if ($end >= $start) {
+                $this->forecastDays = $end->diffInDays($start) + 1;
+            }
+        }
     }
 
     public function setTrainingSource(string $source): void
@@ -91,43 +134,41 @@ class LSTMPredictions extends Component
             return;
         }
 
+        // Switching away from upload doesn't delete the stored file — the user
+        // can switch back to it without re-uploading.
         $this->trainingSource = $source;
         $this->uploadError    = null;
         $this->uploadSuccess  = null;
+        
+        // Clear cached time series since source changed
+        $this->_timeSeriesCache = null;
+        $this->_predictionResultCache = null;
     }
 
+    /**
+     * Handle CSV upload, validate columns, store the file, and switch the
+     * training source to 'csv_upload' automatically on success.
+     */
     public function uploadCsv(): void
     {
         $this->uploadError   = null;
         $this->uploadSuccess = null;
 
-        $this->validate($this->rules(), [
-            'uploadedCsv.required' => __('app.csv_error_no_file'),
-            'uploadedCsv.file'     => __('app.csv_error_not_file'),
-            'uploadedCsv.mimes'    => __('app.csv_error_wrong_type'),
-            'uploadedCsv.max'      => __('app.csv_error_too_large'),
-        ]);
+        $this->validate();
 
         try {
-            $uploadDir = Storage::disk(CsvDataReader::DISK)->path(CsvDataReader::UPLOAD_PATH);
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
+            $reader = new CsvDataReader();
 
-            $reader = $this->csvReader ?? new CsvDataReader();
-
+            // Store to a temp path first so we can inspect the headers
             $tmpPath = $this->uploadedCsv->store(
                 CsvDataReader::UPLOAD_PATH,
                 CsvDataReader::DISK
             );
 
-            if (!$tmpPath) {
-                throw new \RuntimeException('File could not be stored. Check storage permissions.');
-            }
-
             $missing = $reader->validateColumns($tmpPath);
 
             if (!empty($missing)) {
+                // Remove invalid file and report the problem
                 Storage::disk(CsvDataReader::DISK)->delete($tmpPath);
                 $this->uploadError = __('app.csv_missing_columns', [
                     'columns' => implode(', ', $missing),
@@ -136,6 +177,7 @@ class LSTMPredictions extends Component
                 return;
             }
 
+            // Delete any previously uploaded file
             if ($this->uploadedCsvPath) {
                 Storage::disk(CsvDataReader::DISK)->delete($this->uploadedCsvPath);
             }
@@ -155,23 +197,31 @@ class LSTMPredictions extends Component
 
         } catch (\Throwable $e) {
             Log::error('LSTMPredictions: CSV upload failed', ['error' => $e->getMessage()]);
-            $this->uploadError = __('app.csv_upload_failed_detail', [
-                'detail' => $e->getMessage(),
-            ]);
+            $this->uploadError = __('app.csv_upload_failed');
             $this->uploadedCsv = null;
         }
     }
 
+    /**
+     * Force a full model retrain using the current training source.
+     * The LSTM service's fingerprint cache is bypassed.
+     */
     public function retrain(): void
     {
         $this->isRetraining = true;
 
         try {
-            $client     = app(LSTMClient::class);
-            $timeSeries = $this->buildTimeSeries();
+            $timeSeries = $this->getTimeSeries();
+            $client     = new LSTMClient();
 
             if ($client->isAvailable() && !empty($timeSeries)) {
+                // POST to /retrain which sets force_retrain=true server-side
                 $client->forceRetrain($timeSeries, $this->forecastDays);
+                
+                // Clear all caches after retraining
+                $this->_timeSeriesCache = null;
+                $this->_predictionResultCache = null;
+                $this->_lstmAvailableCache = null;
             }
         } catch (\Throwable $e) {
             Log::error('LSTMPredictions: retrain failed', ['error' => $e->getMessage()]);
@@ -180,115 +230,43 @@ class LSTMPredictions extends Component
         $this->isRetraining = false;
     }
 
+    // ── Render ──────────────────────────────────────────────────────────────────────
+
     public function render()
     {
         try {
-            $lstmClient      = app(LSTMClient::class);
-            $isLSTMAvailable = $lstmClient->isAvailable();
-            $csvReader       = $this->csvReader ?? new CsvDataReader();
-            $timeSeries      = $this->buildTimeSeries($csvReader);
+            // All expensive operations now use request-scoped memoization
+            $isLSTMAvailable = $this->isLSTMAvailable();
+            $timeSeries      = $this->getTimeSeries();
+            $result          = $this->getPredictionResult($isLSTMAvailable, $timeSeries);
+            $csvInfo         = $this->getCsvInfo();
+            $lstmClient      = new LSTMClient();
+            
+            // ── Normalize predictions: add day_name field ───────────────────────────────
+            $predictions = $result['predictions'];
+            $predictions = $this->addDayNames($predictions);
+            
+            // ── Build chart data (lightweight transformation) ───────────────────────────
+            $dailyLabels     = array_map(fn($p) => date('d/m', strtotime($p['date'])), $predictions);
+            $dailyPredicted  = array_map(fn($p) => round($p['predicted'], 1), $predictions);
+            $dailyLowerBound = array_map(fn($p) => round($p['lower_bound'], 1), $predictions);
+            $dailyUpperBound = array_map(fn($p) => round($p['upper_bound'], 1), $predictions);
 
-            // Derive csvInfo from the already-loaded timeSeries when using the server CSV,
-            // so we don't call serverCsvInfo() (which re-reads the CSV) separately.
-            if ($this->trainingSource === 'csv_server' || $this->trainingSource === 'csv_upload') {
-                if (!empty($timeSeries)) {
-                    $this->csvInfo = [
-                        'rows'  => count($timeSeries),
-                        'start' => $timeSeries[0]['date'],
-                        'end'   => $timeSeries[count($timeSeries) - 1]['date'],
-                    ];
-                } else {
-                    $this->csvInfo = ['rows' => 0, 'start' => null, 'end' => null];
-                }
-            } else {
-                // live_db path: timeSeries came from DB, still need CSV info from the server file
-                $this->csvInfo = $csvReader->serverCsvInfo();
-            }
-
-            $result = null;
-
-            if ($isLSTMAvailable && !empty($timeSeries)) {
-                $result = $this->forecastDays === 21
-                    ? $lstmClient->predict3Weeks($timeSeries, false)
-                    : $lstmClient->predict($timeSeries, $this->forecastDays, false);
-            }
-
-            $weeklySummarySource = 'fastapi';
-
-            if (!$result || empty($result['predictions'])) {
-                $weeklySummarySource = 'local_fallback';
-                $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
-                $result   = array_merge($fallback, [
-                    'data_source'    => 'statistical',
-                    'title'          => 'Visitor Traffic Predictions',
-                    'description'    => null,
-                    'weekly_summary' => $this->buildWeeklySummary($fallback['predictions'] ?? []),
-                ]);
-            } elseif (empty($result['weekly_summary'])) {
-                $weeklySummarySource = 'local_rebuild';
-                $result['weekly_summary'] = $this->buildWeeklySummary($result['predictions']);
-            }
-
-            $rawPredictions  = $result['predictions'];
-            $firstPredDate   = $rawPredictions[0]['date'] ?? 'unknown';
-            $lastPredDate    = $rawPredictions[count($rawPredictions) - 1]['date'] ?? 'unknown';
-
-            Log::info('LSTMPredictions: prediction dataset received', [
-                'source'              => $result['data_source'] ?? 'unknown',
-                'weekly_summary_from' => $weeklySummarySource,
-                'total_predictions'   => count($rawPredictions),
-                'first_prediction'    => $firstPredDate,
-                'last_prediction'     => $lastPredDate,
-                'forecast_days'       => $this->forecastDays,
-                'training_source'     => $this->trainingSource,
-            ]);
-
-            $predictions   = [];
-            $confidenceSum = 0.0;
-
-            foreach ($rawPredictions as $p) {
-                $p['predicted']    = round($p['predicted'], 1);
-                $p['lower_bound']  = round($p['lower_bound'], 1);
-                $p['upper_bound']  = round($p['upper_bound'], 1);
-                $p['day_name']     = \Carbon\Carbon::parse($p['date'])->isoFormat('dddd');
-                $confidenceSum    += $p['confidence'];
-                $predictions[]     = $p;
-            }
-
-            $predCount = count($predictions);
-
-            $firstTableDate = $predictions[0]['date'] ?? 'unknown';
-            $lastTableDate  = $predictions[$predCount - 1]['date'] ?? 'unknown';
-
+            // ── Weekly summary ──────────────────────────────────────────────────────────
             $weeklyData = null;
             if (!empty($result['weekly_summary'])) {
-                $weeklySummary = $result['weekly_summary'];
-
-                $firstWeekStart = $weeklySummary[0]['start_date'] ?? 'unknown';
-                $lastWeekEnd    = $weeklySummary[count($weeklySummary) - 1]['end_date'] ?? 'unknown';
-
-                Log::info('LSTMPredictions: weekly summary alignment check', [
-                    'weekly_summary_source' => $weeklySummarySource,
-                    'week_count'            => count($weeklySummary),
-                    'first_week_start'      => $firstWeekStart,
-                    'last_week_end'         => $lastWeekEnd,
-                    'first_table_date'      => $firstTableDate,
-                    'last_table_date'       => $lastTableDate,
-                    'dates_aligned'         => ($firstWeekStart === $firstTableDate),
-                ]);
-
                 $weeklyData = [
-                    'labels'   => array_map(fn($w) => __('app.week_label') . ' ' . $w['week'], $weeklySummary),
-                    'totals'   => array_map(fn($w) => round($w['total_predicted'], 0), $weeklySummary),
-                    'averages' => array_map(fn($w) => round($w['avg_predicted'], 1), $weeklySummary),
+                    'labels'   => array_map(fn($w) => __('app.week_label') . ' ' . $w['week'], $result['weekly_summary']),
+                    'totals'   => array_map(fn($w) => round($w['total_predicted'], 0), $result['weekly_summary']),
+                    'averages' => array_map(fn($w) => round($w['avg_predicted'], 1), $result['weekly_summary']),
                 ];
             }
 
-            $dailyPredictedValues = array_column($predictions, 'predicted');
-            $totalPredicted = array_sum($dailyPredictedValues);
-            $avgDaily       = $totalPredicted / max(1, $predCount);
-            $avgConfidence  = $predCount > 0 ? $confidenceSum / $predCount : 0;
-            $maxDay         = !empty($dailyPredictedValues) ? max($dailyPredictedValues) : 0;
+            // ── Stats cards ─────────────────────────────────────────────────────────────
+            $totalPredicted = array_sum($dailyPredicted);
+            $avgDaily       = $totalPredicted / max(1, count($dailyPredicted));
+            $avgConfidence  = array_sum(array_column($predictions, 'confidence')) / max(1, count($predictions));
+            $maxDay         = !empty($dailyPredicted) ? max($dailyPredicted) : 0;
 
             $stats = [
                 ['label' => __('app.total_predicted'), 'value' => number_format($totalPredicted, 0), 'color' => 'blue',   'icon' => 'chart-bar'],
@@ -297,33 +275,21 @@ class LSTMPredictions extends Component
                 ['label' => __('app.confidence'),       'value' => number_format($avgConfidence * 100, 1) . '%', 'color' => 'purple', 'icon' => 'check-badge'],
             ];
 
-            // ── Single getModelMetrics() call per render ──────────────────
-            $modelMetrics = $isLSTMAvailable ? $lstmClient->getModelMetrics() : null;
-
-            Log::info('LSTMPredictions: metrics pipeline trace', [
-                'lstm_available'       => $isLSTMAvailable,
-                'model_metrics_null'   => is_null($modelMetrics),
-                'metrics_available'    => $modelMetrics['available'] ?? false,
-                'metrics_trained_at'   => $modelMetrics['trained_at'] ?? 'null',
-                'metrics_mae'          => $modelMetrics['mae'] ?? 'null',
-                'metrics_rmse'         => $modelMetrics['rmse'] ?? 'null',
-                'metrics_epochs'       => $modelMetrics['epochs_run'] ?? 'null',
-                'first_table_date'     => $firstTableDate,
-                'last_table_date'      => $lastTableDate,
-                'daily_chart_labels_from' => 'prediction.date via JS split',
-            ]);
-
             return view('livewire.pages.manager.lstm-predictions', [
                 'isLSTMAvailable' => $isLSTMAvailable,
                 'predictions'     => $predictions,
                 'weeklyData'      => $weeklyData,
+                'dailyLabels'     => $dailyLabels,
+                'dailyPredicted'  => $dailyPredicted,
+                'dailyLowerBound' => $dailyLowerBound,
+                'dailyUpperBound' => $dailyUpperBound,
                 'stats'           => $stats,
                 'rmse'            => $result['rmse'] ?? ($result['metrics']['rmse'] ?? 0),
                 'activeSource'    => $result['data_source'] ?? 'statistical',
                 'title'           => $result['title'] ?? 'Visitor Traffic Predictions',
                 'description'     => $result['description'] ?? null,
-                'csvInfo'         => $this->csvInfo,
-                'modelMetrics'    => $modelMetrics,
+                'csvInfo'         => $csvInfo,
+                'modelMetrics'    => $lstmClient->getModelMetrics(),
             ]);
 
         } catch (\Exception $e) {
@@ -333,20 +299,112 @@ class LSTMPredictions extends Component
                 'isLSTMAvailable' => false,
                 'predictions'     => [],
                 'weeklyData'      => null,
+                'dailyLabels'     => [],
+                'dailyPredicted'  => [],
+                'dailyLowerBound' => [],
+                'dailyUpperBound' => [],
                 'stats'           => $this->getEmptyStats(),
                 'rmse'            => 0,
                 'activeSource'    => 'error',
                 'title'           => 'Visitor Traffic Predictions',
                 'description'     => null,
-                'csvInfo'         => $this->csvInfo,
+                'csvInfo'         => ['rows' => 0, 'start' => null, 'end' => null],
                 'modelMetrics'    => null,
             ]);
         }
     }
 
-    private function buildTimeSeries(?CsvDataReader $reader = null): array
+    // ── Request-scoped memoized methods ─────────────────────────────────────────────
+
+    /**
+     * Check if LSTM is available (request-scoped cache)
+     */
+    private function isLSTMAvailable(): bool
     {
-        $reader = $reader ?? ($this->csvReader ?? new CsvDataReader());
+        if ($this->_lstmAvailableCache !== null) {
+            return $this->_lstmAvailableCache;
+        }
+
+        $lstmClient = new LSTMClient();
+        $this->_lstmAvailableCache = $lstmClient->isAvailable();
+        
+        return $this->_lstmAvailableCache;
+    }
+
+    /**
+     * Get time series data (request-scoped cache)
+     */
+    private function getTimeSeries(): array
+    {
+        if ($this->_timeSeriesCache !== null) {
+            return $this->_timeSeriesCache;
+        }
+
+        $this->_timeSeriesCache = $this->buildTimeSeries();
+        
+        return $this->_timeSeriesCache;
+    }
+
+    /**
+     * Get CSV info (request-scoped cache)
+     */
+    private function getCsvInfo(): array
+    {
+        if ($this->_csvInfoCache !== null) {
+            return $this->_csvInfoCache;
+        }
+
+        $csvReader = new CsvDataReader();
+        $this->_csvInfoCache = $csvReader->serverCsvInfo();
+        
+        return $this->_csvInfoCache;
+    }
+
+    /**
+     * Get prediction result (request-scoped cache)
+     */
+    private function getPredictionResult(bool $isLSTMAvailable, array $timeSeries): array
+    {
+        if ($this->_predictionResultCache !== null) {
+            return $this->_predictionResultCache;
+        }
+
+        $lstmClient = new LSTMClient();
+
+        // ── Get predictions ─────────────────────────────────────────────────────────
+        $result = null;
+
+        if ($isLSTMAvailable && !empty($timeSeries)) {
+            $result = $this->forecastDays === 21
+                ? $lstmClient->predict3Weeks($timeSeries, false)
+                : $lstmClient->predict($timeSeries, $this->forecastDays, false);
+        }
+
+        // ── Fallback to statistical model ──────────────────────────────────────────
+        if (!$result || empty($result['predictions'])) {
+            $fallback = $lstmClient->predictWithFallback($timeSeries, $this->forecastDays);
+            $result   = array_merge($fallback, [
+                'data_source'    => 'statistical',
+                'title'          => 'Visitor Traffic Predictions',
+                'description'    => null,
+                'weekly_summary' => $this->buildWeeklySummary($fallback['predictions'] ?? []),
+            ]);
+        }
+
+        $this->_predictionResultCache = $result;
+        
+        return $result;
+    }
+
+    // ── Private helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * Build the time-series array from whichever source is currently active.
+     * Falls back to the server CSV when the upload path is missing.
+     */
+    private function buildTimeSeries(): array
+    {
+        $reader = new CsvDataReader();
 
         switch ($this->trainingSource) {
 
@@ -358,9 +416,10 @@ class LSTMPredictions extends Component
                         Log::warning('LSTMPredictions: uploaded CSV unreadable, falling back to server CSV', [
                             'error' => $e->getMessage(),
                         ]);
+                        // Fall through to server CSV
                     }
                 }
-
+                // No valid upload → fall through to server CSV
                 $this->trainingSource = 'csv_server';
                 return $reader->readServerCsv('visitors');
 
@@ -401,5 +460,19 @@ class LSTMPredictions extends Component
             ['label' => __('app.peak_day'),         'value' => '0',  'color' => 'yellow', 'icon' => 'arrow-trending-up'],
             ['label' => __('app.confidence'),       'value' => '0%', 'color' => 'purple', 'icon' => 'check-badge'],
         ];
+    }
+
+    /**
+     * Add day_name field to each prediction based on its date.
+     * Respects the application's current locale via Carbon.
+     */
+    private function addDayNames(array $predictions): array
+    {
+        return array_map(function ($prediction) {
+            if (!isset($prediction['day_name']) && isset($prediction['date'])) {
+                $prediction['day_name'] = \Carbon\Carbon::parse($prediction['date'])->translatedFormat('l');
+            }
+            return $prediction;
+        }, $predictions);
     }
 }

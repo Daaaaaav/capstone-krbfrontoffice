@@ -67,4 +67,64 @@ class ImageHelper
 
         return $relativePath;
     }
+
+    public static function storeBase64AsWebp(
+        string $base64Data,
+        string $directory,
+        string $prefix = 'img',
+        string $disk   = 'public',
+        int    $quality = 82
+    ): string {
+        // Strip out the data url part if present
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64Data, $type)) {
+            $base64Data = substr($base64Data, strpos($base64Data, ',') + 1);
+        }
+        $data = base64_decode($base64Data);
+        if ($data === false) {
+            throw new \Exception('Base64 decode failed');
+        }
+
+        $source = @imagecreatefromstring($data);
+        if ($source === false) {
+            // fallback, save as png
+            $filename = $prefix . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.png';
+            $relativePath = $directory . '/' . $filename;
+            Storage::disk($disk)->put($relativePath, $data);
+            return $relativePath;
+        }
+
+        // Convert palette/indexed images to true-color for WebP compatibility
+        if (!imageistruecolor($source)) {
+            $width  = imagesx($source);
+            $height = imagesy($source);
+            $trueColor = imagecreatetruecolor($width, $height);
+
+            // Preserve transparency
+            imagealphablending($trueColor, false);
+            imagesavealpha($trueColor, true);
+            $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
+            imagefill($trueColor, 0, 0, $transparent);
+
+            // Copy palette image to true-color image
+            imagealphablending($trueColor, true);
+            imagecopy($trueColor, $source, 0, 0, 0, 0, $width, $height);
+
+            imagedestroy($source);
+            $source = $trueColor;
+        }
+
+        imagealphablending($source, true);
+        imagesavealpha($source, true);
+    
+        ob_start();
+        imagewebp($source, null, $quality);
+        $webpData = ob_get_clean();
+        imagedestroy($source);
+
+        $filename = $prefix . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.webp';
+        $relativePath = $directory . '/' . $filename;
+        Storage::disk($disk)->put($relativePath, $webpData);
+
+        return $relativePath;
+    }
 }
