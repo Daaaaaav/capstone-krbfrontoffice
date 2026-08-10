@@ -42,16 +42,16 @@ class DocPackForm extends Component
             'direction'    => ['required', 'in:taken,deliver'],
             'itemType'     => ['required', 'in:package,document'],
             'storageId'    => ['required', 'integer', 'exists:storages,storage_id'],
-            'itemName'     => ['required', 'string', 'max:255'],
+            'itemName'     => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
             'departmentId' => ['required', 'integer'],
             'userId'       => ['required', 'integer'],
             'photo'        => ['required', 'image', 'max:2048'], // 2MB
         ];
 
         if ($this->direction === 'taken') {
-            $base['senderText'] = ['required', 'string', 'max:255'];
+            $base['senderText'] = ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'];
         } else {
-            $base['receiverText'] = ['required', 'string', 'max:255'];
+            $base['receiverText'] = ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'];
         }
 
         return $base;
