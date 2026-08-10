@@ -499,6 +499,185 @@ class Vehiclestatus extends Component
         $this->showNotifPanel = false;
     }
 
+    // ─── Priority Vehicle Approval (notification-driven) ─────────────────────
+
+    public function openPriorityApprovalModal(int $notifId): void
+    {
+        $notif = ManagerNotification::find($notifId);
+        if (!$notif) {
+            $this->dispatch('toast', type: 'error', title: 'Not Found', message: 'Notification not found.');
+            return;
+        }
+
+        // Mark as read
+        $notif->markRead();
+
+        // Resolve the linked PriorityVehicleBooking
+        $pvb = null;
+        if ($notif->notifiable_type === \App\Models\PriorityVehicleBooking::class) {
+            $pvb = \App\Models\PriorityVehicleBooking::find($notif->notifiable_id);
+        }
+
+        if (!$pvb) {
+            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Priority booking no longer exists.');
+            return;
+        }
+
+        $this->priorityApprovalBookingId = $pvb->id;
+        $this->showPriorityApprovalModal  = true;
+        $this->showNotifPanel             = false;
+    }
+
+    public function closePriorityApprovalModal(): void
+    {
+        $this->showPriorityApprovalModal  = false;
+        $this->priorityApprovalBookingId  = null;
+    }
+
+    /**
+     * Approve a priority vehicle booking coming from the notification approval modal.
+     * Grants the priority booking and, if it targets a conflicting pending booking,
+     * cancels that booking.
+     */
+    public function approvePriorityVehicle(): void
+    {
+        if (!$this->priorityApprovalBookingId) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'No booking selected.');
+            return;
+        }
+
+        $this->approvePriorityVehicleById($this->priorityApprovalBookingId);
+        $this->closePriorityApprovalModal();
+    }
+
+    /**
+     * Approve a priority vehicle booking by its ID (used from both the approval modal
+     * and the detail modal's footer button).
+     */
+    public function approvePriorityVehicleById(int $pvbId): void
+    {
+        try {
+            DB::transaction(function () use ($pvbId) {
+                $pvb = \App\Models\PriorityVehicleBooking::lockForUpdate()->findOrFail($pvbId);
+
+                $allowedStatuses = [
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                ];
+
+                if (!in_array($pvb->status, $allowedStatuses, true)) {
+                    throw new \RuntimeException("Priority booking #{$pvb->id} is not in a pending state (current: {$pvb->status}).");
+                }
+
+                // If this booking requests cancellation of a conflicting booking, cancel it now
+                if ($pvb->cancels_booking_id) {
+                    VehicleBooking::where('vehiclebooking_id', $pvb->cancels_booking_id)
+                        ->whereIn('status', ['pending', 'approved'])
+                        ->update([
+                            'status' => 'rejected',
+                            'notes'  => DB::raw(
+                                "TRIM(CONCAT(COALESCE(notes, ''), IF(COALESCE(notes, '') = '', '', '\n'), " .
+                                DB::getPdo()->quote('[Cancelled by priority booking #' . $pvb->id . ']') . "))"
+                            ),
+                        ]);
+                }
+
+                $pvb->status     = now() >= $pvb->start_at
+                    ? \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS
+                    : \App\Models\PriorityVehicleBooking::STATUS_APPROVED;
+                $pvb->handled_by = \Illuminate\Support\Facades\Auth::id();
+                $pvb->save();
+
+                // Mark related notifications as actioned
+                ManagerNotification::query()
+                    ->where('notifiable_type', \App\Models\PriorityVehicleBooking::class)
+                    ->where('notifiable_id', $pvb->id)
+                    ->whereNull('action_taken')
+                    ->update(['action_taken' => 'approved', 'is_read' => true]);
+            });
+
+            $this->closePriorityVehicleDetail();
+            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking has been approved.');
+            $this->resetPage();
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Approve', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Deny a priority vehicle booking from the notification approval modal.
+     * Opens the reject-reason modal instead of immediately rejecting.
+     */
+    public function denyPriorityVehicle(): void
+    {
+        if (!$this->priorityApprovalBookingId) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'No booking selected.');
+            return;
+        }
+
+        $this->priorityVehicleRejectId     = $this->priorityApprovalBookingId;
+        $this->priorityVehicleRejectReason = '';
+        $this->closePriorityApprovalModal();
+        $this->showPriorityVehicleRejectModal = true;
+    }
+
+    public function closePriorityVehicleReject(): void
+    {
+        $this->showPriorityVehicleRejectModal = false;
+        $this->priorityVehicleRejectId        = null;
+        $this->priorityVehicleRejectReason    = '';
+    }
+
+    public function submitPriorityVehicleReject(): void
+    {
+        $this->validate([
+            'priorityVehicleRejectReason' => 'required|string|min:5|max:2000',
+            'priorityVehicleRejectId'     => 'required|integer',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                $pvb = \App\Models\PriorityVehicleBooking::lockForUpdate()
+                    ->findOrFail($this->priorityVehicleRejectId);
+
+                $allowedStatuses = [
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                ];
+
+                if (!in_array($pvb->status, $allowedStatuses, true)) {
+                    throw new \RuntimeException("Priority booking #{$pvb->id} is not in a pending state.");
+                }
+
+                $pvb->status           = \App\Models\PriorityVehicleBooking::STATUS_REJECTED;
+                $pvb->rejection_reason = trim($this->priorityVehicleRejectReason);
+                $pvb->handled_by       = \Illuminate\Support\Facades\Auth::id();
+                $pvb->save();
+
+                // Mark related notifications as actioned
+                ManagerNotification::query()
+                    ->where('notifiable_type', \App\Models\PriorityVehicleBooking::class)
+                    ->where('notifiable_id', $pvb->id)
+                    ->whereNull('action_taken')
+                    ->update(['action_taken' => 'rejected', 'is_read' => true]);
+            });
+
+            $this->closePriorityVehicleReject();
+            $this->dispatch('toast', type: 'success', title: 'Rejected', message: 'Priority vehicle booking has been rejected.');
+            $this->resetPage();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Reject', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to reject: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Get unread priority vehicle notifications for the current receptionist.
      */
