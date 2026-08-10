@@ -21,6 +21,8 @@ use App\Models\{
     Delivery,
     Guestbook,
     BookingRoom,
+    IdType,
+    VisitorLanyard,
 };
 
 class DatabaseSeeder extends Seeder
@@ -187,12 +189,60 @@ class DatabaseSeeder extends Seeder
                 $users = collect([$manager, $receptionist]);
                 $agents = collect();
 
-                $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now);
+                // Seed IdTypes and VisitorLanyards before seeding activities
+                $idTypes = $this->seedIdTypes($companyId);
+                $visitorLanyards = $this->seedVisitorLanyards($companyId);
+
+                $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now, $idTypes, $visitorLanyards);
             }
         });
     }
 
-    protected function seedAssetsAndActivities($companyId, $companyName, $depts, $roles, $admins, $users, $agents, $receptionist, $now)
+    /**
+     * Seed ID Types for the company
+     */
+    protected function seedIdTypes($companyId)
+    {
+        $idTypeNames = ['KTP', 'SIM', 'Passport', 'KITAS', 'KITAP'];
+        $idTypes = collect();
+
+        foreach ($idTypeNames as $typeName) {
+            $idTypes->push(IdType::firstOrCreate([
+                'company_id' => $companyId,
+                'id_type_name' => $typeName,
+            ]));
+        }
+
+        echo "  ✅ Created " . $idTypes->count() . " ID types.\n";
+        return $idTypes;
+    }
+
+    /**
+     * Seed Visitor Lanyards for the company
+     */
+    protected function seedVisitorLanyards($companyId)
+    {
+        $lanyards = collect();
+        $lanyardCount = 30; // Create 30 lanyards per company
+
+        for ($i = 1; $i <= $lanyardCount; $i++) {
+            $lanyardName = sprintf('Lanyard-%03d', $i);
+            $lanyards->push(VisitorLanyard::firstOrCreate(
+                [
+                    'company_id' => $companyId,
+                    'lanyard_name' => $lanyardName,
+                ],
+                [
+                    'status' => 1, // Available
+                ]
+            ));
+        }
+
+        echo "  ✅ Created " . $lanyards->count() . " visitor lanyards.\n";
+        return $lanyards;
+    }
+
+    protected function seedAssetsAndActivities($companyId, $companyName, $depts, $roles, $admins, $users, $agents, $receptionist, $now, $idTypes, $visitorLanyards)
     {
         mt_srand($companyId * 999);
         $daysBack = 1825; // 5 Years
@@ -273,12 +323,19 @@ class DatabaseSeeder extends Seeder
 
         $guestCounter = 1;
         $seedDays     = 730;
+        
+        // Track names used on each day to prevent same-day duplicates
+        $dailyNameTracker = [];
 
         for ($dayOffset = $seedDays; $dayOffset >= 0; $dayOffset--) {
             $date    = $now->copy()->subDays($dayOffset)->startOfDay();
             $dow     = $date->dayOfWeek; // 0=Sunday, 6=Saturday
             $mmdd    = $date->format('m-d');
             $isHoliday = in_array($mmdd, $holidays);
+            $dateKey = $date->toDateString();
+
+            // Initialize daily tracker for this date
+            $dailyNameTracker[$dateKey] = [];
 
             if ($isHoliday) {
                 $count = rand(0, 1);
@@ -302,16 +359,41 @@ class DatabaseSeeder extends Seeder
 
                 $entryTime = $date->copy()->setTime($jamInHour, $jamInMin, 0);
 
+                // Select a name that hasn't been used today
+                $attempts = 0;
+                $maxAttempts = count($guestNames) * 2; // Prevent infinite loop
+                do {
+                    $selectedName = Arr::random($guestNames);
+                    $attempts++;
+                    
+                    // If we've tried too many times, just use a unique indexed name
+                    if ($attempts >= $maxAttempts) {
+                        $selectedName = $guestNames[($guestCounter - 1) % count($guestNames)] . ' (' . $v . ')';
+                        break;
+                    }
+                } while (in_array($selectedName, $dailyNameTracker[$dateKey]));
+
+                // Mark this name as used for today
+                $dailyNameTracker[$dateKey][] = $selectedName;
+
+                // Randomly select an ID Type
+                $idType = $idTypes->random();
+                
+                // Randomly select a Visitor Lanyard
+                $lanyard = $visitorLanyards->random();
+
                 Guestbook::create([
                     'company_id'     => $companyId,
                     'department_id'  => Arr::random($depts)->department_id,
                     'date'           => $date->toDateString(),
                     'jam_in'         => sprintf('%02d:%02d:00', $jamInHour, $jamInMin),
                     'jam_out'        => sprintf('%02d:%02d:00', $jamOutHour, rand(0, 59)),
-                    'name'           => $guestNames[($guestCounter - 1) % count($guestNames)],
+                    'name'           => $selectedName,
                     'instansi'       => Arr::random($instansiList),
                     'keperluan'      => Arr::random($keperluanList),
                     'petugas_penjaga'=> $receptionist->full_name,
+                    'id_type_id'     => $idType->id,
+                    'visitor_lanyard_id' => $lanyard->id,
                     'created_at'     => $entryTime,
                     'updated_at'     => $entryTime,
                 ]);
@@ -320,7 +402,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        echo "  ✅ Created {$guestCounter} guestbook entries over {$seedDays} days.\n";
+        echo "  ✅ Created {$guestCounter} guestbook entries over {$seedDays} days with ID types and lanyards.\n";
 
         foreach (range(1, 80) as $i) {
             $booker = $users->random();
