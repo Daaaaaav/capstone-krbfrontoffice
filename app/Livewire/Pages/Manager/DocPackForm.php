@@ -13,12 +13,13 @@ use App\Models\Storage;
 use App\Models\Delivery;
 use App\Services\ImageHelper;
 use Carbon\Carbon;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Doc/Pack Form')]
 class DocPackForm extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads, HasManagerValidation;
 
     public string $direction = 'taken'; // taken (default) | deliver
     public string $itemType  = 'package'; // package (default) | document
@@ -42,16 +43,16 @@ class DocPackForm extends Component
             'direction'    => ['required', 'in:taken,deliver'],
             'itemType'     => ['required', 'in:package,document'],
             'storageId'    => ['required', 'integer', 'exists:storages,storage_id'],
-            'itemName'     => ['required', 'string', 'max:255'],
+            'itemName'     => $this->managerTextRules('Item name', required: true, maxLength: 255),
             'departmentId' => ['required', 'integer'],
             'userId'       => ['required', 'integer'],
             'photo'        => ['required', 'image', 'max:2048'],
         ];
 
         if ($this->direction === 'taken') {
-            $base['senderText'] = ['required', 'string', 'max:255'];
+            $base['senderText'] = $this->managerTextRules('Sender name', required: true, maxLength: 255);
         } else {
-            $base['receiverText'] = ['required', 'string', 'max:255'];
+            $base['receiverText'] = $this->managerTextRules('Receiver name', required: true, maxLength: 255);
         }
 
         return $base;

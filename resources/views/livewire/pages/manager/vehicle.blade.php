@@ -224,6 +224,7 @@
                             </label>
                             <input type="text"
                                 wire:model="{{ $editMode ? 'edit_name' : 'name' }}"
+                                data-validate="text"
                                 placeholder="e.g. Toyota Avanza"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground
                                        focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
@@ -241,6 +242,7 @@
                             </label>
                             <input type="text"
                                 wire:model="{{ $editMode ? 'edit_category' : 'category' }}"
+                                data-validate="text"
                                 placeholder="e.g. MPV, Sedan, Truck"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground
                                        focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
@@ -259,6 +261,7 @@
                                 </label>
                                 <input type="text"
                                     wire:model="{{ $editMode ? 'edit_plate_number' : 'plate_number' }}"
+                                    data-validate="text"
                                     placeholder="e.g. B 1234 ABC"
                                     class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground font-mono
                                            focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">

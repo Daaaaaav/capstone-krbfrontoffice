@@ -15,12 +15,13 @@ use App\Models\GuestbookQrCode;
 use App\Models\Department;
 use App\Models\User;
 use App\Mail\GuestbookQrMail;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Guestbook — Schedule Future Visitor')]
 class GuestbookForm extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
@@ -83,11 +84,11 @@ class GuestbookForm extends Component
     protected function rules(): array
     {
         return [
-            'name'           => ['required', 'string', 'max:255'],
-            'email'          => ['required', 'email', 'max:255'],
-            'phone_number'   => ['nullable', 'string', 'max:50'],
-            'instansi'       => ['nullable', 'string', 'max:255'],
-            'keperluan'      => ['required', 'string', 'max:255'],
+            'name'           => $this->managerTextRules('Name', required: true, maxLength: 255),
+            'email'          => $this->managerEmailRules(required: true),
+            'phone_number'   => $this->managerPhoneRules(required: false, maxLength: 50),
+            'instansi'       => $this->managerCompanyRules(required: false, maxLength: 255),
+            'keperluan'      => $this->managerTextRules('Purpose', required: true, maxLength: 255),
             'visitor_count'  => ['required', 'integer', 'min:1', 'max:999'],
             'storage_place'  => ['nullable', 'integer', 'min:1', 'max:100'],
             'scheduled_date' => ['required', 'date'],

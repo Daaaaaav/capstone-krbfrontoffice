@@ -9,12 +9,13 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Storage as StorageModel;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Manage Storages')]
 class Storage extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
 
     protected string $paginationTheme = 'tailwind';
 
@@ -89,18 +90,22 @@ class Storage extends Component
     protected function createRules(): array
     {
         return [
-            'code' => [
-                'required', 'string', 'max:100',
-                Rule::unique('storages', 'code')
-                    ->where(fn($q) => $q->where('company_id', $this->company_id))
-                    ->whereNull('deleted_at'),
-            ],
-            'name' => [
-                'required', 'string', 'max:150',
-                Rule::unique('storages', 'name')
-                    ->where(fn($q) => $q->where('company_id', $this->company_id))
-                    ->whereNull('deleted_at'),
-            ],
+            'code' => array_merge(
+                $this->managerTextRules('Storage code', required: true, maxLength: 100),
+                [
+                    Rule::unique('storages', 'code')
+                        ->where(fn($q) => $q->where('company_id', $this->company_id))
+                        ->whereNull('deleted_at'),
+                ]
+            ),
+            'name' => array_merge(
+                $this->managerTextRules('Storage name', required: true, maxLength: 150),
+                [
+                    Rule::unique('storages', 'name')
+                        ->where(fn($q) => $q->where('company_id', $this->company_id))
+                        ->whereNull('deleted_at'),
+                ]
+            ),
             'is_active' => ['boolean'],
         ];
     }
@@ -108,20 +113,24 @@ class Storage extends Component
     protected function editRules(): array
     {
         return [
-            'edit_code' => [
-                'required', 'string', 'max:100',
-                Rule::unique('storages', 'code')
-                    ->ignore($this->edit_id, 'storage_id')
-                    ->where(fn($q) => $q->where('company_id', $this->company_id))
-                    ->whereNull('deleted_at'),
-            ],
-            'edit_name' => [
-                'required', 'string', 'max:150',
-                Rule::unique('storages', 'name')
-                    ->ignore($this->edit_id, 'storage_id')
-                    ->where(fn($q) => $q->where('company_id', $this->company_id))
-                    ->whereNull('deleted_at'),
-            ],
+            'edit_code' => array_merge(
+                $this->managerTextRules('Storage code', required: true, maxLength: 100),
+                [
+                    Rule::unique('storages', 'code')
+                        ->ignore($this->edit_id, 'storage_id')
+                        ->where(fn($q) => $q->where('company_id', $this->company_id))
+                        ->whereNull('deleted_at'),
+                ]
+            ),
+            'edit_name' => array_merge(
+                $this->managerTextRules('Storage name', required: true, maxLength: 150),
+                [
+                    Rule::unique('storages', 'name')
+                        ->ignore($this->edit_id, 'storage_id')
+                        ->where(fn($q) => $q->where('company_id', $this->company_id))
+                        ->whereNull('deleted_at'),
+                ]
+            ),
             'edit_is_active' => ['boolean'],
         ];
     }
