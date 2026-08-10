@@ -63,21 +63,6 @@ class BookingHistory extends Component
 
     public bool $showPriorityDetailModal = false;
     public ?int $priorityDetailId        = null;
-    public bool $showPriorityEdit = false;
-    public ?int $priorityEditId = null;
-    public ?string $priorityEditLastEdited = null;
-    public ?string $priorityEditCreatedAt = null;
-    public array $priorityEdit = [
-        'meeting_title'       => '',
-        'date'                => '',
-        'start_time'          => '',
-        'end_time'            => '',
-        'number_of_attendees' => 1,
-        'special_notes'       => '',
-    ];
-    public ?int $priorityDeletingId = null;
-    public string $priorityDeletingSummary = '';
-    public bool $showPriorityDeleteModal = false;
     public string $activeTab = 'done'; // done (default) | rejected
 
     private const DONE_SET     = ['done', 'completed', '3'];
@@ -227,92 +212,6 @@ class BookingHistory extends Component
         if (!$this->priorityDetailId) return null;
         return PriorityRoomBooking::with(['room', 'manager'])
             ->find($this->priorityDetailId);
-    }
-
-    public function openPriorityEdit(int $id): void
-    {
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-
-        $prb = PriorityRoomBooking::forCompany($companyId)->find($id);
-        if (!$prb) return;
-
-        $this->priorityEditId          = $id;
-        $this->priorityEditLastEdited  = $prb->updated_at ? \Carbon\Carbon::parse($prb->updated_at)->format('d M Y, H:i') : null;
-        $this->priorityEditCreatedAt   = $prb->created_at ? \Carbon\Carbon::parse($prb->created_at)->format('d M Y, H:i') : null;
-        $this->priorityEdit = [
-            'meeting_title'       => (string) ($prb->meeting_title ?? ''),
-            'date'                => $prb->date ? \Carbon\Carbon::parse($prb->date)->toDateString() : '',
-            'start_time'          => $prb->start_time ? substr((string) $prb->start_time, 0, 5) : '',
-            'end_time'            => $prb->end_time   ? substr((string) $prb->end_time,   0, 5) : '',
-            'number_of_attendees' => (int) ($prb->number_of_attendees ?? 1),
-            'special_notes'       => (string) ($prb->special_notes ?? ''),
-        ];
-
-        $this->showPriorityDetailModal = false;
-        $this->showPriorityEdit        = true;
-    }
-
-    public function savePriorityEdit(): void
-    {
-        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
-
-        $this->validate([
-            'priorityEdit.meeting_title'       => 'required|string|max:255',
-            'priorityEdit.date'                => 'required|date',
-            'priorityEdit.start_time'          => 'required|string',
-            'priorityEdit.end_time'            => 'required|string',
-            'priorityEdit.number_of_attendees' => 'required|integer|min:1',
-            'priorityEdit.special_notes'       => 'nullable|string',
-        ]);
-
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-
-        $prb = PriorityRoomBooking::forCompany($companyId)->find($this->priorityEditId);
-
-        if ($prb) {
-            $prb->update([
-                'meeting_title'       => $this->priorityEdit['meeting_title'],
-                'date'                => $this->priorityEdit['date'],
-                'start_time'          => $this->priorityEdit['start_time'],
-                'end_time'            => $this->priorityEdit['end_time'],
-                'number_of_attendees' => $this->priorityEdit['number_of_attendees'],
-                'special_notes'       => $this->priorityEdit['special_notes'] ?: null,
-            ]);
-            $this->dispatch('toast', type: 'success', title: 'Saved', message: "Priority room booking #{$this->priorityEditId} updated.", duration: 3000);
-        }
-
-        $this->showPriorityEdit = false;
-        $this->reset('priorityEditId', 'priorityEdit', 'priorityEditLastEdited', 'priorityEditCreatedAt');
-    }
-
-    public function confirmPriorityDelete(int $id, string $summary): void
-    {
-        $this->priorityDeletingId      = $id;
-        $this->priorityDeletingSummary = $summary;
-        $this->showPriorityDeleteModal = true;
-    }
-
-    public function executePriorityDelete(): void
-    {
-        if (!$this->priorityDeletingId) return;
-
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-
-        $prb = PriorityRoomBooking::forCompany($companyId)->find($this->priorityDeletingId);
-
-        if (!$prb) {
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Record not found.', duration: 3000);
-            $this->showPriorityDeleteModal = false;
-            $this->priorityDeletingId      = null;
-            return;
-        }
-
-        $prb->delete();
-        $this->dispatch('toast', type: 'success', title: 'Deleted', message: "Priority room booking #{$this->priorityDeletingId} deleted.", duration: 3000);
-
-        $this->showPriorityDeleteModal = false;
-        $this->priorityDeletingId      = null;
-        $this->priorityDeletingSummary = '';
     }
 
     public function create(string $bookingType = 'meeting', string $status = 'completed'): void
