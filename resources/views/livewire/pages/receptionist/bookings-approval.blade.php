@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
+﻿<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
     use App\Models\Requirement; // ADDED: Required for the temporary bug workaround
@@ -322,22 +322,8 @@
 
                             {{-- Action buttons — only for conflict items; non-clashing ones auto-approve at start time --}}
                             @if($pbHasConflict)
-                            <div class="flex items-center gap-2 pt-1 border-t border-gray-100" wire:click.stop>
-                                <button type="button"
-                                    wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                    class="flex-1 inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    Accept &amp; Resolve Conflict
-                                </button>
-                                <button type="button"
-                                    wire:click.stop="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                    wire:loading.attr="disabled"
-                                    wire:target="openRoomPriorityApprovalByBookingId({{ $pb->id }})"
-                                    class="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition focus:outline-none">
-                                    Review
-                                </button>
+                            <div class="pt-1 border-t border-gray-100 text-xs text-orange-600">
+                                Pending conflict — managed by Manager on Priority Vehicle Status page
                             </div>
                             @endif
                         </div>
@@ -1631,14 +1617,6 @@
 
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex items-center justify-between gap-2">
-            @if(in_array($prd->status, ['pending_receipt', 'pending_cancellation']))
-            <button wire:click="takeActionFromDetail({{ $prd->id }})"
-                class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                Take Action
-            </button>
-            @else
-            <span></span>
-            @endif
             <button wire:click="closePriorityRoomDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
                 Close
             </button>
