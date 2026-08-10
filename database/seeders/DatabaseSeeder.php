@@ -25,6 +25,49 @@ use App\Models\{
     VisitorLanyard,
 };
 
+/**
+ * Database Seeder for KRB System
+ * 
+ * IMPORTANT: Shared Resource Strategy
+ * ===================================
+ * 
+ * This seeder treats ID Types and Visitor Lanyards as SHARED RESOURCES across companies.
+ * 
+ * Shared Resource Fallback Logic:
+ * 1. First, attempt to retrieve resources associated with the current company
+ * 2. If none exist, fallback to any existing resources from other companies
+ * 3. If no resources exist anywhere, throw a clear error with actionable guidance
+ * 
+ * CRITICAL RULES:
+ * - The seeder NEVER creates new ID Types or Visitor Lanyards
+ * - The seeder NEVER modifies existing resource records
+ * - The seeder NEVER changes the company_id ownership of shared resources
+ * - The seeder only REFERENCES existing resources by their IDs
+ * 
+ * Resource Ownership:
+ * - ID Types and Visitor Lanyards maintain their original company_id
+ * - When a company without its own resources uses shared resources, the original
+ *   ownership remains unchanged
+ * - Guestbook entries simply reference the resource IDs
+ * 
+ * Manual Configuration Required:
+ * - IT Officers must manually configure ID Types via: IT Officer > Manage ID Types
+ * - IT Officers must manually configure Visitor Lanyards via: IT Officer > Manage Visitor Lanyards
+ * - These resources should be configured BEFORE running the seeder
+ * 
+ * Lanyard Availability:
+ * - Historical guestbook entries (all checked out) may reuse the same lanyard on different dates
+ * - The seeder does NOT modify lanyard status/availability
+ * - Lanyard availability is managed by the application's checkout/return logic
+ * 
+ * Same-Day Visitor Uniqueness:
+ * - A visitor name may appear on different dates
+ * - A visitor name may NOT appear twice on the same date
+ * 
+ * @see App\Models\IdType
+ * @see App\Models\VisitorLanyard
+ * @see App\Models\Guestbook
+ */
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
@@ -190,9 +233,9 @@ class DatabaseSeeder extends Seeder
                 $agents = collect();
 
                 // Retrieve existing IdTypes and VisitorLanyards before seeding activities
-                // These must be manually created by IT Officers through the application interface
-                $idTypes = $this->getExistingIdTypes($companyId);
-                $visitorLanyards = $this->getExistingVisitorLanyards($companyId);
+                // These are shared resources across companies - prefer company-specific, fallback to global
+                $idTypes = $this->getSharedIdTypes($companyId, $companyName);
+                $visitorLanyards = $this->getSharedVisitorLanyards($companyId, $companyName);
 
                 $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now, $idTypes, $visitorLanyards);
             }
@@ -200,56 +243,88 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Retrieve existing ID Types for the company.
+     * Retrieve ID Types as a shared resource.
+     * 
+     * Shared resource fallback strategy:
+     * 1. First, try to retrieve ID Types associated with the current company.
+     * 2. If none exist, fallback to any existing ID Types from the database (shared resources).
+     * 3. If no ID Types exist anywhere, throw a clear error.
      * 
      * This method does NOT create new ID Types.
-     * IT Officers must manually create ID Types through the application
-     * before running the Database Seeder.
+     * IT Officers must manually configure ID Types through: IT Officer > Manage ID Types.
      *
      * @param int $companyId
+     * @param string $companyName
      * @return \Illuminate\Support\Collection
-     * @throws \RuntimeException if no ID Types exist for the company
+     * @throws \RuntimeException if no ID Types exist anywhere in the database
      */
-    protected function getExistingIdTypes($companyId)
+    protected function getSharedIdTypes(int $companyId, string $companyName)
     {
+        // Step 1: Try company-specific ID Types first
         $idTypes = IdType::where('company_id', $companyId)->get();
+
+        if ($idTypes->isNotEmpty()) {
+            echo "  ✅ Using " . $idTypes->count() . " company-specific ID Type(s).\n";
+            return $idTypes;
+        }
+
+        // Step 2: Fallback to shared ID Types from other companies
+        echo "  ⚠️  No company-specific ID Types found.\n";
+        $idTypes = IdType::query()->get();
 
         if ($idTypes->isEmpty()) {
             throw new \RuntimeException(
-                "No existing ID Types were found for company {$companyId}. "
-                . "Please create ID Types manually through the IT Officer interface before running the Database Seeder. "
-                . "Navigate to: IT Officer > Manage ID Types to add ID Types (e.g., KTP, SIM, Student ID, etc.)."
+                "\n❌ No ID Types exist anywhere in the database.\n"
+                . "Please manually configure at least one ID Type through:\n"
+                . "  IT Officer > Manage ID Types\n"
+                . "Example ID Types: KTP, SIM, Passport, Student ID, Employee ID, etc.\n"
             );
         }
 
-        echo "  ✅ Found " . $idTypes->count() . " existing ID type(s) for company {$companyId}.\n";
+        echo "     Using " . $idTypes->count() . " existing shared ID Type(s) from the database.\n";
         return $idTypes;
     }
 
     /**
-     * Retrieve existing Visitor Lanyards for the company.
+     * Retrieve Visitor Lanyards as a shared resource.
+     * 
+     * Shared resource fallback strategy:
+     * 1. First, try to retrieve Visitor Lanyards associated with the current company.
+     * 2. If none exist, fallback to any existing Visitor Lanyards from the database (shared resources).
+     * 3. If no Visitor Lanyards exist anywhere, throw a clear error.
      * 
      * This method does NOT create new Visitor Lanyards.
-     * IT Officers must manually create Visitor Lanyards through the application
-     * before running the Database Seeder.
+     * IT Officers must manually configure Visitor Lanyards through: IT Officer > Manage Visitor Lanyards.
      *
      * @param int $companyId
+     * @param string $companyName
      * @return \Illuminate\Support\Collection
-     * @throws \RuntimeException if no Visitor Lanyards exist for the company
+     * @throws \RuntimeException if no Visitor Lanyards exist anywhere in the database
      */
-    protected function getExistingVisitorLanyards($companyId)
+    protected function getSharedVisitorLanyards(int $companyId, string $companyName)
     {
+        // Step 1: Try company-specific Visitor Lanyards first
         $lanyards = VisitorLanyard::where('company_id', $companyId)->get();
+
+        if ($lanyards->isNotEmpty()) {
+            echo "  ✅ Using " . $lanyards->count() . " company-specific Visitor Lanyard(s).\n";
+            return $lanyards;
+        }
+
+        // Step 2: Fallback to shared Visitor Lanyards from other companies
+        echo "  ⚠️  No company-specific Visitor Lanyards found.\n";
+        $lanyards = VisitorLanyard::query()->get();
 
         if ($lanyards->isEmpty()) {
             throw new \RuntimeException(
-                "No existing Visitor Lanyards were found for company {$companyId}. "
-                . "Please create Visitor Lanyards manually through the IT Officer interface before running the Database Seeder. "
-                . "Navigate to: IT Officer > Manage Visitor Lanyards to add lanyards (e.g., Lanyard-001, Lanyard-002, etc.)."
+                "\n❌ No Visitor Lanyards exist anywhere in the database.\n"
+                . "Please manually configure Visitor Lanyards through:\n"
+                . "  IT Officer > Manage Visitor Lanyards\n"
+                . "Example lanyards: Lanyard-001, Lanyard-002, Lanyard-003, etc.\n"
             );
         }
 
-        echo "  ✅ Found " . $lanyards->count() . " existing visitor lanyard(s) for company {$companyId}.\n";
+        echo "     Using " . $lanyards->count() . " existing shared Visitor Lanyard(s) from the database.\n";
         return $lanyards;
     }
 
@@ -333,16 +408,17 @@ class DatabaseSeeder extends Seeder
         ];
 
         // Validate that we have ID Types and Visitor Lanyards before proceeding
+        // These are shared resources - they may belong to this company or be borrowed from others
         if ($idTypes->isEmpty()) {
             throw new \RuntimeException(
-                "Cannot seed Guestbook entries: No ID Types available for company {$companyId}. "
+                "Cannot seed Guestbook entries: No ID Types available. "
                 . "Please create ID Types manually before running the seeder."
             );
         }
 
         if ($visitorLanyards->isEmpty()) {
             throw new \RuntimeException(
-                "Cannot seed Guestbook entries: No Visitor Lanyards available for company {$companyId}. "
+                "Cannot seed Guestbook entries: No Visitor Lanyards available. "
                 . "Please create Visitor Lanyards manually before running the seeder."
             );
         }
@@ -402,11 +478,13 @@ class DatabaseSeeder extends Seeder
                 // Mark this name as used for today
                 $dailyNameTracker[$dateKey][] = $selectedName;
 
-                // Randomly select an existing ID Type
+                // Select shared resources (may belong to this company or another company)
+                // Randomly select an existing ID Type (shared resource)
                 $idType = $idTypes->random();
                 
-                // Randomly select an existing Visitor Lanyard
-                // For historical backlog data, we can reuse lanyards since all visitors have already checked out
+                // Randomly select an existing Visitor Lanyard (shared resource)
+                // For historical backlog data, we reuse lanyards since all visitors have already checked out
+                // The lanyard's company_id ownership is preserved - we only reference it
                 $lanyard = $visitorLanyards->random();
 
                 Guestbook::create([
@@ -429,7 +507,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        echo "  ✅ Created {$guestCounter} guestbook entries over {$seedDays} days using existing ID types and lanyards.\n";
+        echo "  ✅ Created " . ($guestCounter - 1) . " guestbook entries over {$seedDays} days using shared ID Types and Visitor Lanyards.\n";
 
         foreach (range(1, 80) as $i) {
             $booker = $users->random();
