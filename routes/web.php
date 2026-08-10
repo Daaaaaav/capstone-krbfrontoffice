@@ -221,7 +221,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
         // Priority bookings & operational forms
         Route::get('/manager-priority-room', ManagerPriorityRoomBooking::class)->name('manager.priority-room');
+        Route::get('/manager-priority-room-status', \App\Livewire\Pages\Manager\PriorityRoomBookingStatus::class)->name('manager.priority-room-status');
+        Route::get('/manager-priority-room-history', \App\Livewire\Pages\Manager\PriorityRoomBookingHistory::class)->name('manager.priority-room-history');
         Route::get('/manager-priority-vehicle', ManagerPriorityVehicleBooking::class)->name('manager.priority-vehicle');
+        Route::get('/manager-priority-vehicle-status', \App\Livewire\Pages\Manager\PriorityVehicleBookingStatus::class)->name('manager.priority-vehicle-status');
+        Route::get('/manager-priority-vehicle-history', \App\Livewire\Pages\Manager\PriorityVehicleBookingHistory::class)->name('manager.priority-vehicle-history');
         Route::get('/manager-guestbook-form', ManagerGuestbookForm::class)->name('manager.guestbook-form');
         Route::get('/manager-docpack-form', ManagerDocPackForm::class)->name('manager.docpack-form');
         Route::get('/manager-docpack-status', fn() => redirect()->route('manager.docpack-form'))->name('manager.docpack-status');

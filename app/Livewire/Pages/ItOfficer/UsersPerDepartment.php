@@ -17,7 +17,7 @@ use App\Models\Company;
 #[Title('Manage Users per Department')]
 class UsersPerDepartment extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
 
     public $search = '';
     public $showModal = false;
@@ -146,6 +146,7 @@ class UsersPerDepartment extends Component
             'password' => $this->editMode
                 ? 'nullable|min:6'
                 : 'required|min:6',
+
             'status' => 'required|in:active,inactive',
         ];
         

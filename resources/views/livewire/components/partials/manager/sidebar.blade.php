@@ -106,7 +106,7 @@
                 </div>
 
                 {{-- Priority Operations --}}
-                @php $priorityGroupActive = request()->routeIs('manager.priority-room','manager.priority-vehicle','manager.guestbook-form','manager.docpack-form','manager.docpack-status'); @endphp
+                @php $priorityGroupActive = request()->routeIs('manager.priority-room','manager.priority-room-status','manager.priority-room-history','manager.priority-vehicle','manager.priority-vehicle-status','manager.priority-vehicle-history','manager.guestbook-form','manager.docpack-form','manager.docpack-status'); @endphp
                 <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_priority') ?? 'true') }" x-init="$watch('expanded', v => localStorage.setItem('sg_priority', v))">
                     <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
                         <span class="group-label">Priority &amp; Operations</span>
@@ -114,34 +114,101 @@
                     </button>
                     <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
 
-                        @php $prRoomActive = request()->routeIs('manager.priority-room'); @endphp
-                        <a href="{{ route('manager.priority-room') }}" class="sidebar-unified-item {{ $prRoomActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($prRoomActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                    <path d="M10 21V11.5a1.5 1.5 0 013 0V21"/>
-                                    <path d="M17 8l-5-5-5 5"/>
-                                </svg>
-                            </div>
-                            <span class="item-label">Priority Room</span>
-                            <div class="tooltip">Priority Room Booking</div>
-                        </a>
+                        {{-- Priority Room Bookings Group --}}
+                        <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_priority_room') ?? 'false') }" x-init="$watch('expanded', v => localStorage.setItem('sg_priority_room', v))">
+                            <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                <span class="group-label">Priority Room</span>
+                                <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
+                                @php $prRoomFormActive = request()->routeIs('manager.priority-room'); @endphp
+                                <a href="{{ route('manager.priority-room') }}" class="sidebar-unified-item {{ $prRoomFormActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                    @if($prRoomFormActive)<div class="active-pip"></div>@endif
+                                    <div class="item-icon">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"/>
+                                            <line x1="5" y1="12" x2="19" y2="12"/>
+                                        </svg>
+                                    </div>
+                                    <span class="item-label">Create Booking</span>
+                                    <div class="tooltip">Create Priority Room Booking</div>
+                                </a>
 
-                        @php $prVehActive = request()->routeIs('manager.priority-vehicle'); @endphp
-                        <a href="{{ route('manager.priority-vehicle') }}" class="sidebar-unified-item {{ $prVehActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
-                            @if($prVehActive)<div class="active-pip"></div>@endif
-                            <div class="item-icon">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/>
-                                    <circle cx="7" cy="17" r="2"/>
-                                    <circle cx="17" cy="17" r="2"/>
-                                    <path d="M17 8l-5-5-5 5"/>
-                                </svg>
+                                @php $prRoomStatusActive = request()->routeIs('manager.priority-room-status'); @endphp
+                                <a href="{{ route('manager.priority-room-status') }}" class="sidebar-unified-item {{ $prRoomStatusActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                    @if($prRoomStatusActive)<div class="active-pip"></div>@endif
+                                    <div class="item-icon">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                    </div>
+                                    <span class="item-label">Status</span>
+                                    <div class="tooltip">Priority Room Booking Status</div>
+                                </a>
+
+                                @php $prRoomHistoryActive = request()->routeIs('manager.priority-room-history'); @endphp
+                                <a href="{{ route('manager.priority-room-history') }}" class="sidebar-unified-item {{ $prRoomHistoryActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                    @if($prRoomHistoryActive)<div class="active-pip"></div>@endif
+                                    <div class="item-icon">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 3h18v18H3z"/>
+                                            <path d="M8 8h8M8 12h8M8 16h5"/>
+                                        </svg>
+                                    </div>
+                                    <span class="item-label">History</span>
+                                    <div class="tooltip">Priority Room Booking History</div>
+                                </a>
                             </div>
-                            <span class="item-label">Priority Vehicle</span>
-                            <div class="tooltip">Priority Vehicle Booking</div>
-                        </a>
+                        </div>
+
+                        {{-- Priority Vehicle Bookings Group --}}
+                        <div class="sidebar-unified-group" x-data="{ expanded: JSON.parse(localStorage.getItem('sg_priority_vehicle') ?? 'false') }" x-init="$watch('expanded', v => localStorage.setItem('sg_priority_vehicle', v))">
+                            <button @click="expanded = !expanded" class="group-heading" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                <span class="group-label">Priority Vehicle</span>
+                                <svg class="group-chevron transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div x-show="expanded || (!(!sidebarCollapsed || sidebarLocked || isMobile))" class="group-items" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'pl-2' : ''" x-collapse>
+                                @php $prVehFormActive = request()->routeIs('manager.priority-vehicle'); @endphp
+                                <a href="{{ route('manager.priority-vehicle') }}" class="sidebar-unified-item {{ $prVehFormActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                    @if($prVehFormActive)<div class="active-pip"></div>@endif
+                                    <div class="item-icon">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"/>
+                                            <line x1="5" y1="12" x2="19" y2="12"/>
+                                        </svg>
+                                    </div>
+                                    <span class="item-label">Create Booking</span>
+                                    <div class="tooltip">Create Priority Vehicle Booking</div>
+                                </a>
+
+                                @php $prVehStatusActive = request()->routeIs('manager.priority-vehicle-status'); @endphp
+                                <a href="{{ route('manager.priority-vehicle-status') }}" class="sidebar-unified-item {{ $prVehStatusActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                    @if($prVehStatusActive)<div class="active-pip"></div>@endif
+                                    <div class="item-icon">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                    </div>
+                                    <span class="item-label">Status</span>
+                                    <div class="tooltip">Priority Vehicle Booking Status</div>
+                                </a>
+
+                                @php $prVehHistoryActive = request()->routeIs('manager.priority-vehicle-history'); @endphp
+                                <a href="{{ route('manager.priority-vehicle-history') }}" class="sidebar-unified-item {{ $prVehHistoryActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
+                                    @if($prVehHistoryActive)<div class="active-pip"></div>@endif
+                                    <div class="item-icon">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M3 3h18v18H3z"/>
+                                            <path d="M8 8h8M8 12h8M8 16h5"/>
+                                        </svg>
+                                    </div>
+                                    <span class="item-label">History</span>
+                                    <div class="tooltip">Priority Vehicle Booking History</div>
+                                </a>
+                            </div>
+                        </div>
 
                         @php $gbFormActive = request()->routeIs('manager.guestbook-form'); @endphp
                         <a href="{{ route('manager.guestbook-form') }}" class="sidebar-unified-item {{ $gbFormActive ? 'active' : '' }}" :class="(!sidebarCollapsed || sidebarLocked || isMobile) ? 'expanded' : ''">
