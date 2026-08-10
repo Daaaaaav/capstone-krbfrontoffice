@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -984,73 +984,6 @@
 </div>
 @endif
 
-{{-- Priority Vehicle Approval Modal --}}
-@if($showPriorityApprovalModal && $priorityApprovalBookingId)
-@php
-    $pvb = \App\Models\PriorityVehicleBooking::with(['vehicle','department','manager','cancelledBooking'])->find($priorityApprovalBookingId);
-@endphp
-<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-            </div>
-            <div>
-                <p class="font-semibold text-foreground">Priority Vehicle Booking â€” Action Required</p>
-                <p class="text-xs text-muted-foreground mt-0.5">A manager has requested cancellation of a pending booking.</p>
-            </div>
-        </div>
-
-        @if($pvb)
-        <div class="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Vehicle:</span>
-                <span class="font-semibold">{{ $pvb->vehicle?->name ?? 'â€”' }} {{ $pvb->vehicle?->plate_number ? '('.$pvb->vehicle->plate_number.')' : '' }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Borrower:</span>
-                <span class="font-semibold">{{ $pvb->borrower_name }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Schedule:</span>
-                <span class="font-semibold">{{ $pvb->start_at?->format('d M Y H:i') }} â€“ {{ $pvb->end_at?->format('H:i') }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Requested by:</span>
-                <span class="font-semibold">{{ $pvb->manager?->full_name ?? 'â€”' }}</span>
-            </div>
-            @if($pvb->cancelledBooking)
-            <div class="mt-2 pt-2 border-t border-border space-y-1">
-                <p class="text-xs font-semibold text-orange-600">Booking to cancel (currently pending):</p>
-                <p class="text-xs text-muted-foreground">#{{ $pvb->cancelledBooking->vehiclebooking_id }} â€” {{ $pvb->cancelledBooking->borrower_name }} Â· {{ $pvb->cancelledBooking->start_at?->format('d M H:i') }} â€“ {{ $pvb->cancelledBooking->end_at?->format('H:i') }}</p>
-            </div>
-            @endif
-        </div>
-        @endif
-
-        <p class="text-sm text-foreground">
-            <strong>Approve</strong> to cancel the conflicting pending booking and grant priority, or
-            <strong>Deny</strong> to keep the original booking.
-        </p>
-
-        <div class="flex flex-col sm:flex-row gap-2 pt-1">
-            <button wire:click="approvePriorityVehicle"
-                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                Approve &amp; Cancel Conflict
-            </button>
-            <button wire:click="denyPriorityVehicle"
-                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition">
-                Deny Request
-            </button>
-            <button wire:click="closePriorityApprovalModal"
-                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
-                Later
-            </button>
-        </div>
-    </div>
-</div>
-@endif
-
 {{-- Priority Vehicle Booking Detail Modal --}}
 @if($showPriorityVehicleDetailModal && $priorityVehicleDetailBooking)
 @php $pvd = $priorityVehicleDetailBooking; @endphp
@@ -1180,16 +1113,6 @@
 
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
-            @if($pvd->status === 'pending_cancellation')
-                {{-- Conflict booking: needs explicit approval from receptionist to cancel the existing booking --}}
-                <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
-                        wire:loading.attr="disabled"
-                        wire:target="approvePriorityVehicleById({{ $pvd->id }})"
-                        class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    Approve &amp; Cancel Conflict
-                </button>
-            @endif
             <button wire:click="closePriorityVehicleDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
                 Close
             </button>
