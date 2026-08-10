@@ -157,14 +157,20 @@ class GuestbookScanController extends Controller
         $allDone   = $scannedQr >= $totalQr;
 
         if ($allDone) {
+            // Store lanyard ID before updating
+            $lanyardId = $entry->visitor_lanyard_id;
+            
             $entry->update([
                 'jam_out'    => Carbon::now()->format('H:i'),
                 'qr_status'  => 'completed',
             ]);
 
-            // Reactivate the lanyard so it can be used again
-            if ($entry->visitor_lanyard_id) {
-                \App\Models\VisitorLanyard::where('id', $entry->visitor_lanyard_id)->update(['status' => 1]);
+            // Return the lanyard to available status
+            if ($lanyardId) {
+                $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+                if ($lanyard) {
+                    $lanyard->update(['status' => 1]);
+                }
             }
         }
 

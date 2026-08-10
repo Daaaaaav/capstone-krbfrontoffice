@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Guestbook as GuestbookModel;
 use App\Models\GuestbookQrCode;
 use App\Models\GuestbookCheckoutAttempt;
+use App\Models\VisitorLanyard;
 use Carbon\Carbon;
 
 #[Layout('layouts.receptionist')]
@@ -140,10 +141,23 @@ class GuestbookCheckout extends Component
 
         if ($allDone) {
             $this->qrStatus = 'completed';
+            $entry = GuestbookModel::where('guestbook_id', $this->guestbookId)->first();
+            
+            // Store lanyard ID before updating
+            $lanyardId = $entry ? $entry->visitor_lanyard_id : null;
+            
             GuestbookModel::where('guestbook_id', $this->guestbookId)->update([
                 'qr_status' => 'completed',
                 'jam_out'   => $now->format('H:i'),
             ]);
+            
+            // Return the lanyard to available status
+            if ($lanyardId) {
+                $lanyard = \App\Models\VisitorLanyard::find($lanyardId);
+                if ($lanyard) {
+                    $lanyard->update(['status' => 1]);
+                }
+            }
         }
 
         $result = [

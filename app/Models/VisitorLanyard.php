@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
@@ -80,8 +80,4 @@ class VisitorLanyard extends Model
     {
         return $query->where('status', 0);
     }
-
-class VisitorLanyard extends Model
-{
-    protected $guarded = [];
 }
