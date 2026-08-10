@@ -52,6 +52,9 @@ class Vehiclestatus extends Component
     public string $priorityVehicleRejectReason     = '';
     public bool $showFilterModal = false;
 
+    // Notification panel state
+    public bool $showNotifPanel = false;
+
     public bool $showApproveModal = false;
     public ?int $approveId = null;
     public bool $showDoneModal = false;
@@ -474,6 +477,49 @@ class Vehiclestatus extends Component
         $this->vehicleFilter = null;
         $this->resetPage();
         $this->showFilterModal = false;
+    }
+
+    public function toggleNotifPanel(): void
+    {
+        $this->showNotifPanel = !$this->showNotifPanel;
+    }
+
+    public function closeNotifPanel(): void
+    {
+        $this->showNotifPanel = false;
+    }
+
+    /**
+     * Get unread priority vehicle notifications for the current receptionist.
+     */
+    public function getVehicleNotifsProperty()
+    {
+        $userId = \Illuminate\Support\Facades\Auth::id();
+        $companyId = optional(\Illuminate\Support\Facades\Auth::user())->company_id;
+
+        if (!$userId || !$companyId) {
+            return collect();
+        }
+
+        return ManagerNotification::query()
+            ->forCompany($companyId)
+            ->forRecipient($userId)
+            ->whereIn('type', [
+                ManagerNotification::TYPE_PRIORITY_VEHICLE_DIRECT,
+                ManagerNotification::TYPE_VEHICLE_CANCEL_REQUEST,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Get count of unread priority vehicle notifications.
+     */
+    public function getVehicleNotifCountProperty(): int
+    {
+        return $this->vehicleNotifs
+            ->where('is_read', false)
+            ->count();
     }
 
 }
