@@ -161,7 +161,6 @@ class ManagerUsers extends Component
                     'status'       => $this->status,
                     'company_id'   => $companyId,
                     'role_id'      => $role->role_id,
-                    'is_agent'     => 'no',
                 ]);
 
                 $this->dispatch(

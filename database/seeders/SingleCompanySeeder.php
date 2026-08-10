@@ -76,7 +76,6 @@ class SingleCompanySeeder extends Seeder
                         'full_name' => "Manager {$companyName}",
                         'phone_number' => '08000000000',
                         'password' => Hash::make('superpassword'),
-                        'is_agent' => 'no', 
                     ]
                 );
                 echo "  ✅ Manager User: {$manager->email} (managerpassword)\n";
@@ -90,7 +89,6 @@ class SingleCompanySeeder extends Seeder
                         'full_name' => "Receptionist {$companyName}",
                         'phone_number' => '087812345678',
                         'password' => Hash::make('receppassword'),
-                        'is_agent' => 'no',
                     ]
                 );
                 echo "  ✅ Receptionist User: {$receptionist->email} (receppassword)\n";

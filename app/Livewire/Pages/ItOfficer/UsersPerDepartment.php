@@ -251,7 +251,6 @@ class UsersPerDepartment extends Component
                     'company_id'   => $this->selectedCompanyId,
                     'department_id' => $this->selectedDepartmentId,
                     'role_id'      => $this->selectedRoleId,
-                    'is_agent'     => 'no',
                 ]);
 
                 $this->dispatch(
