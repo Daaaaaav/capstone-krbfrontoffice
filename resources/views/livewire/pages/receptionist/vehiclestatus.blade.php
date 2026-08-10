@@ -965,9 +965,9 @@
                         <p class="text-[10px] text-muted-foreground/60 mt-1">{{ $n->created_at->diffForHumans() }}</p>
                     </div>
                     @if($n->isPendingAction())
-                    <button wire:click="openPriorityApprovalModal({{ $n->id }})"
+                    <button wire:click="openPriorityVehicleDetail({{ $n->notifiable_id }})"
                         class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
-                        Review
+                        View
                     </button>
                     @elseif($n->action_taken)
                     <span class="shrink-0 text-[11px] font-semibold {{ $n->action_taken === 'approved' ? 'text-emerald-600' : 'text-red-500' }}">
