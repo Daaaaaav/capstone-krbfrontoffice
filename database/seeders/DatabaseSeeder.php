@@ -189,37 +189,67 @@ class DatabaseSeeder extends Seeder
                 $users = collect([$manager, $receptionist]);
                 $agents = collect();
 
-                // Seed IdTypes and VisitorLanyards before seeding activities
-                $idTypes = $this->seedIdTypes($companyId);
-                $visitorLanyards = $this->seedVisitorLanyards($companyId);
+                // Retrieve existing IdTypes and VisitorLanyards before seeding activities
+                // These must be manually created by IT Officers through the application interface
+                $idTypes = $this->getExistingIdTypes($companyId);
+                $visitorLanyards = $this->getExistingVisitorLanyards($companyId);
 
                 $this->seedAssetsAndActivities($companyId, $companyName, $depts, $roles, collect(), $users, collect(), $receptionist, $now, $idTypes, $visitorLanyards);
             }
         });
     }
 
-    protected function seedIdTypes($companyId)
+    /**
+     * Retrieve existing ID Types for the company.
+     * 
+     * This method does NOT create new ID Types.
+     * IT Officers must manually create ID Types through the application
+     * before running the Database Seeder.
+     *
+     * @param int $companyId
+     * @return \Illuminate\Support\Collection
+     * @throws \RuntimeException if no ID Types exist for the company
+     */
+    protected function getExistingIdTypes($companyId)
     {
-        $idTypeNames = ['KTP', 'SIM', 'Kartu Mahasiswa/Pelajar (Student ID)', 'KITAS/KITAP (Foreign Identity Card)'];
-        $idTypes = collect();
+        $idTypes = IdType::where('company_id', $companyId)->get();
 
-        foreach ($idTypeNames as $typeName) {
-            $idTypes->push(IdType::firstOrCreate([
-                'company_id' => $companyId,
-                'id_type_name' => $typeName,
-            ]));
+        if ($idTypes->isEmpty()) {
+            throw new \RuntimeException(
+                "No existing ID Types were found for company {$companyId}. "
+                . "Please create ID Types manually through the IT Officer interface before running the Database Seeder. "
+                . "Navigate to: IT Officer > Manage ID Types to add ID Types (e.g., KTP, SIM, Student ID, etc.)."
+            );
         }
 
-        echo "  ✅ Created " . $idTypes->count() . " ID types.\n";
+        echo "  ✅ Found " . $idTypes->count() . " existing ID type(s) for company {$companyId}.\n";
         return $idTypes;
     }
 
-    protected function seedVisitorLanyards($companyId)
+    /**
+     * Retrieve existing Visitor Lanyards for the company.
+     * 
+     * This method does NOT create new Visitor Lanyards.
+     * IT Officers must manually create Visitor Lanyards through the application
+     * before running the Database Seeder.
+     *
+     * @param int $companyId
+     * @return \Illuminate\Support\Collection
+     * @throws \RuntimeException if no Visitor Lanyards exist for the company
+     */
+    protected function getExistingVisitorLanyards($companyId)
     {
-        $lanyards = collect();
-        $lanyardCount = 10;
+        $lanyards = VisitorLanyard::where('company_id', $companyId)->get();
 
-        echo "  ✅ Created " . $lanyards->count() . " visitor lanyards.\n";
+        if ($lanyards->isEmpty()) {
+            throw new \RuntimeException(
+                "No existing Visitor Lanyards were found for company {$companyId}. "
+                . "Please create Visitor Lanyards manually through the IT Officer interface before running the Database Seeder. "
+                . "Navigate to: IT Officer > Manage Visitor Lanyards to add lanyards (e.g., Lanyard-001, Lanyard-002, etc.)."
+            );
+        }
+
+        echo "  ✅ Found " . $lanyards->count() . " existing visitor lanyard(s) for company {$companyId}.\n";
         return $lanyards;
     }
 
@@ -302,6 +332,21 @@ class DatabaseSeeder extends Seeder
             '12-26', // Post=Christmas
         ];
 
+        // Validate that we have ID Types and Visitor Lanyards before proceeding
+        if ($idTypes->isEmpty()) {
+            throw new \RuntimeException(
+                "Cannot seed Guestbook entries: No ID Types available for company {$companyId}. "
+                . "Please create ID Types manually before running the seeder."
+            );
+        }
+
+        if ($visitorLanyards->isEmpty()) {
+            throw new \RuntimeException(
+                "Cannot seed Guestbook entries: No Visitor Lanyards available for company {$companyId}. "
+                . "Please create Visitor Lanyards manually before running the seeder."
+            );
+        }
+
         $guestCounter = 1;
         $seedDays     = 730;
         
@@ -357,10 +402,11 @@ class DatabaseSeeder extends Seeder
                 // Mark this name as used for today
                 $dailyNameTracker[$dateKey][] = $selectedName;
 
-                // Randomly select an ID Type
+                // Randomly select an existing ID Type
                 $idType = $idTypes->random();
                 
-                // Randomly select a Visitor Lanyard
+                // Randomly select an existing Visitor Lanyard
+                // For historical backlog data, we can reuse lanyards since all visitors have already checked out
                 $lanyard = $visitorLanyards->random();
 
                 Guestbook::create([
@@ -383,7 +429,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        echo "  ✅ Created {$guestCounter} guestbook entries over {$seedDays} days with ID types and lanyards.\n";
+        echo "  ✅ Created {$guestCounter} guestbook entries over {$seedDays} days using existing ID types and lanyards.\n";
 
         foreach (range(1, 80) as $i) {
             $booker = $users->random();
