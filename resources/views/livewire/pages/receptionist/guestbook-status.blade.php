@@ -9,12 +9,12 @@
         $icoAvatar = 'w-10 h-10 rounded-xl flex items-center justify-center text-white font-semibold text-sm shrink-0';
 
         function gbsFmtTime($v) {
-            if (!$v) return 'â€”';
-            try { return Carbon::parse($v)->format('H:i'); } catch (\Throwable $e) { return is_string($v) ? substr($v, 0, 5) : 'â€”'; }
+            if (!$v) return '—';
+            try { return Carbon::parse($v)->format('H:i'); } catch (\Throwable $e) { return is_string($v) ? substr($v, 0, 5) : '—'; }
         }
         function gbsFmtDate($v) {
-            if (!$v) return 'â€”';
-            try { return Carbon::parse($v)->format('d M Y'); } catch (\Throwable $e) { return 'â€”'; }
+            if (!$v) return '—';
+            try { return Carbon::parse($v)->format('d M Y'); } catch (\Throwable $e) { return '—'; }
         }
     @endphp
 
@@ -45,7 +45,7 @@
                             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#4A2F24] text-[#CDDEA7] text-xs font-semibold">
                                 <x-heroicon-o-user class="w-3 h-3"/>
                                 {{ $petugasFilter }}
-                                <button type="button" wire:click="clearPetugasFilter" class="ml-0.5 hover:text-white font-bold">Ã—</button>
+                                <button type="button" wire:click="clearPetugasFilter" class="ml-0.5 hover:text-white font-bold">×</button>
                             </span>
                         @endif
 
@@ -266,7 +266,7 @@
                                         @endif
                                         <div class="flex gap-1.5">
                                             <span class="text-gray-400 shrink-0">{{ $isScheduled ? 'Scheduled' : __('app.check_in_label') }}:</span>
-                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} Â· {{ gbsFmtTime($e->jam_in) }}</span>
+                                            <span class="font-semibold {{ $isScheduled ? 'text-amber-700' : 'text-emerald-700' }}">{{ gbsFmtDate($e->date) }} · {{ gbsFmtTime($e->jam_in) }}</span>
                                         </div>
                                         @if($e->email && !$e->qr_status)
                                             <div class="flex gap-1.5">
@@ -430,7 +430,7 @@
                                                 <div class="flex flex-col">
                                                     <div>
                                                         <span class="text-gray-900 font-medium">{{ gbsFmtDate($e->date) }}</span>
-                                                        <span class="mx-1 text-gray-300">Â·</span>
+                                                        <span class="mx-1 text-gray-300">·</span>
                                                         <span class="font-semibold {{ $isScheduled ? 'text-amber-600' : 'text-emerald-600' }}">{{ gbsFmtTime($e->jam_in) }}</span>
                                                     </div>
                                                     <div class="text-[10px] text-gray-400 mt-0.5 truncate">{{ __('app.officer_label') }}: {{ $e->petugas_penjaga }}</div>
@@ -449,7 +449,7 @@
                                                         <span class="timer-text">00:00:00</span>
                                                     </span>
                                                 @else
-                                                    <span class="text-xs text-gray-400">â€”</span>
+                                                    <span class="text-xs text-gray-400">—</span>
                                                 @endif
                                             </td>
                                             
