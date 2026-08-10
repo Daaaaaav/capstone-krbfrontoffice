@@ -220,7 +220,7 @@
         @if($activeTab === 'status')
         <div class="space-y-4">
             <div class="flex flex-wrap items-center gap-2">
-                @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $val => $lbl)
+                @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'on_road' => 'On the Road', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $val => $lbl)
                 <button wire:click="$set('statusFilter','{{ $val }}')"
                     class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition {{ $statusFilter === $val ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80' }}">
                     {{ $lbl }}
@@ -231,7 +231,9 @@
             @forelse($myBookings as $b)
             @php
                 $color = match(true) {
+                    $b->status === 'on_progress' => ['bg'=>'bg-blue-500/10','text'=>'text-blue-600','border'=>'border-blue-500/30'],
                     $b->status === 'approved'   => ['bg'=>'bg-emerald-500/10','text'=>'text-emerald-600','border'=>'border-emerald-500/30'],
+                    $b->status === 'completed'  => ['bg'=>'bg-gray-500/10','text'=>'text-gray-600','border'=>'border-gray-500/30'],
                     in_array($b->status,['pending_receipt','pending_cancellation']) => ['bg'=>'bg-amber-500/10','text'=>'text-amber-600','border'=>'border-amber-500/30'],
                     default => ['bg'=>'bg-red-500/10','text'=>'text-red-600','border'=>'border-red-500/30'],
                 };
@@ -259,6 +261,11 @@
                         @if($b->isActionable())
                         <button wire:click="openCancelModal({{ $b->id }})" class="inline-flex items-center gap-1 px-3 h-8 text-xs font-semibold rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/5 transition">
                             Cancel
+                        </button>
+                        @elseif($b->status === 'on_progress')
+                        <button wire:click="openMarkDoneModal({{ $b->id }})" class="inline-flex items-center gap-1 px-3 h-8 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Mark Done
                         </button>
                         @endif
                     </div>
@@ -396,3 +403,65 @@
 </div>
 @endif
 </div>
+
+    {{-- Mark Done Modal --}}
+    @if($showMarkDoneModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div>
+                    <p class="font-semibold text-foreground">Mark Priority Booking as Done</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">Complete this priority vehicle booking</p>
+                </div>
+            </div>
+            <p class="text-sm text-muted-foreground">
+                This will mark the priority vehicle booking as completed. Optionally provide evidence photo.
+            </p>
+            <div>
+                <label class="block text-xs font-semibold text-muted-foreground mb-2">Return Evidence Photo (Optional)</label>
+                <div x-data="{ 
+                    preview: null,
+                    capturePhoto() {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.capture = 'environment';
+                        input.onchange = (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                    this.preview = ev.target.result;
+                                    @this.set('markDonePhotoData', ev.target.result);
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        };
+                        input.click();
+                    }
+                }">
+                    <div x-show="!preview" @click="capturePhoto()" class="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:bg-muted/30 transition">
+                        <svg class="w-8 h-8 mx-auto mb-2 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <p class="text-xs text-muted-foreground">Tap to capture photo</p>
+                    </div>
+                    <div x-show="preview" class="relative">
+                        <img :src="preview" class="w-full h-48 object-cover rounded-lg border border-border">
+                        <button type="button" @click="preview = null; @this.set('markDonePhotoData', null)" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-destructive text-white hover:bg-destructive/90 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button wire:click="submitMarkDone" wire:loading.attr="disabled" class="{{ $btnPrimary }} flex-1 bg-emerald-600 hover:bg-emerald-700">
+                    <svg wire:loading wire:target="submitMarkDone" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    Confirm Done
+                </button>
+                <button wire:click="closeMarkDoneModal" class="{{ $btnOutline }} flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+    @endif
