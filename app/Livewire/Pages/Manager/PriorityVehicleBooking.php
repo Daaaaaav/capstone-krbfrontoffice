@@ -431,6 +431,9 @@ class PriorityVehicleBooking extends Component
     public bool   $showVehicleSidebarReject   = false;
     public string $vehicleSidebarRejectReason = '';
 
+    // REMOVED: Mark Done modal (now handled by dedicated Priority Vehicle Status page)
+    // Managers should use /manager-priority-vehicle-status for lifecycle management
+
     public function openVehicleSidebarDetail(int $vehicleBookingId): void
     {
         $this->vehicleSidebarDetailId   = $vehicleBookingId;
@@ -533,6 +536,8 @@ class PriorityVehicleBooking extends Component
                         PriorityVehicleBookingModel::STATUS_PENDING_CANCELLATION,
                     ]),
                     'approved' => $q->where('status', PriorityVehicleBookingModel::STATUS_APPROVED),
+                    'on_road'  => $q->where('status', PriorityVehicleBookingModel::STATUS_ON_PROGRESS),
+                    'completed' => $q->where('status', 'completed'),
                     'rejected' => $q->whereIn('status', [
                         PriorityVehicleBookingModel::STATUS_REJECTED,
                         PriorityVehicleBookingModel::STATUS_CONFLICT_DENIED,
