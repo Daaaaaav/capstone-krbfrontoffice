@@ -29,9 +29,6 @@ class UsersPerDepartment extends Component
     public $password = '';
     public $phone = '';
     public $status = 'active';
-    public $selectedCompanyId = null;
-    public $selectedDepartmentId = null;
-    public $selectedRoleId = null;
     
     // Track expanded departments
     public $expandedDepartments = [];
@@ -78,10 +75,6 @@ class UsersPerDepartment extends Component
     {
         $this->resetForm();
         $this->editMode = false;
-        
-        // Pre-select the IT Officer's company by default
-        $this->selectedCompanyId = Auth::user()->company_id;
-        
         $this->showModal = true;
     }
 
@@ -96,11 +89,6 @@ class UsersPerDepartment extends Component
             $this->phone = $user->phone_number;
             $this->status = $user->status ?? 'active';
             $this->password = '';
-            
-            // Load existing relationships for edit mode
-            $this->selectedCompanyId = $user->company_id;
-            $this->selectedDepartmentId = $user->department_id;
-            $this->selectedRoleId = $user->role_id;
 
             $this->editMode = true;
             $this->showModal = true;
@@ -130,71 +118,29 @@ class UsersPerDepartment extends Component
         $this->password = '';
         $this->phone = '';
         $this->status = 'active';
-        $this->selectedCompanyId = null;
-        $this->selectedDepartmentId = null;
-        $this->selectedRoleId = null;
     }
 
     protected function rules()
     {
-        $rules = [
-            'name' => 'required|string|max:255',
-            'email' =>
-                'required|email|max:255|unique:users,email,' .
-                ($this->userId ?? 'NULL') .
-                ',user_id',
-            'phone' => 'nullable|string|max:20',
+        return [
+            'name' => $this->managerTextRules('Name', required: true, maxLength: 255),
+
+            'email' => $this->managerEmailRules(
+                required: true,
+                uniqueTable: 'users',
+                uniqueColumn: 'email',
+                ignoreId: $this->userId ?? null,
+                ignoreColumn: 'user_id'
+            ),
+
+            'phone' => $this->managerPhoneRules(required: false, maxLength: 20),
+
             'password' => $this->editMode
                 ? 'nullable|min:6'
                 : 'required|min:6',
 
             'status' => 'required|in:active,inactive',
         ];
-        
-        // For create mode, require company and role
-        if (!$this->editMode) {
-            $rules['selectedCompanyId'] = 'required|exists:companies,company_id';
-            $rules['selectedRoleId'] = 'required|exists:roles,role_id';
-            $rules['selectedDepartmentId'] = 'nullable|exists:departments,department_id';
-        } else {
-            // For edit mode, still validate if provided
-            $rules['selectedCompanyId'] = 'sometimes|required|exists:companies,company_id';
-            $rules['selectedRoleId'] = 'sometimes|required|exists:roles,role_id';
-            $rules['selectedDepartmentId'] = 'nullable|exists:departments,department_id';
-        }
-        
-        return $rules;
-    }
-
-    protected function validationAttributes()
-    {
-        return [
-            'name' => 'Full Name',
-            'email' => 'Email',
-            'phone' => 'Phone Number',
-            'password' => 'Password',
-            'status' => 'Status',
-            'selectedCompanyId' => 'Company',
-            'selectedDepartmentId' => 'Department',
-            'selectedRoleId' => 'Role',
-        ];
-    }
-
-    public function updatedSelectedCompanyId()
-    {
-        // Reset department when company changes to prevent invalid selection
-        $this->selectedDepartmentId = null;
-    }
-
-    public function getAvailableDepartmentsProperty()
-    {
-        if (!$this->selectedCompanyId) {
-            return collect();
-        }
-        
-        return Department::where('company_id', $this->selectedCompanyId)
-            ->orderBy('department_name')
-            ->get();
     }
 
     public function save()
@@ -204,22 +150,15 @@ class UsersPerDepartment extends Component
         $this->validate();
 
         try {
+            $companyId = Auth::user()->company_id;
+
             if ($this->editMode) {
                 $user = User::where('user_id', $this->userId)->firstOrFail();
 
                 $user->full_name = $this->name;
                 $user->email = $this->email;
-                $user->phone_number = $this->phone ?: '-';
+                $user->phone_number = $this->phone;
                 $user->status = $this->status;
-                
-                // Update relationships if provided
-                if ($this->selectedCompanyId) {
-                    $user->company_id = $this->selectedCompanyId;
-                }
-                if ($this->selectedRoleId) {
-                    $user->role_id = $this->selectedRoleId;
-                }
-                $user->department_id = $this->selectedDepartmentId; // Can be null
 
                 if (!empty($this->password)) {
                     $user->password = Hash::make($this->password);
@@ -235,41 +174,20 @@ class UsersPerDepartment extends Component
                     duration: 3000
                 );
             } else {
-                // Validate company-department relationship
-                if ($this->selectedDepartmentId) {
-                    $department = Department::find($this->selectedDepartmentId);
-                    if (!$department || $department->company_id != $this->selectedCompanyId) {
-                        $this->addError('selectedDepartmentId', 'The selected department does not belong to the selected company.');
-                        return;
-                    }
-                }
-
-                User::create([
-                    'full_name'    => $this->name,
-                    'email'        => $this->email,
-                    'password'     => Hash::make($this->password),
-                    'phone_number' => $this->phone ?: '-',
-                    'status'       => $this->status,
-                    'company_id'   => $this->selectedCompanyId,
-                    'department_id' => $this->selectedDepartmentId,
-                    'role_id'      => $this->selectedRoleId,
-                ]);
-
+                // For create, you would need to specify role and department
+                // This is simplified - you may want to add role/department fields to the form
                 $this->dispatch(
                     'toast',
-                    type: 'success',
-                    title: 'Success',
-                    message: 'User created successfully!',
-                    duration: 3000
+                    type: 'info',
+                    title: 'Info',
+                    message: 'User creation not implemented in this view. Use role-specific pages.',
+                    duration: 4000
                 );
+                $this->closeModal();
+                return;
             }
 
             $this->closeModal();
-            
-            // Reset all department pages to refresh data
-            foreach ($this->departmentPages as $deptId => $page) {
-                $this->departmentPages[$deptId] = 1;
-            }
 
         } catch (\Exception $e) {
             $this->dispatch(
@@ -324,10 +242,6 @@ class UsersPerDepartment extends Component
     {
         try {
             $companyId = Auth::user()->company_id;
-
-            // Get all companies and roles for the create/edit form
-            $companies = Company::orderBy('company_name')->get();
-            $roles = Role::orderBy('name')->get();
 
             // Get departments with user counts
             // Match Receptionist behavior: count ALL users in department, regardless of role
@@ -423,7 +337,7 @@ class UsersPerDepartment extends Component
 
             return view(
                 'livewire.pages.it-officer.users-per-department',
-                compact('departments', 'departmentUsers', 'unassignedData', 'companies', 'roles')
+                compact('departments', 'departmentUsers', 'unassignedData')
             );
 
         } catch (\Exception $e) {
@@ -447,8 +361,6 @@ class UsersPerDepartment extends Component
                         'per_page' => 10,
                         'last_page' => 1,
                     ],
-                    'companies' => collect(),
-                    'roles' => collect(),
                 ]
             );
         }
