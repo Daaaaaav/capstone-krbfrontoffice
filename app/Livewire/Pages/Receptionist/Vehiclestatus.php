@@ -717,22 +717,4 @@ class Vehiclestatus extends Component
             ->count();
     }
 
-    // Stub methods referenced in the Priority Vehicle Reject modal blade section.
-    // The modal is guarded by @if($showPriorityVehicleRejectModal) which is never
-    // set to true from the receptionist side (view-only), but the stubs prevent
-    // Livewire from throwing if the modal is somehow triggered.
-    public function closePriorityVehicleReject(): void
-    {
-        $this->showPriorityVehicleRejectModal = false;
-        $this->priorityVehicleRejectId        = null;
-        $this->priorityVehicleRejectReason    = '';
-    }
-
-    public function submitPriorityVehicleReject(): void
-    {
-        // Receptionist is view-only for Priority Vehicle Bookings.
-        // This method intentionally does nothing.
-        $this->closePriorityVehicleReject();
-    }
-
 }
