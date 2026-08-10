@@ -23,42 +23,16 @@ class DatabaseSeeder extends Seeder
 
         DB::transaction(function () {
             $companies = [
-                [
-                    'Kebun Raya Bogor',
-                    'krbogor.id',
-                    'https://tiketkebunraya.id/assets/images/kebun-raya-bogor.png',
-                ],
-                [
-                    'Kebun Raya Bali',
-                    'krbali.id',
-                    'https://tiketkebunraya.id/assets/images/kebun-raya-bali.png',
-                ],
-                [
-                    'Kebun Raya Cibodas',
-                    'krcibodas.id',
-                    'https://tiketkebunraya.id/assets/images/kebun-raya-cibodas.png',
-                ],
-                [
-                    'Kebun Raya Purwodadi',
-                    'krpurwodadi.id',
-                    'https://tiketkebunraya.id/assets/images/kebun-raya-purwodadi.png',
-                ],
+                ['Kebun Raya Bogor', 'krbogor.id'],
+                ['Kebun Raya Bali', 'krbali.id'],
+                ['Kebun Raya Cibodas', 'krcibodas.id'],
+                ['Kebun Raya Purwodadi', 'krpurwodadi.id'],
             ];
-
-            // =========================================================
-            // DEFAULT COMPANY
-            // =========================================================
 
             Company::firstOrCreate(
                 ['company_id' => 1],
                 ['company_name' => 'Default Company']
             );
-
-            // =========================================================
-            // CUSTOM USERS
-            // Only Manager + Receptionist are seeded.
-            // IT Officer and other users are intentionally skipped.
-            // =========================================================
 
             $customUsers = [
                 [
@@ -84,17 +58,7 @@ class DatabaseSeeder extends Seeder
                 ],
             ];
 
-            // Only these roles are allowed from Custom Users.
-            $allowedUserRoles = [
-                'Manager',
-                'Receptionist',
-            ];
-
-            // =========================================================
-            // SEED EACH COMPANY
-            // =========================================================
-
-            foreach ($companies as [$companyName, $domain, $imageUrl]) {
+            foreach ($companies as [$companyName, $domain]) {
                 echo "\n🌿 Seeding {$companyName}...\n";
 
                 $company = Company::firstOrCreate(
@@ -102,15 +66,10 @@ class DatabaseSeeder extends Seeder
                     [
                         'company_address' => 'Jl. Raya ' . $companyName,
                         'company_email' => "info@{$domain}",
-                        'image' => $imageUrl,
                     ]
                 );
 
                 $companyId = $company->company_id;
-
-                // =====================================================
-                // ROLES
-                // =====================================================
 
                 $roles = [];
 
@@ -119,10 +78,6 @@ class DatabaseSeeder extends Seeder
                         'name' => $roleName,
                     ]);
                 }
-
-                // =====================================================
-                // DEPARTMENTS
-                // =====================================================
 
                 $deptNames = [
                     'IT',
@@ -147,77 +102,31 @@ class DatabaseSeeder extends Seeder
                     ]);
                 }
 
-                // =====================================================
-                // CUSTOM USERS
-                // Only Manager + Receptionist
-                // =====================================================
-
-                $users = collect();
-
                 foreach ($customUsers as $data) {
-
-                    if (!in_array($data['role'], $allowedUserRoles, true)) {
-                        continue;
-                    }
-
-                    $user = User::firstOrCreate(
+                    User::firstOrCreate(
                         ['email' => $data['email']],
                         [
                             'company_id' => $companyId,
-                            'department_id' =>
-                                $depts[$data['department']]->department_id,
-                            'role_id' =>
-                                $roles[$data['role']]->role_id,
+                            'department_id' => $depts[$data['department']]->department_id,
+                            'role_id' => $roles[$data['role']]->role_id,
                             'full_name' => $data['full_name'],
                             'phone_number' => $data['phone_number'],
                             'password' => Hash::make('test123'),
                             'is_agent' => 'no',
                         ]
                     );
-
-                    $users->push($user);
                 }
 
-                // =====================================================
-                // PRIMARY DATA ONLY
-                // =====================================================
-
-                $this->seedPrimaryData(
-                    $companyId,
-                    $companyName
-                );
+                $this->seedPrimaryData($companyId);
 
                 echo "   ✅ Primary data seeded.\n";
-                echo "   👥 Managers/Receptionists: {$users->count()}\n";
+                echo "   👥 Custom users: 3\n";
             }
         });
     }
 
-    /**
-     * Seed only primary/master data.
-     *
-     * Included:
-     * - Rooms
-     * - Storage
-     * - Vehicles
-     *
-     * Excluded:
-     * - Requirements
-     * - Deliveries
-     * - Guestbooks
-     * - Room bookings
-     * - Vehicle bookings
-     * - Booking requirements
-     * - Historical/demo activity
-     */
-    protected function seedPrimaryData(
-        int $companyId,
-        string $companyName
-    ): void {
-        // =============================================================
-        // ROOMS
-        // =============================================================
-
+    protected function seedPrimaryData(int $companyId): void
+    {
         foreach ([
             'Garuda',
             'Merak',
@@ -230,10 +139,6 @@ class DatabaseSeeder extends Seeder
                 'room_name' => "Ruang {$roomName}",
             ]);
         }
-
-        // =============================================================
-        // STORAGE
-        // =============================================================
 
         foreach ([
             ['S-01', 'Rak Dokumen'],
@@ -250,10 +155,6 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
-
-        // =============================================================
-        // VEHICLES
-        // =============================================================
 
         $vehicles = [
             ['Avanza', 'car', 2022, 'B 1001 KRB'],
