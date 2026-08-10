@@ -1626,20 +1626,9 @@
                     class="px-5 py-2 text-xs font-semibold rounded-lg bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition focus:outline-none focus:ring-2 focus:ring-amber-400/30">
                     Close
                 </button>
-                <div class="flex gap-2">
-                    <button type="button"
-                        wire:click="openPriorityEdit({{ $pb->id }})"
-                        class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm inline-flex items-center gap-1.5">
-                        <x-heroicon-o-pencil class="w-3.5 h-3.5"/>
-                        {{ __('app.edit') }}
-                    </button>
-                    <button type="button"
-                        wire:click="confirmPriorityDelete({{ $pb->id }}, '{{ str_replace('\'', '', $pb->meeting_title ?? 'Priority Booking') }}')"
-                        class="h-9 px-4 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold hover:bg-rose-100 transition inline-flex items-center gap-1.5">
-                        <x-heroicon-o-trash class="w-3.5 h-3.5"/>
-                        {{ __('app.delete') }}
-                    </button>
-                </div>
+                {{-- REMOVED: Edit and Delete buttons for Priority Room Bookings --}}
+                {{-- Receptionists no longer manage Priority Bookings from Status/History pages --}}
+                {{-- Priority notifications are accessed through the notification bell only --}}
             </div>
         </div>
     </div>
