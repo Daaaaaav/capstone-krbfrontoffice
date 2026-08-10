@@ -100,6 +100,19 @@ class Vehiclestatus extends Component
 
     public function render()
     {
+        // Auto-transition 'approved' regular bookings to 'on_progress' when start time arrives
+        VehicleBooking::where('status', 'approved')
+            ->where('start_at', '<=', now($this->tz))
+            ->update(['status' => 'on_progress']);
+
+        // Auto-transition priority bookings to 'on_progress' when start time arrives
+        \App\Models\PriorityVehicleBooking::whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT
+            ])
+            ->where('start_at', '<=', now($this->tz))
+            ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS]);
+
         $bookings = VehicleBooking::query()
             ->when($this->vehicleFilter, fn(Builder $q) => $q->where('vehicle_id', $this->vehicleFilter))
             ->when($this->q !== '', function (Builder $q) {
@@ -138,7 +151,7 @@ class Vehiclestatus extends Component
                     \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
                 ]))
                 ->when($this->statusTab === 'approved', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
-                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS))
                 ->when($this->q !== '', fn($q) => $q->where(function($qq) {
                     $like = '%' . $this->q . '%';
                     $qq->where('purpose', 'like', $like)
