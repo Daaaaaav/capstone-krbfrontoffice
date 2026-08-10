@@ -1,6 +1,7 @@
 import './bootstrap';
 import rover from '@sheaf/rover';
 import './globals/modals';
+import './validation/manager-input-validator';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);

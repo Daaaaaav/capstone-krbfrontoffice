@@ -277,6 +277,77 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             setInterval(refreshCsrf, 30 * 60 * 1000);
         })();
     </script>
+    <script>
+        document.addEventListener('input', function (e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                const excludedTypes = ['date', 'time', 'datetime-local', 'file', 'checkbox', 'radio', 'hidden', 'submit', 'button'];
+                if (e.target.tagName === 'INPUT' && excludedTypes.includes(e.target.type)) {
+                    return;
+                }
+
+                let originalVal = e.target.value;
+                let val = originalVal;
+                const nameAttr = (e.target.name || '').toLowerCase();
+                const wireModel = (e.target.getAttribute('wire:model') || e.target.getAttribute('wire:model.defer') || e.target.getAttribute('wire:model.live') || '').toLowerCase();
+                
+                const isEmail = e.target.type === 'email' || nameAttr.includes('email') || wireModel.includes('email');
+                const isPhone = e.target.type === 'tel' || nameAttr.includes('phone') || nameAttr.includes('telepon') || wireModel.includes('phone') || wireModel.includes('telepon');
+
+                if (!window.inputAlertThrottle) window.inputAlertThrottle = {};
+                const alertMessage = (msg) => {
+                    const now = Date.now();
+                    if (!window.inputAlertThrottle[msg] || now - window.inputAlertThrottle[msg] > 3000) {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: { type: 'warning', title: 'Invalid Input', message: msg, duration: 3000 }
+                        }));
+                        window.inputAlertThrottle[msg] = now;
+                    }
+                };
+
+                let showedAlert = false;
+
+                if (isPhone) {
+                    if (/[^0-9\-\+]/.test(val)) {
+                        alertMessage('Only digits, -, and + are allowed for phone numbers.');
+                        val = val.replace(/[^0-9\-\+]/g, '');
+                        showedAlert = true;
+                    }
+                    const plusCount = (val.match(/\+/g) || []).length;
+                    if (plusCount > 1) {
+                        if (!showedAlert) alertMessage('Maximum one + symbol is allowed.');
+                        let firstPlusIndex = val.indexOf('+');
+                        val = val.substring(0, firstPlusIndex + 1) + val.substring(firstPlusIndex + 1).replace(/\+/g, '');
+                        showedAlert = true;
+                    }
+                    const dashCount = (val.match(/-/g) || []).length;
+                    if (dashCount > 4) {
+                        if (!showedAlert) alertMessage('Maximum 4 hyphens (-) are allowed.');
+                        let parts = val.split('-');
+                        val = parts.slice(0, 5).join('-') + parts.slice(5).join('');
+                    }
+                    if (val !== originalVal) e.target.value = val;
+                } else if (isEmail) {
+                    if (/[^a-zA-Z0-9\.@]/.test(val)) {
+                        alertMessage('Special characters are not allowed in emails, except . and @');
+                        val = val.replace(/[^a-zA-Z0-9\.@]/g, '');
+                        showedAlert = true;
+                    }
+                    const atCount = (val.match(/@/g) || []).length;
+                    if (atCount > 1) {
+                        if (!showedAlert) alertMessage('Maximum one @ symbol is allowed.');
+                        let firstAtIndex = val.indexOf('@');
+                        val = val.substring(0, firstAtIndex + 1) + val.substring(firstAtIndex + 1).replace(/@/g, '');
+                    }
+                    if (val !== originalVal) e.target.value = val;
+                } else {
+                    if (/[^a-zA-Z0-9\s]/.test(val)) {
+                        alertMessage('Special characters are not allowed.');
+                        e.target.value = val.replace(/[^a-zA-Z0-9\s]/g, '');
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

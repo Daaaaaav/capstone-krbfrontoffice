@@ -13,12 +13,13 @@ use App\Models\Room;
 use App\Models\BookingRoom;
 use App\Models\PriorityRoomBooking as PriorityRoomBookingModel;
 use App\Models\ManagerNotification;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Priority Room Booking')]
 class PriorityRoomBooking extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
     public string $activeTab = 'form'; // form (default) | status
@@ -118,12 +119,12 @@ class PriorityRoomBooking extends Component
 
         $this->validate([
             'room_id'             => ['required', 'integer', 'exists:rooms,room_id'],
-            'meeting_title'       => ['required', 'string', 'max:255'],
+            'meeting_title'       => $this->managerMeetingTitleRules(required: true, maxLength: 255),
             'date'                => ['required', 'date'],
             'start_time'          => ['required', 'string'],
             'end_time'            => ['required', 'string'],
             'number_of_attendees' => ['required', 'integer', 'min:1'],
-            'special_notes'       => ['nullable', 'string', 'max:1000'],
+            'special_notes'       => $this->managerNotesRules(required: false, maxLength: 1000),
         ]);
 
         $user      = Auth::user();
@@ -414,7 +415,7 @@ class PriorityRoomBooking extends Component
         \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
 
         $this->validate([
-            'sidebarRejectReason' => 'required|string|min:3|max:500',
+            'sidebarRejectReason' => $this->managerNotesRules(required: true, maxLength: 500, additionalRules: ['min:3']),
         ]);
 
         $companyId = Auth::user()->company_id ?? null;

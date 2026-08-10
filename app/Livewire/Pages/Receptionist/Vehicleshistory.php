@@ -44,21 +44,6 @@ class Vehicleshistory extends Component
     public array $selectedPhotos = ['before' => [], 'after' => []];
     public bool $showPriorityDetailModal = false;
     public ?int $priorityDetailId = null;
-    public bool $showPriorityEdit = false;
-    public ?int $priorityEditId = null;
-    public ?string $priorityEditLastEdited = null;
-    public ?string $priorityEditCreatedAt = null;
-    public array $priorityEdit = [
-        'borrower_name' => '',
-        'purpose'       => '',
-        'destination'   => '',
-        'special_notes' => '',
-        'start_at'      => '',
-        'end_at'        => '',
-    ];
-    public ?int $priorityDeletingId = null;
-    public string $priorityDeletingSummary = '';
-    public bool $showPriorityDeleteModal = false;
 
     public array $edit = [
         'borrower_name' => '',
@@ -87,6 +72,12 @@ class Vehicleshistory extends Component
     public function updatingWithTrashed(): void   { $this->resetPage(); }
     public function updatingSelectedDate(): void     { $this->resetPage(); }
     public function updatingSortFilter(): void       { $this->resetPage(); }
+
+    public function togglePriorityFilter(?string $value = null): void
+    {
+        $this->priorityFilter = $value;
+        $this->resetPage();
+    }
 
     public function mount(): void
     {
@@ -308,99 +299,6 @@ class Vehicleshistory extends Component
             ->find($this->priorityDetailId);
     }
 
-    public function openPriorityEdit(int $id): void
-    {
-        $user      = Auth::user();
-        $companyId = (int) ($user?->company_id ?? 0);
-
-        $pvb = \App\Models\PriorityVehicleBooking::where('company_id', $companyId)
-            ->find($id);
-
-        if (!$pvb) return;
-
-        $this->priorityEditId          = $id;
-        $this->priorityEditLastEdited  = $pvb->updated_at ? Carbon::parse($pvb->updated_at)->format('d M Y, H:i') : null;
-        $this->priorityEditCreatedAt   = $pvb->created_at ? Carbon::parse($pvb->created_at)->format('d M Y, H:i') : null;
-        $this->priorityEdit = [
-            'borrower_name' => (string) ($pvb->borrower_name ?? ''),
-            'purpose'       => (string) ($pvb->purpose ?? ''),
-            'destination'   => (string) ($pvb->destination ?? ''),
-            'special_notes' => (string) ($pvb->special_notes ?? ''),
-            'start_at'      => $pvb->start_at ? Carbon::parse($pvb->start_at)->format('Y-m-d\TH:i') : '',
-            'end_at'        => $pvb->end_at   ? Carbon::parse($pvb->end_at)->format('Y-m-d\TH:i')   : '',
-        ];
-
-        $this->showPriorityDetailModal = false;
-        $this->showPriorityEdit        = true;
-    }
-
-    public function savePriorityEdit(): void
-    {
-        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
-
-        $this->validate([
-            'priorityEdit.borrower_name' => 'required|string|max:255',
-            'priorityEdit.purpose'       => 'nullable|string|max:255',
-            'priorityEdit.destination'   => 'nullable|string|max:255',
-            'priorityEdit.special_notes' => 'nullable|string',
-            'priorityEdit.start_at'      => 'required|date',
-            'priorityEdit.end_at'        => 'required|date|after_or_equal:priorityEdit.start_at',
-        ]);
-
-        $user      = Auth::user();
-        $companyId = (int) ($user?->company_id ?? 0);
-
-        $pvb = \App\Models\PriorityVehicleBooking::where('company_id', $companyId)
-            ->find($this->priorityEditId);
-
-        if ($pvb) {
-            $pvb->update([
-                'borrower_name' => $this->priorityEdit['borrower_name'],
-                'purpose'       => $this->priorityEdit['purpose'],
-                'destination'   => $this->priorityEdit['destination'],
-                'special_notes' => $this->priorityEdit['special_notes'],
-                'start_at'      => Carbon::parse($this->priorityEdit['start_at'])->format('Y-m-d H:i:s'),
-                'end_at'        => Carbon::parse($this->priorityEdit['end_at'])->format('Y-m-d H:i:s'),
-            ]);
-            $this->dispatch('toast', type: 'success', title: 'Saved', message: "Priority booking #{$this->priorityEditId} updated.", duration: 3000);
-        }
-
-        $this->showPriorityEdit = false;
-        $this->reset('priorityEditId', 'priorityEdit', 'priorityEditLastEdited', 'priorityEditCreatedAt');
-    }
-
-    public function confirmPriorityDelete(int $id, string $summary): void
-    {
-        $this->priorityDeletingId      = $id;
-        $this->priorityDeletingSummary = $summary;
-        $this->showPriorityDeleteModal = true;
-    }
-
-    public function executePriorityDelete(): void
-    {
-        if (!$this->priorityDeletingId) return;
-
-        $user      = Auth::user();
-        $companyId = (int) ($user?->company_id ?? 0);
-
-        $pvb = \App\Models\PriorityVehicleBooking::where('company_id', $companyId)
-            ->find($this->priorityDeletingId);
-
-        if (!$pvb) {
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Record not found.', duration: 3000);
-            $this->showPriorityDeleteModal = false;
-            $this->priorityDeletingId      = null;
-            return;
-        }
-
-        $pvb->delete();
-        $this->dispatch('toast', type: 'success', title: 'Deleted', message: "Priority booking #{$this->priorityDeletingId} deleted.", duration: 3000);
-
-        $this->showPriorityDeleteModal = false;
-        $this->priorityDeletingId      = null;
-        $this->priorityDeletingSummary = '';
-    }
-
     public function render()
     {
         $user = Auth::user();
@@ -483,7 +381,7 @@ class Vehicleshistory extends Component
             'bookings'               => $bookings,
             'vehicleMap'             => $vehicleMap,
             'vehicles'               => $vehicles,
-            'priorityVehicleHistory' => $priorityVehicleHistory,
+            'priorityVehicleHistory' => $this->priorityFilter === 'regular' ? collect() : $priorityVehicleHistory,
             'priorityDetailBooking'  => $this->priorityDetailBooking,
         ]);
     }
