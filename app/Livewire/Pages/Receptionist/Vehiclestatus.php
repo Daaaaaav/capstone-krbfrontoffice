@@ -141,10 +141,16 @@ class Vehiclestatus extends Component
             ->when($this->sortFilter === 'nearest', fn(Builder $q) => $q->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, NOW(), start_at))'))
             ->paginate($this->perPage);
 
+        // Eagerly fetch vehicle notifications to pass to view
+        $vehicleNotifs = $this->getVehicleNotifsProperty();
+        $vehicleNotifCount = $vehicleNotifs->where('is_read', false)->count();
+
         return view('livewire.pages.receptionist.vehiclestatus', [
             'bookings'               => $bookings,
             'priorityVehicleDetailBooking' => $this->priorityVehicleDetailBooking,
             'selectedBooking'        => $this->selectedBooking,
+            'vehicleNotifs'          => $vehicleNotifs,
+            'vehicleNotifCount'      => $vehicleNotifCount,
             'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
                 ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
                 ->when($this->statusTab === 'pending', fn($q) => $q->whereIn('status', [

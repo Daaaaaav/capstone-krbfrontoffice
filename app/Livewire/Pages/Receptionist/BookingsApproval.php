@@ -696,6 +696,10 @@ class BookingsApproval extends Component
             ->limit(6)
             ->get($cols);
 
+        // Eagerly fetch notifications to avoid computed property chaining issues
+        $roomNotifs = $this->getRoomNotifsProperty();
+        $roomNotifCount = $roomNotifs->where('is_read', false)->count();
+
         return view('livewire.pages.receptionist.bookings-approval', compact(
             'pending',
             'ongoing',
@@ -703,8 +707,8 @@ class BookingsApproval extends Component
         ) + [
             'zoomConfigured'              => $this->zoomConfigured,
             'googleConnected'             => $this->googleConnected,
-            'roomNotifCount'              => $this->roomNotifCount,
-            'roomNotifs'                  => $this->roomNotifs,
+            'roomNotifCount'              => $roomNotifCount,
+            'roomNotifs'                  => $roomNotifs,
         ]);
     }
 
