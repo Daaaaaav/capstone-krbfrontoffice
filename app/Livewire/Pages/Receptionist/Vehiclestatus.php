@@ -88,6 +88,13 @@ class Vehiclestatus extends Component
     {
         $this->resetPage();
     }
+
+    public function setStatusTab(string $tab): void
+    {
+        $allowed = ['pending', 'approved', 'on_progress'];
+        $this->statusTab = in_array($tab, $allowed, true) ? $tab : 'pending';
+        $this->resetPage();
+    }
     public function updatedSortFilter()
     {
         $this->resetPage();
@@ -529,6 +536,24 @@ class Vehiclestatus extends Component
         return $this->vehicleNotifs
             ->where('is_read', false)
             ->count();
+    }
+
+    // Stub methods referenced in the Priority Vehicle Reject modal blade section.
+    // The modal is guarded by @if($showPriorityVehicleRejectModal) which is never
+    // set to true from the receptionist side (view-only), but the stubs prevent
+    // Livewire from throwing if the modal is somehow triggered.
+    public function closePriorityVehicleReject(): void
+    {
+        $this->showPriorityVehicleRejectModal = false;
+        $this->priorityVehicleRejectId        = null;
+        $this->priorityVehicleRejectReason    = '';
+    }
+
+    public function submitPriorityVehicleReject(): void
+    {
+        // Receptionist is view-only for Priority Vehicle Bookings.
+        // This method intentionally does nothing.
+        $this->closePriorityVehicleReject();
     }
 
 }
