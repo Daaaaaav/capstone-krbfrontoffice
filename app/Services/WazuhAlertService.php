@@ -29,7 +29,7 @@ class WazuhAlertService
             }
         }
 
-        $displayAlerts = $query->take($limit)->get();
+        $displayAlerts = $query->paginate($limit);
         $totalCount = WazuhAlert::count();
 
         // Build stats

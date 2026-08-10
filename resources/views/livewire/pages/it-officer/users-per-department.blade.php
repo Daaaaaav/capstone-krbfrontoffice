@@ -452,6 +452,15 @@
 
                         {{-- PHONE --}}
                         <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.phone_optional') }}</label>
+                            <input type="text" wire:model="phone" placeholder="e.g. +62-812-3456-7890" data-validate="phone"
+                                class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                            @error('phone') <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                        </div>) <p class="text-xs text-destructive mt-1.5 font-medium">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- PHONE --}}
+                        <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{{ __('app.phone_optional') ?? 'Phone (Optional)' }}</label>
                             <input type="text" wire:model="phone" placeholder="e.g. 08123456789"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">

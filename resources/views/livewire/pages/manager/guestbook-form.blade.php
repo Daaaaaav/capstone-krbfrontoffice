@@ -51,12 +51,12 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div>
                             <label class="{{ $label }}">Full Name <span class="text-destructive">*</span></label>
-                            <input type="text" wire:model.defer="name" class="{{ $input }}" placeholder="Visitor full name">
+                            <input type="text" wire:model.defer="name" data-validate="text" class="{{ $input }}" placeholder="Visitor full name">
                             @error('name') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="{{ $label }}">Email <span class="text-destructive">*</span></label>
-                            <input type="email" wire:model.defer="email" class="{{ $input }}" placeholder="visitor@email.com">
+                            <input type="email" wire:model.defer="email" data-validate="email" class="{{ $input }}" placeholder="visitor@email.com">
                             @error('email') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
                         <div>
@@ -66,15 +66,15 @@
                         </div>
                         <div>
                             <label class="{{ $label }}">Phone</label>
-                            <input type="text" wire:model.defer="phone_number" class="{{ $input }}" placeholder="+62...">
+                            <input type="text" wire:model.defer="phone_number" data-validate="phone" class="{{ $input }}" placeholder="+62-812-3456-7890">
                         </div>
                         <div>
                             <label class="{{ $label }}">Institution</label>
-                            <input type="text" wire:model.defer="instansi" class="{{ $input }}" placeholder="Organization name">
+                            <input type="text" wire:model.defer="instansi" data-validate="text" class="{{ $input }}" placeholder="Organization name">
                         </div>
                         <div>
                             <label class="{{ $label }}">Visit Purpose <span class="text-destructive">*</span></label>
-                            <input type="text" wire:model.defer="keperluan" class="{{ $input }}" placeholder="Purpose of visit">
+                            <input type="text" wire:model.defer="keperluan" data-validate="text" class="{{ $input }}" placeholder="Purpose of visit">
                             @error('keperluan') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                         </div>
                         <div>

@@ -9,12 +9,13 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Vehicle as VehicleModel;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Manage Vehicles')]
 class Vehicle extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
 
     protected string $paginationTheme = 'tailwind';
 
@@ -103,35 +104,39 @@ class Vehicle extends Component
     protected function createRules(): array
     {
         return [
-            'name' => [
-                'required', 'string', 'max:150',
-                Rule::unique('vehicles', 'name')
-                    ->where(fn($q) => $q->where('company_id', $this->company_id))
-                    ->whereNull('deleted_at'),
-            ],
-            'category'     => 'required|string|max:100',
-            'plate_number' => 'required|string|max:50',
-            'year'         => 'required|string|max:10',
+            'name' => array_merge(
+                $this->managerVehicleRules(required: true, maxLength: 150),
+                [
+                    Rule::unique('vehicles', 'name')
+                        ->where(fn($q) => $q->where('company_id', $this->company_id))
+                        ->whereNull('deleted_at'),
+                ]
+            ),
+            'category'     => $this->managerTextRules('Category', required: true, maxLength: 100),
+            'plate_number' => $this->managerTextRules('Plate number', required: true, maxLength: 50),
+            'year'         => ['required', 'string', 'max:10'],
             'is_active'    => 'boolean',
-            'notes'        => 'nullable|string|max:255',
+            'notes'        => $this->managerNotesRules(required: false, maxLength: 255),
         ];
     }
 
     protected function editRules(): array
     {
         return [
-            'edit_name' => [
-                'required', 'string', 'max:150',
-                Rule::unique('vehicles', 'name')
-                    ->ignore($this->edit_id, 'vehicle_id')
-                    ->where(fn($q) => $q->where('company_id', $this->company_id))
-                    ->whereNull('deleted_at'),
-            ],
-            'edit_category'     => 'required|string|max:100',
-            'edit_plate_number' => 'required|string|max:50',
-            'edit_year'         => 'required|string|max:10',
+            'edit_name' => array_merge(
+                $this->managerVehicleRules(required: true, maxLength: 150),
+                [
+                    Rule::unique('vehicles', 'name')
+                        ->ignore($this->edit_id, 'vehicle_id')
+                        ->where(fn($q) => $q->where('company_id', $this->company_id))
+                        ->whereNull('deleted_at'),
+                ]
+            ),
+            'edit_category'     => $this->managerTextRules('Category', required: true, maxLength: 100),
+            'edit_plate_number' => $this->managerTextRules('Plate number', required: true, maxLength: 50),
+            'edit_year'         => ['required', 'string', 'max:10'],
             'edit_is_active'    => 'boolean',
-            'edit_notes'        => 'nullable|string|max:255',
+            'edit_notes'        => $this->managerNotesRules(required: false, maxLength: 255),
         ];
     }
 

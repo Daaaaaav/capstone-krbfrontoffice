@@ -5,18 +5,22 @@ namespace App\Livewire\Pages\Manager;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\WithPagination;
 use App\Services\WazuhAlertService;
 
 #[Layout('layouts.manager')]
 #[Title('Wazuh Security Reports')]
 class AISecurityReports extends Component
 {
+    use WithPagination;
+
     public string $selectedSeverity = 'all';
 
     public bool $autoRefresh = true;
 
     public function setSeverity(string $level): void
     {
+        $this->resetPage();
         $this->selectedSeverity = $level;
     }
 
@@ -29,7 +33,7 @@ class AISecurityReports extends Component
     {
         try {
             $report = app(WazuhAlertService::class)
-                ->getRecentAlerts(25, $this->selectedSeverity);
+                ->getRecentAlerts(10, $this->selectedSeverity);
 
             return view(
                 'livewire.pages.manager.a-i-security-reports',

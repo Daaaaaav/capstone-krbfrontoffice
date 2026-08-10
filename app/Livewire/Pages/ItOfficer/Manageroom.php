@@ -9,12 +9,13 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Room;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.it-officer')]
 #[Title('Manage Rooms')]
 class Manageroom extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
 
     protected string $paginationTheme = 'tailwind';
 
@@ -83,7 +84,7 @@ class Manageroom extends Component
     {
         return [
             'room_name' => [
-                'required', 'string', 'max:255',
+                ...$this->managerRoomRules(required: true, maxLength: 255),
                 Rule::unique('rooms', 'room_name')
                     ->where(fn($q) => $q->where('company_id', $this->companyId)),
             ],
@@ -95,7 +96,7 @@ class Manageroom extends Component
     {
         return [
             'edit_room_name' => [
-                'required', 'string', 'max:255',
+                ...$this->managerRoomRules(required: true, maxLength: 255),
                 Rule::unique('rooms', 'room_name')
                     ->where(fn($q) => $q->where('company_id', $this->companyId))
                     ->ignore($this->edit_id, 'room_id'),

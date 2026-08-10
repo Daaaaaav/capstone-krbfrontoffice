@@ -9,12 +9,13 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Models\Storage as StorageModel;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.it-officer')]
 #[Title('Manage Storages')]
 class Storage extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
 
     protected string $paginationTheme = 'tailwind';
 
@@ -90,13 +91,13 @@ class Storage extends Component
     {
         return [
             'code' => [
-                'required', 'string', 'max:100',
+                ...$this->managerTextRules('Storage Code', required: true, maxLength: 100),
                 Rule::unique('storages', 'code')
                     ->where(fn($q) => $q->where('company_id', $this->company_id))
                     ->whereNull('deleted_at'),
             ],
             'name' => [
-                'required', 'string', 'max:150',
+                ...$this->managerTextRules('Storage Name', required: true, maxLength: 150),
                 Rule::unique('storages', 'name')
                     ->where(fn($q) => $q->where('company_id', $this->company_id))
                     ->whereNull('deleted_at'),
@@ -109,14 +110,14 @@ class Storage extends Component
     {
         return [
             'edit_code' => [
-                'required', 'string', 'max:100',
+                ...$this->managerTextRules('Storage Code', required: true, maxLength: 100),
                 Rule::unique('storages', 'code')
                     ->ignore($this->edit_id, 'storage_id')
                     ->where(fn($q) => $q->where('company_id', $this->company_id))
                     ->whereNull('deleted_at'),
             ],
             'edit_name' => [
-                'required', 'string', 'max:150',
+                ...$this->managerTextRules('Storage Name', required: true, maxLength: 150),
                 Rule::unique('storages', 'name')
                     ->ignore($this->edit_id, 'storage_id')
                     ->where(fn($q) => $q->where('company_id', $this->company_id))

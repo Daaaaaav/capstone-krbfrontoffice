@@ -8,11 +8,13 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Settings')]
 class Settings extends Component
 {
+    use HasManagerValidation;
     // ── Profile ──────────────────────────────────────────────────────────────
     public string $name            = '';
     public string $email           = '';
@@ -49,9 +51,15 @@ class Settings extends Component
     public function updateProfile(): void
     {
         $this->validate([
-            'name'  => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . Auth::id() . ',user_id',
-            'phone' => 'nullable|string|max:20',
+            'name'  => $this->managerTextRules('Name', required: true, maxLength: 255),
+            'email' => $this->managerEmailRules(
+                required: true,
+                uniqueTable: 'users',
+                uniqueColumn: 'email',
+                ignoreId: Auth::id(),
+                ignoreColumn: 'user_id'
+            ),
+            'phone' => $this->managerPhoneRules(required: false, maxLength: 20),
         ]);
 
         $user               = Auth::user();
