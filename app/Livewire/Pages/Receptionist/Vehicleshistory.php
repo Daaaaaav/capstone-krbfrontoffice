@@ -59,6 +59,7 @@ class Vehicleshistory extends Component
     public ?int $priorityDeletingId = null;
     public string $priorityDeletingSummary = '';
     public bool $showPriorityDeleteModal = false;
+    public ?string $priorityFilter = null; // null = all, 'priority' = show only priority, 'regular' = hide priority
 
     public array $edit = [
         'borrower_name' => '',
@@ -87,6 +88,12 @@ class Vehicleshistory extends Component
     public function updatingWithTrashed(): void   { $this->resetPage(); }
     public function updatingSelectedDate(): void     { $this->resetPage(); }
     public function updatingSortFilter(): void       { $this->resetPage(); }
+
+    public function togglePriorityFilter(?string $value = null): void
+    {
+        $this->priorityFilter = $value;
+        $this->resetPage();
+    }
 
     public function mount(): void
     {
@@ -483,7 +490,7 @@ class Vehicleshistory extends Component
             'bookings'               => $bookings,
             'vehicleMap'             => $vehicleMap,
             'vehicles'               => $vehicles,
-            'priorityVehicleHistory' => $priorityVehicleHistory,
+            'priorityVehicleHistory' => $this->priorityFilter === 'regular' ? collect() : $priorityVehicleHistory,
             'priorityDetailBooking'  => $this->priorityDetailBooking,
         ]);
     }

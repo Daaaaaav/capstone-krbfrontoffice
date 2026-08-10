@@ -105,6 +105,13 @@
                                 <button type="button" class="ml-1 hover:text-white" wire:click="$set('vehicleFilter', null)">×</button>
                             </span>
                         @endif
+                        @if($priorityFilter)
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-violet-600 text-white border border-violet-500/30 font-medium text-xs">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                <span>{{ $priorityFilter === 'priority' ? 'Priority Only' : 'Regular Only' }}</span>
+                                <button type="button" class="ml-1 hover:text-white font-bold" wire:click="togglePriorityFilter(null)">×</button>
+                            </span>
+                        @endif
                     </div>
                 </div>
 
@@ -203,13 +210,13 @@
                 {{-- LIST BODY – 2 column bento style --}}
                 {{-- ── MANAGER PRIORITY VEHICLE HISTORY ── --}}
                 @if(isset($priorityVehicleHistory) && $priorityVehicleHistory->isNotEmpty())
-                <div class="px-4 sm:px-6 pt-4 pb-3 border-b-2 border-blue-200 bg-blue-50/40">
+                <div class="px-4 sm:px-6 pt-4 pb-3 border-b-2 border-violet-200 bg-violet-50/40">
                     <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                        <span class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                        <svg class="w-4 h-4 text-violet-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        <span class="text-xs font-bold uppercase tracking-wider text-violet-700">
                             Manager Priority Bookings — {{ $statusTab === 'done' ? 'Approved' : 'Rejected/Denied' }}
                         </span>
-                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white">{{ $priorityVehicleHistory->count() }}</span>
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-600 text-white">{{ $priorityVehicleHistory->count() }}</span>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 pb-4">
                         @foreach($priorityVehicleHistory as $pvb)
@@ -218,10 +225,10 @@
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-rose-100 text-rose-700';
                         @endphp
-                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-blue-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-violet-300 transition-all">
                             <div class="flex items-start gap-3">
-                                <div class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
-                                    <svg class="w-4.5 h-4.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                                <div class="w-9 h-9 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0">
+                                    <svg class="w-4.5 h-4.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                                 </div>
                                 <div class="flex-1 min-w-0 space-y-0.5">
                                     <p class="text-sm font-semibold text-gray-900 truncate">
@@ -232,7 +239,7 @@
                                         {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
                                     </p>
                                     <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
-                                    <p class="text-[11px] text-blue-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
+                                    <p class="text-[11px] text-violet-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
                                     <div class="flex flex-col gap-1 min-w-0 pt-2 border-t border-gray-200/50 mt-2 mb-1">
                                         @if($pvb->created_at)
                                             <div class="flex items-center gap-1.5">
@@ -256,7 +263,7 @@
                                 </span>
                             </div>
                             {{-- Priority entry actions — inside card, same pattern as normal bookings --}}
-                            <div class="pt-2 border-t border-blue-100 flex justify-end gap-2">
+                            <div class="pt-2 border-t border-violet-100 flex justify-end gap-2">
                                 <button type="button"
                                     wire:click="openPriorityEdit({{ $pvb->id }})"
                                     class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
@@ -274,11 +281,11 @@
                 </div>
                 @endif
 
-                @if($bookings->isEmpty())
+                @if($bookings->isEmpty() && $priorityFilter !== 'priority')
                     <div class="px-4 sm:px-6 py-14 text-center text-gray-500 text-sm">
                         {{ __('app.no_history_filter') }}
                     </div>
-                @else
+                @elseif($priorityFilter !== 'priority')
                 <div class="px-4 sm:px-6 py-5">
                     @if($viewMode === 'card')
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -534,7 +541,7 @@
                 </div>
                 @endif
 
-                @if(method_exists($bookings, 'links'))
+                @if(method_exists($bookings, 'links') && $priorityFilter !== 'priority')
                     <div class="px-4 sm:px-6 py-5 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
                         <div class="w-full">
                             {{ $bookings->links() }}
@@ -589,6 +596,42 @@
                         </div>
                     </div>
                 </section>
+
+                {{-- ── Priority Booking Filter ── --}}
+                <section class="{{ $card }}">
+                    <div class="px-4 py-3.5 border-b border-violet-200 bg-violet-50/60">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-violet-800">Priority Booking</h3>
+                        <p class="text-[11px] text-violet-600/80 mt-0.5">Filter by booking type</p>
+                    </div>
+                    <div class="p-4 space-y-1.5 bg-white">
+                        {{-- All --}}
+                        <button type="button"
+                                wire:click="togglePriorityFilter(null)"
+                                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                    {{ is_null($priorityFilter) ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border {{ is_null($priorityFilter) ? 'border-violet-400 bg-violet-500/20' : 'border-gray-200/60' }} text-[10px] font-bold">All</span>
+                            <span>All Bookings</span>
+                        </button>
+                        {{-- Priority Only --}}
+                        <button type="button"
+                                wire:click="togglePriorityFilter('priority')"
+                                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                    {{ $priorityFilter === 'priority' ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border {{ $priorityFilter === 'priority' ? 'border-violet-400 bg-violet-500/20' : 'border-gray-200/60' }} text-[10px]">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                            </span>
+                            <span>Priority Only</span>
+                        </button>
+                        {{-- Regular Only --}}
+                        <button type="button"
+                                wire:click="togglePriorityFilter('regular')"
+                                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                    {{ $priorityFilter === 'regular' ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border {{ $priorityFilter === 'regular' ? 'border-violet-400 bg-violet-500/20' : 'border-gray-200/60' }} text-[10px] font-bold">—</span>
+                            <span>Regular Only</span>
+                        </button>
+                    </div>
+                </section>
             </aside>
         </div>
     </main>
@@ -641,6 +684,34 @@
                         @empty
                             <p class="text-xs text-gray-500">{{ __('app.no_vehicle_data_filter') }}</p>
                         @endforelse
+                    </div>
+
+                    {{-- ── Priority Booking Filter (Mobile) ── --}}
+                    <div class="pt-4 border-t border-violet-200">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-violet-800 mb-3 flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                            Priority Booking
+                        </h4>
+                        <div class="space-y-1.5">
+                            <button type="button" wire:click="togglePriorityFilter(null)" @click="showFilterModal = false"
+                                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                    {{ is_null($priorityFilter) ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">All</span>
+                                <span>All Bookings</span>
+                            </button>
+                            <button type="button" wire:click="togglePriorityFilter('priority')" @click="showFilterModal = false"
+                                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                    {{ $priorityFilter === 'priority' ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px]">★</span>
+                                <span>Priority Only</span>
+                            </button>
+                            <button type="button" wire:click="togglePriorityFilter('regular')" @click="showFilterModal = false"
+                                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
+                                    {{ $priorityFilter === 'regular' ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-200/60 text-[10px] font-bold">—</span>
+                                <span>Regular Only</span>
+                            </button>
+                        </div>
                     </div>
 
                 </div>

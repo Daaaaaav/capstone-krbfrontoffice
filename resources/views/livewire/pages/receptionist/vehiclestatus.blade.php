@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -218,6 +218,7 @@
                             $pvbBadge = match($pvb->status) {
                                 'approved'   => 'bg-emerald-100 text-emerald-700',
                                 'pending_receipt','pending_cancellation' => 'bg-amber-100 text-amber-700',
+                                'on_progress' => 'bg-blue-100 text-blue-700',
                                 default => 'bg-gray-100 text-gray-600',
                             };
                         @endphp
@@ -1085,6 +1086,7 @@
                         'approved'             => 'bg-emerald-100 text-emerald-700 border-emerald-200',
                         'pending_receipt'       => 'bg-amber-100 text-amber-700 border-amber-200',
                         'pending_cancellation'  => 'bg-orange-100 text-orange-700 border-orange-200',
+                        'on_progress'           => 'bg-blue-100 text-blue-700 border-blue-200',
                         default                 => 'bg-gray-100 text-gray-600 border-gray-200',
                     };
                 @endphp
@@ -1178,30 +1180,14 @@
 
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
-            @if($pvd->isActionable())
-                @if($pvd->status === 'pending_cancellation')
-                    {{-- Conflict booking: needs explicit approval to cancel the existing booking --}}
-                    <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
-                            wire:loading.attr="disabled"
-                            wire:target="approvePriorityVehicleById({{ $pvd->id }})"
-                            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Approve &amp; Cancel Conflict
-                    </button>
-                @else
-                    {{-- Non-clashing: straightforward approve --}}
-                    <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
-                            wire:loading.attr="disabled"
-                            wire:target="approvePriorityVehicleById({{ $pvd->id }})"
-                            class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Approve
-                    </button>
-                @endif
-                <button wire:click="openPriorityVehicleReject({{ $pvd->id }})"
-                        class="px-4 py-2 text-xs font-semibold rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 transition flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    Reject
+            @if($pvd->status === 'pending_cancellation')
+                {{-- Conflict booking: needs explicit approval from receptionist to cancel the existing booking --}}
+                <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="approvePriorityVehicleById({{ $pvd->id }})"
+                        class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Approve &amp; Cancel Conflict
                 </button>
             @endif
             <button wire:click="closePriorityVehicleDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
