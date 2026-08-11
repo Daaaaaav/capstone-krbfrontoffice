@@ -1,6 +1,4 @@
-﻿<div class="min-h-screen bg-background" x-data="{ showFilterModal: false }">
-    {{-- Poll trigger isolated from Alpine scope to prevent morph from corrupting wire:click bindings --}}
-    <span wire:poll.5000ms.keep-alive style="display:none;" aria-hidden="true"></span>
+﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
