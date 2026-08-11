@@ -68,21 +68,34 @@ class PriorityRoomBooking extends Model
         return $query->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION]);
     }
 
-    public static function autoExpirePending(?int $companyId): void
+    /**
+     * Auto-reject pending bookings whose END time has already passed
+     * (meaning the meeting window is over and they were never approved).
+     *
+     * IMPORTANT: This must be called AFTER autoApproveNonClashing() so that
+     * a booking reaching its start time is first promoted to approved before
+     * any expiry check runs. Mirrors the ordinary BookingRoom behaviour in
+     * AutoCompleteBookings where pending bookings with an expired end_time
+     * are auto-rejected.
+     */
+    public static function autoRejectExpiredPending(?int $companyId): void
     {
+        $tz = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION])
-            ->where(function ($q) {
-                $q->where('date', '<', now()->toDateString())
-                  ->orWhere(function ($q2) {
-                      $q2->where('date', now()->toDateString())
-                         ->where('end_time', '<', now()->format('H:i:s'));
+            ->where(function ($q) use ($now) {
+                $q->where('date', '<', $now->toDateString())
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->where('date', $now->toDateString())
+                         ->where('end_time', '<', $now->format('H:i:s'));
                   });
             })
             ->update([
                 'status'           => self::STATUS_REJECTED,
-                'rejection_reason' => 'Auto-expired: meeting time has passed.',
+                'rejection_reason' => 'Auto-rejected: booking window expired without approval.',
             ]);
     }
 
