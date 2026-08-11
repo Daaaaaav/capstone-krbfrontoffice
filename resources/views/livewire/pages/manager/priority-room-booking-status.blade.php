@@ -112,14 +112,20 @@
                                             View
                                         </button>
                                         @if($booking->isActionable())
-                                            <button wire:click="openApprove({{ $booking->id }})"
-                                                class="text-green-600 hover:text-green-800 text-xs font-medium">
-                                                Approve
-                                            </button>
-                                            <button wire:click="openReject({{ $booking->id }})"
-                                                class="text-red-600 hover:text-red-800 text-xs font-medium">
-                                                Reject
-                                            </button>
+                                            {{-- Only show approve/reject buttons when there's an actual room clash --}}
+                                            @if($this->hasClash($booking))
+                                                <button wire:click="openApprove({{ $booking->id }})"
+                                                    class="text-green-600 hover:text-green-800 text-xs font-medium">
+                                                    Approve
+                                                </button>
+                                                <button wire:click="openReject({{ $booking->id }})"
+                                                    class="text-red-600 hover:text-red-800 text-xs font-medium">
+                                                    Reject
+                                                </button>
+                                            @else
+                                                {{-- No clash detected - no approval needed --}}
+                                                <span class="text-xs text-gray-500 italic">No conflict - Auto-approved</span>
+                                            @endif
                                         @endif
                                     </div>
                                 </td>
