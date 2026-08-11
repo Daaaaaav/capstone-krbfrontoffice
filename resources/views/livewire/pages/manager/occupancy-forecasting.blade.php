@@ -38,8 +38,11 @@
                     <label class="block text-sm font-medium text-[#4E653D] mb-2">{{ __('app.forecast_period') }}</label>
                     <div class="flex flex-col sm:flex-row gap-2 items-start">
                         <div class="flex-1 w-full">
-                            <x-forecast-date-picker 
-                                wire:model.live="forecastStartDate"
+                            <x-forecast-date-picker
+                                start-key="forecastStartDate"
+                                end-key="forecastEndDate"
+                                :start-value="$forecastStartDate"
+                                :end-value="$forecastEndDate"
                                 class="w-full"
                             />
                         </div>
