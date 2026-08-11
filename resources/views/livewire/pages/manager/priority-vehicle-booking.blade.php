@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-background">
     @php
         $card   = 'bg-card border border-border rounded-2xl shadow-sm overflow-hidden';
         $label  = 'block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5';
@@ -74,7 +74,7 @@
                             @endforeach
                         </select>
                         @else
-                        <input type="text" wire:model.defer="borrower_name" class="{{ $input }}" placeholder="Full name of borrower">
+                        <input type="text" wire:model="borrower_name" class="{{ $input }}" placeholder="Full name of borrower">
                         @endif
                         @error('borrower_name') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                     </div>
@@ -96,7 +96,7 @@
                     {{-- Purpose Type --}}
                     <div>
                         <label class="{{ $label }}">Purpose Type <span class="text-destructive">*</span></label>
-                        <select wire:model.defer="purpose_type" class="{{ $input }}">
+                        <select wire:model="purpose_type" class="{{ $input }}">
                             <option value="dinas">Dinas</option>
                             <option value="operasional">Operasional</option>
                             <option value="antar_jemput">Antar / Jemput</option>
@@ -121,7 +121,7 @@
                     {{-- Purpose --}}
                     <div>
                         <label class="{{ $label }}">Purpose <span class="text-destructive">*</span></label>
-                        <input type="text" wire:model.defer="purpose" class="{{ $input }}" placeholder="Purpose of trip">
+                        <input type="text" wire:model="purpose" class="{{ $input }}" placeholder="Purpose of trip">
                         @error('purpose') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -129,13 +129,13 @@
                 {{-- Destination --}}
                 <div>
                     <label class="{{ $label }}">Destination</label>
-                    <input type="text" wire:model.defer="destination" class="{{ $input }}" placeholder="Destination address">
+                    <input type="text" wire:model="destination" class="{{ $input }}" placeholder="Destination address">
                 </div>
 
                 {{-- Notes --}}
                 <div>
                     <label class="{{ $label }}">Special Notes</label>
-                    <textarea wire:model.defer="special_notes" rows="2" class="{{ $input }} h-auto py-2.5 resize-none" placeholder="Any notes..."></textarea>
+                    <textarea wire:model="special_notes" rows="2" class="{{ $input }} h-auto py-2.5 resize-none" placeholder="Any notes..."></textarea>
                 </div>
 
                 {{-- Conflict warning --}}
@@ -364,7 +364,7 @@
             @if($showVehicleSidebarReject)
             <div class="pt-2 border-t border-border">
                 <label class="block text-xs font-semibold text-destructive mb-1.5">Rejection Reason *</label>
-                <textarea wire:model.defer="vehicleSidebarRejectReason" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-destructive/20 resize-none" placeholder="Reason for rejection..."></textarea>
+                <textarea wire:model="vehicleSidebarRejectReason" rows="2" class="w-full px-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-destructive/20 resize-none" placeholder="Reason for rejection..."></textarea>
                 @error('vehicleSidebarRejectReason') <p class="mt-1 text-xs text-destructive">{{ $message }}</p> @enderror
             </div>
             @endif

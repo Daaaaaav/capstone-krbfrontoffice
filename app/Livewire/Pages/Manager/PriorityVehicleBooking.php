@@ -123,7 +123,7 @@ class PriorityVehicleBooking extends Component
 
         $conflict = VehicleBooking::query()
             ->where('vehicle_id', $this->vehicle_id)
-            ->whereIn('status', ['pending', 'approved'])
+            ->where('status', 'pending')
             ->where('start_at', '<', $end->toDateTimeString())
             ->where('end_at', '>', $start->toDateTimeString())
             ->first(['vehiclebooking_id', 'borrower_name', 'start_at', 'end_at']);
@@ -150,6 +150,55 @@ class PriorityVehicleBooking extends Component
             'special_notes' => $this->managerNotesRules(required: false, maxLength: 1000),
         ]);
 
+        try {
+            $startAt = Carbon::parse($this->date_from . ' ' . $this->start_time, $this->tz);
+            $endAt   = Carbon::parse($this->date_to . ' ' . $this->end_time, $this->tz);
+        } catch (\Throwable) {
+            $this->dispatch('toast', type: 'error', title: 'Invalid Time', message: 'The specified start or end time is invalid.', duration: 5000);
+            return;
+        }
+
+        if ($startAt->greaterThanOrEqualTo($endAt)) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Invalid Booking Time',
+                message: 'The start time must be before the end time.',
+                duration: 7000
+            );
+            return;
+        }
+
+        $blocker = VehicleBooking::findLateReturnBlocker((int) $this->vehicle_id);
+        if ($blocker) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Vehicle Unavailable',
+                message: 'This vehicle cannot be booked — it has an unresolved late return (Booking #' . $blocker->vehiclebooking_id . ').',
+                duration: 7000
+            );
+            return;
+        }
+
+        $activeConflict = VehicleBooking::query()
+            ->where('vehicle_id', $this->vehicle_id)
+            ->whereIn('status', ['approved', 'on_progress'])
+            ->where('start_at', '<', $endAt->toDateTimeString())
+            ->where('end_at', '>', $startAt->toDateTimeString())
+            ->first();
+
+        if ($activeConflict) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Vehicle Unavailable',
+                message: 'This vehicle is already approved or on the road during the selected time period.',
+                duration: 7000
+            );
+            return;
+        }
+
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
 
@@ -164,9 +213,7 @@ class PriorityVehicleBooking extends Component
             ? PriorityVehicleBookingModel::STATUS_PENDING_CANCELLATION
             : PriorityVehicleBookingModel::STATUS_PENDING_RECEIPT;
 
-        DB::transaction(function () use ($user, $companyId, $status) {
-            $startAt = Carbon::parse($this->date_from . ' ' . $this->start_time, $this->tz);
-            $endAt   = Carbon::parse($this->date_to . ' ' . $this->end_time, $this->tz);
+        DB::transaction(function () use ($user, $companyId, $status, $startAt, $endAt) {
 
             $vehicleLabel = collect($this->vehicles)->firstWhere('id', $this->vehicle_id)['label'] ?? '#' . $this->vehicle_id;
 
