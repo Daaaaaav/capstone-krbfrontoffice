@@ -225,7 +225,7 @@
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-rose-100 text-rose-700';
                         @endphp
-                        <div wire:key="priority-vhist-{{ $pvb->id }}" class="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-violet-300 transition-all">
+                        <div wire:key="priority-vhist-{{ $pvb->id }}" wire:click="openPriorityDetail({{ $pvb->id }})" class="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-violet-300 transition-all cursor-pointer group">
                             <div class="flex items-start gap-3">
                                 <div class="w-9 h-9 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0">
                                     <svg class="w-4.5 h-4.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
@@ -792,6 +792,114 @@
                 </div>
             </div>
         </div>
+    @endif
+
+    @if($showPriorityDetailModal && $priorityDetailBooking)
+    @php $pvb = $priorityDetailBooking; @endphp
+    <div class="fixed inset-0 z-[200] flex items-center justify-center p-4" wire:key="history-priority-detail-modal">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closePriorityDetail"></div>
+        <div class="relative w-full max-w-lg bg-white border border-violet-200 rounded-2xl shadow-2xl overflow-hidden">
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-6 py-4 border-b border-violet-200 bg-violet-50/70">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-violet-500/15 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">Priority Vehicle Booking</p>
+                        <p class="text-[11px] text-violet-700">Submitted by manager</p>
+                    </div>
+                </div>
+                <button wire:click="closePriorityDetail" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-violet-100 text-gray-500 hover:text-gray-700 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div class="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+                {{-- Status badge --}}
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</span>
+                    @php
+                        $pvbBadgeClass = match($pvb->status) {
+                            'approved', 'completed'   => 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                            'on_progress'             => 'bg-blue-100 text-blue-700 border-blue-200',
+                            'rejected', 'conflict_denied' => 'bg-rose-100 text-rose-700 border-rose-200',
+                            default                    => 'bg-gray-100 text-gray-600 border-gray-200',
+                        };
+                    @endphp
+                    <span class="text-xs font-bold px-3 py-1 rounded-full border {{ $pvbBadgeClass }}">
+                        {{ $pvb->statusLabel() }}
+                    </span>
+                </div>
+
+                {{-- Booking details grid --}}
+                <div class="rounded-xl border border-gray-200 bg-gray-50/50 divide-y divide-gray-100">
+                    <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Vehicle</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->vehicle?->name ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Borrower</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->borrower_name ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Start</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->start_at?->format('d M Y, H:i') ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">End</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->end_at?->format('d M Y, H:i') ?? '—' }}</p>
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Purpose</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->purpose ?? '—' }}</p>
+                        </div>
+                        @if($pvb->destination)
+                        <div class="col-span-2">
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Destination</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->destination }}</p>
+                        </div>
+                        @endif
+                        <div>
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Requested by</p>
+                            <p class="font-semibold text-violet-700">{{ $pvb->manager?->full_name ?? '—' }}</p>
+                        </div>
+                        @if($pvb->notes)
+                        <div class="col-span-2">
+                            <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Notes</p>
+                            <p class="font-semibold text-gray-900">{{ $pvb->notes }}</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Rejection reason (if denied) --}}
+                @if($pvb->rejection_reason)
+                <div class="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+                    <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <div>
+                        <p class="text-[11px] font-semibold text-red-700 mb-0.5">Reason for denial</p>
+                        <p class="text-xs text-red-600">{{ $pvb->rejection_reason }}</p>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            {{-- Footer --}}
+            <div class="px-6 py-4 border-t border-violet-100 bg-violet-50/40 flex items-center justify-between gap-3">
+                <button wire:click="closePriorityDetail"
+                    class="px-5 py-2 text-xs font-semibold rounded-lg bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 transition focus:outline-none focus:ring-2 focus:ring-violet-400/30">
+                    Close
+                </button>
+                {{-- Receptionist: view only. Edit/Delete handled by Manager. --}}
+            </div>
+        </div>
+    </div>
     @endif
 
     @if($showEdit)

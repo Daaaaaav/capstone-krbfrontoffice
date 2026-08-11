@@ -274,7 +274,8 @@
                                 : 'bg-rose-100 text-rose-700';
                         @endphp
                         <div wire:key="priority-hist-{{ $pb->id }}"
-                             class="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-violet-300 transition-all group">
+                             wire:click="openPriorityDetail({{ $pb->id }})"
+                             class="bg-white border border-violet-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md hover:border-violet-300 transition-all group cursor-pointer">
                             <div class="flex items-start gap-3">
                             <div class="w-9 h-9 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0">
                                 <svg class="w-4.5 h-4.5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
