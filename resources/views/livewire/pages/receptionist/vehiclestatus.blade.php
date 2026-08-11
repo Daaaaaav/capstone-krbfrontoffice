@@ -1,4 +1,6 @@
-﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+﻿<div class="min-h-screen bg-background" x-data="{ showFilterModal: false }">
+    {{-- Poll trigger isolated from Alpine scope to prevent morph from corrupting wire:click bindings --}}
+    <span wire:poll.5000ms.keep-alive style="display:none;" aria-hidden="true"></span>
     @php
     use Carbon\Carbon;
 
@@ -769,7 +771,8 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
+         :class="show && 'pointer-events-auto'"
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -849,7 +852,8 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
+         :class="show && 'pointer-events-auto'"
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -1129,7 +1133,7 @@
 
 
         {{-- APPROVE MODAL (Camera) --}}
-        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
             role="dialog" aria-modal="true"
             wire:key="approve-modal-container"
             x-data="{
@@ -1214,6 +1218,7 @@
             x-show="show"
             x-transition.opacity
             style="display: none;"
+            :class="show && 'pointer-events-auto'"
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
                 wire:click="closeApproveModal"></div>
@@ -1305,7 +1310,7 @@
         </div>
 
         {{-- DONE MODAL (Camera) --}}
-        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
             role="dialog" aria-modal="true"
             wire:key="done-modal-container"
             x-data="{
@@ -1390,6 +1395,7 @@
             x-show="show"
             x-transition.opacity
             style="display: none;"
+            :class="show && 'pointer-events-auto'"
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
                 wire:click="closeDoneModal"></div>
