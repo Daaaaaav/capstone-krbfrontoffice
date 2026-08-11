@@ -29,6 +29,11 @@ class UsersPerDepartment extends Component
     public $password = '';
     public $phone = '';
     public $status = 'active';
+
+    // Modal form selectors
+    public $selectedCompanyId = null;
+    public $selectedDepartmentId = null;
+    public $selectedRoleId = null;
     
     // Track expanded departments
     public $expandedDepartments = [];
@@ -118,6 +123,23 @@ class UsersPerDepartment extends Component
         $this->password = '';
         $this->phone = '';
         $this->status = 'active';
+        $this->selectedCompanyId = Auth::user()->company_id;
+        $this->selectedDepartmentId = null;
+        $this->selectedRoleId = null;
+    }
+
+    /**
+     * Computed property used in the Blade as $this->availableDepartments.
+     * Returns departments belonging to the currently selected company,
+     * falling back to the IT Officer's own company if none selected.
+     */
+    public function getAvailableDepartmentsProperty()
+    {
+        $cid = $this->selectedCompanyId ?: Auth::user()->company_id;
+
+        return Department::where('company_id', $cid)
+            ->orderBy('department_name')
+            ->get();
     }
 
     protected function rules()
@@ -335,9 +357,14 @@ class UsersPerDepartment extends Component
                 'last_page' => max($unassignedLastPage, 1),
             ];
 
+            // Scope companies to the IT Officer's own company only,
+            // consistent with all other IT Officer pages that use company_id scoping.
+            $companies = Company::where('company_id', $companyId)->get();
+            $roles = Role::orderBy('name')->get();
+
             return view(
                 'livewire.pages.it-officer.users-per-department',
-                compact('departments', 'departmentUsers', 'unassignedData')
+                compact('departments', 'departmentUsers', 'unassignedData', 'companies', 'roles')
             );
 
         } catch (\Exception $e) {
@@ -361,6 +388,8 @@ class UsersPerDepartment extends Component
                         'per_page' => 10,
                         'last_page' => 1,
                     ],
+                    'companies' => collect(),
+                    'roles' => collect(),
                 ]
             );
         }
