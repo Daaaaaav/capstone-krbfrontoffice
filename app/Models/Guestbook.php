@@ -35,14 +35,16 @@ class Guestbook extends Model
         'visitor_count',
         'storage_place',
         'scheduled_by_manager',
+        'receptionist_notified_at',
         'id_type_id',
         'visitor_lanyard_id',
     ];
 
     protected $casts = [
-        'date'                 => 'date:Y-m-d',
-        'visitor_count'        => 'integer',
-        'scheduled_by_manager' => 'boolean',
+        'date'                     => 'date:Y-m-d',
+        'visitor_count'            => 'integer',
+        'scheduled_by_manager'     => 'boolean',
+        'receptionist_notified_at' => 'datetime',
     ];
 
     public function scans(): HasMany

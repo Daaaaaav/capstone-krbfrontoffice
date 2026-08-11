@@ -46,10 +46,19 @@
                  wire:click="openDetail({{ $n->id }})">
                 <div class="flex items-start gap-3">
                     {{-- Type icon --}}
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5
-                        {{ str_contains($n->type, 'room') ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500' }}">
-                        @if(str_contains($n->type, 'room'))
+                    @php
+                        $isRoom    = str_contains($n->type, 'room');
+                        $isVisitor = $n->type === \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR;
+                        $isVehicle = !$isRoom && !$isVisitor;
+                        $iconBg    = $isRoom ? 'bg-amber-500/10 text-amber-500'
+                                  : ($isVisitor ? 'bg-emerald-500/10 text-emerald-600'
+                                  : 'bg-blue-500/10 text-blue-500');
+                    @endphp
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 {{ $iconBg }}">
+                        @if($isRoom)
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
+                        @elseif($isVisitor)
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                         @else
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                         @endif
@@ -111,10 +120,18 @@
             {{-- Modal header --}}
             <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center
-                        {{ str_contains($detailNotif->type, 'room') ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500' }}">
-                        @if(str_contains($detailNotif->type, 'room'))
+                    @php
+                        $dIsRoom    = str_contains($detailNotif->type, 'room');
+                        $dIsVisitor = $detailNotif->type === \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR;
+                        $dIconBg    = $dIsRoom ? 'bg-amber-500/10 text-amber-500'
+                                   : ($dIsVisitor ? 'bg-emerald-500/10 text-emerald-600'
+                                   : 'bg-blue-500/10 text-blue-500');
+                    @endphp
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center {{ $dIconBg }}">
+                        @if($dIsRoom)
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21V11.5a1.5 1.5 0 013 0V21"/></svg>
+                        @elseif($dIsVisitor)
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                         @else
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                         @endif
@@ -123,9 +140,9 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <p class="text-sm font-semibold text-foreground">{{ $detailNotif->title }}</p>
                             {{-- Show booking status badge from the linked priority booking model --}}
-                            @if($detailBooking && !$detailNotif->isPendingAction() && !$detailNotif->action_taken)
+                            @if($detailBooking && !$detailNotif->isPendingAction() && !$detailNotif->action_taken && $detailNotif->type !== \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR)
                             @php
-                                $bkStatus = $detailBooking->statusLabel() ?? ucfirst($detailBooking->status ?? '');
+                                $bkStatus = method_exists($detailBooking, 'statusLabel') ? ($detailBooking->statusLabel() ?? ucfirst($detailBooking->status ?? '')) : ucfirst($detailBooking->status ?? '');
                                 $bkColor  = match($detailBooking->status ?? '') {
                                     'approved'   => 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
                                     'completed'  => 'bg-blue-500/10 text-blue-600 border-blue-500/20',
@@ -159,7 +176,56 @@
                 @if($detailBooking)
                 <div class="rounded-xl border border-border bg-muted/20 divide-y divide-border/60">
 
-                    @if(str_contains($detailNotif->type, 'room'))
+                    @if($detailNotif->type === \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR)
+                    {{-- ── Scheduled Visitor details ── --}}
+                    <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Visitor Name</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->name ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Organisation</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->instansi ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Scheduled Date</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->date ? \Carbon\Carbon::parse($detailBooking->date)->format('d M Y') : '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Arrival Time</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->jam_in ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Purpose</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->keperluan ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Visitors</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->visitor_count ?? 1 }}</p>
+                        </div>
+                        @if($detailBooking->phone_number)
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Phone</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->phone_number }}</p>
+                        </div>
+                        @endif
+                        @if($detailBooking->department)
+                        <div>
+                            <p class="text-muted-foreground font-medium mb-0.5">Visiting</p>
+                            <p class="font-semibold text-foreground">{{ $detailBooking->department->department_name ?? '—' }}</p>
+                        </div>
+                        @endif
+                    </div>
+                    {{-- Navigate to Guestbook Status --}}
+                    <div class="px-4 py-3 bg-emerald-500/5">
+                        <a href="{{ route('receptionist.guestbookstatus') }}"
+                           class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                            View in Guestbook Status
+                        </a>
+                    </div>
+
+                    @elseif(str_contains($detailNotif->type, 'room'))
                     {{-- ── Room booking details ── --}}
                     <div class="px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
                         <div>
@@ -302,7 +368,7 @@
                     <p class="text-xs font-semibold text-red-600">This priority booking request was denied. The original booking is kept.</p>
                     @endif
                 </div>
-                @elseif($detailBooking && !$detailNotif->isPendingAction())
+                @elseif($detailBooking && !$detailNotif->isPendingAction() && $detailNotif->type !== \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR)
                 {{-- Direct/informational notification: show live booking status from the model --}}
                 @php
                     $liveStatus   = method_exists($detailBooking, 'statusLabel') ? $detailBooking->statusLabel() : ucfirst($detailBooking->status ?? '—');
