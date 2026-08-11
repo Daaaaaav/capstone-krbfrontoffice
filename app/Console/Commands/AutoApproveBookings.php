@@ -134,6 +134,56 @@ class AutoApproveBookings extends Command
             $this->line('  Vehicle bookings: none to flag as late_return.');
         }
 
+        // ── Priority Vehicle Bookings: mirror the same auto-transitions ──────────
+
+        // approved → on_progress when start_at arrives
+        $pvProgress = DB::table('priority_vehicle_bookings')
+            ->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED)
+            ->where('start_at', '<=', $nowStr);
+
+        $pvProgressCount = $pvProgress->count();
+        if ($pvProgressCount > 0) {
+            if ($isDry) {
+                $this->line("  [DRY-RUN] Would mark {$pvProgressCount} priority vehicle booking(s) as on_progress.");
+            } else {
+                $affected = DB::table('priority_vehicle_bookings')
+                    ->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED)
+                    ->where('start_at', '<=', $nowStr)
+                    ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS, 'updated_at' => $nowStr]);
+                $this->info("  ✓ Priority vehicle bookings marked as on_progress: {$affected}");
+            }
+        } else {
+            $this->line('  Priority vehicle bookings: none to mark as on_progress.');
+        }
+
+        // on_progress/approved → late_return when end_at + 1 hour passes
+        $pvLate = DB::table('priority_vehicle_bookings')
+            ->whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+                \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS,
+            ])
+            ->whereNotNull('end_at')
+            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr]);
+
+        $pvLateCount = $pvLate->count();
+        if ($pvLateCount > 0) {
+            if ($isDry) {
+                $this->line("  [DRY-RUN] Would flag {$pvLateCount} priority vehicle booking(s) as late_return.");
+            } else {
+                $affected = DB::table('priority_vehicle_bookings')
+                    ->whereIn('status', [
+                        \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+                        \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS,
+                    ])
+                    ->whereNotNull('end_at')
+                    ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr])
+                    ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_LATE_RETURN, 'updated_at' => $nowStr]);
+                $this->info("  ✓ Priority vehicle bookings flagged as late_return: {$affected}");
+            }
+        } else {
+            $this->line('  Priority vehicle bookings: none to flag as late_return.');
+        }
+
         $this->info('Done.');
 
         return self::SUCCESS;

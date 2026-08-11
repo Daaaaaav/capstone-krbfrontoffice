@@ -22,7 +22,7 @@ class PriorityVehicleBookingHistory extends Component
     
     // Filters
     public string $q = '';
-    public string $statusFilter = 'all'; // all | approved | rejected
+    public string $statusFilter = 'all'; // all | completed | rejected
     public ?string $selectedDate = null; // YYYY-MM-DD
     public string $dateMode = 'recent'; // recent | oldest
     public int $perPage = 10;
@@ -126,29 +126,22 @@ class PriorityVehicleBookingHistory extends Component
         $query = PriorityVehicleBooking::with(['vehicle', 'manager', 'department', 'cancelledBooking', 'handledBy'])
             ->forCompany($companyId);
         
-        // Only show approved/rejected bookings in history
-        // Note: Approved bookings that have completed their time period belong in history
-        if ($this->statusFilter === 'approved') {
-            // Show approved bookings whose end time has passed
-            $query->where('status', PriorityVehicleBooking::STATUS_APPROVED)
-                ->where('end_at', '<', Carbon::now($this->tz));
+        // History mirrors ordinary Vehicleshistory.php: show completed + rejected.
+        // A booking is "done" only once it reaches STATUS_COMPLETED via confirmDone().
+        if ($this->statusFilter === 'completed') {
+            $query->where('status', PriorityVehicleBooking::STATUS_COMPLETED);
         } elseif ($this->statusFilter === 'rejected') {
             $query->whereIn('status', [
                 PriorityVehicleBooking::STATUS_REJECTED,
                 PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
             ]);
         } else {
-            // all: show approved (past end time) + rejected
-            $query->where(function ($q) {
-                $q->where(function ($q1) {
-                    $q1->where('status', PriorityVehicleBooking::STATUS_APPROVED)
-                       ->where('end_at', '<', Carbon::now($this->tz));
-                })
-                ->orWhereIn('status', [
-                    PriorityVehicleBooking::STATUS_REJECTED,
-                    PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
-                ]);
-            });
+            // all: completed + rejected
+            $query->whereIn('status', [
+                PriorityVehicleBooking::STATUS_COMPLETED,
+                PriorityVehicleBooking::STATUS_REJECTED,
+                PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
+            ]);
         }
         
         // Apply date filter

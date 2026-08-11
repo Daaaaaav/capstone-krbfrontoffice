@@ -106,7 +106,7 @@
         </div>
         @endif
 
-        {{-- ON THE ROAD (ON_PROGRESS) BOOKINGS --}}
+        {{-- ON THE ROAD (ON_PROGRESS + LATE_RETURN) BOOKINGS --}}
         @if($onProgressBookings->isNotEmpty())
         <div class="bg-white border border-blue-300 rounded-2xl shadow-sm overflow-hidden">
             <div class="px-6 py-4 bg-blue-50 border-b border-blue-200">
@@ -115,15 +115,26 @@
             </div>
             <div class="divide-y divide-blue-100">
                 @foreach($onProgressBookings as $booking)
-                <div class="px-6 py-4 hover:bg-blue-50/50 transition">
+                @php $isLate = $booking->status === \App\Models\PriorityVehicleBooking::STATUS_LATE_RETURN; @endphp
+                <div class="px-6 py-4 hover:bg-blue-50/50 transition {{ $isLate ? 'border-l-4 border-red-400' : '' }}">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700">
+                                <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
+                                    {{ $isLate ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700' }}">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-[#2d3a24]">{{ $booking->purpose }}</p>
+                                    <div class="flex items-center gap-2">
+                                        <p class="font-semibold text-[#2d3a24]">{{ $booking->purpose }}</p>
+                                        @if($isLate)
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
+                                                ⚠ Late Return
+                                                @php $dur = $this->overdueDuration($booking); @endphp
+                                                @if($dur) · {{ $dur }} overdue @endif
+                                            </span>
+                                        @endif
+                                    </div>
                                     <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#5a6e4a] mt-1">
                                         <span>{{ $booking->vehicle->name ?? 'N/A' }}{{ $booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '' }}</span>
                                         <span>Borrower: {{ $booking->borrower_name }}</span>
@@ -139,43 +150,11 @@
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">View</button>
-                            <button wire:click="openDone({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition">Mark Done</button>
-                        </div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-        @endif
-
-        {{-- COMPLETED BOOKINGS --}}
-        @if($completedBookings->isNotEmpty())
-        <div class="bg-white border border-gray-300 rounded-2xl shadow-sm overflow-hidden">
-            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <h3 class="text-base font-bold text-gray-900">Recently Completed ({{ $completedBookings->count() }})</h3>
-                <p class="text-xs text-gray-600 mt-0.5">Latest 20 completed bookings</p>
-            </div>
-            <div class="divide-y divide-gray-100">
-                @foreach($completedBookings as $booking)
-                <div class="px-6 py-4 hover:bg-gray-50/50 transition">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="font-semibold text-gray-700">{{ $booking->purpose }}</p>
-                                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
-                                        <span>{{ $booking->vehicle->name ?? 'N/A' }}{{ $booking->vehicle->plate_number ? ' — ' . $booking->vehicle->plate_number : '' }}</span>
-                                        <span>Borrower: {{ $booking->borrower_name }}</span>
-                                        <span>Completed: {{ \Carbon\Carbon::parse($booking->updated_at)->format('d M Y, H:i') }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition">View Details</button>
+                            <button wire:click="openDone({{ $booking->id }})"
+                                class="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition
+                                    {{ $isLate ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700' }}">
+                                Mark Done
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -185,7 +164,7 @@
         @endif
 
         {{-- EMPTY STATE --}}
-        @if($pendingBookings->isEmpty() && $approvedBookings->isEmpty() && $onProgressBookings->isEmpty() && $completedBookings->isEmpty())
+        @if($pendingBookings->isEmpty() && $approvedBookings->isEmpty() && $onProgressBookings->isEmpty())
         <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm p-12">
             <div class="text-center text-[#9aaa8a]">
                 <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">

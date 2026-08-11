@@ -59,11 +59,21 @@ class PriorityRoomBookingStatus extends Component
     
     public function mount(): void
     {
-        // Auto-complete approved bookings whose end time has passed
-        PriorityRoomBooking::autoCompleteApproved(Auth::user()->company_id ?? null);
-        
-        // Auto-expire pending bookings whose end time has passed
-        PriorityRoomBooking::autoExpirePending(Auth::user()->company_id ?? null);
+        $companyId = Auth::user()->company_id ?? null;
+
+        // Step 1: Auto-complete approved bookings whose end time has passed.
+        PriorityRoomBooking::autoCompleteApproved($companyId);
+
+        // Step 2: Auto-approve pending_receipt bookings whose start time has arrived
+        //         (mirrors ordinary BookingRoom auto-approve in AutoApproveBookings scheduler).
+        //         MUST run BEFORE the reject-expired step so a booking that just hit
+        //         its start time is promoted to approved rather than rejected.
+        PriorityRoomBooking::autoApproveNonClashing($companyId);
+
+        // Step 3: Reject any pending bookings whose entire window (end time) has now
+        //         passed and could therefore never be auto-approved or manually approved.
+        //         Mirrors ordinary BookingRoom pending→rejected logic in AutoCompleteBookings.
+        PriorityRoomBooking::autoRejectExpiredPending($companyId);
     }
     
     public function openDetail(int $id): void
