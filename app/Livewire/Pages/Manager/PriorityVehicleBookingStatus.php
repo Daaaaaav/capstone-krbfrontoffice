@@ -299,6 +299,7 @@ class PriorityVehicleBookingStatus extends Component
         $companyId = Auth::user()->company_id ?? null;
         
         // Auto-transition approved bookings to on_progress when start time arrives
+        // CRITICAL: Only transition if already approved, NOT if still pending
         PriorityVehicleBooking::where('company_id', $companyId)
             ->where('status', PriorityVehicleBooking::STATUS_APPROVED)
             ->where('start_at', '<=', now())

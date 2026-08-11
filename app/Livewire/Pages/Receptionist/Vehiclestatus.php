@@ -104,10 +104,8 @@ class Vehiclestatus extends Component
             ->update(['status' => 'on_progress']);
 
         // Auto-transition priority bookings to 'on_progress' when start time arrives
-        \App\Models\PriorityVehicleBooking::whereIn('status', [
-                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
-                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT
-            ])
+        // CRITICAL: Only transition if already approved, NOT if still pending
+        \App\Models\PriorityVehicleBooking::where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED)
             ->where('start_at', '<=', now($this->tz))
             ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS]);
 
