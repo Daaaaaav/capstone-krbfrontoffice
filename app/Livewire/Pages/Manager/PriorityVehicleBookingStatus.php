@@ -46,6 +46,18 @@ class PriorityVehicleBookingStatus extends Component
     public ?int $doneId = null;
     public ?string $donePhotoData = null;
 
+    // Edit modal (mirrors ordinary VehicleBooking editing)
+    public bool $showEditModal = false;
+    public ?int $editId = null;
+    public array $editForm = [
+        'borrower_name' => '',
+        'purpose'       => '',
+        'destination'   => '',
+        'start_at'      => '',
+        'end_at'        => '',
+        'special_notes' => '',
+    ];
+
     protected $queryString = [
         'q' => ['except' => ''],
         'page' => ['except' => 1],
@@ -194,6 +206,87 @@ class PriorityVehicleBookingStatus extends Component
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error',
                 message: 'Failed to approve booking: ' . $e->getMessage());
+        }
+    }
+
+    // ─── Edit (mirrors ordinary VehicleBooking editing) ───────────────────────
+
+    public function openEdit(int $id): void
+    {
+        $companyId = Auth::user()->company_id ?? null;
+        $booking = PriorityVehicleBooking::forCompany($companyId)->find($id);
+
+        if (!$booking) {
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Booking not found.');
+            return;
+        }
+
+        $this->editId = $id;
+        $this->editForm = [
+            'borrower_name' => (string) $booking->borrower_name,
+            'purpose'       => (string) $booking->purpose,
+            'destination'   => (string) $booking->destination,
+            'start_at'      => $booking->start_at ? Carbon::parse($booking->start_at)->format('Y-m-d\TH:i') : '',
+            'end_at'        => $booking->end_at ? Carbon::parse($booking->end_at)->format('Y-m-d\TH:i') : '',
+            'special_notes' => (string) ($booking->special_notes ?? ''),
+        ];
+
+        $this->showEditModal = true;
+    }
+
+    public function closeEdit(): void
+    {
+        $this->showEditModal = false;
+        $this->editId = null;
+        $this->editForm = [
+            'borrower_name' => '',
+            'purpose'       => '',
+            'destination'   => '',
+            'start_at'      => '',
+            'end_at'        => '',
+            'special_notes' => '',
+        ];
+    }
+
+    public function confirmEdit(): void
+    {
+        $this->validate([
+            'editForm.borrower_name' => 'required|string|max:255',
+            'editForm.purpose'       => 'required|string|max:255',
+            'editForm.destination'   => 'nullable|string|max:255',
+            'editForm.start_at'      => 'required|date',
+            'editForm.end_at'        => 'required|date|after_or_equal:editForm.start_at',
+            'editForm.special_notes' => 'nullable|string|max:1000',
+        ]);
+
+        if (!$this->editId) {
+            return;
+        }
+
+        $companyId = Auth::user()->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($companyId) {
+                $booking = PriorityVehicleBooking::lockForUpdate()
+                    ->where('id', $this->editId)
+                    ->forCompany($companyId)
+                    ->firstOrFail();
+
+                $booking->borrower_name = $this->editForm['borrower_name'];
+                $booking->purpose       = $this->editForm['purpose'];
+                $booking->destination   = $this->editForm['destination'] ?: null;
+                $booking->start_at      = Carbon::parse($this->editForm['start_at'])->format('Y-m-d H:i:s');
+                $booking->end_at        = Carbon::parse($this->editForm['end_at'])->format('Y-m-d H:i:s');
+                $booking->special_notes = $this->editForm['special_notes'] ?: null;
+                $booking->save();
+            });
+
+            $this->closeEdit();
+            $this->resetPage();
+            $this->dispatch('toast', type: 'success', title: 'Updated', message: 'Priority vehicle booking details updated.');
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update booking: ' . $e->getMessage());
         }
     }
 

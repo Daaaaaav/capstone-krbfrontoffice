@@ -133,7 +133,7 @@ class PriorityRoomBookingStatus extends Component
         )";
 
         $conflict = BookingRoom::query()
-            ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
+            ->whereIn('status', ['pending', 'approved'])
             ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
             ->where('room_id', $booking->room_id)
             ->whereDate('date', $booking->date)
@@ -179,7 +179,8 @@ class PriorityRoomBookingStatus extends Component
                 // If this booking requires cancelling a conflicting booking
                 if ($booking->status === PriorityRoomBooking::STATUS_PENDING_CANCELLATION && $booking->cancels_booking_id) {
                     BookingRoom::where('bookingroom_id', $booking->cancels_booking_id)
-                        ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
+                        ->where('room_id', $booking->room_id)
+                        ->whereIn('status', ['pending', 'approved'])
                         ->update([
                             'status' => 'rejected',
                             'book_reject' => 'Cancelled — superseded by manager priority booking #' . $booking->id . '.',

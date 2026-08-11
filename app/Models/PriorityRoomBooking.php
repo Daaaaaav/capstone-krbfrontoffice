@@ -101,13 +101,26 @@ class PriorityRoomBooking extends Model
 
     public static function autoApproveNonClashing(?int $companyId): void
     {
-        $now = now();
+        $tz = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
 
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-            ->where('status', self::STATUS_PENDING_RECEIPT)
-            ->where('date', $now->toDateString())
-            ->where('start_time', '<=', $now->format('H:i:s'))
+            ->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION])
+            ->where(function ($q) use ($now) {
+                $q->where('date', '<', $now->toDateString())
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->where('date', $now->toDateString())
+                         ->where('start_time', '<=', $now->format('H:i:s'));
+                  });
+            })
+            ->where(function ($q) use ($now) {
+                $q->where('date', '>', $now->toDateString())
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->where('date', $now->toDateString())
+                         ->where('end_time', '>', $now->format('H:i:s'));
+                  });
+            })
             ->update([
                 'status'     => self::STATUS_APPROVED,
                 'updated_at' => $now->toDateTimeString(),
@@ -116,17 +129,23 @@ class PriorityRoomBooking extends Model
 
     public static function autoCompleteApproved(?int $companyId): void
     {
+        $tz = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->where('status', self::STATUS_APPROVED)
-            ->where(function ($q) {
-                $q->where('date', '<', now()->toDateString())
-                  ->orWhere(function ($q2) {
-                      $q2->where('date', now()->toDateString())
-                         ->where('end_time', '<=', now()->format('H:i:s'));
+            ->where(function ($q) use ($now) {
+                $q->where('date', '<', $now->toDateString())
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->where('date', $now->toDateString())
+                         ->where('end_time', '<=', $now->format('H:i:s'));
                   });
             })
-            ->update(['status' => self::STATUS_COMPLETED]);
+            ->update([
+                'status'     => self::STATUS_COMPLETED,
+                'updated_at' => $now->toDateTimeString(),
+            ]);
     }
 
     public function isActionable(): bool

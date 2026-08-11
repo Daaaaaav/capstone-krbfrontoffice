@@ -99,13 +99,13 @@ class PriorityRoomBooking extends Component
         )";
 
         $conflict = BookingRoom::query()
-            ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
+            ->whereIn('status', ['pending', 'approved'])
             ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
             ->where('room_id', $this->room_id)
             ->whereDate('date', $this->date)
             ->whereRaw("$startExpr < ?", [$end->toDateTimeString()])
             ->whereRaw("$endExpr > ?", [$start->toDateTimeString()])
-            ->orderByRaw("FIELD(status, 'approved', 'pending', 'completed', 'done', '1', '3')")
+            ->orderByRaw("FIELD(status, 'approved', 'pending')")
             ->first(['bookingroom_id', 'meeting_title', 'start_time', 'end_time', 'status']);
 
         if ($conflict) {
@@ -209,6 +209,7 @@ class PriorityRoomBooking extends Component
 
         $conflictingBooking = BookingRoom::where('bookingroom_id', $this->conflicting_booking_id)
             ->where('company_id', $companyId)
+            ->where('room_id', $this->room_id)
             ->whereIn('status', ['pending', 'approved'])
             ->first();
 

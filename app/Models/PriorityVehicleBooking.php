@@ -82,16 +82,17 @@ class PriorityVehicleBooking extends Model
 
     public static function autoExpirePending(?int $companyId): void
     {
-        // Only reject pending bookings whose END time has fully passed.
-        // This must be called AFTER autoApproveNonClashing (or equivalent) so
-        // that bookings reaching their start time are first approved.
+        $tz  = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION])
-            ->where('end_at', '<', now())
+            ->where('end_at', '<', $now)
             ->update([
                 'status'           => self::STATUS_REJECTED,
                 'rejection_reason' => 'Auto-rejected: vehicle booking window expired without approval.',
+                'updated_at'       => $now->toDateTimeString(),
             ]);
     }
 
@@ -101,11 +102,17 @@ class PriorityVehicleBooking extends Model
      */
     public static function autoProgressToOnProgress(?int $companyId): void
     {
+        $tz  = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->where('status', self::STATUS_APPROVED)
-            ->where('start_at', '<=', now())
-            ->update(['status' => self::STATUS_ON_PROGRESS]);
+            ->where('start_at', '<=', $now)
+            ->update([
+                'status'     => self::STATUS_ON_PROGRESS,
+                'updated_at' => $now->toDateTimeString(),
+            ]);
     }
 
     /**
@@ -114,12 +121,18 @@ class PriorityVehicleBooking extends Model
      */
     public static function autoFlagLateReturns(?int $companyId): void
     {
+        $tz  = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereIn('status', [self::STATUS_APPROVED, self::STATUS_ON_PROGRESS])
             ->whereNotNull('end_at')
-            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [now()->toDateTimeString()])
-            ->update(['status' => self::STATUS_LATE_RETURN]);
+            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$now->toDateTimeString()])
+            ->update([
+                'status'     => self::STATUS_LATE_RETURN,
+                'updated_at' => $now->toDateTimeString(),
+            ]);
     }
 
     public function isActionable(): bool

@@ -123,7 +123,7 @@ class PriorityVehicleBooking extends Component
 
         $conflict = VehicleBooking::query()
             ->where('vehicle_id', $this->vehicle_id)
-            ->where('status', 'pending')  
+            ->whereIn('status', ['pending', 'approved'])
             ->where('start_at', '<', $end->toDateTimeString())
             ->where('end_at', '>', $start->toDateTimeString())
             ->first(['vehiclebooking_id', 'borrower_name', 'start_at', 'end_at']);
