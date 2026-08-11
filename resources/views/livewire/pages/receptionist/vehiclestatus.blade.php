@@ -984,72 +984,6 @@
 </div>
 @endif
 
-{{-- Priority Vehicle Approval Modal --}}
-@if($showPriorityApprovalModal && $priorityApprovalBookingId)
-@php
-    $pvb = \App\Models\PriorityVehicleBooking::with(['vehicle','department','manager','cancelledBooking'])->find($priorityApprovalBookingId);
-@endphp
-<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-    <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-            </div>
-            <div>
-                <p class="font-semibold text-foreground">Priority Vehicle Booking â€” Action Required</p>
-                <p class="text-xs text-muted-foreground mt-0.5">A manager has requested cancellation of a pending booking.</p>
-            </div>
-        </div>
-
-        @if($pvb)
-        <div class="bg-muted/40 rounded-xl p-4 space-y-2 text-sm">
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Vehicle:</span>
-                <span class="font-semibold">{{ $pvb->vehicle?->name ?? 'â€”' }} {{ $pvb->vehicle?->plate_number ? '('.$pvb->vehicle->plate_number.')' : '' }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Borrower:</span>
-                <span class="font-semibold">{{ $pvb->borrower_name }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Schedule:</span>
-                <span class="font-semibold">{{ $pvb->start_at?->format('d M Y H:i') }} â€“ {{ $pvb->end_at?->format('H:i') }}</span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-muted-foreground">Requested by:</span>
-                <span class="font-semibold">{{ $pvb->manager?->full_name ?? 'â€”' }}</span>
-            </div>
-            @if($pvb->cancelledBooking)
-            <div class="mt-2 pt-2 border-t border-border space-y-1">
-                <p class="text-xs font-semibold text-orange-600">Booking to cancel (currently pending):</p>
-                <p class="text-xs text-muted-foreground">#{{ $pvb->cancelledBooking->vehiclebooking_id }} â€” {{ $pvb->cancelledBooking->borrower_name }} Â· {{ $pvb->cancelledBooking->start_at?->format('d M H:i') }} â€“ {{ $pvb->cancelledBooking->end_at?->format('H:i') }}</p>
-            </div>
-            @endif
-        </div>
-        @endif
-
-        <p class="text-sm text-foreground">
-            <strong>Approve</strong> to cancel the conflicting pending booking and grant priority, or
-            <strong>Deny</strong> to keep the original booking.
-        </p>
-
-        <div class="flex flex-col sm:flex-row gap-2 pt-1">
-            <button wire:click="approvePriorityVehicle"
-                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
-                Approve &amp; Cancel Conflict
-            </button>
-            <button wire:click="denyPriorityVehicle"
-                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition">
-                Deny Request
-            </button>
-            <button wire:click="closePriorityApprovalModal"
-                class="flex-1 inline-flex items-center justify-center h-10 text-xs font-semibold rounded-lg border border-border bg-card text-foreground hover:bg-muted transition">
-                Later
-            </button>
-        </div>
-    </div>
-</div>
-@endif
 
 {{-- Priority Vehicle Booking Detail Modal --}}
 @if($showPriorityVehicleDetailModal && $priorityVehicleDetailBooking)
@@ -1198,37 +1132,7 @@
 </div>
 @endif
 
-{{-- Priority Vehicle Reject Modal --}}
-@if($showPriorityVehicleRejectModal)
-<div class="fixed inset-0 z-[210] flex items-center justify-center p-4" wire:key="priority-veh-reject-modal">
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closePriorityVehicleReject"></div>
-    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-rose-200">
-        <div class="px-6 py-4 border-b border-rose-200 bg-rose-50/60 flex items-center justify-between">
-            <p class="text-sm font-semibold text-gray-900">Reject Priority Vehicle Booking</p>
-            <button wire:click="closePriorityVehicleReject" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-100 text-gray-500 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div class="px-6 py-5 space-y-3">
-            <p class="text-xs text-gray-600">Provide a reason so the manager can review and resubmit if needed.</p>
-            <textarea wire:model="priorityVehicleRejectReason"
-                      rows="3"
-                      placeholder="Enter rejection reason…"
-                      class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder:text-gray-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 resize-none transition"></textarea>
-            @error('priorityVehicleRejectReason') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
-        </div>
-        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
-            <button wire:click="closePriorityVehicleReject" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Cancel</button>
-            <button wire:click="submitPriorityVehicleReject"
-                    wire:loading.attr="disabled"
-                    wire:target="submitPriorityVehicleReject"
-                    class="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition">
-                Confirm Reject
-            </button>
-        </div>
-    </div>
-</div>
-@endif
+
 
         {{-- APPROVE MODAL (Camera) --}}
         <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
@@ -1304,19 +1208,18 @@
                 }
             }"
             x-show="show"
-            x-transition.opacity
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
             style="display: none;"
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
-                wire:click="closeApproveModal"></div>
+                wire:click="closeApproveModal" @click="show = false"></div>
 
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
                  class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
                 
                 {{-- Flush Header --}}
@@ -1328,7 +1231,7 @@
                         <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Handover Evidence</h3>
                     </div>
                     <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
-                        wire:click="closeApproveModal">
+                        wire:click="closeApproveModal" @click="show = false">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -1470,19 +1373,18 @@
                 }
             }"
             x-show="show"
-            x-transition.opacity
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
             style="display: none;"
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
-                wire:click="closeDoneModal"></div>
+                wire:click="closeDoneModal" @click="show = false"></div>
 
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
                  class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
                 
                 {{-- Flush Header --}}
@@ -1494,7 +1396,7 @@
                         <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Return Evidence</h3>
                     </div>
                     <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
-                        wire:click="closeDoneModal">
+                        wire:click="closeDoneModal" @click="show = false">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
