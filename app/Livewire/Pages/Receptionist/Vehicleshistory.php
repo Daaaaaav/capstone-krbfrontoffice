@@ -44,6 +44,8 @@ class Vehicleshistory extends Component
     public array $selectedPhotos = ['before' => [], 'after' => []];
     public bool $showPriorityDetailModal = false;
     public ?int $priorityDetailId = null;
+    // Priority edit/delete state removed — Receptionists are VIEW ONLY for Priority Vehicle Bookings.
+    public ?string $priorityFilter = null; // null = all | 'regular' = hide priority entries
 
     public array $edit = [
         'borrower_name' => '',
@@ -298,6 +300,9 @@ class Vehicleshistory extends Component
         return \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager', 'department'])
             ->find($this->priorityDetailId);
     }
+
+    // openPriorityEdit / savePriorityEdit / confirmPriorityDelete / executePriorityDelete
+    // removed — Receptionists are VIEW ONLY for Priority Vehicle Bookings.
 
     public function render()
     {

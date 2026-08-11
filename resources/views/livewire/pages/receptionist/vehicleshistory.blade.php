@@ -1,4 +1,4 @@
-﻿@php
+@php
     use Carbon\Carbon;
 
     if (!function_exists('fmtDate')) {
@@ -262,7 +262,7 @@
                                     {{ $pvb->statusLabel() }}
                                 </span>
                             </div>
-                            {{-- Receptionist view only: Priority Vehicle Booking management is handled on Manager Priority Vehicle Status page --}}
+                            {{-- Receptionist: Priority Vehicle Bookings are VIEW ONLY. Management handled by Manager. --}}
                         </div>
                         @endforeach
                     </div>
@@ -706,6 +706,8 @@
             </div>
         </div>
 
+    {{-- Priority Vehicle Booking Edit and Delete modals removed.
+         Receptionists are VIEW ONLY for Priority Vehicle Bookings. --}}
 
     @if($showDetailModal && $selectedBooking)
         <div x-data="{ show: @entangle('showDetailModal') }"

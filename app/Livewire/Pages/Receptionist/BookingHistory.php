@@ -63,6 +63,7 @@ class BookingHistory extends Component
 
     public bool $showPriorityDetailModal = false;
     public ?int $priorityDetailId        = null;
+    // Priority edit/delete state removed — Receptionists are VIEW ONLY for Priority Room Bookings.
     public string $activeTab = 'done'; // done (default) | rejected
     public ?string $priorityFilter = null; // null = all, 'priority' = show only priority, 'regular' = hide priority
 
@@ -221,6 +222,9 @@ class BookingHistory extends Component
         return PriorityRoomBooking::with(['room', 'manager'])
             ->find($this->priorityDetailId);
     }
+
+    // openPriorityEdit / savePriorityEdit / confirmPriorityDelete / executePriorityDelete
+    // removed — Receptionists are VIEW ONLY for Priority Room Bookings.
 
     public function create(string $bookingType = 'meeting', string $status = 'completed'): void
     {

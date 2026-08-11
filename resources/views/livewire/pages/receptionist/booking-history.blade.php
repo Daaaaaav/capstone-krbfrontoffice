@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -295,7 +295,7 @@
                                 {{ $pb->statusLabel() }}
                             </span>
                             </div>
-                            {{-- Receptionist view only: Priority Room Booking management is handled by Managers --}}
+                            {{-- Receptionist: Priority Room Bookings are VIEW ONLY. Management handled by Manager. --}}
                         </div>
                         @endforeach
                     </div>
@@ -1614,12 +1614,13 @@
                     class="px-5 py-2 text-xs font-semibold rounded-lg bg-white border border-amber-200 text-amber-700 hover:bg-amber-50 transition focus:outline-none focus:ring-2 focus:ring-amber-400/30">
                     Close
                 </button>
-                {{-- REMOVED: Edit and Delete buttons for Priority Room Bookings --}}
-                {{-- Receptionists no longer manage Priority Bookings from Status/History pages --}}
-                {{-- Priority notifications are accessed through the notification bell only --}}
+                {{-- Receptionist: view only. Edit/Delete handled by Manager. --}}
             </div>
         </div>
     </div>
     @endif
+
+    {{-- Priority Room Booking Edit and Delete modals removed.
+         Receptionists are VIEW ONLY for Priority Room Bookings. --}}
 
 </div>
