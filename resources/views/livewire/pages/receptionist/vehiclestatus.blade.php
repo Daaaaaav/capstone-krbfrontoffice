@@ -1134,7 +1134,6 @@
             wire:key="approve-modal-container"
             x-data="{
                 show: @entangle('showApproveModal').live,
-                photoData: @entangle('photoData').live,
                 stream: null,
                 devices: [],
                 selectedDeviceId: null,
@@ -1190,14 +1189,14 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    this.photoData = canvas.toDataURL('image/png');
+                    $wire.set('photoData', canvas.toDataURL('image/png'));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        this.photoData = ev.target.result;
+                        $wire.set('photoData', ev.target.result);
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1244,7 +1243,7 @@
                     </div>
 
                     {{-- Camera Viewport --}}
-                    <div x-show="!photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
                         <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
@@ -1260,16 +1259,16 @@
                     </div>
                     
                     {{-- Preview --}}
-                    <div x-show="photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
-                        <img :src="photoData" class="w-full h-full object-cover" />
-                        <button type="button" @click="photoData = null" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                    <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
                             <x-heroicon-o-arrow-path class="w-4 h-4"/>
                             Retake
                         </button>
                     </div>
 
                     {{-- Actions (Capture/Gallery) --}}
-                    <div x-show="!photoData" class="flex items-center gap-3">
+                    <div x-show="!$wire.photoData" class="flex items-center gap-3">
                         <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
                             <x-heroicon-o-photo class="w-5 h-5"/>
                             Buka Galeri
@@ -1283,7 +1282,7 @@
                     </div>
 
                     {{-- Actions (Submit) --}}
-                    <div x-show="photoData" style="display: none;" class="flex items-center">
+                    <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
                         <button type="button" wire:click="submitApprove" @click="stopCamera()"
                             class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4A2F24] text-white font-bold text-sm hover:bg-[#38221A] transition shadow-md"
                             wire:loading.attr="disabled" wire:target="submitApprove">
@@ -1301,7 +1300,6 @@
             wire:key="done-modal-container"
             x-data="{
                 show: @entangle('showDoneModal').live,
-                photoData: @entangle('photoData').live,
                 stream: null,
                 devices: [],
                 selectedDeviceId: null,
@@ -1357,14 +1355,14 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    this.photoData = canvas.toDataURL('image/png');
+                    $wire.set('photoData', canvas.toDataURL('image/png'));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        this.photoData = ev.target.result;
+                        $wire.set('photoData', ev.target.result);
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1411,7 +1409,7 @@
                     </div>
 
                     {{-- Camera Viewport --}}
-                    <div x-show="!photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
                         <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
@@ -1427,16 +1425,16 @@
                     </div>
                     
                     {{-- Preview --}}
-                    <div x-show="photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
-                        <img :src="photoData" class="w-full h-full object-cover" />
-                        <button type="button" @click="photoData = null" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                    <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
                             <x-heroicon-o-arrow-path class="w-4 h-4"/>
                             Retake
                         </button>
                     </div>
 
                     {{-- Actions (Capture/Gallery) --}}
-                    <div x-show="!photoData" class="flex items-center gap-3">
+                    <div x-show="!$wire.photoData" class="flex items-center gap-3">
                         <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
                             <x-heroicon-o-photo class="w-5 h-5"/>
                             Buka Galeri
@@ -1450,7 +1448,7 @@
                     </div>
 
                     {{-- Actions (Submit) --}}
-                    <div x-show="photoData" style="display: none;" class="flex items-center">
+                    <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
                         <button type="button" wire:click="submitDone" @click="stopCamera()"
                             class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4E653D] text-white font-bold text-sm hover:bg-[#354C2B] transition shadow-md"
                             wire:loading.attr="disabled" wire:target="submitDone">
