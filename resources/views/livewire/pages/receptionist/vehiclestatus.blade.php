@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -769,8 +769,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
-         :class="show && 'pointer-events-auto'"
+         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -850,8 +849,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
-         :class="show && 'pointer-events-auto'"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -969,7 +967,7 @@
                     @if($n->isPendingAction())
                     <button wire:click="openPriorityApprovalModal({{ $n->id }})"
                         class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
-                        View
+                        Review
                     </button>
                     @elseif($n->action_taken)
                     <span class="shrink-0 text-[11px] font-semibold {{ $n->action_taken === 'approved' ? 'text-emerald-600' : 'text-red-500' }}">
@@ -985,8 +983,6 @@
     </div>
 </div>
 @endif
-
-{{-- Priority Vehicle Approval Modal removed — Receptionists are VIEW ONLY. Approval handled by Managers only. --}}
 
 
 {{-- Priority Vehicle Booking Detail Modal --}}
@@ -1118,7 +1114,16 @@
 
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
-            {{-- Receptionist VIEW ONLY: Approve & Cancel Conflict button removed --}}
+            @if($pvd->status === 'pending_cancellation')
+                {{-- Conflict booking: needs explicit approval from receptionist to cancel the existing booking --}}
+                <button wire:click="approvePriorityVehicleById({{ $pvd->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="approvePriorityVehicleById({{ $pvd->id }})"
+                        class="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Approve &amp; Cancel Conflict
+                </button>
+            @endif
             <button wire:click="closePriorityVehicleDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
                 Close
             </button>
@@ -1127,27 +1132,23 @@
 </div>
 @endif
 
-{{-- Priority Vehicle Reject Modal removed — Receptionists are VIEW ONLY. --}}
 
 
         {{-- APPROVE MODAL (Camera) --}}
-        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
             wire:key="approve-modal-container"
             x-data="{
                 show: @entangle('showApproveModal').live,
-                photoPreview: null,
                 stream: null,
                 devices: [],
                 selectedDeviceId: null,
                 init() {
                     this.$watch('show', value => {
                         if (value) {
-                            this.photoPreview = null;
                             this.getDevices();
                         } else {
                             this.stopCamera();
-                            this.photoPreview = null;
                         }
                     });
                 },
@@ -1194,40 +1195,31 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const data = canvas.toDataURL('image/png');
-                    this.photoPreview = data;
-                    $wire.set('photoData', data);
+                    $wire.set('photoData', canvas.toDataURL('image/png'));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        this.photoPreview = ev.target.result;
                         $wire.set('photoData', ev.target.result);
                     };
                     reader.readAsDataURL(file);
-                },
-                retake() {
-                    this.photoPreview = null;
-                    $wire.set('photoData', null);
                 }
             }"
             x-show="show"
-            x-transition.opacity
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
             style="display: none;"
-            :class="show && 'pointer-events-auto'"
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
-                wire:click="closeApproveModal"></div>
+                wire:click="closeApproveModal" @click="show = false"></div>
 
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
                  class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
                 
                 {{-- Flush Header --}}
@@ -1239,7 +1231,7 @@
                         <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Handover Evidence</h3>
                     </div>
                     <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
-                        wire:click="closeApproveModal">
+                        wire:click="closeApproveModal" @click="show = false">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -1256,7 +1248,7 @@
                     </div>
 
                     {{-- Camera Viewport --}}
-                    <div x-show="!photoPreview" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
                         <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
@@ -1272,16 +1264,16 @@
                     </div>
                     
                     {{-- Preview --}}
-                    <div x-show="photoPreview" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
-                        <img :src="photoPreview" class="w-full h-full object-cover" />
-                        <button type="button" @click="retake()" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                    <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
                             <x-heroicon-o-arrow-path class="w-4 h-4"/>
                             Retake
                         </button>
                     </div>
 
                     {{-- Actions (Capture/Gallery) --}}
-                    <div x-show="!photoPreview" class="flex items-center gap-3">
+                    <div x-show="!$wire.photoData" class="flex items-center gap-3">
                         <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
                             <x-heroicon-o-photo class="w-5 h-5"/>
                             Buka Galeri
@@ -1295,7 +1287,7 @@
                     </div>
 
                     {{-- Actions (Submit) --}}
-                    <div x-show="photoPreview" style="display: none;" class="flex items-center">
+                    <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
                         <button type="button" wire:click="submitApprove" @click="stopCamera()"
                             class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4A2F24] text-white font-bold text-sm hover:bg-[#38221A] transition shadow-md"
                             wire:loading.attr="disabled" wire:target="submitApprove">
@@ -1308,23 +1300,20 @@
         </div>
 
         {{-- DONE MODAL (Camera) --}}
-        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
             wire:key="done-modal-container"
             x-data="{
                 show: @entangle('showDoneModal').live,
-                photoPreview: null,
                 stream: null,
                 devices: [],
                 selectedDeviceId: null,
                 init() {
                     this.$watch('show', value => {
                         if (value) {
-                            this.photoPreview = null;
                             this.getDevices();
                         } else {
                             this.stopCamera();
-                            this.photoPreview = null;
                         }
                     });
                 },
@@ -1371,40 +1360,31 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const data = canvas.toDataURL('image/png');
-                    this.photoPreview = data;
-                    $wire.set('photoData', data);
+                    $wire.set('photoData', canvas.toDataURL('image/png'));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        this.photoPreview = ev.target.result;
                         $wire.set('photoData', ev.target.result);
                     };
                     reader.readAsDataURL(file);
-                },
-                retake() {
-                    this.photoPreview = null;
-                    $wire.set('photoData', null);
                 }
             }"
             x-show="show"
-            x-transition.opacity
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
             style="display: none;"
-            :class="show && 'pointer-events-auto'"
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
-                wire:click="closeDoneModal"></div>
+                wire:click="closeDoneModal" @click="show = false"></div>
 
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
                  class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
                 
                 {{-- Flush Header --}}
@@ -1416,7 +1396,7 @@
                         <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Return Evidence</h3>
                     </div>
                     <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
-                        wire:click="closeDoneModal">
+                        wire:click="closeDoneModal" @click="show = false">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -1433,7 +1413,7 @@
                     </div>
 
                     {{-- Camera Viewport --}}
-                    <div x-show="!photoPreview" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <div x-show="!$wire.photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
                         <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
@@ -1449,16 +1429,16 @@
                     </div>
                     
                     {{-- Preview --}}
-                    <div x-show="photoPreview" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
-                        <img :src="photoPreview" class="w-full h-full object-cover" />
-                        <button type="button" @click="retake()" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                    <div x-show="$wire.photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('photoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
                             <x-heroicon-o-arrow-path class="w-4 h-4"/>
                             Retake
                         </button>
                     </div>
 
                     {{-- Actions (Capture/Gallery) --}}
-                    <div x-show="!photoPreview" class="flex items-center gap-3">
+                    <div x-show="!$wire.photoData" class="flex items-center gap-3">
                         <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-[#F4F7EF] text-[#4A2F24] font-bold text-sm hover:bg-[#EAF1E0] transition border border-[#CDDEA7]/40 shadow-sm">
                             <x-heroicon-o-photo class="w-5 h-5"/>
                             Buka Galeri
@@ -1472,7 +1452,7 @@
                     </div>
 
                     {{-- Actions (Submit) --}}
-                    <div x-show="photoPreview" style="display: none;" class="flex items-center">
+                    <div x-show="$wire.photoData" style="display: none;" class="flex items-center">
                         <button type="button" wire:click="submitDone" @click="stopCamera()"
                             class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-[#4E653D] text-white font-bold text-sm hover:bg-[#354C2B] transition shadow-md"
                             wire:loading.attr="disabled" wire:target="submitDone">
