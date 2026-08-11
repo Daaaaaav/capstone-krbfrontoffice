@@ -38,6 +38,7 @@ class PriorityVehicleBooking extends Model
     const STATUS_PENDING_CANCELLATION      = 'pending_cancellation';
     const STATUS_APPROVED                  = 'approved';
     const STATUS_ON_PROGRESS               = 'on_progress';
+    const STATUS_COMPLETED                 = 'completed';
     const STATUS_REJECTED                  = 'rejected';
     const STATUS_CONFLICT_DENIED           = 'cancelled_conflict_denied';
 
@@ -100,6 +101,7 @@ class PriorityVehicleBooking extends Model
             self::STATUS_PENDING_CANCELLATION => 'Awaiting Cancellation Approval',
             self::STATUS_APPROVED             => 'Approved',
             self::STATUS_ON_PROGRESS          => 'On Progress',
+            self::STATUS_COMPLETED            => 'Completed',
             self::STATUS_REJECTED             => 'Rejected',
             self::STATUS_CONFLICT_DENIED      => 'Conflict Denied',
             default                           => ucfirst((string) $this->status),
@@ -113,6 +115,7 @@ class PriorityVehicleBooking extends Model
             self::STATUS_PENDING_CANCELLATION => 'orange',
             self::STATUS_APPROVED             => 'green',
             self::STATUS_ON_PROGRESS          => 'blue',
+            self::STATUS_COMPLETED            => 'blue',
             self::STATUS_REJECTED             => 'red',
             self::STATUS_CONFLICT_DENIED      => 'red',
             default                           => 'gray',
