@@ -224,7 +224,7 @@
                             <x-heroicon-o-user-plus class="w-4 h-4 text-primary" />
                         </div>
                         <h3 class="font-bold text-foreground text-base tracking-tight">
-                            {{ $editMode ? __('app.edit_receptionist') : __('app.create_receptionist') }}
+                            {{ $editMode ? __('app.edit_manager') : __('app.create_manager') }}
                         </h3>
                     </div>
                     <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition" wire:click="closeModal">✕</button>
