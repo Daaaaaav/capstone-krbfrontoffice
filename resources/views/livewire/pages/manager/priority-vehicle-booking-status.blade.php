@@ -60,6 +60,7 @@
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">View</button>
+                            <button wire:click="openEdit({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">Edit</button>
                             <button wire:click="openApprove({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition">Approve</button>
                             <button wire:click="openReject({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition">Reject</button>
                         </div>
@@ -98,6 +99,7 @@
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button wire:click="openDetail({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition">View Details</button>
+                            <button wire:click="openEdit({{ $booking->id }})" class="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition">Edit</button>
                         </div>
                     </div>
                 </div>
@@ -446,6 +448,95 @@
                     <button wire:click="confirmReject"
                         class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">
                         Reject
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- EDIT MODAL --}}
+    @if($showEditModal)
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            x-data
+            @click.self="$wire.closeEdit()">
+            <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+                    <div>
+                        <h3 class="text-lg font-bold text-[#2d3a24]">Edit Priority Vehicle Booking</h3>
+                        <p class="text-xs text-[#9aaa8a] mt-0.5">Update booking details</p>
+                    </div>
+                    <button wire:click="closeEdit" class="text-gray-400 hover:text-gray-600 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5 space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-[#7a8f6a] uppercase mb-1">Borrower Name</label>
+                        <input type="text" wire:model="editForm.borrower_name"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4E653D] focus:outline-none text-sm text-[#2d3a24]">
+                        @error('editForm.borrower_name')
+                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#7a8f6a] uppercase mb-1">Purpose</label>
+                        <input type="text" wire:model="editForm.purpose"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4E653D] focus:outline-none text-sm text-[#2d3a24]">
+                        @error('editForm.purpose')
+                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#7a8f6a] uppercase mb-1">Destination</label>
+                        <input type="text" wire:model="editForm.destination"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4E653D] focus:outline-none text-sm text-[#2d3a24]">
+                        @error('editForm.destination')
+                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-[#7a8f6a] uppercase mb-1">Start Date & Time</label>
+                            <input type="datetime-local" wire:model="editForm.start_at"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4E653D] focus:outline-none text-sm text-[#2d3a24]">
+                            @error('editForm.start_at')
+                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-[#7a8f6a] uppercase mb-1">End Date & Time</label>
+                            <input type="datetime-local" wire:model="editForm.end_at"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4E653D] focus:outline-none text-sm text-[#2d3a24]">
+                            @error('editForm.end_at')
+                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#7a8f6a] uppercase mb-1">Special Notes</label>
+                        <textarea wire:model="editForm.special_notes" rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4E653D] focus:outline-none text-sm text-[#2d3a24]"></textarea>
+                        @error('editForm.special_notes')
+                            <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end bg-gray-50">
+                    <button type="button" wire:click="closeEdit"
+                        class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        Cancel
+                    </button>
+                    <button type="button" wire:click="confirmEdit"
+                        class="px-5 py-2.5 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 transition">
+                        Save Changes
                     </button>
                 </div>
             </div>

@@ -50,6 +50,8 @@ class UpdateVehicleBookingStatus extends Command
             ->whereRaw("CONCAT(date, ' ', start_time) <= ?", [$nowStr])
             ->count();
 
+        \App\Models\PriorityVehicleBooking::autoProgressToOnProgress(null);
+
         $this->info("Vehicle bookings started (on_progress): {$vehicleCount}");
         $this->info("Room bookings currently ongoing (time-window, no DB change): {$roomOngoingCount}");
         $this->info("Priority room bookings currently ongoing (time-window, no DB change): {$priorityOngoingCount}");
