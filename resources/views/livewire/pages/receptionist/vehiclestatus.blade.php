@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.5000ms="tick" x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -366,9 +366,9 @@
                                                 </div>
 
                                                 {{-- Rejected Note --}}
-                                                @if($b->reject_note && $b->status === 'rejected')
+                                                @if($b->notes && $b->status === 'rejected')
                                                     <div class="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg p-2">
-                                                        <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->reject_note }}
+                                                        <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->notes }}
                                                     </div>
                                                 @endif
 
@@ -1291,11 +1291,18 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('photoData', canvas.toDataURL('image/png'));
+                    $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.7));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: { type: 'error', title: 'File Too Large', message: 'Photo must be under 2MB. Please choose a smaller image.', duration: 4000 }
+                        }));
+                        e.target.value = '';
+                        return;
+                    }
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         $wire.set('photoData', ev.target.result);
@@ -1457,11 +1464,18 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('photoData', canvas.toDataURL('image/png'));
+                    $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.7));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
+                    if (file.size > 2 * 1024 * 1024) {
+                        window.dispatchEvent(new CustomEvent('toast', {
+                            detail: { type: 'error', title: 'File Too Large', message: 'Photo must be under 2MB. Please choose a smaller image.', duration: 4000 }
+                        }));
+                        e.target.value = '';
+                        return;
+                    }
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         $wire.set('photoData', ev.target.result);

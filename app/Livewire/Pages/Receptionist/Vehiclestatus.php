@@ -98,7 +98,11 @@ class Vehiclestatus extends Component
             ->toArray();
     }
 
-    public function render()
+    /**
+     * Called by wire:poll — runs auto-transition logic without triggering
+     * a full DOM re-render, preventing race conditions that swallow button clicks.
+     */
+    public function tick(): void
     {
         // Auto-transition 'approved' regular bookings to 'on_progress' when start time arrives
         VehicleBooking::where('status', 'approved')
@@ -112,7 +116,10 @@ class Vehiclestatus extends Component
             ])
             ->where('start_at', '<=', now($this->tz))
             ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS]);
+    }
 
+    public function render()
+    {
         $bookings = VehicleBooking::query()
             ->when($this->vehicleFilter, fn(Builder $q) => $q->where('vehicle_id', $this->vehicleFilter))
             ->when($this->q !== '', function (Builder $q) {
@@ -183,6 +190,12 @@ class Vehiclestatus extends Component
             'approveId' => 'required|integer',
             'photoData' => 'required|string',
         ]);
+
+        // Guard against oversized payloads that would be silently dropped by server
+        if (strlen($this->photoData) > 2 * 1024 * 1024) {
+            $this->dispatch('toast', type: 'error', title: 'Photo Too Large', message: 'Photo exceeds 2MB. Please retake with lower resolution or use gallery.');
+            return;
+        }
 
         try {
             DB::transaction(function () {
@@ -323,6 +336,12 @@ class Vehiclestatus extends Component
             'doneId'    => 'required|integer',
             'photoData' => 'required|string',
         ]);
+
+        // Guard against oversized payloads that would be silently dropped by server
+        if (strlen($this->photoData) > 2 * 1024 * 1024) {
+            $this->dispatch('toast', type: 'error', title: 'Photo Too Large', message: 'Photo exceeds 2MB. Please retake with lower resolution or use gallery.');
+            return;
+        }
 
         try {
             DB::transaction(function () {
