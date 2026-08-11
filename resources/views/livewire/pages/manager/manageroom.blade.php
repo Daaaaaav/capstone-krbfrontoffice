@@ -224,6 +224,7 @@
                             </label>
                             <input type="text"
                                 wire:model="{{ $editMode ? 'edit_room_name' : 'room_name' }}"
+                                data-validate="text"
                                 placeholder="e.g. Meeting Room A"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground
                                        focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">

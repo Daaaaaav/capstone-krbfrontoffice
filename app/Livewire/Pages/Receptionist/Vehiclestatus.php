@@ -47,9 +47,7 @@ class Vehiclestatus extends Component
     public array $selectedPhotos = ['before' => [], 'after' => []];
     public bool $showPriorityVehicleDetailModal = false;
     public ?int $priorityVehicleDetailId        = null;
-    public bool   $showPriorityVehicleRejectModal  = false;
-    public ?int   $priorityVehicleRejectId         = null;
-    public string $priorityVehicleRejectReason     = '';
+    // Priority Vehicle reject/approve state removed — Receptionists are VIEW ONLY for Priority Vehicle Bookings.
     public bool $showFilterModal = false;
 
     public bool $showApproveModal = false;
@@ -110,10 +108,8 @@ class Vehiclestatus extends Component
             ->update(['status' => 'on_progress']);
 
         // Auto-transition priority bookings to 'on_progress' when start time arrives
-        \App\Models\PriorityVehicleBooking::whereIn('status', [
-                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
-                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT
-            ])
+        // CRITICAL: Only transition if already approved, NOT if still pending
+        \App\Models\PriorityVehicleBooking::where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED)
             ->where('start_at', '<=', now($this->tz))
             ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS]);
     }
@@ -466,91 +462,8 @@ class Vehiclestatus extends Component
         $this->priorityVehicleDetailId        = null;
     }
 
-    public function approvePriorityVehicleById(int $id): void
-    {
-        try {
-            DB::transaction(function () use ($id) {
-                $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-                $pvb = PriorityVehicleBooking::lockForUpdate()
-                    ->where('id', $id)
-                    ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', [
-                        PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
-                        PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
-                    ])
-                    ->firstOrFail();
-
-                if ($pvb->status === PriorityVehicleBooking::STATUS_PENDING_CANCELLATION && $pvb->cancels_booking_id) {
-                    VehicleBooking::where('vehiclebooking_id', $pvb->cancels_booking_id)
-                        ->whereIn('status', ['pending', 'approved'])
-                        ->update(['status' => 'rejected', 'notes' => 'Cancelled to accommodate a manager priority booking.']);
-                }
-
-                $pvb->status     = PriorityVehicleBooking::STATUS_APPROVED;
-                $pvb->handled_by = \Illuminate\Support\Facades\Auth::id();
-                $pvb->save();
-            });
-
-            $this->showPriorityVehicleDetailModal = false;
-            $this->priorityVehicleDetailId        = null;
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking approved.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to approve: ' . $e->getMessage());
-        }
-    }
-
-    public function openPriorityVehicleReject(int $id): void
-    {
-        $this->priorityVehicleRejectId     = $id;
-        $this->priorityVehicleRejectReason = '';
-        $this->showPriorityVehicleRejectModal = true;
-    }
-
-    public function closePriorityVehicleReject(): void
-    {
-        $this->showPriorityVehicleRejectModal = false;
-        $this->priorityVehicleRejectId        = null;
-        $this->priorityVehicleRejectReason    = '';
-    }
-
-    public function submitPriorityVehicleReject(): void
-    {
-        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
-
-        $this->validate([
-            'priorityVehicleRejectReason' => 'required|string|min:5|max:1000',
-        ]);
-
-        try {
-            DB::transaction(function () {
-                $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-                $pvb = PriorityVehicleBooking::lockForUpdate()
-                    ->where('id', $this->priorityVehicleRejectId)
-                    ->when($companyId, fn($q) => $q->where('company_id', $companyId))
-                    ->whereIn('status', [
-                        PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
-                        PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
-                    ])
-                    ->firstOrFail();
-
-                $pvb->status           = PriorityVehicleBooking::STATUS_REJECTED;
-                $pvb->rejection_reason = $this->priorityVehicleRejectReason;
-                $pvb->handled_by       = \Illuminate\Support\Facades\Auth::id();
-                $pvb->save();
-            });
-
-            $this->showPriorityVehicleRejectModal = false;
-            $this->showPriorityVehicleDetailModal = false;
-            $this->priorityVehicleRejectId        = null;
-            $this->priorityVehicleDetailId        = null;
-            $this->priorityVehicleRejectReason    = '';
-            $this->dispatch('toast', type: 'info', title: 'Rejected', message: 'Priority vehicle booking has been rejected.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to reject: ' . $e->getMessage());
-        }
-    }
+    // approvePriorityVehicleById / openPriorityVehicleReject / closePriorityVehicleReject /
+    // submitPriorityVehicleReject removed — Receptionists are VIEW ONLY for Priority Vehicle Bookings.
 
     public function getPriorityVehicleDetailBookingProperty(): ?PriorityVehicleBooking
     {
@@ -584,9 +497,8 @@ class Vehiclestatus extends Component
     }
 
     public bool $showNotifPanel = false;
-    public bool  $showPriorityApprovalModal = false;
-    public ?int  $priorityApprovalNotifId   = null;
-    public ?int  $priorityApprovalBookingId = null; 
+    // showPriorityApprovalModal / priorityApprovalNotifId / priorityApprovalBookingId removed
+    // — Receptionists are VIEW ONLY. Notification bell opens detail view only.
 
     public function toggleNotifPanel(): void
     {
@@ -598,112 +510,22 @@ class Vehiclestatus extends Component
         $this->showNotifPanel = false;
     }
 
+    /**
+     * When the receptionist clicks a priority vehicle notification, open the detail view (read-only).
+     * Approval/rejection is handled by Managers only.
+     */
     public function openPriorityApprovalModal(int $notifId): void
     {
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-
-        $notif = ManagerNotification::where('id', $notifId)
-            ->where('company_id', $companyId)
-            ->where('action_required', true)
-            ->whereNull('action_taken')
-            ->first();
-
-        if (!$notif) {
-            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Notification not found or already actioned.');
-            return;
+        $notif = ManagerNotification::find($notifId);
+        if ($notif) {
+            $notif->markRead();
+            if ($notif->notifiable_id) {
+                $this->openPriorityVehicleDetail((int) $notif->notifiable_id);
+            }
         }
-
-        $this->priorityApprovalNotifId   = $notifId;
-        $this->priorityApprovalBookingId = $notif->notifiable_id;
-        $this->showPriorityApprovalModal = true;
-        $this->showNotifPanel            = false;
-        $notif->markRead();
+        $this->showNotifPanel = false;
     }
 
-    public function closePriorityApprovalModal(): void
-    {
-        $this->showPriorityApprovalModal = false;
-        $this->priorityApprovalNotifId   = null;
-        $this->priorityApprovalBookingId = null;
-    }
-
-    public function approvePriorityVehicle(): void
-    {
-        if (!$this->priorityApprovalBookingId) {
-            return;
-        }
-
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-
-        try {
-            DB::transaction(function () use ($companyId) {
-                $priority = PriorityVehicleBooking::where('id', $this->priorityApprovalBookingId)
-                    ->where('company_id', $companyId)
-                    ->firstOrFail();
-
-                if ($priority->cancels_booking_id) {
-                    VehicleBooking::where('vehiclebooking_id', $priority->cancels_booking_id)
-                        ->where('status', 'pending')
-                        ->update([
-                            'status' => 'rejected',
-                            'notes'  => DB::raw("TRIM(CONCAT(COALESCE(notes,''), IF(COALESCE(notes,'')='','','\n'), '[Cancelled — superseded by manager priority booking #" . $this->priorityApprovalBookingId . "]'))"),
-                        ]);
-                }
-
-                $priority->update([
-                    'status'     => PriorityVehicleBooking::STATUS_APPROVED,
-                    'handled_by' => \Illuminate\Support\Facades\Auth::user()->user_id,
-                ]);
-
-                if ($this->priorityApprovalNotifId) {
-                    ManagerNotification::where('id', $this->priorityApprovalNotifId)
-                        ->update(['action_taken' => 'approved', 'is_read' => true]);
-                }
-            });
-
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: 'Priority vehicle booking approved and conflicting booking cancelled.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
-        }
-
-        $this->closePriorityApprovalModal();
-        $this->resetPage();
-    }
-
-    public function denyPriorityVehicle(): void
-    {
-        if (!$this->priorityApprovalBookingId) {
-            return;
-        }
-
-        $companyId = \Illuminate\Support\Facades\Auth::user()->company_id ?? null;
-
-        try {
-            DB::transaction(function () use ($companyId) {
-                PriorityVehicleBooking::where('id', $this->priorityApprovalBookingId)
-                    ->where('company_id', $companyId)
-                    ->update([
-                        'status'           => PriorityVehicleBooking::STATUS_CONFLICT_DENIED,
-                        'handled_by'       => \Illuminate\Support\Facades\Auth::user()->user_id,
-                        'rejection_reason' => 'Cancellation request denied by receptionist.',
-                    ]);
-
-                if ($this->priorityApprovalNotifId) {
-                    ManagerNotification::where('id', $this->priorityApprovalNotifId)
-                        ->update(['action_taken' => 'denied', 'is_read' => true]);
-                }
-            });
-
-            $this->dispatch('toast', type: 'info', title: 'Denied', message: 'Cancellation request denied. Original booking kept.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
-        }
-
-        $this->closePriorityApprovalModal();
-    }
-    
     public function getVehicleNotifCountProperty(): int
     {
         $user = \Illuminate\Support\Facades\Auth::user();

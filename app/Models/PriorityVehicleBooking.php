@@ -26,6 +26,8 @@ class PriorityVehicleBooking extends Model
         'cancels_booking_id',
         'handled_by',
         'rejection_reason',
+        'handover_photo',
+        'return_photo',
     ];
 
     protected $casts = [
@@ -33,11 +35,13 @@ class PriorityVehicleBooking extends Model
         'end_at'   => 'datetime',
     ];
 
-    // Status constants (same pattern as PriorityRoomBooking)
+    // Status constants — mirror VehicleBooking lifecycle exactly
     const STATUS_PENDING_RECEIPT           = 'pending_receipt';
     const STATUS_PENDING_CANCELLATION      = 'pending_cancellation';
     const STATUS_APPROVED                  = 'approved';
     const STATUS_ON_PROGRESS               = 'on_progress';
+    const STATUS_LATE_RETURN               = 'late_return';   // on_progress past end_at + 1 hour
+    const STATUS_COMPLETED                 = 'completed';
     const STATUS_REJECTED                  = 'rejected';
     const STATUS_CONFLICT_DENIED           = 'cancelled_conflict_denied';
 
@@ -78,13 +82,56 @@ class PriorityVehicleBooking extends Model
 
     public static function autoExpirePending(?int $companyId): void
     {
+        $tz  = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
         static::query()
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->whereIn('status', [self::STATUS_PENDING_RECEIPT, self::STATUS_PENDING_CANCELLATION])
-            ->where('end_at', '<', now())
+            ->where('end_at', '<', $now)
             ->update([
                 'status'           => self::STATUS_REJECTED,
-                'rejection_reason' => 'Auto-expired: vehicle booking time has passed.',
+                'rejection_reason' => 'Auto-rejected: vehicle booking window expired without approval.',
+                'updated_at'       => $now->toDateTimeString(),
+            ]);
+    }
+
+    /**
+     * Transition approved bookings to on_progress when start_at arrives.
+     * Mirrors VehicleBooking auto-start logic in Vehiclestatus::render().
+     */
+    public static function autoProgressToOnProgress(?int $companyId): void
+    {
+        $tz  = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
+        static::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->where('status', self::STATUS_APPROVED)
+            ->where('start_at', '<=', $now)
+            ->update([
+                'status'     => self::STATUS_ON_PROGRESS,
+                'updated_at' => $now->toDateTimeString(),
+            ]);
+    }
+
+    /**
+     * Flag on_progress/approved bookings as late_return when end_at + 1 hour passes.
+     * Mirrors the late_return logic in AutoApproveBookings for VehicleBooking.
+     */
+    public static function autoFlagLateReturns(?int $companyId): void
+    {
+        $tz  = config('app.timezone', 'Asia/Jakarta');
+        $now = now($tz);
+
+        static::query()
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status', [self::STATUS_APPROVED, self::STATUS_ON_PROGRESS])
+            ->whereNotNull('end_at')
+            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$now->toDateTimeString()])
+            ->update([
+                'status'     => self::STATUS_LATE_RETURN,
+                'updated_at' => $now->toDateTimeString(),
             ]);
     }
 
@@ -99,7 +146,9 @@ class PriorityVehicleBooking extends Model
             self::STATUS_PENDING_RECEIPT      => 'Pending',
             self::STATUS_PENDING_CANCELLATION => 'Awaiting Cancellation Approval',
             self::STATUS_APPROVED             => 'Approved',
-            self::STATUS_ON_PROGRESS          => 'On Progress',
+            self::STATUS_ON_PROGRESS          => 'On the Road',
+            self::STATUS_LATE_RETURN          => 'Late Return',
+            self::STATUS_COMPLETED            => 'Completed',
             self::STATUS_REJECTED             => 'Rejected',
             self::STATUS_CONFLICT_DENIED      => 'Conflict Denied',
             default                           => ucfirst((string) $this->status),
@@ -113,6 +162,8 @@ class PriorityVehicleBooking extends Model
             self::STATUS_PENDING_CANCELLATION => 'orange',
             self::STATUS_APPROVED             => 'green',
             self::STATUS_ON_PROGRESS          => 'blue',
+            self::STATUS_LATE_RETURN          => 'red',
+            self::STATUS_COMPLETED            => 'blue',
             self::STATUS_REJECTED             => 'red',
             self::STATUS_CONFLICT_DENIED      => 'red',
             default                           => 'gray',

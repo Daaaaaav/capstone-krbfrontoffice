@@ -170,5 +170,11 @@
                 </div>
             @endforelse
         </div>
+
+        @if(method_exists($alerts, 'links'))
+            <div class="mt-4">
+                {{ $alerts->links() }}
+            </div>
+        @endif
     </main>
 </div>

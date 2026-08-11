@@ -13,12 +13,13 @@ use App\Models\Room;
 use App\Models\BookingRoom;
 use App\Models\PriorityRoomBooking as PriorityRoomBookingModel;
 use App\Models\ManagerNotification;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Priority Room Booking')]
 class PriorityRoomBooking extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
     public string $activeTab = 'form'; // form (default) | status
@@ -98,13 +99,13 @@ class PriorityRoomBooking extends Component
         )";
 
         $conflict = BookingRoom::query()
-            ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
+            ->whereIn('status', ['pending', 'approved'])
             ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
             ->where('room_id', $this->room_id)
             ->whereDate('date', $this->date)
             ->whereRaw("$startExpr < ?", [$end->toDateTimeString()])
             ->whereRaw("$endExpr > ?", [$start->toDateTimeString()])
-            ->orderByRaw("FIELD(status, 'approved', 'pending', 'completed', 'done', '1', '3')")
+            ->orderByRaw("FIELD(status, 'approved', 'pending')")
             ->first(['bookingroom_id', 'meeting_title', 'start_time', 'end_time', 'status']);
 
         if ($conflict) {
@@ -118,12 +119,12 @@ class PriorityRoomBooking extends Component
 
         $this->validate([
             'room_id'             => ['required', 'integer', 'exists:rooms,room_id'],
-            'meeting_title'       => ['required', 'string', 'max:255'],
+            'meeting_title'       => $this->managerMeetingTitleRules(required: true, maxLength: 255),
             'date'                => ['required', 'date'],
             'start_time'          => ['required', 'string'],
             'end_time'            => ['required', 'string'],
             'number_of_attendees' => ['required', 'integer', 'min:1'],
-            'special_notes'       => ['nullable', 'string', 'max:1000'],
+            'special_notes'       => $this->managerNotesRules(required: false, maxLength: 1000),
         ]);
 
         $user      = Auth::user();
@@ -208,6 +209,7 @@ class PriorityRoomBooking extends Component
 
         $conflictingBooking = BookingRoom::where('bookingroom_id', $this->conflicting_booking_id)
             ->where('company_id', $companyId)
+            ->where('room_id', $this->room_id)
             ->whereIn('status', ['pending', 'approved'])
             ->first();
 
@@ -414,7 +416,7 @@ class PriorityRoomBooking extends Component
         \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
 
         $this->validate([
-            'sidebarRejectReason' => 'required|string|min:3|max:500',
+            'sidebarRejectReason' => $this->managerNotesRules(required: true, maxLength: 500, additionalRules: ['min:3']),
         ]);
 
         $companyId = Auth::user()->company_id ?? null;

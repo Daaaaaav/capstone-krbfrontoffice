@@ -15,12 +15,13 @@ use App\Models\User;
 use App\Models\VehicleBooking;
 use App\Models\PriorityVehicleBooking as PriorityVehicleBookingModel;
 use App\Models\ManagerNotification;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.manager')]
 #[Title('Priority Vehicle Booking')]
 class PriorityVehicleBooking extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
     protected string $paginationTheme = 'tailwind';
     protected string $tz = 'Asia/Jakarta';
 
@@ -122,7 +123,7 @@ class PriorityVehicleBooking extends Component
 
         $conflict = VehicleBooking::query()
             ->where('vehicle_id', $this->vehicle_id)
-            ->where('status', 'pending')  
+            ->whereIn('status', ['pending', 'approved'])
             ->where('start_at', '<', $end->toDateTimeString())
             ->where('end_at', '>', $start->toDateTimeString())
             ->first(['vehiclebooking_id', 'borrower_name', 'start_at', 'end_at']);
@@ -138,15 +139,15 @@ class PriorityVehicleBooking extends Component
 
         $this->validate([
             'vehicle_id'    => ['required', 'integer', 'exists:vehicles,vehicle_id'],
-            'borrower_name' => ['required', 'string', 'max:255'],
+            'borrower_name' => $this->managerTextRules('Borrower name', required: true, maxLength: 255),
             'date_from'     => ['required', 'date'],
             'date_to'       => ['required', 'date', 'after_or_equal:date_from'],
             'start_time'    => ['required', 'string'],
             'end_time'      => ['required', 'string'],
-            'purpose'       => ['required', 'string', 'max:255'],
-            'destination'   => ['nullable', 'string', 'max:255'],
+            'purpose'       => $this->managerTextRules('Purpose', required: true, maxLength: 255),
+            'destination'   => $this->managerTextRules('Destination', required: false, maxLength: 255),
             'purpose_type'  => ['required', 'in:dinas,operasional,antar_jemput,lainnya'],
-            'special_notes' => ['nullable', 'string', 'max:1000'],
+            'special_notes' => $this->managerNotesRules(required: false, maxLength: 1000),
         ]);
 
         $user      = Auth::user();
@@ -430,6 +431,9 @@ class PriorityVehicleBooking extends Component
     public bool   $showVehicleSidebarReject   = false;
     public string $vehicleSidebarRejectReason = '';
 
+    // REMOVED: Mark Done modal (now handled by dedicated Priority Vehicle Status page)
+    // Managers should use /manager-priority-vehicle-status for lifecycle management
+
     public function openVehicleSidebarDetail(int $vehicleBookingId): void
     {
         $this->vehicleSidebarDetailId   = $vehicleBookingId;
@@ -532,6 +536,8 @@ class PriorityVehicleBooking extends Component
                         PriorityVehicleBookingModel::STATUS_PENDING_CANCELLATION,
                     ]),
                     'approved' => $q->where('status', PriorityVehicleBookingModel::STATUS_APPROVED),
+                    'on_road'  => $q->where('status', PriorityVehicleBookingModel::STATUS_ON_PROGRESS),
+                    'completed' => $q->where('status', 'completed'),
                     'rejected' => $q->whereIn('status', [
                         PriorityVehicleBookingModel::STATUS_REJECTED,
                         PriorityVehicleBookingModel::STATUS_CONFLICT_DENIED,

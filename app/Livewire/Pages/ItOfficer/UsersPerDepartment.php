@@ -11,12 +11,14 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Department;
+use App\Models\Company;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.it-officer')]
 #[Title('Manage Users per Department')]
 class UsersPerDepartment extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
 
     public $search = '';
     public $showModal = false;
@@ -121,15 +123,22 @@ class UsersPerDepartment extends Component
     protected function rules()
     {
         return [
-            'name' => 'required|string|max:255',
-            'email' =>
-                'required|email|max:255|unique:users,email,' .
-                ($this->userId ?? 'NULL') .
-                ',user_id',
-            'phone' => 'nullable|string|max:20',
+            'name' => $this->managerTextRules('Name', required: true, maxLength: 255),
+
+            'email' => $this->managerEmailRules(
+                required: true,
+                uniqueTable: 'users',
+                uniqueColumn: 'email',
+                ignoreId: $this->userId ?? null,
+                ignoreColumn: 'user_id'
+            ),
+
+            'phone' => $this->managerPhoneRules(required: false, maxLength: 20),
+
             'password' => $this->editMode
                 ? 'nullable|min:6'
                 : 'required|min:6',
+
             'status' => 'required|in:active,inactive',
         ];
     }

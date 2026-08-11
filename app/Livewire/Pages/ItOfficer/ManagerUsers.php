@@ -10,12 +10,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Role;
+use App\Livewire\Traits\HasManagerValidation;
 
 #[Layout('layouts.it-officer')]
 #[Title('Manager Users')]
 class ManagerUsers extends Component
 {
-    use WithPagination;
+    use WithPagination, HasManagerValidation;
   
     public $search = '';
     public $statusFilter = 'all';
@@ -94,14 +95,17 @@ class ManagerUsers extends Component
     protected function rules()
     {
         return [
-            'name' => 'required|string|max:255',
+            'name' => $this->managerTextRules('Name', required: true, maxLength: 255),
 
-            'email' =>
-                'required|email|max:255|unique:users,email,' .
-                ($this->userId ?? 'NULL') .
-                ',user_id',
+            'email' => $this->managerEmailRules(
+                required: true,
+                uniqueTable: 'users',
+                uniqueColumn: 'email',
+                ignoreId: $this->userId ?? null,
+                ignoreColumn: 'user_id'
+            ),
 
-            'phone' => 'nullable|string|max:20',
+            'phone' => $this->managerPhoneRules(required: false, maxLength: 20),
 
             'password' => $this->editMode
                 ? 'nullable|min:6'
@@ -161,7 +165,6 @@ class ManagerUsers extends Component
                     'status'       => $this->status,
                     'company_id'   => $companyId,
                     'role_id'      => $role->role_id,
-                    'is_agent'     => 'no',
                 ]);
 
                 $this->dispatch(

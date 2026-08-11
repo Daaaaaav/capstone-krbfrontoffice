@@ -344,6 +344,7 @@ return [
     'checked_out'               => 'Sudah Keluar',
     'in_building'               => 'Di Dalam Gedung',
     'registered_status'         => 'Terdaftar',
+    'id_card_type'              => 'Jenis Kartu Identitas',
 
     'security_reports_title'    => 'Laporan Keamanan Wazuh',
     'security_reports_sub'      => 'Peringatan langsung dari log manajer Wazuh',

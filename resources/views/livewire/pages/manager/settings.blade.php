@@ -65,7 +65,7 @@
                 <form wire:submit.prevent="updateProfile" class="px-6 py-6 space-y-5">
                     <div>
                         <label class="block text-sm font-medium text-[#4E653D] mb-1">{{ __('app.full_name_label') }}</label>
-                        <input type="text" wire:model="name"
+                        <input type="text" wire:model="name" data-validate="text"
                             class="w-full px-4 py-2.5 border border-[#c4d4b4] rounded-xl text-[#2d3a24]
                                    focus:ring-2 focus:ring-[#4E653D] focus:outline-none transition"
                             placeholder="{{ __('app.full_name_ph') }}">
@@ -74,7 +74,7 @@
 
                     <div>
                         <label class="block text-sm font-medium text-[#4E653D] mb-1">{{ __('app.email_address') }}</label>
-                        <input type="email" wire:model="email"
+                        <input type="email" wire:model="email" data-validate="email"
                             class="w-full px-4 py-2.5 border border-[#c4d4b4] rounded-xl text-[#2d3a24]
                                    focus:ring-2 focus:ring-[#4E653D] focus:outline-none transition"
                             placeholder="you@example.com">
@@ -83,10 +83,10 @@
 
                     <div>
                         <label class="block text-sm font-medium text-[#4E653D] mb-1">{{ __('app.phone_optional_label') }}</label>
-                        <input type="text" wire:model="phone"
+                        <input type="text" wire:model="phone" data-validate="phone"
                             class="w-full px-4 py-2.5 border border-[#c4d4b4] rounded-xl text-[#2d3a24]
                                    focus:ring-2 focus:ring-[#4E653D] focus:outline-none transition"
-                            placeholder="e.g. 08123456789">
+                            placeholder="e.g. +62-812-3456-7890">
                         @error('phone') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
 

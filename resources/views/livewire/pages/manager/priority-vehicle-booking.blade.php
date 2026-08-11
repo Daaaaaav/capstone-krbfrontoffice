@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background">
+﻿<div class="min-h-screen bg-background">
     @php
         $card   = 'bg-card border border-border rounded-2xl shadow-sm overflow-hidden';
         $label  = 'block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5';
@@ -220,7 +220,7 @@
         @if($activeTab === 'status')
         <div class="space-y-4">
             <div class="flex flex-wrap items-center gap-2">
-                @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $val => $lbl)
+                @foreach(['all' => 'All', 'pending' => 'Pending', 'approved' => 'Approved', 'on_road' => 'On the Road', 'completed' => 'Completed', 'rejected' => 'Rejected'] as $val => $lbl)
                 <button wire:click="$set('statusFilter','{{ $val }}')"
                     class="px-3.5 py-1.5 text-xs font-semibold rounded-lg transition {{ $statusFilter === $val ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80' }}">
                     {{ $lbl }}
@@ -231,7 +231,9 @@
             @forelse($myBookings as $b)
             @php
                 $color = match(true) {
+                    $b->status === 'on_progress' => ['bg'=>'bg-blue-500/10','text'=>'text-blue-600','border'=>'border-blue-500/30'],
                     $b->status === 'approved'   => ['bg'=>'bg-emerald-500/10','text'=>'text-emerald-600','border'=>'border-emerald-500/30'],
+                    $b->status === 'completed'  => ['bg'=>'bg-gray-500/10','text'=>'text-gray-600','border'=>'border-gray-500/30'],
                     in_array($b->status,['pending_receipt','pending_cancellation']) => ['bg'=>'bg-amber-500/10','text'=>'text-amber-600','border'=>'border-amber-500/30'],
                     default => ['bg'=>'bg-red-500/10','text'=>'text-red-600','border'=>'border-red-500/30'],
                 };

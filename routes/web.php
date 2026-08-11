@@ -221,7 +221,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/manager-help', ManagerHelp::class)->name('manager.help');
         // Priority bookings & operational forms
         Route::get('/manager-priority-room', ManagerPriorityRoomBooking::class)->name('manager.priority-room');
+        Route::get('/manager-priority-room-status', \App\Livewire\Pages\Manager\PriorityRoomBookingStatus::class)->name('manager.priority-room-status');
+        Route::get('/manager-priority-room-history', \App\Livewire\Pages\Manager\PriorityRoomBookingHistory::class)->name('manager.priority-room-history');
         Route::get('/manager-priority-vehicle', ManagerPriorityVehicleBooking::class)->name('manager.priority-vehicle');
+        Route::get('/manager-priority-vehicle-status', \App\Livewire\Pages\Manager\PriorityVehicleBookingStatus::class)->name('manager.priority-vehicle-status');
+        Route::get('/manager-priority-vehicle-history', \App\Livewire\Pages\Manager\PriorityVehicleBookingHistory::class)->name('manager.priority-vehicle-history');
         Route::get('/manager-guestbook-form', ManagerGuestbookForm::class)->name('manager.guestbook-form');
         Route::get('/manager-docpack-form', ManagerDocPackForm::class)->name('manager.docpack-form');
         Route::get('/manager-docpack-status', fn() => redirect()->route('manager.docpack-form'))->name('manager.docpack-status');
@@ -236,6 +240,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/it-officer-manage-rooms', \App\Livewire\Pages\ItOfficer\Manageroom::class)->name('it-officer.manageroom');
         Route::get('/it-officer-manage-vehicles', \App\Livewire\Pages\ItOfficer\Vehicle::class)->name('it-officer.managevehicle');
         Route::get('/it-officer-manage-storages', \App\Livewire\Pages\ItOfficer\Storage::class)->name('it-officer.managestorage');
+        Route::get('/it-officer-id-types', \App\Livewire\Pages\ItOfficer\IdTypes::class)->name('it-officer.id-types');
+        Route::get('/it-officer-visitor-lanyards', \App\Livewire\Pages\ItOfficer\VisitorLanyards::class)->name('it-officer.visitor-lanyards');
+        Route::get('/it-officer-requirements', \App\Livewire\Pages\ItOfficer\Requirements::class)->name('it-officer.requirements');
         Route::get('/it-officer-lstm-predictions', \App\Livewire\Pages\ItOfficer\LSTMPredictions::class)->name('it-officer.lstm-predictions');
         Route::get('/it-officer-occupancy', \App\Livewire\Pages\ItOfficer\OccupancyForecasting::class)->name('it-officer.occupancy');
         Route::get('/it-officer-ai-security', \App\Livewire\Pages\ItOfficer\AISecurityReports::class)->name('it-officer.ai-security');

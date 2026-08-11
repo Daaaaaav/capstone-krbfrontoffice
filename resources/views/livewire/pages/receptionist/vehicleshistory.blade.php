@@ -262,19 +262,7 @@
                                     {{ $pvb->statusLabel() }}
                                 </span>
                             </div>
-                            {{-- Priority entry actions — inside card, same pattern as normal bookings --}}
-                            <div class="pt-2 border-t border-violet-100 flex justify-end gap-2">
-                                <button type="button"
-                                    wire:click="openPriorityEdit({{ $pvb->id }})"
-                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none transition shadow-sm">
-                                    {{ __('app.edit') }}
-                                </button>
-                                <button type="button"
-                                    wire:click="confirmPriorityDelete({{ $pvb->id }}, '{{ str_replace('\'', '', $pvb->purpose ?? 'Priority Booking') }}')"
-                                    class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none transition">
-                                    {{ __('app.delete') }}
-                                </button>
-                            </div>
+                            {{-- Receptionist: Priority Vehicle Bookings are VIEW ONLY. Management handled by Manager. --}}
                         </div>
                         @endforeach
                     </div>
@@ -718,122 +706,8 @@
             </div>
         </div>
 
-    @if($showPriorityEdit)
-        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showPriorityEdit', false)"></div>
-            <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
-                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
-                            <x-heroicon-o-pencil class="w-4 h-4 text-[#CDDEA7]"/>
-                        </div>
-                        <h3 class="text-base font-bold tracking-tight">Edit Priority Booking</h3>
-                    </div>
-                    <button wire:click="$set('showPriorityEdit', false)" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">
-                        <x-heroicon-o-x-mark class="w-4 h-4"/>
-                    </button>
-                </div>
-                <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                    @if($priorityEditLastEdited)
-                        <div class="text-[13px] text-gray-500 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-2 shadow-sm">
-                            <x-heroicon-o-information-circle class="w-4 h-4 text-gray-400"/>
-                            <span>Created: <strong class="text-gray-700">{{ $priorityEditCreatedAt ?? '—' }}</strong> | Last Edited: <strong class="text-gray-700">{{ $priorityEditLastEdited }}</strong></span>
-                        </div>
-                    @endif
-                    @php
-                        $mi = 'w-full h-10 px-3.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all';
-                        $ml = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5';
-                    @endphp
-                    <div>
-                        <label class="{{ $ml }}">{{ __('app.borrower_label') ?? 'Borrower Name' }} <span class="text-rose-500">*</span></label>
-                        <input type="text" wire:model="priorityEdit.borrower_name" class="{{ $mi }}">
-                        @error('priorityEdit.borrower_name') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="{{ $ml }}">{{ __('app.start') ?? 'Start' }} <span class="text-rose-500">*</span></label>
-                            <input type="datetime-local" wire:model="priorityEdit.start_at" class="{{ $mi }}">
-                            @error('priorityEdit.start_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="{{ $ml }}">{{ __('app.end') ?? 'End' }} <span class="text-rose-500">*</span></label>
-                            <input type="datetime-local" wire:model="priorityEdit.end_at" class="{{ $mi }}">
-                            @error('priorityEdit.end_at') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                    <div>
-                        <label class="{{ $ml }}">{{ __('app.purpose') ?? 'Purpose' }}</label>
-                        <input type="text" wire:model="priorityEdit.purpose" class="{{ $mi }}">
-                        @error('priorityEdit.purpose') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="{{ $ml }}">{{ __('app.destination') ?? 'Destination' }}</label>
-                        <input type="text" wire:model="priorityEdit.destination" class="{{ $mi }}">
-                        @error('priorityEdit.destination') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="{{ $ml }}">Special Notes</label>
-                        <textarea wire:model="priorityEdit.special_notes" rows="3"
-                            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all resize-none"></textarea>
-                        @error('priorityEdit.special_notes') <p class="mt-1.5 text-xs text-rose-600 font-medium">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-                <div class="pt-4 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 p-4">
-                    <button type="button" wire:click="$set('showPriorityEdit', false)"
-                        class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition inline-flex items-center gap-1.5 text-xs font-semibold">
-                        <x-heroicon-o-arrow-uturn-left class="w-3.5 h-3.5"/>
-                        <span>{{ __('app.cancel') }}</span>
-                    </button>
-                    <button type="button" wire:click="savePriorityEdit" wire:loading.attr="disabled" wire:target="savePriorityEdit"
-                        class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
-                        <span wire:loading.remove wire:target="savePriorityEdit">{{ __('app.save_changes') }}</span>
-                        <span wire:loading wire:target="savePriorityEdit" class="flex items-center gap-1.5">
-                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
-                            {{ __('app.saving') }}...
-                        </span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    @if($showPriorityDeleteModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" wire:click="$set('showPriorityDeleteModal', false)"></div>
-            <div class="relative w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden flex flex-col">
-                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-                            <x-heroicon-o-trash class="w-4 h-4 text-rose-400"/>
-                        </div>
-                        <h3 class="font-bold tracking-tight text-base">Delete Priority Booking</h3>
-                    </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition" wire:click="$set('showPriorityDeleteModal', false)">✕</button>
-                </div>
-                <div class="p-6 text-center bg-white">
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">{{ __('app.are_you_sure_delete') }}</h3>
-                    <p class="text-sm text-gray-500">This will permanently delete the priority booking record.</p>
-                    <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200 text-sm font-medium text-gray-700">
-                        {{ $priorityDeletingSummary }}
-                    </div>
-                </div>
-                <div class="border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3 bg-gray-50">
-                    <button type="button" wire:click="$set('showPriorityDeleteModal', false)"
-                        class="h-9 px-4 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition inline-flex items-center gap-1.5 text-xs font-semibold">
-                        {{ __('app.cancel') }}
-                    </button>
-                    <button type="button" wire:click="executePriorityDelete" wire:loading.attr="disabled"
-                        class="h-9 px-4 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-60">
-                        <span wire:loading.remove wire:target="executePriorityDelete">{{ __('app.delete') }}</span>
-                        <span wire:loading wire:target="executePriorityDelete" class="flex items-center gap-1.5">
-                            <x-heroicon-o-arrow-path class="animate-spin h-3.5 w-3.5 text-white"/>
-                            {{ __('app.delete') }}...
-                        </span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    @endif
+    {{-- Priority Vehicle Booking Edit and Delete modals removed.
+         Receptionists are VIEW ONLY for Priority Vehicle Bookings. --}}
 
     @if($showDetailModal && $selectedBooking)
         <div x-data="{ show: @entangle('showDetailModal') }"

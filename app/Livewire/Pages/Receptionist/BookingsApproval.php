@@ -696,6 +696,29 @@ class BookingsApproval extends Component
             ->limit(6)
             ->get($cols);
 
+        // Eagerly fetch notifications to avoid computed property chaining issues
+        $roomNotifs = $this->getRoomNotifsProperty();
+        $roomNotifCount = $roomNotifs->where('is_read', false)->count();
+
+        // Priority Room Bookings - separate into pending/approved based on status
+        // Receptionists can view these but cannot approve/reject (read-only)
+        $priorityRoomQuery = PriorityRoomBooking::query()
+            ->with(['room', 'manager', 'cancelledBooking'])
+            ->forCompany($companyId);
+
+        $priorityRoomPending = (clone $priorityRoomQuery)
+            ->whereIn('status', [
+                PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $priorityRoomApproved = (clone $priorityRoomQuery)
+            ->where('status', PriorityRoomBooking::STATUS_APPROVED)
+            ->orderByDesc('created_at')
+            ->get();
+
         return view('livewire.pages.receptionist.bookings-approval', compact(
             'pending',
             'ongoing',
@@ -703,55 +726,67 @@ class BookingsApproval extends Component
         ) + [
             'zoomConfigured'              => $this->zoomConfigured,
             'googleConnected'             => $this->googleConnected,
-            'roomNotifCount'              => $this->roomNotifCount,
-            'roomNotifs'                  => $this->roomNotifs,
-        
-            'priorityRoomPending'         => PriorityRoomBooking::with(['room', 'manager'])
-                ->forCompany($companyId)
-                ->where(function ($q) {
-                    $today     = now()->toDateString();
-                    $timeNow   = now()->format('H:i:s');
-                    $q->whereIn('status', [
-                        PriorityRoomBooking::STATUS_PENDING_RECEIPT,
-                        PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
-                    ])->orWhere(function ($q2) use ($today, $timeNow) {
-                        $q2->where('status', PriorityRoomBooking::STATUS_APPROVED)
-                           ->where(function ($q3) use ($today, $timeNow) {
-                               $q3->where('date', '>', $today)
-                                  ->orWhere(function ($q4) use ($today, $timeNow) {
-                                      $q4->where('date', $today)
-                                         ->where('start_time', '>', $timeNow);
-                                  });
-                           });
-                    });
-                })
-                ->orderByDesc('created_at')
-                ->get(),
-            'priorityRoomApproved'        => PriorityRoomBooking::with(['room', 'manager'])
-                ->forCompany($companyId)
-                ->where('status', PriorityRoomBooking::STATUS_APPROVED)
-                ->where(function ($q) {
-                    $today   = now()->toDateString();
-                    $timeNow = now()->format('H:i:s');
-                    $q->where('date', '<', $today)
-                      ->orWhere(function ($q2) use ($today, $timeNow) {
-                          $q2->where('date', $today)
-                             ->where('start_time', '<=', $timeNow);
-                      });
-                })
-                ->orderByDesc('created_at')
-                ->limit(20)
-                ->get(),
-            'priorityRoomDetailBooking'   => $this->priorityRoomDetailBooking,
+            'roomNotifCount'              => $roomNotifCount,
+            'roomNotifs'                  => $roomNotifs,
+            'priorityRoomPending'         => $priorityRoomPending,
+            'priorityRoomApproved'        => $priorityRoomApproved,
         ]);
     }
 
-    public bool $showRoomNotifPanel          = false;
-    public bool $showRoomPriorityApprovalModal = false;
-    public ?int $roomPriorityNotifId          = null;
-    public ?int $roomPriorityBookingId        = null;
+    // ===================================================================
+    // PRIORITY ROOM BOOKINGS - READ-ONLY
+    // Priority room bookings are managed by Managers only.
+    // Receptionists can view details but cannot approve/reject.
+    // ===================================================================
+
     public bool $showPriorityRoomDetailModal = false;
     public ?int $priorityRoomDetailId        = null;
+
+    // Room notification panel state
+    public bool $showRoomNotifPanel = false;
+
+    public function toggleRoomNotifPanel(): void
+    {
+        $this->showRoomNotifPanel = !$this->showRoomNotifPanel;
+    }
+
+    public function closeRoomNotifPanel(): void
+    {
+        $this->showRoomNotifPanel = false;
+    }
+
+    /**
+     * Get unread priority room notifications for the current receptionist.
+     */
+    public function getRoomNotifsProperty()
+    {
+        $userId = Auth::id();
+        $companyId = Auth::user()->company_id ?? null;
+
+        if (!$userId || !$companyId) {
+            return collect();
+        }
+
+        return ManagerNotification::query()
+            ->forCompany($companyId)
+            ->forRecipient($userId)
+            ->whereIn('type', [
+                ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
+                ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
+            ])
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Get count of unread priority room notifications.
+     */
+    public function getRoomNotifCountProperty(): int
+    {
+        return $this->roomNotifs
+            ->where('is_read', false)
+            ->count();
+    }
 
     public function openPriorityRoomDetail(int $id): void
     {
@@ -773,12 +808,6 @@ class BookingsApproval extends Component
         $this->priorityRoomDetailId        = null;
     }
 
-    public function takeActionFromDetail(int $priorityBookingId): void
-    {
-        $this->closePriorityRoomDetail();
-        $this->openRoomPriorityApprovalByBookingId($priorityBookingId);
-    }
-
     public function getPriorityRoomDetailBookingProperty(): ?\App\Models\PriorityRoomBooking
     {
         if (!$this->priorityRoomDetailId) return null;
@@ -786,196 +815,7 @@ class BookingsApproval extends Component
             ->find($this->priorityRoomDetailId);
     }
 
-    public function toggleRoomNotifPanel(): void
-    {
-        $this->showRoomNotifPanel = !$this->showRoomNotifPanel;
-    }
-
-    public function closeRoomNotifPanel(): void
-    {
-        $this->showRoomNotifPanel = false;
-    }
-
-    public function openRoomPriorityApprovalModal(int $notifId): void
-    {
-        $companyId = Auth::user()->company_id ?? null;
-
-        $notif = ManagerNotification::where('id', $notifId)
-            ->where('company_id', $companyId)
-            ->where('action_required', true)
-            ->whereNull('action_taken')
-            ->first();
-
-        if (!$notif) {
-            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Notification not found or already actioned.');
-            return;
-        }
-
-        $this->roomPriorityNotifId          = $notifId;
-        $this->roomPriorityBookingId        = $notif->notifiable_id;
-        $this->showRoomPriorityApprovalModal = true;
-        $this->showRoomNotifPanel           = false;
-        $notif->markRead();
-    }
-
-    public function openRoomPriorityApprovalByBookingId(int $priorityBookingId): void
-    {
-        $companyId = Auth::user()->company_id ?? null;
-
-        $priority = PriorityRoomBooking::where('id', $priorityBookingId)
-            ->where('company_id', $companyId)
-            ->whereIn('status', [
-                PriorityRoomBooking::STATUS_PENDING_RECEIPT,
-                PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
-            ])
-            ->first();
-
-        if (!$priority) {
-            $this->dispatch('toast', type: 'warning', title: 'Not Found', message: 'Priority booking not found or already handled.');
-            return;
-        }
-
-        if ($priority->status === PriorityRoomBooking::STATUS_PENDING_RECEIPT) {
-            $this->roomPriorityNotifId   = null;
-            $this->roomPriorityBookingId = $priorityBookingId;
-            $this->approveRoomPriority();
-            return;
-        }
-
-        $this->roomPriorityNotifId          = null; 
-        $this->roomPriorityBookingId        = $priorityBookingId;
-        $this->showRoomPriorityApprovalModal = true;
-        $this->showRoomNotifPanel           = false;
-    }
-
-    public function closeRoomPriorityApprovalModal(): void
-    {
-        $this->showRoomPriorityApprovalModal = false;
-        $this->roomPriorityNotifId           = null;
-        $this->roomPriorityBookingId         = null;
-    }
-
-    public function approveRoomPriority(): void
-    {
-        if (!$this->roomPriorityBookingId) return;
-
-        $companyId = Auth::user()->company_id ?? null;
-        $hadConflict = false;
-
-        try {
-            DB::transaction(function () use ($companyId, &$hadConflict) {
-                $priority = PriorityRoomBooking::where('id', $this->roomPriorityBookingId)
-                    ->where('company_id', $companyId)
-                    ->firstOrFail();
-
-                if ($priority->cancels_booking_id) {
-                    $hadConflict = true;
-                    BookingRoom::where('bookingroom_id', $priority->cancels_booking_id)
-                        ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
-                        ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
-                        ->update([
-                            'status'      => 'rejected',
-                            'book_reject' => 'Cancelled — superseded by manager priority booking #' . $this->roomPriorityBookingId . '.',
-                            'approved_by' => Auth::user()->user_id,
-                        ]);
-                }
-
-                $priority->update([
-                    'status'     => PriorityRoomBooking::STATUS_APPROVED,
-                    'handled_by' => Auth::user()->user_id,
-                ]);
-
-                if ($this->roomPriorityNotifId) {
-                    ManagerNotification::where('id', $this->roomPriorityNotifId)
-                        ->update(['action_taken' => 'approved', 'is_read' => true]);
-                }
-
-                ManagerNotification::where('notifiable_id', $this->roomPriorityBookingId)
-                    ->whereIn('type', [
-                        ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
-                        ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
-                    ])
-                    ->whereNull('action_taken')
-                    ->update(['action_taken' => 'approved', 'is_read' => true]);
-            });
-
-            $message = $hadConflict
-                ? 'Priority booking approved and conflicting booking cancelled.'
-                : 'Priority booking approved.';
-
-            $this->dispatch('toast', type: 'success', title: 'Approved', message: $message);
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
-        }
-
-        $this->closeRoomPriorityApprovalModal();
-        $this->resetPage('pendingPage');
-        $this->resetPage('ongoingPage');
-    }
-
-    public function denyRoomPriority(): void
-    {
-        if (!$this->roomPriorityBookingId) return;
-
-        $companyId = Auth::user()->company_id ?? null;
-
-        try {
-            DB::transaction(function () use ($companyId) {
-                PriorityRoomBooking::where('id', $this->roomPriorityBookingId)
-                    ->where('company_id', $companyId)
-                    ->update([
-                        'status'           => PriorityRoomBooking::STATUS_CONFLICT_DENIED,
-                        'handled_by'       => Auth::user()->user_id,
-                        'rejection_reason' => 'Cancellation request denied by receptionist.',
-                    ]);
-
-                if ($this->roomPriorityNotifId) {
-                    ManagerNotification::where('id', $this->roomPriorityNotifId)
-                        ->update(['action_taken' => 'denied', 'is_read' => true]);
-                }
-
-                ManagerNotification::where('notifiable_id', $this->roomPriorityBookingId)
-                    ->whereIn('type', [
-                        ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
-                        ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
-                    ])
-                    ->whereNull('action_taken')
-                    ->update(['action_taken' => 'denied', 'is_read' => true]);
-            });
-
-            $this->dispatch('toast', type: 'info', title: 'Denied', message: 'Cancellation request denied. Original booking kept.');
-        } catch (\Throwable $e) {
-            report($e);
-            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed: ' . $e->getMessage());
-        }
-
-        $this->closeRoomPriorityApprovalModal();
-    }
-
-    public function getRoomNotifCountProperty(): int
-    {
-        $user = Auth::user();
-        if (!$user) return 0;
-        return ManagerNotification::where('company_id', $user->company_id ?? 0)
-            ->where('recipient_id', $user->user_id ?? 0)
-            ->where('type', ManagerNotification::TYPE_ROOM_CANCEL_REQUEST)
-            ->where('is_read', false)
-            ->count();
-    }
-
-    public function getRoomNotifsProperty()
-    {
-        $user = Auth::user();
-        if (!$user) return collect();
-        return ManagerNotification::where('company_id', $user->company_id ?? 0)
-            ->where('recipient_id', $user->user_id ?? 0)
-            ->whereIn('type', [
-                ManagerNotification::TYPE_ROOM_CANCEL_REQUEST,
-                ManagerNotification::TYPE_PRIORITY_ROOM_DIRECT,
-            ])
-            ->orderByDesc('created_at')
-            ->limit(20)
-            ->get();
-    }
+    // ===================================================================
+    // END PRIORITY ROOM BOOKINGS
+    // ===================================================================
 }
