@@ -458,6 +458,7 @@
             wire:key="done-modal-container"
             x-data="{
                 show: @entangle('showDoneModal').live,
+                photoData: @entangle('donePhotoData').live,
                 stream: null,
                 devices: [],
                 selectedDeviceId: null,
@@ -506,14 +507,14 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('donePhotoData', canvas.toDataURL('image/png'));
+                    this.photoData = canvas.toDataURL('image/png');
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        $wire.set('donePhotoData', ev.target.result);
+                        this.photoData = ev.target.result;
                     };
                     reader.readAsDataURL(file);
                 }
@@ -537,7 +538,7 @@
                 <div class="px-6 py-5 space-y-4">
                     
                     {{-- Camera Viewport --}}
-                    <div x-show="!$wire.donePhotoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                    <div x-show="!photoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
                         <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
@@ -554,9 +555,9 @@
                     </div>
                     
                     {{-- Preview --}}
-                    <div x-show="$wire.donePhotoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
-                        <img :src="$wire.donePhotoData" class="w-full h-full object-cover" />
-                        <button type="button" @click="$wire.set('donePhotoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                    <div x-show="photoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="photoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="photoData = null" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             Retake
                         </button>
@@ -581,7 +582,7 @@
                         class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                         Cancel
                     </button>
-                    <button type="button" wire:click="confirmDone" :disabled="!$wire.donePhotoData"
+                    <button type="button" wire:click="confirmDone" :disabled="!photoData"
                         class="px-5 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
                         Mark as Done
                     </button>
