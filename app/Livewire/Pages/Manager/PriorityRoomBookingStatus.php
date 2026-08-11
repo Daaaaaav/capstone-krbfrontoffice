@@ -89,6 +89,51 @@ class PriorityRoomBookingStatus extends Component
             ->find($this->detailId);
     }
     
+    /**
+     * Check if a Priority Room Booking has a clash with an existing room booking.
+     * Returns true if there's a time-overlap conflict requiring manager approval.
+     */
+    public function hasClash(PriorityRoomBooking $booking): bool
+    {
+        if (!$booking->room_id || !$booking->date || !$booking->start_time || !$booking->end_time) {
+            return false;
+        }
+
+        try {
+            $start = Carbon::parse($booking->date . ' ' . $booking->start_time, $this->tz);
+            $end   = Carbon::parse($booking->date . ' ' . $booking->end_time, $this->tz);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if ($end->lte($start)) {
+            return false;
+        }
+
+        // Check for overlapping bookings using the same logic as PriorityRoomBooking form
+        $startExpr = "COALESCE(
+            CASE WHEN start_time REGEXP '^[0-9]{4}-' THEN start_time END,
+            CASE WHEN date       REGEXP '^[0-9]{4}-' THEN date END,
+            CONCAT(date, ' ', start_time)
+        )";
+        $endExpr = "COALESCE(
+            CASE WHEN end_time REGEXP '^[0-9]{4}-' THEN end_time END,
+            CASE WHEN date     REGEXP '^[0-9]{4}-' THEN date END,
+            CONCAT(date, ' ', end_time)
+        )";
+
+        $conflict = BookingRoom::query()
+            ->whereIn('status', ['pending', 'approved', 'completed', 'done', '1', '3'])
+            ->whereNotIn('booking_type', ['online_meeting', 'onlinemeeting'])
+            ->where('room_id', $booking->room_id)
+            ->whereDate('date', $booking->date)
+            ->whereRaw("$startExpr < ?", [$end->toDateTimeString()])
+            ->whereRaw("$endExpr > ?", [$start->toDateTimeString()])
+            ->exists();
+
+        return $conflict;
+    }
+    
     public function openApprove(int $id): void
     {
         $this->approveId = $id;
