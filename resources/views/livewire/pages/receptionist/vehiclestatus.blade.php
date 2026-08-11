@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ mobileFilterOpen: false }">
+﻿<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -42,7 +42,7 @@
             <x-slot:actions>
                 <button type="button"
                         class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium border border-border hover:bg-secondary/80 md:hidden transition"
-                        @click="mobileFilterOpen = true">
+                        @click="showFilterModal = true">
                     <x-heroicon-o-funnel class="w-4 h-4"/>
                     <span>{{ __('app.filter') }}</span>
                 </button>
@@ -65,7 +65,7 @@
                             <div class="inline-flex items-center bg-gray-100 rounded-full p-1 text-xs font-medium">
                                 @foreach(['pending'=>__('app.pending'),'approved'=>__('app.approved'),'on_progress'=>__('app.on_progress')] as $key=>$lbl)
                                     <button type="button"
-                                            wire:click="setStatusTab('{{ $key }}')"
+                                            wire:click="$set('statusTab','{{ $key }}')"
                                             class="px-3.5 py-1 rounded-full transition {{ $statusTab === $key ? 'bg-[#4E653D] text-white shadow-sm' : 'text-gray-700 hover:bg-gray-200' }}">
                                         {{ $lbl }}
                                     </button>
@@ -613,9 +613,9 @@
         </div>
 
         {{-- MOBILE FILTER MODAL --}}
-        <div x-show="mobileFilterOpen" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
-            <div x-show="mobileFilterOpen" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="mobileFilterOpen = false"></div>
-            <div x-show="mobileFilterOpen" 
+        <div x-show="showFilterModal" class="fixed inset-0 z-50 md:hidden flex items-end" x-cloak style="display: none;">
+            <div x-show="showFilterModal" x-transition.opacity class="absolute inset-0 bg-black/60 backdrop-blur-md" @click="showFilterModal = false"></div>
+            <div x-show="showFilterModal" 
                  x-transition:enter="transform transition ease-out duration-300"
                  x-transition:enter-start="translate-y-full"
                  x-transition:enter-end="translate-y-0"
@@ -628,14 +628,14 @@
                         <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
                         <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_vehicle_history') }}</p>
                     </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="mobileFilterOpen = false">âœ•</button>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="showFilterModal = false">âœ•</button>
                 </div>
 
                 <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-white">
                     {{-- All vehicles option --}}
                     <button type="button"
                             wire:click="clearVehicleFilter"
-                            @click="mobileFilterOpen = false"
+                            @click="showFilterModal = false"
                             class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors
                                 {{ is_null($vehicleFilter) ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                         <span class="flex items-center gap-2">
@@ -652,7 +652,7 @@
                             @endphp
                             <button type="button"
                                     wire:click="selectVehicle({{ $v->vehicle_id }})"
-                                    @click="mobileFilterOpen = false"
+                                    @click="showFilterModal = false"
                                     class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs border transition-colors {{ $active ? 'bg-[#4A2F24] text-[#CDDEA7] border-[#4A2F24] shadow-sm' : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50' }}">
                                 <span class="flex items-center gap-2">
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-md border border-gray-300 text-[11px]">
@@ -965,7 +965,7 @@
                         <p class="text-[10px] text-muted-foreground/60 mt-1">{{ $n->created_at->diffForHumans() }}</p>
                     </div>
                     @if($n->isPendingAction())
-                    <button wire:click="openPriorityVehicleDetail({{ $n->notifiable_id }})"
+                    <button wire:click="openPriorityApprovalModal({{ $n->id }})"
                         class="shrink-0 px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition">
                         View
                     </button>
@@ -983,6 +983,9 @@
     </div>
 </div>
 @endif
+
+{{-- Priority Vehicle Approval Modal removed — Receptionists are VIEW ONLY. Approval handled by Managers only. --}}
+
 
 {{-- Priority Vehicle Booking Detail Modal --}}
 @if($showPriorityVehicleDetailModal && $priorityVehicleDetailBooking)
@@ -1113,6 +1116,7 @@
 
         {{-- Footer --}}
         <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
+            {{-- Receptionist VIEW ONLY: Approve & Cancel Conflict button removed --}}
             <button wire:click="closePriorityVehicleDetail" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">
                 Close
             </button>
@@ -1121,37 +1125,8 @@
 </div>
 @endif
 
-{{-- Priority Vehicle Reject Modal --}}
-@if($showPriorityVehicleRejectModal)
-<div class="fixed inset-0 z-[210] flex items-center justify-center p-4" wire:key="priority-veh-reject-modal">
-    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" wire:click="closePriorityVehicleReject"></div>
-    <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-rose-200">
-        <div class="px-6 py-4 border-b border-rose-200 bg-rose-50/60 flex items-center justify-between">
-            <p class="text-sm font-semibold text-gray-900">Reject Priority Vehicle Booking</p>
-            <button wire:click="closePriorityVehicleReject" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-rose-100 text-gray-500 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div class="px-6 py-5 space-y-3">
-            <p class="text-xs text-gray-600">Provide a reason so the manager can review and resubmit if needed.</p>
-            <textarea wire:model="priorityVehicleRejectReason"
-                      rows="3"
-                      placeholder="Enter rejection reason…"
-                      class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder:text-gray-400 focus:border-rose-400 focus:ring-2 focus:ring-rose-400/20 resize-none transition"></textarea>
-            @error('priorityVehicleRejectReason') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
-        </div>
-        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50/50 flex justify-end gap-2">
-            <button wire:click="closePriorityVehicleReject" class="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition">Cancel</button>
-            <button wire:click="submitPriorityVehicleReject"
-                    wire:loading.attr="disabled"
-                    wire:target="submitPriorityVehicleReject"
-                    class="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition">
-                Confirm Reject
-            </button>
-        </div>
-    </div>
-</div>
-@endif
+{{-- Priority Vehicle Reject Modal removed — Receptionists are VIEW ONLY. --}}
+
 
         {{-- APPROVE MODAL (Camera) --}}
         <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
