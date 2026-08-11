@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-background" wire:poll.5000ms="tick" x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.5000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
 
@@ -177,7 +177,7 @@
                                         class="{{ $input }} pr-8 cursor-pointer"
                                         :class="{ 'placeholder-gray-900': selectedId, 'placeholder-gray-400': !selectedId }"
                                     >
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                     </div>
                                 </div>
@@ -366,9 +366,9 @@
                                                 </div>
 
                                                 {{-- Rejected Note --}}
-                                                @if($b->notes && $b->status === 'rejected')
+                                                @if($b->reject_note && $b->status === 'rejected')
                                                     <div class="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg p-2">
-                                                        <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->notes }}
+                                                        <span class="font-medium">{{ __('app.reject_reason') }}:</span> {{ $b->reject_note }}
                                                     </div>
                                                 @endif
 
@@ -398,7 +398,7 @@
                                         <span class="text-[11px] text-gray-500 mr-auto">No. {{ ($bookings->firstItem() ?? 1) + $loop->index }}</span>
 
                                         <button type="button"
-                                                wire:click.stop="showDetails({{ $b->vehiclebooking_id }})"
+                                                wire:click="showDetails({{ $b->vehiclebooking_id }})"
                                                 class="px-3.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition shadow-sm">
                                             Detail
                                         </button>
@@ -407,7 +407,7 @@
                                         @if($b->status === 'pending')
                                             {{-- Reject Button (Soft Red Style) --}}
                                             <button type="button"
-                                                    wire:click.stop="confirmReject({{ $b->vehiclebooking_id }})"
+                                                    wire:click="confirmReject({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
                                                     wire:target="confirmReject({{ $b->vehiclebooking_id }})"
                                                     class="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-60 transition">
@@ -416,7 +416,7 @@
  
                                             {{-- Approve Button (Primary Style) --}}
                                             <button type="button"
-                                                    wire:click.stop="openApproveModal({{ $b->vehiclebooking_id }})"
+                                                    wire:click="openApproveModal({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
                                                     wire:target="openApproveModal({{ $b->vehiclebooking_id }})"
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
@@ -433,7 +433,7 @@
                                             @endif
                                             {{-- Mark Completed Button --}}
                                             <button type="button"
-                                                    wire:click.stop="openDoneModal({{ $b->vehiclebooking_id }})"
+                                                    wire:click="openDoneModal({{ $b->vehiclebooking_id }})"
                                                     wire:loading.attr="disabled"
                                                     wire:target="openDoneModal({{ $b->vehiclebooking_id }})"
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
@@ -509,16 +509,16 @@
                                                                 <x-heroicon-o-photo class="w-3.5 h-3.5"/>
                                                             </button>
                                                         @endif
-                                                        <button type="button" wire:click.stop="showDetails({{ $b->vehiclebooking_id }})"
+                                                        <button type="button" wire:click="showDetails({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition">
                                                             Detail
                                                         </button>
                                                         @if($b->status === 'pending')
-                                                            <button type="button" wire:click.stop="confirmReject({{ $b->vehiclebooking_id }})"
+                                                            <button type="button" wire:click="confirmReject({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
                                                                 {{ __('app.reject') }}
                                                             </button>
-                                                            <button type="button" wire:click.stop="openApproveModal({{ $b->vehiclebooking_id }})"
+                                                            <button type="button" wire:click="openApproveModal({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.approve') }}
                                                             </button>
@@ -530,7 +530,7 @@
                                                                     +{{ $overdueTable }} late
                                                                 </span>
                                                             @endif
-                                                            <button type="button" wire:click.stop="openDoneModal({{ $b->vehiclebooking_id }})"
+                                                            <button type="button" wire:click="openDoneModal({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.mark_done') }}
                                                             </button>
@@ -670,7 +670,7 @@
 
     {{-- DETAIL MODAL --}}
     @if($showDetailModal && $selectedBooking)
-        <div x-data="{ show: @entangle('showDetailModal') }"
+        <div x-data="{ show: @entangle('showDetailModal').live }"
              x-show="show"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0"
@@ -769,8 +769,8 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
-         :class="show && 'pointer-events-auto'"
+         class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+         
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -850,8 +850,8 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
-         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
-         :class="show && 'pointer-events-auto'"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+         
          style="display: none;">
 
         {{-- Backdrop --}}
@@ -1131,11 +1131,11 @@
 
 
         {{-- APPROVE MODAL (Camera) --}}
-        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
             wire:key="approve-modal-container"
             x-data="{
-                show: @entangle('showApproveModal').live,
+                show: @entangle('showApproveModal'),
                 photoPreview: null,
                 stream: null,
                 devices: [],
@@ -1194,7 +1194,6 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.7));
                     const data = canvas.toDataURL('image/png');
                     this.photoPreview = data;
                     $wire.set('photoData', data);
@@ -1202,13 +1201,6 @@
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
-                    if (file.size > 2 * 1024 * 1024) {
-                        window.dispatchEvent(new CustomEvent('toast', {
-                            detail: { type: 'error', title: 'File Too Large', message: 'Photo must be under 2MB. Please choose a smaller image.', duration: 4000 }
-                        }));
-                        e.target.value = '';
-                        return;
-                    }
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         this.photoPreview = ev.target.result;
@@ -1222,20 +1214,19 @@
                 }
             }"
             x-show="show"
-            x-transition.opacity
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
             style="display: none;"
-            :class="show && 'pointer-events-auto'"
+            
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
-                wire:click="closeApproveModal"></div>
+                wire:click="closeApproveModal" @click="show = false"></div>
 
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
                  x-transition:enter-end="opacity-100 scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
                  class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
                 
                 {{-- Flush Header --}}
@@ -1247,7 +1238,7 @@
                         <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Handover Evidence</h3>
                     </div>
                     <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
-                        wire:click="closeApproveModal">
+                        wire:click="closeApproveModal" @click="show = false">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -1269,7 +1260,7 @@
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
                         {{-- Reticle --}}
-                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <div class="absolute inset-0 flex items-center justify-center z-10">
                             <svg width="220" height="220" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M50 30H30V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M190 30H210V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1316,11 +1307,11 @@
         </div>
 
         {{-- DONE MODAL (Camera) --}}
-        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 pointer-events-none"
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
             role="dialog" aria-modal="true"
             wire:key="done-modal-container"
             x-data="{
-                show: @entangle('showDoneModal').live,
+                show: @entangle('showDoneModal'),
                 photoPreview: null,
                 stream: null,
                 devices: [],
@@ -1379,7 +1370,6 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.7));
                     const data = canvas.toDataURL('image/png');
                     this.photoPreview = data;
                     $wire.set('photoData', data);
@@ -1387,13 +1377,6 @@
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
-                    if (file.size > 2 * 1024 * 1024) {
-                        window.dispatchEvent(new CustomEvent('toast', {
-                            detail: { type: 'error', title: 'File Too Large', message: 'Photo must be under 2MB. Please choose a smaller image.', duration: 4000 }
-                        }));
-                        e.target.value = '';
-                        return;
-                    }
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                         this.photoPreview = ev.target.result;
@@ -1409,10 +1392,10 @@
             x-show="show"
             x-transition.opacity
             style="display: none;"
-            :class="show && 'pointer-events-auto'"
+            
             >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
-                wire:click="closeDoneModal"></div>
+                wire:click="closeDoneModal" @click="show = false"></div>
 
             <div x-show="show"
                  x-transition:enter="transition ease-out duration-300"
@@ -1432,7 +1415,7 @@
                         <h3 class="font-bold text-[15px] tracking-wide text-[#CDDEA7]">Return Evidence</h3>
                     </div>
                     <button type="button" class="text-[#CDDEA7]/70 hover:text-[#CDDEA7] transition p-1" 
-                        wire:click="closeDoneModal">
+                        wire:click="closeDoneModal" @click="show = false">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                 </div>
@@ -1454,7 +1437,7 @@
                         <canvas x-ref="canvas" style="display: none;"></canvas>
                         
                         {{-- Reticle --}}
-                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <div class="absolute inset-0 flex items-center justify-center z-10">
                             <svg width="220" height="220" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M50 30H30V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M190 30H210V50" stroke="#CDDEA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
