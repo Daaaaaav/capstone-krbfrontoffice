@@ -11,6 +11,7 @@ use App\Models\PriorityRoomBooking;
 use App\Models\PriorityVehicleBooking;
 use App\Models\BookingRoom;
 use App\Models\VehicleBooking;
+use App\Models\Guestbook;
 
 class NotificationBell extends Component
 {
@@ -41,9 +42,12 @@ class NotificationBell extends Component
         $newIds = [];
         foreach ($newOnes as $n) {
             $newIds[]   = $n->id;
-            $reviewPage = str_contains($n->type, 'room')
-                ? 'Room Bookings Approval'
-                : 'Vehicle Status';
+            $reviewPage = match (true) {
+                str_contains($n->type, 'room')              => 'Room Bookings Approval',
+                str_contains($n->type, 'vehicle')           => 'Vehicle Status',
+                $n->type === \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR => 'Guestbook Status',
+                default                                     => 'Notifications',
+            };
 
             $this->dispatch('toast',
                 type: 'warning',
@@ -302,6 +306,11 @@ class NotificationBell extends Component
     {
         $notif = $this->detailNotif;
         if (!$notif || !$notif->notifiable_id) return null;
+
+        if ($notif->type === \App\Models\ManagerNotification::TYPE_SCHEDULED_VISITOR) {
+            return \App\Models\Guestbook::with(['department', 'user'])
+                ->find($notif->notifiable_id);
+        }
 
         if (str_contains($notif->type, 'room')) {
             return PriorityRoomBooking::with(['room', 'cancelledBooking.room', 'manager'])

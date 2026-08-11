@@ -29,10 +29,11 @@ class ManagerNotification extends Model
         'is_read'         => 'boolean',
     ];
 
-    const TYPE_ROOM_CANCEL_REQUEST    = 'priority_room_cancel_request';
-    const TYPE_VEHICLE_CANCEL_REQUEST = 'priority_vehicle_cancel_request';
-    const TYPE_PRIORITY_ROOM_DIRECT   = 'priority_room_direct';      
+    const TYPE_ROOM_CANCEL_REQUEST     = 'priority_room_cancel_request';
+    const TYPE_VEHICLE_CANCEL_REQUEST  = 'priority_vehicle_cancel_request';
+    const TYPE_PRIORITY_ROOM_DIRECT    = 'priority_room_direct';
     const TYPE_PRIORITY_VEHICLE_DIRECT = 'priority_vehicle_direct';
+    const TYPE_SCHEDULED_VISITOR       = 'scheduled_visitor';
 
     public function recipient(): BelongsTo
     {
@@ -79,9 +80,10 @@ class ManagerNotification extends Model
     public function iconClass(): string
     {
         return match ($this->type) {
-            self::TYPE_ROOM_CANCEL_REQUEST, self::TYPE_PRIORITY_ROOM_DIRECT     => 'text-amber-500',
+            self::TYPE_ROOM_CANCEL_REQUEST, self::TYPE_PRIORITY_ROOM_DIRECT       => 'text-amber-500',
             self::TYPE_VEHICLE_CANCEL_REQUEST, self::TYPE_PRIORITY_VEHICLE_DIRECT => 'text-blue-500',
-            default => 'text-muted-foreground',
+            self::TYPE_SCHEDULED_VISITOR                                           => 'text-emerald-600',
+            default                                                                => 'text-muted-foreground',
         };
     }
 
