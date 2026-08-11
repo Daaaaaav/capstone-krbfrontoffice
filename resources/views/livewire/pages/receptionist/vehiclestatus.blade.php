@@ -4,19 +4,19 @@
 
     if (!function_exists('fmtDate')) {
         function fmtDate($v) {
-            try { return $v ? Carbon::parse($v)->format('d M Y') : 'â€”'; }
-            catch (\Throwable) { return 'â€”'; }
+            try { return $v ? Carbon::parse($v)->format('d M Y') : '—'; }
+            catch (\Throwable) { return '—'; }
         }
     } 
     if (!function_exists('fmtTime')) {
         function fmtTime($v) {
-            try { return $v ? Carbon::parse($v)->format('H.i') : 'â€”'; }
+            try { return $v ? Carbon::parse($v)->format('H.i') : '—'; }
             catch (\Throwable) {
                 if (is_string($v)) {
                     if (preg_match('/^\d{2}:\d{2}/', $v)) return str_replace(':','.', substr($v,0,5));
                     if (preg_match('/^\d{2}\.\d{2}/', $v)) return substr($v,0,5);
                 }
-                return 'â€”';
+                return '—';
             }
         }
     }
@@ -229,13 +229,13 @@
                                 <svg class="w-4.5 h-4.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 002 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                             </div>
                             <div class="flex-1 min-w-0 space-y-0.5">
-                                <p class="text-sm font-semibold text-gray-900 truncate group-hover:text-amber-800 transition-colors">{{ $pvb->vehicle?->name ?? 'â€”' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}</p>
+                                <p class="text-sm font-semibold text-gray-900 truncate group-hover:text-amber-800 transition-colors">{{ $pvb->vehicle?->name ?? '—' }}{{ $pvb->vehicle?->plate_number ? ' ('.$pvb->vehicle->plate_number.')' : '' }}</p>
                                 <p class="text-xs text-gray-500">
                                     {{ $pvb->borrower_name }} &bull;
-                                    {{ $pvb->start_at?->format('d M Y H:i') }} â€“ {{ $pvb->end_at?->format('H:i') }}
+                                    {{ $pvb->start_at?->format('d M Y H:i') }} – {{ $pvb->end_at?->format('H:i') }}
                                 </p>
                                 <p class="text-xs text-gray-500 truncate">{{ $pvb->purpose }}</p>
-                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pvb->manager?->full_name ?? 'â€”' }}</p>
+                                <p class="text-[11px] text-amber-600 font-medium">By: {{ $pvb->manager?->full_name ?? '—' }}</p>
                                 @if($pvb->status === 'pending_cancellation')
                                     <p class="text-[11px] text-orange-600 flex items-center gap-1">
                                         <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
@@ -361,7 +361,7 @@
                                                 <div class="text-[12px] text-gray-600 space-y-2">
                                                     <div class="flex items-center gap-1 text-[10px] text-gray-500">
                                                         <x-heroicon-o-document-plus class="w-3.5 h-3.5 text-gray-400 shrink-0"/>
-                                                        <span>{{ __('app.created') }}: {{ optional($b->created_at)->timezone('Asia/Jakarta')->format('d M Y Â· H:i') }}</span>
+                                                        <span>{{ __('app.created') }}: {{ optional($b->created_at)->timezone('Asia/Jakarta')->format('d M Y · H:i') }}</span>
                                                     </div>
                                                 </div>
 
@@ -489,8 +489,8 @@
                                                         <span>{{ $vehicleName }}</span>
                                                     </div>
                                                 </td>
-                                                <td class="h-12 px-6 py-0 ">{{ $b->borrower_name ?? 'â€”' }}</td>
-                                                <td class="h-12 px-6 py-4 max-w-xs truncate font-medium text-gray-950" title="{{ $b->purpose }}">{{ $b->purpose ?? 'â€”' }}</td>
+                                                <td class="h-12 px-6 py-0 ">{{ $b->borrower_name ?? '—' }}</td>
+                                                <td class="h-12 px-6 py-4 max-w-xs truncate font-medium text-gray-950" title="{{ $b->purpose }}">{{ $b->purpose ?? '—' }}</td>
                                                 <td class="h-12 px-6 py-4 font-medium whitespace-nowrap text-xs">{{ strtolower(\Carbon\Carbon::parse($b->start_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->start_at)->format('H.i') }}</td>
                                                 <td class="h-12 px-6 py-4 font-medium whitespace-nowrap text-xs">{{ strtolower(\Carbon\Carbon::parse($b->end_at)->format('d M Y')) }} - {{ \Carbon\Carbon::parse($b->end_at)->format('H.i') }}</td>
                                                 <td class="h-12 px-6 py-4">
@@ -628,7 +628,7 @@
                         <h3 class="text-sm font-semibold tracking-tight text-gray-900">{{ __('app.filter_by_vehicle') }}</h3>
                         <p class="text-[11px] text-gray-500 mt-0.5">{{ __('app.filter_by_vehicle_history') }}</p>
                     </div>
-                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="showFilterModal = false">âœ•</button>
+                    <button type="button" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition" @click="showFilterModal = false"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 <div class="p-5 space-y-5 overflow-y-auto flex-1 bg-white">
@@ -711,7 +711,7 @@
                             </p>
                         </div>
                     </div>
-                    <button type="button" wire:click="closeDetailModal" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">âœ•</button>
+                    <button type="button" wire:click="closeDetailModal" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 {{-- Body --}}
@@ -879,7 +879,7 @@
                     </div>
                     <button type="button"
                             @click="$wire.cancelReject()"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">âœ•</button>
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
                 </div>
 
                 {{-- Body --}}
@@ -924,8 +924,8 @@
     </div>
 
 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     Priority Vehicle Booking â€” Notification Bell & Approval Modals
-     (inside root div â€” Livewire requires exactly one root element)
+     Priority Vehicle Booking — Notification Bell & Approval Modals
+     (inside root div — Livewire requires exactly one root element)
      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 {{-- Floating bell button (shows only when there are unread vehicle notifications) --}}
@@ -1035,7 +1035,7 @@
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Vehicle</p>
                         <p class="font-semibold text-gray-900">
-                            {{ $pvd->vehicle?->name ?? 'â€”' }}
+                            {{ $pvd->vehicle?->name ?? '—' }}
                             @if($pvd->vehicle?->plate_number)
                                 <span class="text-gray-500 font-normal">({{ $pvd->vehicle->plate_number }})</span>
                             @endif
@@ -1043,32 +1043,32 @@
                     </div>
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Borrower</p>
-                        <p class="font-semibold text-gray-900">{{ $pvd->borrower_name ?? 'â€”' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pvd->borrower_name ?? '—' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Start</p>
-                        <p class="font-semibold text-gray-900">{{ $pvd->start_at?->format('d M Y H:i') ?? 'â€”' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pvd->start_at?->format('d M Y H:i') ?? '—' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">End</p>
-                        <p class="font-semibold text-gray-900">{{ $pvd->end_at?->format('d M Y H:i') ?? 'â€”' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pvd->end_at?->format('d M Y H:i') ?? '—' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Purpose</p>
-                        <p class="font-semibold text-gray-900">{{ $pvd->purpose ?? 'â€”' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pvd->purpose ?? '—' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Destination</p>
-                        <p class="font-semibold text-gray-900">{{ $pvd->destination ?? 'â€”' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pvd->destination ?? '—' }}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Requested by</p>
-                        <p class="font-semibold text-amber-700">{{ $pvd->manager?->full_name ?? 'â€”' }}</p>
+                        <p class="font-semibold text-amber-700">{{ $pvd->manager?->full_name ?? '—' }}</p>
                     </div>
                     @if($pvd->department)
                     <div>
                         <p class="text-gray-400 font-medium mb-0.5 uppercase tracking-wider text-[10px]">Department</p>
-                        <p class="font-semibold text-gray-900">{{ $pvd->department->department_name ?? 'â€”' }}</p>
+                        <p class="font-semibold text-gray-900">{{ $pvd->department->department_name ?? '—' }}</p>
                     </div>
                     @endif
                     @if($pvd->special_notes)
@@ -1093,7 +1093,7 @@
                         </div>
                         <div>
                             <p class="text-gray-400 font-medium mb-0.5">Borrower</p>
-                            <p class="font-semibold text-gray-900">{{ $pvd->cancelledBooking->borrower_name ?? 'â€”' }}</p>
+                            <p class="font-semibold text-gray-900">{{ $pvd->cancelledBooking->borrower_name ?? '—' }}</p>
                         </div>
                     </div>
                 </div>
