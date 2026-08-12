@@ -29,10 +29,8 @@ class LogFailedLogin
 
         if ($attempts >= 5) {
             Log::info("level 12 srcip: {$ip} location: /{$location} -> BRUTE_FORCE_DETECTED");
-            \App\Models\WazuhAlert::create(['rule_level' => 12, 'description' => 'BRUTE_FORCE_DETECTED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
         } else {
             Log::info("level 5 srcip: {$ip} location: /{$location} -> LOGIN_FAILED");
-            \App\Models\WazuhAlert::create(['rule_level' => 5, 'description' => 'LOGIN_FAILED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
         }
     }
 }
