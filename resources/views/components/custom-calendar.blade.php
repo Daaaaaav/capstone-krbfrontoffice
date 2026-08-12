@@ -169,7 +169,7 @@
 /*
  * customCalendar(config)
  * ─────────────────────
- * Alpine data factory used by <x-custom-calendar>.
+ * Alpine data factory used by the custom-calendar component.
  *
  * Public surface (safe to call from outside):
  *   setRange(selectedDate, rangeStart, rangeEnd)
