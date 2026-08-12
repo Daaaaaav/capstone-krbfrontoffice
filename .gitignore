@@ -66,6 +66,14 @@ storage/app/google_tokens/*.json
 # Laravel runtime caches (stop tracking view/cache/log files)
 /storage/app/*
 !/storage/app/.gitignore
+!/storage/app/private/
+/storage/app/private/*
+!/storage/app/private/.gitignore
+!/storage/app/private/lstm/
+/storage/app/private/lstm/*
+!/storage/app/private/lstm/.gitignore
+!/storage/app/private/lstm/krb_historical_data.csv
+!/storage/app/private/lstm/uploads/
 
 /storage/framework/*
 !/storage/framework/.gitignore

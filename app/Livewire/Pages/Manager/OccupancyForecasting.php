@@ -357,7 +357,17 @@ class OccupancyForecasting extends Component
                 'first_prediction' => isset($result['predictions'][0]) ? $result['predictions'][0] : null,
             ]);
             
-            $this->_roomForecastCache = $result['predictions'] ?? null;
+            $lstmPredictions = $result['predictions'] ?? null;
+
+            // If LSTM was reachable but returned null/empty predictions (e.g. insufficient
+            // data, model error, timeout on the /predict call), fall back to moving average
+            // so the summary cards always show a value rather than —.
+            if (empty($lstmPredictions)) {
+                Log::warning('OccupancyForecasting: LSTM available but returned no room predictions — using moving average fallback');
+                $this->_roomForecastCache = $this->movingAverageForecast($roomHistory, $this->forecastDays);
+            } else {
+                $this->_roomForecastCache = $lstmPredictions;
+            }
         } else {
             Log::info('OccupancyForecasting: Using fallback moving average for room');
             // Fallback: simple moving-average projection
@@ -407,7 +417,16 @@ class OccupancyForecasting extends Component
                 'first_prediction' => isset($result['predictions'][0]) ? $result['predictions'][0] : null,
             ]);
             
-            $this->_vehicleForecastCache = $result['predictions'] ?? null;
+            $lstmVehiclePredictions = $result['predictions'] ?? null;
+
+            // If LSTM was reachable but returned null/empty predictions, fall back to
+            // moving average so the vehicle card always shows a value rather than —.
+            if (empty($lstmVehiclePredictions)) {
+                Log::warning('OccupancyForecasting: LSTM available but returned no vehicle predictions — using moving average fallback');
+                $this->_vehicleForecastCache = $this->movingAverageForecast($vehicleHistory, $this->forecastDays);
+            } else {
+                $this->_vehicleForecastCache = $lstmVehiclePredictions;
+            }
         } else {
             Log::info('OccupancyForecasting: Using fallback moving average for vehicle');
             // Fallback: simple moving-average projection

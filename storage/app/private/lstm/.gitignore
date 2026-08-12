@@ -1,0 +1,6 @@
+*
+!.gitignore
+!krb_historical_data.csv
+!uploads/
+uploads/*
+!uploads/.gitkeep
