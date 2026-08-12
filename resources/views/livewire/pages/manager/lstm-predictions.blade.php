@@ -21,8 +21,11 @@
                 
                 <div class="flex flex-col sm:flex-row gap-4 items-start">
                     <div class="flex-1 max-w-md">
-                        <x-forecast-date-picker 
-                            wire:model.live="forecastStartDate"
+                        <x-forecast-date-picker
+                            start-key="forecastStartDate"
+                            end-key="forecastEndDate"
+                            :start-value="$forecastStartDate"
+                            :end-value="$forecastEndDate"
                             class="w-full"
                         />
                     </div>

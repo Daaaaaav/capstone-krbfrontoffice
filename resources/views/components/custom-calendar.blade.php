@@ -178,222 +178,230 @@
  *
  * The __x.$data pattern has been completely removed.
  * External callers must use the fdp-sync window event instead.
+ *
+ * Guard: this Blade component is rendered once per calendar instance on the
+ * page.  When two calendars appear (start + end), or after a Livewire
+ * re-render, this <script> block executes again.  The IIFE guard ensures
+ * the function is only defined once, preventing a
+ * "Identifier 'customCalendar' has already been declared" error in
+ * strict-mode environments.
  */
-function customCalendar(config) {
-    return {
-        /* ── identity ───────────────────────────────────────────────── */
-        id: config.id,
+(function () {
+    if (typeof window.customCalendar !== 'undefined') return;
 
-        /* ── date bounds ─────────────────────────────────────────────── */
-        minDate: config.minDate && config.minDate !== 'null' && config.minDate !== ''
-            ? new Date(config.minDate)
-            : null,
-        maxDate: config.maxDate && config.maxDate !== 'null' && config.maxDate !== ''
-            ? new Date(config.maxDate)
-            : null,
+    window.customCalendar = function customCalendar(config) {
+        return {
+            /* ── identity ───────────────────────────────────────────── */
+            id: config.id,
 
-        /* ── navigation state ────────────────────────────────────────── */
-        currentMonth: new Date().getMonth(),
-        currentYear:  new Date().getFullYear(),
+            /* ── date bounds ─────────────────────────────────────────── */
+            minDate: config.minDate && config.minDate !== 'null' && config.minDate !== ''
+                ? new Date(config.minDate)
+                : null,
+            maxDate: config.maxDate && config.maxDate !== 'null' && config.maxDate !== ''
+                ? new Date(config.maxDate)
+                : null,
 
-        /* ── selection state ─────────────────────────────────────────── */
-        selectedDate: null,
-        rangeStart:   null,
-        rangeEnd:     null,
+            /* ── navigation state ────────────────────────────────────── */
+            currentMonth: new Date().getMonth(),
+            currentYear:  new Date().getFullYear(),
 
-        /* ── static data ─────────────────────────────────────────────── */
-        monthNames: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-        weekDays:   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+            /* ── selection state ─────────────────────────────────────── */
+            selectedDate: null,
+            rangeStart:   null,
+            rangeEnd:     null,
 
-        /* ── computed grid ───────────────────────────────────────────── */
-        calendarDays: [],
+            /* ── static data ─────────────────────────────────────────── */
+            monthNames: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+            weekDays:   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
 
-        /* ── lifecycle ───────────────────────────────────────────────── */
-        init() {
-            const today = new Date();
-            this.currentMonth = today.getMonth();
-            this.currentYear  = today.getFullYear();
-            this.generateCalendar();
-        },
+            /* ── computed grid ───────────────────────────────────────── */
+            calendarDays: [],
 
-        /*
-         * handleMinDateAttr
-         * ─────────────────
-         * Called by x-effect whenever the min-date HTML attribute changes,
-         * e.g. when the parent uses x-bind:min-date.
-         */
-        handleMinDateAttr(value) {
-            if (value && value !== 'null' && value !== '' && value !== 'undefined') {
-                try {
-                    const d = new Date(value);
-                    if (!isNaN(d.getTime())) {
-                        const prev = this.minDate ? this.minDate.getTime() : null;
-                        if (prev !== d.getTime()) {
-                            this.minDate = d;
-                            this.generateCalendar();
-                        }
-                    }
-                } catch (_) { /* ignore */ }
-            } else if (this.minDate !== null) {
-                this.minDate = null;
+            /* ── lifecycle ───────────────────────────────────────────── */
+            init() {
+                const today = new Date();
+                this.currentMonth = today.getMonth();
+                this.currentYear  = today.getFullYear();
                 this.generateCalendar();
-            }
-        },
+            },
 
-        /*
-         * handleSyncEvent
-         * ───────────────
-         * Receives the fdp-sync window event dispatched by forecast-date-picker.
-         * Only acts when event.detail.calId matches this calendar's id.
-         * This is the safe replacement for parent code that used __x.$data.
-         */
-        handleSyncEvent(detail) {
-            if (!detail || detail.calId !== this.id) return;
-            this.setRange(
-                detail.selectedDate ?? null,
-                detail.rangeStart   ?? null,
-                detail.rangeEnd     ?? null
-            );
-        },
-
-        /*
-         * setRange  (public)
-         * ──────────────────
-         * Updates selection + range highlighting and navigates to the
-         * month of selectedDate if provided.
-         */
-        setRange(selectedDate, rangeStart, rangeEnd) {
-            this.selectedDate = selectedDate;
-            this.rangeStart   = rangeStart;
-            this.rangeEnd     = rangeEnd;
-
-            /* Navigate the calendar to show the selected date */
-            if (selectedDate) {
-                const d = new Date(selectedDate + 'T00:00:00');
-                if (!isNaN(d.getTime())) {
-                    this.currentMonth = d.getMonth();
-                    this.currentYear  = d.getFullYear();
+            /*
+             * handleMinDateAttr
+             * ─────────────────
+             * Called by x-effect whenever the min-date HTML attribute changes,
+             * e.g. when the parent uses x-bind:min-date.
+             */
+            handleMinDateAttr(value) {
+                if (value && value !== 'null' && value !== '' && value !== 'undefined') {
+                    try {
+                        const d = new Date(value);
+                        if (!isNaN(d.getTime())) {
+                            const prev = this.minDate ? this.minDate.getTime() : null;
+                            if (prev !== d.getTime()) {
+                                this.minDate = d;
+                                this.generateCalendar();
+                            }
+                        }
+                    } catch (_) { /* ignore */ }
+                } else if (this.minDate !== null) {
+                    this.minDate = null;
+                    this.generateCalendar();
                 }
-            }
+            },
 
-            this.generateCalendar();
-        },
+            /*
+             * handleSyncEvent
+             * ───────────────
+             * Receives the fdp-sync window event dispatched by forecast-date-picker.
+             * Only acts when event.detail.calId matches this calendar's id.
+             */
+            handleSyncEvent(detail) {
+                if (!detail || detail.calId !== this.id) return;
+                this.setRange(
+                    detail.selectedDate ?? null,
+                    detail.rangeStart   ?? null,
+                    detail.rangeEnd     ?? null
+                );
+            },
 
-        /* ── calendar grid ───────────────────────────────────────────── */
-        generateCalendar() {
-            const firstDay     = new Date(this.currentYear, this.currentMonth, 1);
-            const lastDay      = new Date(this.currentYear, this.currentMonth + 1, 0);
-            const daysInMonth  = lastDay.getDate();
-            const startDOW     = firstDay.getDay();
+            /*
+             * setRange  (public)
+             * ──────────────────
+             * Updates selection + range highlighting and navigates to the
+             * month of selectedDate if provided.
+             */
+            setRange(selectedDate, rangeStart, rangeEnd) {
+                this.selectedDate = selectedDate;
+                this.rangeStart   = rangeStart;
+                this.rangeEnd     = rangeEnd;
 
-            const days = [];
+                if (selectedDate) {
+                    const d = new Date(selectedDate + 'T00:00:00');
+                    if (!isNaN(d.getTime())) {
+                        this.currentMonth = d.getMonth();
+                        this.currentYear  = d.getFullYear();
+                    }
+                }
 
-            /* Leading empty cells */
-            for (let i = 0; i < startDOW; i++) {
-                days.push({ date: '', empty: true, enabled: false });
-            }
+                this.generateCalendar();
+            },
 
-            for (let d = 1; d <= daysInMonth; d++) {
-                const cur     = new Date(this.currentYear, this.currentMonth, d);
-                const dateStr = this.formatDate(cur);
-                const enabled = this.isDateEnabled(cur);
+            /* ── calendar grid ───────────────────────────────────────── */
+            generateCalendar() {
+                const firstDay    = new Date(this.currentYear, this.currentMonth, 1);
+                const lastDay     = new Date(this.currentYear, this.currentMonth + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startDOW    = firstDay.getDay();
 
-                days.push({
-                    date:         d,
-                    dateObj:      cur,
-                    dateStr:      dateStr,
-                    empty:        false,
-                    enabled:      enabled,
-                    isToday:      this.isToday(cur),
-                    isSelected:   !!(this.selectedDate && dateStr === this.selectedDate),
-                    isRangeStart: !!(this.rangeStart   && dateStr === this.rangeStart),
-                    isRangeEnd:   !!(this.rangeEnd     && dateStr === this.rangeEnd),
-                    inRange:      this.isInRange(cur),
-                });
-            }
+                const days = [];
 
-            this.calendarDays = days;
-        },
+                for (let i = 0; i < startDOW; i++) {
+                    days.push({ date: '', empty: true, enabled: false });
+                }
 
-        /* ── user interaction ────────────────────────────────────────── */
-        selectDate(day) {
-            if (!day.enabled || day.empty) return;
-            if (!this.isDateEnabled(day.dateObj)) return;
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const cur     = new Date(this.currentYear, this.currentMonth, d);
+                    const dateStr = this.formatDate(cur);
+                    const enabled = this.isDateEnabled(cur);
 
-            this.selectedDate = day.dateStr;
-            this.$dispatch('date-selected', { date: day.dateStr });
-            this.generateCalendar();
-        },
+                    days.push({
+                        date:         d,
+                        dateObj:      cur,
+                        dateStr:      dateStr,
+                        empty:        false,
+                        enabled:      enabled,
+                        isToday:      this.isToday(cur),
+                        isSelected:   !!(this.selectedDate && dateStr === this.selectedDate),
+                        isRangeStart: !!(this.rangeStart   && dateStr === this.rangeStart),
+                        isRangeEnd:   !!(this.rangeEnd     && dateStr === this.rangeEnd),
+                        inRange:      this.isInRange(cur),
+                    });
+                }
 
-        prevMonth() {
-            if (this.currentMonth === 0) {
-                this.currentMonth = 11;
-                this.currentYear--;
-            } else {
-                this.currentMonth--;
-            }
-            this.generateCalendar();
-        },
+                this.calendarDays = days;
+            },
 
-        nextMonth() {
-            if (this.currentMonth === 11) {
-                this.currentMonth = 0;
-                this.currentYear++;
-            } else {
-                this.currentMonth++;
-            }
-            this.generateCalendar();
-        },
+            /* ── user interaction ────────────────────────────────────── */
+            selectDate(day) {
+                if (!day.enabled || day.empty) return;
+                if (!this.isDateEnabled(day.dateObj)) return;
 
-        /* ── guard helpers ───────────────────────────────────────────── */
-        canGoPrev() {
-            if (!this.minDate) return true;
-            return new Date(this.currentYear, this.currentMonth, 1) > this.minDate;
-        },
+                this.selectedDate = day.dateStr;
+                this.$dispatch('date-selected', { date: day.dateStr });
+                this.generateCalendar();
+            },
 
-        canGoNext() {
-            if (!this.maxDate) return true;
-            return new Date(this.currentYear, this.currentMonth + 1, 0) < this.maxDate;
-        },
+            prevMonth() {
+                if (this.currentMonth === 0) {
+                    this.currentMonth = 11;
+                    this.currentYear--;
+                } else {
+                    this.currentMonth--;
+                }
+                this.generateCalendar();
+            },
 
-        isDateEnabled(date) {
-            const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            if (this.minDate) {
-                const mn = new Date(this.minDate.getFullYear(), this.minDate.getMonth(), this.minDate.getDate());
-                if (d < mn) return false;
-            }
-            if (this.maxDate) {
-                const mx = new Date(this.maxDate.getFullYear(), this.maxDate.getMonth(), this.maxDate.getDate());
-                if (d > mx) return false;
-            }
-            return true;
-        },
+            nextMonth() {
+                if (this.currentMonth === 11) {
+                    this.currentMonth = 0;
+                    this.currentYear++;
+                } else {
+                    this.currentMonth++;
+                }
+                this.generateCalendar();
+            },
 
-        isToday(date) {
-            const t = new Date();
-            return date.getDate()     === t.getDate()  &&
-                   date.getMonth()    === t.getMonth()  &&
-                   date.getFullYear() === t.getFullYear();
-        },
+            /* ── guard helpers ───────────────────────────────────────── */
+            canGoPrev() {
+                if (!this.minDate) return true;
+                return new Date(this.currentYear, this.currentMonth, 1) > this.minDate;
+            },
 
-        isInRange(date) {
-            if (!this.rangeStart || !this.rangeEnd) return false;
-            const s = new Date(this.rangeStart + 'T00:00:00');
-            const e = new Date(this.rangeEnd   + 'T00:00:00');
-            return date > s && date < e;
-        },
+            canGoNext() {
+                if (!this.maxDate) return true;
+                return new Date(this.currentYear, this.currentMonth + 1, 0) < this.maxDate;
+            },
 
-        formatDate(date) {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const d = String(date.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        },
+            isDateEnabled(date) {
+                const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                if (this.minDate) {
+                    const mn = new Date(this.minDate.getFullYear(), this.minDate.getMonth(), this.minDate.getDate());
+                    if (d < mn) return false;
+                }
+                if (this.maxDate) {
+                    const mx = new Date(this.maxDate.getFullYear(), this.maxDate.getMonth(), this.maxDate.getDate());
+                    if (d > mx) return false;
+                }
+                return true;
+            },
 
-        /* Kept for any legacy callers that might still exist in the project */
-        setRangeMode(start, end) {
-            this.setRange(this.selectedDate, start, end);
-        },
+            isToday(date) {
+                const t = new Date();
+                return date.getDate()     === t.getDate()  &&
+                       date.getMonth()    === t.getMonth()  &&
+                       date.getFullYear() === t.getFullYear();
+            },
+
+            isInRange(date) {
+                if (!this.rangeStart || !this.rangeEnd) return false;
+                const s = new Date(this.rangeStart + 'T00:00:00');
+                const e = new Date(this.rangeEnd   + 'T00:00:00');
+                return date > s && date < e;
+            },
+
+            formatDate(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            },
+
+            /* Kept for any legacy callers that might still exist in the project */
+            setRangeMode(start, end) {
+                this.setRange(this.selectedDate, start, end);
+            },
+        };
     };
-}
+})();
 </script>
