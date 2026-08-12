@@ -104,6 +104,16 @@ class LSTMClient
         
         // Clear request-scoped cache as well when model changes
         self::$requestCache = [];
+
+        // Tell FastAPI to clear its in-memory prediction response cache so
+        // stale results from before the model change are not served.
+        try {
+            $this->http()->timeout(5)->post($this->baseUrl . '/cache/clear');
+        } catch (\Exception $e) {
+            Log::warning('LSTMClient: /cache/clear call failed (non-fatal)', [
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         Log::info('LSTMClient: model cache busted (post-retrain).');
     }
