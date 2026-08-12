@@ -7,15 +7,20 @@
         start-value : Current start date value (PHP-rendered, Y-m-d)
         end-value   : Current end date value   (PHP-rendered, Y-m-d)
 
-    Changes vs. original
-        • No x-teleport – panel is position:absolute inside position:relative wrapper,
-          so Livewire morphing never loses DOM ownership.
-        • No $wire.entangle() – tempStart/tempEnd are plain Alpine props seeded from
-          PHP @json() values on open. Livewire is written only on Apply via $wire.set().
-        • No __x.$data – parent dispatches window event 'fdp-sync-{calId}' containing
-          the new selectedDate / rangeStart / rangeEnd. Each custom-calendar listens for
-          its own event and updates internally.
-        • $startKey / $endKey come from explicit Blade props, not fragile regex parsing.
+    Architecture
+        The Alpine component data is defined in a forecastDatePicker(el) factory
+        function in the <script> block below.  Seed values (startValue, endValue,
+        startKey, endKey, uid, startCalId, endCalId) are stored as data-* attributes
+        on the root element so that NO PHP-rendered value ever appears inside an
+        x-data="…" string — which is the root cause of the JavaScript-leak bug.
+
+        @json() inside an x-data="…" attribute produces a double-quoted JS string
+        such as "2026-08-13".  That double-quote terminates the HTML attribute early,
+        causing Alpine source code to spill into the rendered page as visible text.
+
+        Storing values in data-* attributes and reading them in JS is always safe
+        because Blade's {{ }} echo escapes HTML entities (htmlspecialchars), so a
+        double-quote becomes &quot; and never breaks the attribute boundary.
 --}}
 @props([
     'startKey'   => 'forecastStartDate',
@@ -58,9 +63,7 @@
     box-shadow: 0 4px 20px rgba(0,0,0,.15);
     padding: 20px;
     min-width: 640px;
-    /* overflow hidden keeps the shadow clean */
 }
-/* Flip left-edge if panel would overflow viewport to the right */
 .fdp-panel.fdp-align-right { left: auto; right: 0; }
 
 .fdp-calendars {
@@ -92,119 +95,34 @@
 </style>
 
 {{--
-    The outer div carries wire:ignore so Livewire will not morph its internals.
-    Alpine owns all DOM inside; Livewire only reads/writes the two date strings
-    via $wire.set() / $wire.get() at the boundaries (open & apply).
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║  SAFE attribute design                                               ║
+    ║                                                                      ║
+    ║  x-data uses SINGLE outer quotes  →  x-data='forecastDatePicker()'  ║
+    ║  No PHP values appear inside x-data at all.                          ║
+    ║                                                                      ║
+    ║  All PHP-rendered seed values live in data-* attributes whose        ║
+    ║  values are HTML-entity-escaped by Blade's {{ }} syntax.             ║
+    ║  A date string like 2026-08-13 contains no special HTML characters,  ║
+    ║  so it passes through unchanged and is 100% safe.                    ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    wire:ignore keeps Livewire from morphing Alpine's internals.
+    Alpine owns all DOM inside; Livewire only reads/writes the two date
+    strings via $wire.set() / $wire.get() at the boundaries (open & apply).
 --}}
 <div {{ $attributes->only('class') }}
      id="{{ $uid }}"
      wire:ignore
-     x-data="{
-         open:     false,
-         tempStart: @json($startValue),
-         tempEnd:   @json($endValue),
-
-         /* ── helpers ─────────────────────────────────────── */
-         get displayRange() {
-             const s = this.tempStart;
-             const e = this.tempEnd;
-             if (!s || !e) return '{{ __('app.select_forecast_period') ?? 'Select Forecast Period' }}';
-             const fmt = { month: 'short', day: 'numeric', year: 'numeric' };
-             return new Date(s + 'T00:00:00').toLocaleDateString('en-US', fmt)
-                  + ' – '
-                  + new Date(e + 'T00:00:00').toLocaleDateString('en-US', fmt);
-         },
-
-         /* ── open / close ────────────────────────────────── */
-         async toggle() {
-             if (this.open) { this.cancel(); return; }
-
-             /* Refresh from Livewire before opening */
-             this.tempStart = await $wire.get('{{ $startKey }}') || this.tempStart;
-             this.tempEnd   = await $wire.get('{{ $endKey }}')   || this.tempEnd;
-
-             this.open = true;
-             this.$nextTick(() => {
-                 this.alignPanel();
-                 this.pushRangeToCalendars();
-             });
-         },
-
-         cancel() {
-             this.open = false;
-         },
-
-         /* ── apply: write back to Livewire ───────────────── */
-         async apply() {
-             if (!this.tempStart || !this.tempEnd) return;
-             if (new Date(this.tempEnd) < new Date(this.tempStart)) {
-                 this.tempEnd = this.tempStart;
-             }
-             await $wire.set('{{ $startKey }}', this.tempStart);
-             await $wire.set('{{ $endKey }}',   this.tempEnd);
-             this.open = false;
-         },
-
-         /* ── date selection callbacks ─────────────────────── */
-         onStartSelected(ev) {
-             this.tempStart = ev.detail.date;
-             if (this.tempEnd && new Date(this.tempEnd) < new Date(this.tempStart)) {
-                 this.tempEnd = this.tempStart;
-             }
-             this.pushRangeToCalendars();
-         },
-
-         onEndSelected(ev) {
-             this.tempEnd = ev.detail.date;
-             if (this.tempStart && new Date(this.tempEnd) < new Date(this.tempStart)) {
-                 /* Swap so range is always ascending */
-                 [this.tempStart, this.tempEnd] = [this.tempEnd, this.tempStart];
-             }
-             this.pushRangeToCalendars();
-         },
-
-         /*
-          * pushRangeToCalendars
-          * ─────────────────────
-          * Dispatches a namespaced window event that each custom-calendar
-          * listens for by its own id. This completely replaces the __x.$data hack.
-          */
-         pushRangeToCalendars() {
-             const startPayload = {
-                 calId:        '{{ $startCalId }}',
-                 selectedDate: this.tempStart,
-                 rangeStart:   this.tempStart,
-                 rangeEnd:     this.tempEnd,
-             };
-             const endPayload = {
-                 calId:        '{{ $endCalId }}',
-                 selectedDate: this.tempEnd,
-                 rangeStart:   this.tempStart,
-                 rangeEnd:     this.tempEnd,
-             };
-             window.dispatchEvent(new CustomEvent('fdp-sync', { detail: startPayload }));
-             window.dispatchEvent(new CustomEvent('fdp-sync', { detail: endPayload   }));
-         },
-
-         /*
-          * alignPanel
-          * ──────────
-          * Keeps the inline panel inside the viewport by adding .fdp-align-right
-          * when the panel would overflow on the right.
-          */
-         alignPanel() {
-             const wrap  = document.getElementById('{{ $uid }}');
-             const panel = wrap?.querySelector('.fdp-panel');
-             if (!wrap || !panel) return;
-
-             panel.classList.remove('fdp-align-right');
-             const rect    = panel.getBoundingClientRect();
-             const vpWidth = window.innerWidth;
-             if (rect.right > vpWidth - 16) {
-                 panel.classList.add('fdp-align-right');
-             }
-         }
-     }"
+     x-data='forecastDatePicker()'
+     data-uid="{{ $uid }}"
+     data-start-cal-id="{{ $startCalId }}"
+     data-end-cal-id="{{ $endCalId }}"
+     data-start-key="{{ $startKey }}"
+     data-end-key="{{ $endKey }}"
+     data-start-value="{{ $startValue ?? '' }}"
+     data-end-value="{{ $endValue ?? '' }}"
+     data-label-placeholder="{{ __('app.select_forecast_period') ?? 'Select Forecast Period' }}"
      @keydown.escape.window="if (open) cancel()"
      @resize.window.debounce.200ms="if (open) alignPanel()"
      class="fdp-wrap">
@@ -220,11 +138,9 @@
     </button>
 
     {{--
-        Inline panel – NO x-teleport.
+        Inline panel — NO x-teleport.
         x-cloak hides it until Alpine initialises (prevents flash).
-        @click.outside closes on click outside the entire fdp-wrap,
-        but we use a simple click-outside implemented via @click.away on
-        the panel itself combined with @click.stop on the trigger.
+        @click.outside closes on click outside the entire fdp-wrap.
     --}}
     <div class="fdp-panel"
          x-show="open"
@@ -274,3 +190,169 @@
     </div>
 
 </div>
+
+{{--
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║  forecastDatePicker()                                                ║
+    ║  ─────────────────────                                               ║
+    ║  Alpine data factory for the forecast date-range picker.             ║
+    ║                                                                      ║
+    ║  Config is read from data-* attributes on the root element ($el)     ║
+    ║  inside init(), which runs after Alpine has bound the element.       ║
+    ║  This means NO PHP value ever appears inside an x-data="…" string.  ║
+    ║                                                                      ║
+    ║  The function is guarded against duplicate registration so that      ║
+    ║  Livewire full-page re-renders (which re-execute <script> tags)      ║
+    ║  do not throw "Identifier has already been declared".                ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+--}}
+<script>
+(function () {
+    // Guard: only define once, even if Livewire re-renders this component.
+    if (typeof window.forecastDatePicker !== 'undefined') return;
+
+    window.forecastDatePicker = function forecastDatePicker() {
+        return {
+            /* ── state ───────────────────────────────────────────────── */
+            open:      false,
+            tempStart: null,
+            tempEnd:   null,
+
+            /* ── config (populated in init from data-* attrs) ─────────── */
+            _uid:            '',
+            _startCalId:     '',
+            _endCalId:       '',
+            _startKey:       'forecastStartDate',
+            _endKey:         'forecastEndDate',
+            _placeholder:    'Select Forecast Period',
+
+            /* ── lifecycle ───────────────────────────────────────────── */
+            init() {
+                const el = this.$el;
+                this._uid         = el.dataset.uid         || '';
+                this._startCalId  = el.dataset.startCalId  || '';
+                this._endCalId    = el.dataset.endCalId    || '';
+                this._startKey    = el.dataset.startKey    || 'forecastStartDate';
+                this._endKey      = el.dataset.endKey      || 'forecastEndDate';
+                this._placeholder = el.dataset.labelPlaceholder || 'Select Forecast Period';
+
+                // Seed initial values from data attributes.
+                // dataset values are always strings; treat empty string as null.
+                const sv = el.dataset.startValue;
+                const ev = el.dataset.endValue;
+                this.tempStart = (sv && sv !== 'null' && sv !== '') ? sv : null;
+                this.tempEnd   = (ev && ev !== 'null' && ev !== '') ? ev : null;
+            },
+
+            /* ── computed ────────────────────────────────────────────── */
+            get displayRange() {
+                const s = this.tempStart;
+                const e = this.tempEnd;
+                if (!s || !e) return this._placeholder;
+                const fmt = { month: 'short', day: 'numeric', year: 'numeric' };
+                return new Date(s + 'T00:00:00').toLocaleDateString('en-US', fmt)
+                     + ' \u2013 '
+                     + new Date(e + 'T00:00:00').toLocaleDateString('en-US', fmt);
+            },
+
+            /* ── open / close ────────────────────────────────────────── */
+            async toggle() {
+                if (this.open) { this.cancel(); return; }
+
+                // Refresh from Livewire before opening.
+                try {
+                    const sv = await $wire.get(this._startKey);
+                    const ev = await $wire.get(this._endKey);
+                    if (sv) this.tempStart = sv;
+                    if (ev) this.tempEnd   = ev;
+                } catch (_) { /* $wire unavailable in isolation */ }
+
+                this.open = true;
+                this.$nextTick(() => {
+                    this.alignPanel();
+                    this.pushRangeToCalendars();
+                });
+            },
+
+            cancel() {
+                this.open = false;
+            },
+
+            /* ── apply: write back to Livewire ───────────────────────── */
+            async apply() {
+                if (!this.tempStart || !this.tempEnd) return;
+                if (new Date(this.tempEnd) < new Date(this.tempStart)) {
+                    this.tempEnd = this.tempStart;
+                }
+                try {
+                    await $wire.set(this._startKey, this.tempStart);
+                    await $wire.set(this._endKey,   this.tempEnd);
+                } catch (_) { /* $wire unavailable in isolation */ }
+                this.open = false;
+            },
+
+            /* ── date selection callbacks ─────────────────────────────── */
+            onStartSelected(ev) {
+                this.tempStart = ev.detail.date;
+                if (this.tempEnd && new Date(this.tempEnd) < new Date(this.tempStart)) {
+                    this.tempEnd = this.tempStart;
+                }
+                this.pushRangeToCalendars();
+            },
+
+            onEndSelected(ev) {
+                this.tempEnd = ev.detail.date;
+                if (this.tempStart && new Date(this.tempEnd) < new Date(this.tempStart)) {
+                    // Swap so range is always ascending.
+                    [this.tempStart, this.tempEnd] = [this.tempEnd, this.tempStart];
+                }
+                this.pushRangeToCalendars();
+            },
+
+            /*
+             * pushRangeToCalendars
+             * ─────────────────────
+             * Dispatches window event 'fdp-sync' with a calId payload.
+             * Each custom-calendar listens on the window and filters by calId,
+             * so only the matching calendar reacts.
+             */
+            pushRangeToCalendars() {
+                window.dispatchEvent(new CustomEvent('fdp-sync', {
+                    detail: {
+                        calId:        this._startCalId,
+                        selectedDate: this.tempStart,
+                        rangeStart:   this.tempStart,
+                        rangeEnd:     this.tempEnd,
+                    }
+                }));
+                window.dispatchEvent(new CustomEvent('fdp-sync', {
+                    detail: {
+                        calId:        this._endCalId,
+                        selectedDate: this.tempEnd,
+                        rangeStart:   this.tempStart,
+                        rangeEnd:     this.tempEnd,
+                    }
+                }));
+            },
+
+            /*
+             * alignPanel
+             * ──────────
+             * Adds .fdp-align-right when the panel would overflow the
+             * right edge of the viewport.
+             */
+            alignPanel() {
+                const wrap  = document.getElementById(this._uid);
+                const panel = wrap ? wrap.querySelector('.fdp-panel') : null;
+                if (!panel) return;
+                panel.classList.remove('fdp-align-right');
+                const rect    = panel.getBoundingClientRect();
+                const vpWidth = window.innerWidth;
+                if (rect.right > vpWidth - 16) {
+                    panel.classList.add('fdp-align-right');
+                }
+            },
+        };
+    };
+})();
+</script>
