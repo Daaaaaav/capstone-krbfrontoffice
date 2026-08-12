@@ -268,6 +268,64 @@
     </div>
     @endif
 
+    {{-- ── CAPACITY EXCEEDED CONFIRMATION MODAL ── --}}
+    @if($showCapacityModal)
+    @php
+        $selectedRoom = collect($rooms)->firstWhere('id', $room_id);
+        $roomCapacity = $selectedRoom['capacity'] ?? null;
+    @endphp
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div class="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <div>
+                    <p class="font-semibold text-foreground">Room Capacity Exceeded</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">The number of participants exceeds the room's capacity.</p>
+                </div>
+            </div>
+
+            @if($roomCapacity !== null)
+            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3 text-xs space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-muted-foreground">Room capacity</span>
+                    <span class="font-semibold text-foreground">{{ $roomCapacity }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-muted-foreground">Number of participants</span>
+                    <span class="font-semibold text-amber-600">{{ $number_of_attendees }}</span>
+                </div>
+                <div class="border-t border-amber-500/20 pt-1.5 flex items-center justify-between">
+                    <span class="text-muted-foreground">Exceeds by</span>
+                    <span class="font-semibold text-amber-600">{{ $number_of_attendees - $roomCapacity }}</span>
+                </div>
+            </div>
+            @endif
+
+            <p class="text-sm text-foreground">
+                Are you sure you want to submit despite the number of participants exceeding the Room capacity?
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                <button wire:click="confirmCapacityAndSave"
+                        wire:loading.attr="disabled"
+                        wire:target="confirmCapacityAndSave"
+                        class="{{ $btnPrimary }} flex-1 bg-amber-500 hover:bg-amber-600 focus:ring-amber-500/20">
+                    <svg wire:loading wire:target="confirmCapacityAndSave" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    Yes, Continue
+                </button>
+                <button wire:click="cancelCapacityModal"
+                        wire:loading.attr="disabled"
+                        wire:target="confirmCapacityAndSave"
+                        class="{{ $btnOutline }} flex-1">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- ── CANCEL OWN BOOKING MODAL ── --}}
     @if($showCancelModal)
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
