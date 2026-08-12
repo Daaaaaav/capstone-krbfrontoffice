@@ -254,10 +254,28 @@
                         <p class="text-xs text-muted-foreground italic">Reason: {{ $b->rejection_reason }}</p>
                         @endif
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <span class="inline-flex items-center px-2.5 py-1 text-[11px] font-semibold rounded-full {{ $color['bg'] }} {{ $color['text'] }} border {{ $color['border'] }}">
                             {{ $b->statusLabel() }}
                         </span>
+                        @if($b->handover_photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($b->handover_photo))
+                            <button type="button"
+                                @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->handover_photo) }}' })"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                                title="Proof Before">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Before
+                            </button>
+                        @endif
+                        @if($b->return_photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($b->return_photo))
+                            <button type="button"
+                                @click="$dispatch('open-lightbox', { src: '{{ asset('storage/' . $b->return_photo) }}' })"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition"
+                                title="Proof After">
+                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                After
+                            </button>
+                        @endif
                         @if($b->isActionable())
                         <button wire:click="openCancelModal({{ $b->id }})" class="inline-flex items-center gap-1 px-3 h-8 text-xs font-semibold rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/5 transition">
                             Cancel
@@ -397,4 +415,26 @@
     </div>
 </div>
 @endif
+
+    {{-- IMAGE LIGHTBOX --}}
+    <div
+        x-data="{ open: false, src: '' }"
+        @open-lightbox.window="open = true; src = $event.detail.src"
+        @keydown.escape.window="open = false"
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click.self="open = false"
+        style="display:none">
+        <button type="button" @click="open = false"
+            class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <img :src="src" alt="Proof photo" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl object-contain">
+    </div>
 </div>
