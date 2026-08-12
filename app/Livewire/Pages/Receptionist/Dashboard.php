@@ -89,6 +89,7 @@ class Dashboard extends Component
             ]);
 
         $latestVehicleBookings = VehicleBooking::query()
+            ->with('vehicle')
             ->when($companyId, fn($q) => $q->where('company_id', $companyId))
             ->latest('created_at')
             ->take(5)
@@ -98,6 +99,7 @@ class Dashboard extends Component
                 'borrower' => $vb->borrower_name ?? '—',
                 'purpose' => $vb->purpose ?? '—',
                 'destination' => $vb->destination ?? '—',
+                'vehicle_name' => $vb->vehicle ? $vb->vehicle->name : 'Unknown',
                 'date' => $this->fmtDate($vb->start_at),
                 'time' => $this->fmtTime($vb->start_at) . ' - ' . $this->fmtTime($vb->end_at),
                 'status' => ucfirst($vb->status ?? '—'),

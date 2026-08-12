@@ -33,6 +33,8 @@ class MeetingSchedule extends Component
     public bool $showRoomRejectModal = false;
     public ?int $roomRejectId = null;
     public string $roomRejectReason = '';
+    public bool $showCapacityWarningModal = false;
+    public bool $capacityOverride = false;
     public array $form = [
         'meeting_title' => null,
         'room_id'       => null,
@@ -380,11 +382,8 @@ class MeetingSchedule extends Component
         $roomsForValidation = $this->loadRooms();
         $roomCapacity       = $this->getSelectedRoomCapacity($roomsForValidation);
 
-        if ($roomCapacity !== null && (int) $this->form['participant'] > $roomCapacity) {
-            $this->addError(
-                'form.participant',
-                "The number of attendees exceeds the maximum occupancy limit for this room (Maximum: {$roomCapacity} people)."
-            );
+        if (!$this->capacityOverride && $roomCapacity !== null && (int) $this->form['participant'] > $roomCapacity) {
+            $this->showCapacityWarningModal = true;
             return;
         }
 
@@ -491,6 +490,19 @@ class MeetingSchedule extends Component
         }
         $this->resetOfflineForm();
         $this->dispatch('toast', type: 'success', title: 'Sukses', message: 'Meeting offline disimpan.', duration: 3000);
+    }
+
+    public function confirmCapacityAndSave(): void
+    {
+        $this->capacityOverride = true;
+        $this->showCapacityWarningModal = false;
+        $this->saveOffline();
+    }
+
+    public function closeCapacityWarningModal(): void
+    {
+        $this->showCapacityWarningModal = false;
+        $this->capacityOverride = false;
     }
 
     public function saveOnline(): void
@@ -817,6 +829,8 @@ class MeetingSchedule extends Component
         $this->offline_user_id    = null;
         $this->usersByDeptOffline = [];
         $this->userQueryOffline   = '';
+        $this->capacityOverride   = false;
+        $this->showCapacityWarningModal = false;
         $this->resetValidation();
     }
 
