@@ -178,7 +178,7 @@
                                         <x-heroicon-o-truck class="w-4 h-4 text-muted-foreground" />
                                     </div>
                                     <div class="min-w-0">
-                                        <p class="text-sm font-medium text-foreground truncate">{{ $v['borrower'] }} - {{ $v['destination'] }}</p>
+                                        <p class="text-sm font-medium text-foreground truncate">{{ $v['borrower'] }} - {{ $v['vehicle_name'] }}</p>
                                         <p class="text-xs text-muted-foreground">{{ $v['date'] }} · {{ $v['time'] }}</p>
                                     </div>
                                 </div>

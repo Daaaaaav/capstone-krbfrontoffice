@@ -370,7 +370,6 @@
                         <label class="{{ $label }}">{{ __('app.participants_label') }}</label>
                         <input type="number"
                                min="1"
-                               :max="offlineCapacity !== null ? offlineCapacity : undefined"
                                wire:model.defer="form.participant"
                                class="{{ $input }}">
                         @error('form.participant') <p class="mt-1.5 text-xs text-destructive font-medium">{{ $message }}</p> @enderror
@@ -960,6 +959,52 @@
 
                 <div class="px-5 py-4 border-t border-border flex justify-start">
                     <button @click="showDetail = false" class="px-5 py-2 rounded-xl text-sm font-bold border border-border bg-card text-foreground hover:bg-muted transition shadow-sm">Close</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if($showCapacityWarningModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" x-data="{ showWarning: @entangle('showCapacityWarningModal') }" x-show="showWarning" x-cloak>
+            <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showWarning = false"></div>
+            <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col transform transition-all"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                
+                {{-- Header --}}
+                <div class="px-6 py-5 border-b border-gray-200 bg-[#4A2F24] text-[#CDDEA7] flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-[#CDDEA7]/10 flex items-center justify-center border border-[#CDDEA7]/20">
+                            <x-heroicon-o-exclamation-triangle class="w-4 h-4 text-[#CDDEA7]" />
+                        </div>
+                        <h3 class="text-base font-bold tracking-tight">Capacity Exceeded</h3>
+                    </div>
+                    <button @click="showWarning = false" class="w-8 h-8 flex items-center justify-center rounded-lg text-[#CDDEA7] hover:text-white hover:bg-white/10 transition">
+                        <x-heroicon-o-x-mark class="w-4 h-4" />
+                    </button>
+                </div>
+
+                {{-- Body --}}
+                <div class="p-6 bg-white">
+                    <div class="text-[13px] text-gray-600">
+                        <p class="mb-3">The number of attendees exceeds the maximum occupancy limit for this room.</p>
+                        <p class="font-semibold text-gray-800">Are you sure you want to proceed with this booking?</p>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="pt-5 border-t border-gray-200 flex items-center justify-end gap-3 bg-gray-50/50 p-4">
+                    <button wire:click="closeCapacityWarningModal" class="h-9 px-4 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition text-xs font-semibold">
+                        Cancel
+                    </button>
+                    <button wire:click="confirmCapacityAndSave" class="h-9 px-4 rounded-lg bg-[#4E653D] text-white text-xs font-semibold hover:bg-[#354C2B] transition shadow-sm flex items-center gap-1.5">
+                        <x-heroicon-o-check class="w-3.5 h-3.5" />
+                        Proceed
+                    </button>
                 </div>
             </div>
         </div>
