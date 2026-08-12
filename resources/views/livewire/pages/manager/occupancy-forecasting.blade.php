@@ -554,10 +554,14 @@
         console.groupEnd();
 
         const datasets = [];
+        const labelRoomBookings    = @js(__('app.room_bookings'));
+        const labelVehicleBookings = @js(__('app.vehicle_bookings'));
+        const labelReservations    = @js(__('app.reservations'));
+        const labelDateAxis        = @js(__('app.date_label'));
 
         if (roomData && roomData.some(v => v !== null)) {
             datasets.push({
-                label: '{{ __('app.room_bookings') }}',
+                label: labelRoomBookings,
                 data: roomData,
                 borderColor: '#4E653D',
                 backgroundColor: 'rgba(78, 101, 61, 0.1)',
@@ -570,7 +574,7 @@
 
         if (vehicleData && vehicleData.length > 0) {
             datasets.push({
-                label: '{{ __('app.vehicle_bookings') }}',
+                label: labelVehicleBookings,
                 data: vehicleData,
                 borderColor: '#4A2F24',
                 backgroundColor: 'rgba(74, 47, 36, 0.1)',
@@ -597,8 +601,8 @@
                     }
                 },
                 scales: {
-                    y: { beginAtZero: true, title: { display: true, text: '{{ __('app.reservations') }}' } },
-                    x: { title: { display: true, text: '{{ __('app.date_label') }}' } }
+                    y: { beginAtZero: true, title: { display: true, text: labelReservations } },
+                    x: { title: { display: true, text: labelDateAxis } }
                 }
             }
         });
@@ -618,6 +622,9 @@
         if (window.lossCurveChartOcc && typeof window.lossCurveChartOcc.destroy === 'function') {
             window.lossCurveChartOcc.destroy();
         }
+        const labelTrainingLoss   = @js(__('app.mp_training_loss'));
+        const labelValidationLoss = @js(__('app.mp_validation_loss'));
+        const labelEpoch          = @js(__('app.mp_epoch'));
         const epochs = Array.from({ length: @json(count($occLossHistory)) }, (_, i) => i + 1);
         window.lossCurveChartOcc = new Chart(ctx, {
             type: 'line',
@@ -625,14 +632,14 @@
                 labels: epochs,
                 datasets: [
                     {
-                        label: '{{ __('app.mp_training_loss') }}',
+                        label: labelTrainingLoss,
                         data: @json($occLossHistory),
                         borderColor: '#4E653D',
                         backgroundColor: 'rgba(78,101,61,0.08)',
                         borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
                     },
                     {
-                        label: '{{ __('app.mp_validation_loss') }}',
+                        label: labelValidationLoss,
                         data: @json($occValLossHistory),
                         borderColor: '#4A2F24',
                         backgroundColor: 'rgba(74,47,36,0.05)',
@@ -648,7 +655,7 @@
                     tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(6) } }
                 },
                 scales: {
-                    x: { title: { display: true, text: '{{ __('app.mp_epoch') }}', font: { size: 11 } }, ticks: { maxTicksLimit: 10 } },
+                    x: { title: { display: true, text: labelEpoch, font: { size: 11 } }, ticks: { maxTicksLimit: 10 } },
                     y: { title: { display: true, text: 'Loss (MSE)', font: { size: 11 } }, beginAtZero: false }
                 }
             }
