@@ -69,6 +69,17 @@ class PriorityRoomBooking extends Model
     }
 
     /**
+     * Canonical expiry entry-point used by the dashboard and any other caller
+     * that follows the PriorityVehicleBooking naming convention.
+     * Delegates to autoRejectExpiredPending() so all expiry logic lives in
+     * one place and both methods stay in sync.
+     */
+    public static function autoExpirePending(?int $companyId): void
+    {
+        static::autoRejectExpiredPending($companyId);
+    }
+
+    /**
      * Auto-reject pending bookings whose END time has already passed
      * (meaning the meeting window is over and they were never approved).
      *
