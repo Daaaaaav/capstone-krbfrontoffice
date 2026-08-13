@@ -5,12 +5,12 @@
 
         {{-- HEADER --}}
         <x-page-header
-            title="Manage Room Booking Requirements"
-            subtitle="Create, edit, and manage requirements used for room booking requests.">
+            title="{{ __('app.requirements_title') }}"
+            subtitle="{{ __('app.requirements_subtitle') }}">
             <x-slot:actions>
                 <button wire:click="openCreateModal"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#CDDEA7]/20 text-[#CDDEA7] border border-[#CDDEA7]/30 hover:bg-[#CDDEA7]/30 transition">
-                    + Add Requirement
+                    {{ __('app.add_requirement') }}
                 </button>
             </x-slot:actions>
         </x-page-header>
@@ -26,7 +26,7 @@
                 </div>
                 <input type="text"
                     wire:model.live.debounce.500ms="search"
-                    placeholder="Search requirements…"
+                    placeholder="{{ __('app.search_requirements') }}"
                     class="w-full pl-10 pr-20 py-2 rounded-lg border border-[#c4d4b4] text-[#2d3a24] placeholder-[#9aaa8a]
                            focus:ring-2 focus:ring-[#4E653D] focus:outline-none transition">
                 @if($search)
@@ -54,10 +54,10 @@
                     <thead class="bg-[#f0f4eb] text-[#7a8f6a] uppercase text-xs border-b">
                         <tr>
                             <th class="px-6 py-3 text-left">#</th>
-                            <th class="px-6 py-3 text-left">Requirement Name</th>
-                            <th class="px-6 py-3 text-left">Used in Bookings</th>
-                            <th class="px-6 py-3 text-left">Created</th>
-                            <th class="px-6 py-3 text-left">Actions</th>
+                            <th class="px-6 py-3 text-left">{{ __('app.requirement_name_col') }}</th>
+                            <th class="px-6 py-3 text-left">{{ __('app.used_in_bookings_col') }}</th>
+                            <th class="px-6 py-3 text-left">{{ __('app.created_col') }}</th>
+                            <th class="px-6 py-3 text-left">{{ __('app.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#d4dfc8]">
@@ -70,7 +70,7 @@
                                     <div class="flex items-center gap-3">
                                         <div class="w-9 h-9 rounded-lg bg-[#dde4d4] flex items-center justify-center text-[#4E653D]">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                                             </svg>
                                         </div>
@@ -83,13 +83,13 @@
                                     @if($requirement->booking_rooms_count > 0)
                                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-medium">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                             </svg>
-                                            {{ $requirement->booking_rooms_count }} {{ $requirement->booking_rooms_count === 1 ? 'booking' : 'bookings' }}
+                                            {{ $requirement->booking_rooms_count }} {{ $requirement->booking_rooms_count === 1 ? __('app.requirement_in_use_booking') : __('app.requirement_in_use_bookings') }}
                                         </span>
                                     @else
-                                        <span class="text-[#9aaa8a] text-xs">Not used</span>
+                                        <span class="text-[#9aaa8a] text-xs">{{ __('app.requirement_not_used') }}</span>
                                     @endif
                                 </td>
 
@@ -103,12 +103,12 @@
                                     <div class="flex gap-2">
                                         <button wire:click="openEditModal({{ $requirement->requirement_id }})"
                                             class="px-3 py-1 bg-[#dde4d4] text-[#4E653D] rounded-md hover:bg-[#c4d4b4] text-sm transition">
-                                            Edit
+                                            {{ __('app.edit') }}
                                         </button>
                                         <button type="button"
                                             @click="confirmDeleteId = {{ $requirement->requirement_id }}; confirmDeleteName = '{{ addslashes($requirement->name) }}'; usageCount = {{ $requirement->booking_rooms_count }}"
                                             class="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm transition">
-                                            Delete
+                                            {{ __('app.delete') }}
                                         </button>
                                     </div>
                                 </td>
@@ -118,10 +118,10 @@
                                 <td colspan="5" class="px-6 py-12 text-center">
                                     <div class="flex flex-col items-center gap-2 text-[#9aaa8a]">
                                         <svg class="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                                         </svg>
-                                        <span class="text-sm">No requirements found{{ $search ? ' for "' . $search . '"' : '' }}.</span>
+                                        <span class="text-sm">{{ __('app.no_requirements_found') }}{{ $search ? ' ' . __('app.no_results_for') . ' "' . $search . '"' : '' }}.</span>
                                     </div>
                                 </td>
                             </tr>
@@ -154,26 +154,26 @@
                                 d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                         </svg>
                     </div>
-                    <h3 class="text-base font-bold text-[#2d3a24]">Delete Requirement</h3>
+                    <h3 class="text-base font-bold text-[#2d3a24]">{{ __('app.delete_requirement_title') }}</h3>
                     <p class="mt-1 text-sm text-[#7a8f6a]">
-                        Are you sure you want to delete<br>
+                        {{ __('app.are_you_sure_delete') }}<br>
                         <span class="font-medium text-[#2d3a24]" x-text="confirmDeleteName"></span>?
                     </p>
                     <template x-if="usageCount > 0">
-                        <p class="mt-2 text-xs text-red-600 font-medium">
-                            ⚠️ This requirement is used by <span x-text="usageCount"></span> room <span x-text="usageCount === 1 ? 'booking' : 'bookings'"></span>.
+                        <p class="mt-2 text-xs text-red-600 font-medium"
+                            x-text="'⚠️ {{ addslashes(__('app.requirement_in_use_warning', ['count' => '', 'noun' => __('app.requirement_in_use_bookings')])) }}' + usageCount + ' {{ addslashes(__('app.requirement_in_use_bookings')) }}'">
                         </p>
                     </template>
                 </div>
                 <div class="px-6 pb-6 flex gap-3">
                     <button type="button" @click="confirmDeleteId = null"
                         class="flex-1 px-4 py-2 rounded-lg border border-[#d4dfc8] text-sm text-[#5a6e4a] hover:bg-[#f0f4eb] transition">
-                        Cancel
+                        {{ __('app.cancel') }}
                     </button>
                     <button type="button"
                         @click="$wire.delete(confirmDeleteId); confirmDeleteId = null"
                         class="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition">
-                        Delete
+                        {{ __('app.delete') }}
                     </button>
                 </div>
             </div>
@@ -192,17 +192,18 @@
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                             <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                             </svg>
                         </div>
                         <h3 class="font-bold text-foreground text-base tracking-tight">
-                            {{ $editMode ? 'Edit Requirement' : 'Add New Requirement' }}
+                            {{ $editMode ? __('app.edit_requirement_title') : __('app.add_new_requirement') }}
                         </h3>
                     </div>
                     <button type="button"
                         class="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition"
-                        wire:click="closeModal">✕</button>
+                        wire:click="closeModal"
+                        aria-label="{{ __('app.close') }}">✕</button>
                 </div>
 
                 <form wire:submit.prevent="save" class="flex flex-col overflow-hidden">
@@ -211,11 +212,11 @@
                         {{-- REQUIREMENT NAME --}}
                         <div>
                             <label class="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                                Requirement Name <span class="text-red-500">*</span>
+                                {{ __('app.requirement_name_label') }} <span class="text-red-500">*</span>
                             </label>
                             <input type="text"
                                 wire:model="{{ $editMode ? 'edit_name' : 'name' }}"
-                                placeholder="e.g. Projector, Whiteboard, WiFi Access"
+                                placeholder="{{ __('app.requirement_name_placeholder') }}"
                                 class="w-full h-10 px-3.5 rounded-lg border border-input bg-background text-sm text-foreground
                                        focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                             @if($editMode)
@@ -230,7 +231,7 @@
                                 <svg class="w-3.5 h-3.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                This requirement will be available for selection when creating room booking requests. Historical bookings will retain their requirement data even if you later modify or remove requirements.
+                                {{ __('app.requirement_hint') }}
                             </p>
                         </div>
 
@@ -244,7 +245,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
-                            <span>Cancel</span>
+                            <span>{{ __('app.cancel') }}</span>
                         </button>
                         <button type="submit"
                             wire:loading.attr="disabled"
@@ -257,7 +258,7 @@
                             <svg wire:loading.remove wire:target="save" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
-                            <span>{{ $editMode ? 'Update Requirement' : 'Create Requirement' }}</span>
+                            <span>{{ $editMode ? __('app.update_requirement_btn') : __('app.create_requirement_btn') }}</span>
                         </button>
                     </div>
                 </form>

@@ -182,6 +182,48 @@
                         <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_storage_areas') }}</p>
                     </div>
                 </a>
+
+                {{-- ID Types --}}
+                <a href="{{ route('it-officer.id-types') }}"
+                   class="flex items-center gap-4 p-5 bg-card border-2 border-transparent hover:border-[#4E653D]/40 shadow-sm hover:shadow-md rounded-xl transition-all group">
+                    <div class="w-14 h-14 shrink-0 rounded-xl bg-[#4E653D]/10 flex items-center justify-center group-hover:bg-[#4E653D]/20 transition-colors">
+                        <svg class="w-7 h-7 text-[#4E653D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_id_types') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_id_types') }}</p>
+                    </div>
+                </a>
+
+                {{-- Visitor Lanyards --}}
+                <a href="{{ route('it-officer.visitor-lanyards') }}"
+                   class="flex items-center gap-4 p-5 bg-card border-2 border-transparent hover:border-[#4A2F24]/40 shadow-sm hover:shadow-md rounded-xl transition-all group">
+                    <div class="w-14 h-14 shrink-0 rounded-xl bg-[#4A2F24]/10 flex items-center justify-center group-hover:bg-[#4A2F24]/20 transition-colors">
+                        <svg class="w-7 h-7 text-[#4A2F24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_visitor_lanyards') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_visitor_lanyards') }}</p>
+                    </div>
+                </a>
+
+                {{-- Room Requirements --}}
+                <a href="{{ route('it-officer.requirements') }}"
+                   class="flex items-center gap-4 p-5 bg-card border-2 border-transparent hover:border-[#4E653D]/40 shadow-sm hover:shadow-md rounded-xl transition-all group">
+                    <div class="w-14 h-14 shrink-0 rounded-xl bg-[#4E653D]/10 flex items-center justify-center group-hover:bg-[#4E653D]/20 transition-colors">
+                        <svg class="w-7 h-7 text-[#4E653D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-base font-bold text-foreground">{{ __('app.manage_requirements') }}</p>
+                        <p class="text-xs text-muted-foreground mt-0.5">{{ __('app.add_configure_requirements') }}</p>
+                    </div>
+                </a>
             </div>
         </div>
     </main>
