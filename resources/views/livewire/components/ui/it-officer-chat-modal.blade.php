@@ -3,7 +3,7 @@
         show: @entangle('isOpen'),
         scrollToBottom() {
             this.$nextTick(() => {
-                const el = this.$refs.messageList;
+                const el = this.$refs.messageList || this.$refs.sessionMessageList;
                 if (el) el.scrollTop = el.scrollHeight;
             });
         }
@@ -27,8 +27,8 @@
          class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300"></div>
 
     {{-- Drawer shell --}}
-    <div class="fixed bottom-[5rem] right-6 w-full max-w-sm h-[72vh] flex flex-col z-[70]">
-        <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col">
+    <div class="fixed bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm h-[72vh] max-h-[calc(100vh-6rem)] flex flex-col z-[70]">
+        <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col min-h-0 overflow-hidden">
 
             {{-- ───────────────────────────── HEADER ───────────────────────────── --}}
             <div class="flex items-center justify-between px-4 py-3 bg-sidebar text-sidebar-foreground border-b border-sidebar-border shadow-sm shrink-0">
@@ -169,7 +169,7 @@
 
             {{-- Message list --}}
             <div x-ref="messageList"
-                 class="flex-grow min-h-0 px-4 py-3 overflow-y-auto bg-muted/20 space-y-3"
+                 class="flex-1 min-h-0 px-4 py-3 overflow-y-auto bg-muted/20 space-y-3"
                  wire:ignore.self>
 
                 @foreach ($messages as $msg)
@@ -243,7 +243,7 @@
 
             {{-- ────────────────────────── PANEL: HISTORY ──────────────────────────── --}}
             @if ($panel === 'history')
-            <div class="flex-grow min-h-0 overflow-y-auto bg-muted/10">
+            <div class="flex-1 min-h-0 overflow-y-auto bg-muted/10">
                 @if (empty($historySessions))
                     <div class="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
                         <div class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -300,7 +300,8 @@
 
             {{-- ─────────────────────────── PANEL: SESSION ─────────────────────────── --}}
             @if ($panel === 'session')
-            <div class="flex-grow min-h-0 overflow-y-auto bg-muted/20 px-4 py-3 space-y-3">
+            <div x-ref="sessionMessageList"
+                 class="flex-1 min-h-0 overflow-y-auto bg-muted/20 px-4 py-3 space-y-3">
                 @foreach ($viewingMessages as $msg)
                     @if ($msg['role'] === 'user')
                         <div class="flex justify-end">
