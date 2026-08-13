@@ -18,7 +18,9 @@ class ToolDispatcher
         $this->register(app(\App\Services\AI\Tools\DeliveryTool::class));
         $this->register(app(\App\Services\AI\Tools\ForecastTool::class));
         $this->register(app(\App\Services\AI\Tools\OccupancyTool::class));
-        $this->register(app(\App\Services\AI\Tools\AnnouncementTool::class));
+        if (class_exists(\App\Services\AI\Tools\AnnouncementTool::class)) {
+            $this->register(app(\App\Services\AI\Tools\AnnouncementTool::class));
+        }
     }
 
     public function register(ToolInterface $tool): void

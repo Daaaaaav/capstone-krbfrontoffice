@@ -118,6 +118,17 @@ class ContextRouter
             return $levels;
         }
 
+        if ($role === 'it-officer') {
+            foreach ($domains as $domain) {
+                $levels[$domain] = ContextDetailLevel::NORMAL;
+            }
+            // IT Officer gets detailed analytics for analytics queries
+            if (in_array('analytics', $domains, true)) {
+                $levels['analytics'] = ContextDetailLevel::DETAILED;
+            }
+            return $levels;
+        }
+
         foreach ($domains as $domain) {
             if ($isBookingIntent && in_array($domain, ['rooms', 'vehicles'])) {
                 $levels[$domain] = ContextDetailLevel::BOOKING;
@@ -194,7 +205,7 @@ class ContextRouter
         $msg     = mb_strtolower($message);
         $domains = [];
 
-        if ($role === 'manager') {
+        if ($role === 'manager' || $role === 'it-officer') {
             $domains[] = 'analytics';
         }
 

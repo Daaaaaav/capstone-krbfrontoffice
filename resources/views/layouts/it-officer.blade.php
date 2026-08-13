@@ -229,6 +229,39 @@ $invertStyle = 'filter: brightness(0) invert(1);';
     </div> {{-- End Flex Wrapper --}}
 
     @livewire('components.ui.toast')
+    @livewire('components.ui.it-officer-chat-modal')
+
+    {{-- IT Officer Chatbot FAB --}}
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
+         x-data="{ show: false }"
+         x-on:keydown.escape.window="show = false">
+
+        {{-- Tooltip label (appears on hover) --}}
+        <div x-show="show"
+             x-transition:enter="ease-out duration-150"
+             x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             x-transition:leave="ease-in duration-100"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="bg-sidebar text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg border border-white/10 whitespace-nowrap"
+             style="display: none;">
+            KRB IT Officer Assistant
+        </div>
+
+        {{-- FAB button --}}
+        <button type="button"
+                x-on:mouseenter="show = true"
+                x-on:mouseleave="show = false"
+                x-on:click="$dispatch('openItOfficerChat'); show = false"
+                class="w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2"
+                aria-label="Open IT Officer AI Assistant">
+            {{-- Chat icon --}}
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+        </button>
+    </div>
 
     @livewireScripts
     @vite('resources/js/app.js')
