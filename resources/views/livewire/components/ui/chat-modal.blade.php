@@ -29,7 +29,7 @@
     {{-- ═══════════════════════════════════════════════════ --}}
     {{-- Drawer shell                                        --}}
     {{-- ═══════════════════════════════════════════════════ --}}
-    <div class="fixed bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm h-[70vh] max-h-[calc(100vh-6rem)] flex flex-col z-[70]">
+    <div class="fixed top-14 sm:top-auto bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm h-[70vh] max-h-[calc(100vh-8.5rem)] flex flex-col z-[70]">
         <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col min-h-0 overflow-hidden">
 
             {{-- ─────────────────────────────────────────── --}}
