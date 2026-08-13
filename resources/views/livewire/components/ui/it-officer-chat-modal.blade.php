@@ -28,7 +28,7 @@
 
     {{-- Drawer shell --}}
     <div class="fixed bottom-[5rem] right-6 w-full max-w-sm h-[72vh] flex flex-col z-[70]">
-        <div class="relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col">
+        <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col">
 
             {{-- ───────────────────────────── HEADER ───────────────────────────── --}}
             <div class="flex items-center justify-between px-4 py-3 bg-sidebar text-sidebar-foreground border-b border-sidebar-border shadow-sm shrink-0">
