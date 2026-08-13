@@ -27,7 +27,7 @@
          class="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300"></div>
 
     {{-- Drawer shell --}}
-    <div class="fixed top-14 sm:top-auto bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm h-[72vh] max-h-[calc(100vh-8.5rem)] flex flex-col z-[70]">
+    <div class="fixed top-14 bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm max-h-[calc(100vh-8.5rem)] flex flex-col z-[70]">
         <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col min-h-0 overflow-hidden">
 
             {{-- ───────────────────────────── HEADER ───────────────────────────── --}}
