@@ -169,7 +169,7 @@
 
             {{-- Message list --}}
             <div x-ref="messageList"
-                 class="flex-grow px-4 py-3 overflow-y-auto bg-muted/20 space-y-3"
+                 class="flex-grow min-h-0 px-4 py-3 overflow-y-auto bg-muted/20 space-y-3"
                  wire:ignore.self>
 
                 @foreach ($messages as $msg)
@@ -243,7 +243,7 @@
 
             {{-- ────────────────────────── PANEL: HISTORY ──────────────────────────── --}}
             @if ($panel === 'history')
-            <div class="flex-grow overflow-y-auto bg-muted/10">
+            <div class="flex-grow min-h-0 overflow-y-auto bg-muted/10">
                 @if (empty($historySessions))
                     <div class="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
                         <div class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -300,7 +300,7 @@
 
             {{-- ─────────────────────────── PANEL: SESSION ─────────────────────────── --}}
             @if ($panel === 'session')
-            <div class="flex-grow overflow-y-auto bg-muted/20 px-4 py-3 space-y-3">
+            <div class="flex-grow min-h-0 overflow-y-auto bg-muted/20 px-4 py-3 space-y-3">
                 @foreach ($viewingMessages as $msg)
                     @if ($msg['role'] === 'user')
                         <div class="flex justify-end">
