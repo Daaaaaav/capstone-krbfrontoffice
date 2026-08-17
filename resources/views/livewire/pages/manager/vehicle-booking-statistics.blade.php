@@ -68,12 +68,12 @@
                             @forelse($bookings as $booking)
                                 <tr class="hover:bg-muted/50 transition-colors">
                                     <td class="px-6 py-4 text-card-foreground">{{ $booking->vehiclebooking_id }}</td>
-                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->vehicle->vehicle_name ?? 'N/A' }}</td>
-                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->borrower_name }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->vehicle?->name ?? 'N/A' }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->borrower_name ?? '—' }}</td>
                                     <td class="px-6 py-4 text-card-foreground">{{ Str::limit($booking->purpose, 30) }}</td>
-                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->destination }}</td>
-                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->start_at->format('d/m H:i') }}</td>
-                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->end_at->format('d/m H:i') }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->destination ?? '—' }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->start_at?->format('d/m H:i') ?? '—' }}</td>
+                                    <td class="px-6 py-4 text-card-foreground">{{ $booking->end_at?->format('d/m H:i') ?? '—' }}</td>
                                     <td class="px-6 py-4">
                                         @php
                                             $statusValue = strtolower($booking->status ?? 'pending');

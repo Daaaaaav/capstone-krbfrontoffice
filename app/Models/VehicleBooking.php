@@ -44,7 +44,7 @@ class VehicleBooking extends Model
 
     public function vehicle()
     {
-        return $this->belongsTo(\App\Models\Vehicle::class, 'vehicle_id', 'vehicle_id');
+        return $this->belongsTo(\App\Models\Vehicle::class, 'vehicle_id', 'vehicle_id')->withTrashed();
     }
 
     public function department()

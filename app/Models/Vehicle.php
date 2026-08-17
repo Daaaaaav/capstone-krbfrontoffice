@@ -30,4 +30,9 @@ class Vehicle extends Model
         'is_active' => 'boolean',
         'requires_advance_booking' => 'boolean',
     ];
+
+    public function getVehicleNameAttribute(): ?string
+    {
+        return $this->name;
+    }
 }

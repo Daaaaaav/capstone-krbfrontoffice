@@ -72,7 +72,6 @@ class GroqService
         $reply     = (string) $decoded['reply'];
         $companyId = $companyId ?? Auth::user()?->company_id;
 
-        // ── booking_prefill (room) ────────────────────────────────
         $prefill = $decoded['booking_prefill'] ?? [];
         if (is_array($prefill)) {
             if (empty($prefill['room_id']) && ! empty($prefill['room_name'])) {
