@@ -215,10 +215,6 @@ class LSTMClient
         }
     }
 
-    /**
-     * Execute the actual prediction call to FastAPI
-     * Extracted to reduce code duplication
-     */
     private function executePrediction(array $timeSeries, int $forecastDays, bool $useDummyData): ?array
     {
         $data = array_map(fn ($p) => [

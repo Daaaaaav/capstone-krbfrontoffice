@@ -128,11 +128,6 @@ class UsersPerDepartment extends Component
         $this->selectedRoleId = null;
     }
 
-    /**
-     * Computed property used in the Blade as $this->availableDepartments.
-     * Returns departments belonging to the currently selected company,
-     * falling back to the IT Officer's own company if none selected.
-     */
     public function getAvailableDepartmentsProperty()
     {
         $cid = $this->selectedCompanyId ?: Auth::user()->company_id;

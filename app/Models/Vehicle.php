@@ -28,4 +28,9 @@ class Vehicle extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function getVehicleNameAttribute(): ?string
+    {
+        return $this->name;
+    }
 }
