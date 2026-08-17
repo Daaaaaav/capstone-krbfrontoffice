@@ -6,17 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class WazuhAlert extends Model
 {
-    protected $fillable = [
-        'rule_id',
-        'rule_level',
-        'description',
-        'agent_name',
-        'raw_log',
-    ];
-
-    /**
-     * Get human-readable severity text label.
-     */
     public function getSeverityLabelAttribute(): string
     {
         return match (true) {
