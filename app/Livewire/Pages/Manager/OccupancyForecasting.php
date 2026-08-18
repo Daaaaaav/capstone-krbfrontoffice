@@ -474,32 +474,13 @@ class OccupancyForecasting extends Component
     }
 
     /**
-     * Read room history from server CSV (combines offline + online columns)
+     * Read room history from server CSV (combines offline + online columns in a single cached pass)
      */
     private function readRoomHistoryFromServerCsv(): array
     {
         $reader = new CsvDataReader();
         try {
-            $offline = $reader->readServerCsv('offline_room_bookings');
-            $online  = $reader->readServerCsv('online_room_bookings');
-
-            // Merge by date
-            $merged = [];
-            $byDate = [];
-            foreach ($offline as $row) {
-                $byDate[$row['date']] = $row['count'];
-            }
-            foreach ($online as $row) {
-                $byDate[$row['date']] = ($byDate[$row['date']] ?? 0) + $row['count'];
-            }
-
-            foreach ($byDate as $date => $count) {
-                $merged[] = ['date' => $date, 'count' => $count];
-            }
-
-            usort($merged, fn($a, $b) => strcmp($a['date'], $b['date']));
-            return $merged;
-
+            return $reader->readServerCsvColumnsSummed(['offline_room_bookings', 'online_room_bookings']);
         } catch (\Throwable $e) {
             Log::warning('OccupancyForecasting: failed to read room history from server CSV', [
                 'error' => $e->getMessage(),
@@ -509,31 +490,13 @@ class OccupancyForecasting extends Component
     }
 
     /**
-     * Read room history from uploaded CSV (combines offline + online columns)
+     * Read room history from uploaded CSV (combines offline + online columns in a single cached pass)
      */
     private function readRoomHistoryFromCsv(string $storagePath): array
     {
         $reader = new CsvDataReader();
         try {
-            $offline = $reader->readUploadedCsv($storagePath, 'offline_room_bookings');
-            $online  = $reader->readUploadedCsv($storagePath, 'online_room_bookings');
-
-            $merged = [];
-            $byDate = [];
-            foreach ($offline as $row) {
-                $byDate[$row['date']] = $row['count'];
-            }
-            foreach ($online as $row) {
-                $byDate[$row['date']] = ($byDate[$row['date']] ?? 0) + $row['count'];
-            }
-
-            foreach ($byDate as $date => $count) {
-                $merged[] = ['date' => $date, 'count' => $count];
-            }
-
-            usort($merged, fn($a, $b) => strcmp($a['date'], $b['date']));
-            return $merged;
-
+            return $reader->readUploadedCsvColumnsSummed($storagePath, ['offline_room_bookings', 'online_room_bookings']);
         } catch (\Throwable $e) {
             Log::warning('OccupancyForecasting: failed to read room history from uploaded CSV', [
                 'error' => $e->getMessage(),

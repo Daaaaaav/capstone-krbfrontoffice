@@ -571,11 +571,12 @@ def predict(request: RequestData):
         },
     }
 
-    save_model_metrics(metrics_payload)
-    logger.info(
-        "Metrics persisted (from_cache=%s, mae=%.4f, rmse=%.4f, smape=%.2f%%, wape=%.2f%%, r2=%.4f)",
-        from_cache, mae, rmse, smape, wape, r2,
-    )
+    if not from_cache or not os.path.exists(METRICS_PATH):
+        save_model_metrics(metrics_payload)
+        logger.info(
+            "Metrics persisted (from_cache=%s, mae=%.4f, rmse=%.4f, smape=%.2f%%, wape=%.2f%%, r2=%.4f)",
+            from_cache, mae, rmse, smape, wape, r2,
+        )
 
 
     response = {

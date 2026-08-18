@@ -54,6 +54,9 @@ class ImageHelper
             $source = $trueColor;
         }
 
+        // Scale down oversized images to max dimension for performance
+        $source = self::resizeIfNeeded($source, 1600);
+
         // preserve alpha channel for image sources
         imagealphablending($source, true);
         imagesavealpha($source, true);
@@ -113,6 +116,9 @@ class ImageHelper
             $source = $trueColor;
         }
 
+        // Scale down oversized images to max dimension for performance
+        $source = self::resizeIfNeeded($source, 1600);
+
         imagealphablending($source, true);
         imagesavealpha($source, true);
     
@@ -126,5 +132,34 @@ class ImageHelper
         Storage::disk($disk)->put($relativePath, $webpData);
 
         return $relativePath;
+    }
+
+    private static function resizeIfNeeded($source, int $maxDimension = 1600)
+    {
+        $width  = imagesx($source);
+        $height = imagesy($source);
+
+        if ($width <= $maxDimension && $height <= $maxDimension) {
+            return $source;
+        }
+
+        if ($width > $height) {
+            $newWidth  = $maxDimension;
+            $newHeight = (int) round($height * ($maxDimension / $width));
+        } else {
+            $newHeight = $maxDimension;
+            $newWidth  = (int) round($width * ($maxDimension / $height));
+        }
+
+        $resized = imagecreatetruecolor($newWidth, $newHeight);
+        imagealphablending($resized, false);
+        imagesavealpha($resized, true);
+        $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+        imagefill($resized, 0, 0, $transparent);
+
+        imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        imagedestroy($source);
+
+        return $resized;
     }
 }
