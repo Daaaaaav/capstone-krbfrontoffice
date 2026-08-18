@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\ItOfficer;
 
+use App\Services\WazuhAlertService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use App\Livewire\Pages\Manager\AISecurityReports as ManagerAISecurityReports;
@@ -10,11 +11,9 @@ use App\Livewire\Pages\Manager\AISecurityReports as ManagerAISecurityReports;
 #[Title('Wazuh Security Reports')]
 class AISecurityReports extends ManagerAISecurityReports
 {
-    public function render()
+    public function render(WazuhAlertService $wazuh)
     {
-        $result = parent::render();
-        
-        // Override the view to use the IT Officer layout
-        return $result->layout('layouts.it-officer');
+        // Delegate all data-fetching to the parent, then swap the layout.
+        return parent::render($wazuh)->layout('layouts.it-officer');
     }
 }
