@@ -90,11 +90,13 @@ class Guestbook extends Component
 
         if (strlen($value) >= 2) {
             $companyId = $this->companyId();
-            $query = GuestbookModel::where('name', 'like', "%{$value}%");
+            $query = GuestbookModel::query()
+                ->select(['name', 'email', 'phone_number', 'instansi', 'keperluan'])
+                ->where('name', 'like', "%{$value}%");
             if ($companyId) {
                 $query->where('company_id', $companyId);
             }
-            $rows = $query->orderBy('created_at', 'desc')->get();
+            $rows = $query->orderBy('created_at', 'desc')->limit(50)->get();
             $byName = [];
             foreach ($rows as $g) {
                 $name = $g->name;
@@ -181,8 +183,6 @@ class Guestbook extends Component
 
     public function save(): void
     {
-        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
-
         $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'));
         $this->date   = $now->toDateString();
         $this->jam_in = $now->format('H:i');
@@ -219,13 +219,19 @@ class Guestbook extends Component
 
         $entry = GuestbookModel::create($entryData);
         $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
+        $nowTs = now();
+        $qrInsertData = [];
         foreach ($qrTokens as $index => $token) {
-            GuestbookQrCode::create([
+            $qrInsertData[] = [
                 'guestbook_id'   => $entry->guestbook_id,
                 'qr_token'       => $token,
                 'visitor_number' => $index + 1,
-            ]);
+                'is_scanned'     => false,
+                'scanned_at'     => null,
+                'created_at'     => $nowTs,
+            ];
         }
+        GuestbookQrCode::insert($qrInsertData);
 
         // Mark the selected lanyard as unavailable
         if ($this->visitor_lanyard_id) {

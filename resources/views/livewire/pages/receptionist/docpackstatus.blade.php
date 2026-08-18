@@ -885,14 +885,35 @@
                 canvas.width = video.videoWidth || 640;
                 canvas.height = video.videoHeight || 480;
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                $wire.set('photoData', canvas.toDataURL('image/png'));
+                $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.85));
             },
             handleFile(e) {
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (ev) => {
-                    $wire.set('photoData', ev.target.result);
+                    const img = new Image();
+                    img.onload = () => {
+                        const maxDim = 1280;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDim || h > maxDim) {
+                            if (w > h) {
+                                h = Math.round(h * (maxDim / w));
+                                w = maxDim;
+                            } else {
+                                w = Math.round(w * (maxDim / h));
+                                h = maxDim;
+                            }
+                        }
+                        const c = document.createElement('canvas');
+                        c.width = w;
+                        c.height = h;
+                        const ctx = c.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        $wire.set('photoData', c.toDataURL('image/jpeg', 0.85));
+                    };
+                    img.src = ev.target.result;
                 };
                 reader.readAsDataURL(file);
             }

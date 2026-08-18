@@ -185,7 +185,7 @@
                             @foreach($activeEntries as $e)
                                 @php
                                     $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
-                                    $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
+                                    $scans       = $e->scans->take(5);
                                     $isScheduled = (bool) ($e->scheduled_by_manager ?? false);
                                     $cardBorder  = $isScheduled ? 'border-violet-300 bg-violet-50/40' : 'border-[#4E653D]/25 bg-white';
                                     $cardHover   = $isScheduled ? 'hover:border-violet-400 hover:shadow-violet-100' : 'hover:border-[#4E653D]/40';
@@ -338,13 +338,13 @@
                                             <span class="hidden sm:inline">{{ __('app.edit') }}</span>
                                             <x-heroicon-o-pencil-square class="w-3.5 h-3.5 sm:hidden"/>
                                         </button>
-                                        @if($e->qrCodes()->count() > 0)
+                                        @if(($e->qr_codes_count ?? $e->qrCodes()->count()) > 0)
                                             <a href="{{ route('receptionist.guestbook.checkout', $e->guestbook_id) }}"
                                                class="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#4A2F24] text-[#CDDEA7] hover:bg-[#3a2319] transition shadow-sm focus:outline-none">
                                                 <x-heroicon-o-qr-code class="w-3.5 h-3.5 shrink-0"/>
                                                 <span class="hidden sm:inline">Scan Checkout</span>
                                                 @if($e->qr_status === 'ongoing')
-                                                    <span class="text-[10px] font-bold">({{ $e->scannedQrCount() }}/{{ $e->visitor_count }})</span>
+                                                    <span class="text-[10px] font-bold">({{ $e->scanned_qr_count ?? $e->scannedQrCount() }}/{{ $e->visitor_count }})</span>
                                                 @endif
                                             </a>
                                         @endif
@@ -380,7 +380,7 @@
                                         @php
                                             $rowNo       = ($activeEntries->firstItem() ?? 1) + $loop->index;
                                             $avatarChar  = strtoupper(substr($e->name ?? 'G', 0, 1));
-                                            $scans       = $e->scans()->orderByDesc('scanned_at')->limit(5)->get();
+                                            $scans       = $e->scans->take(5);
                                             $isScheduled = (bool) ($e->scheduled_by_manager ?? false);
                                         @endphp
                                         <tr wire:key="entry-table-{{ $e->guestbook_id }}" class="{{ $isScheduled ? 'bg-amber-50/50 hover:bg-amber-50' : 'hover:bg-gray-50/50' }} transition-colors">
@@ -444,7 +444,7 @@
                                                 <div class="flex flex-col">
                                                     <div>
                                                         <span class="text-gray-900 font-medium">{{ gbsFmtDate($e->date) }}</span>
-                                                        <span class="mx-1 text-gray-300">Â·</span>
+                                                        <span class="mx-1 text-gray-300">·</span>
                                                         <span class="font-semibold {{ $isScheduled ? 'text-amber-600' : 'text-emerald-600' }}">{{ gbsFmtTime($e->jam_in) }}</span>
                                                     </div>
                                                     <div class="text-[10px] text-gray-400 mt-0.5 truncate">{{ __('app.officer_label') }}: {{ $e->petugas_penjaga }}</div>
@@ -463,7 +463,7 @@
                                                         <span class="timer-text">00:00:00</span>
                                                     </span>
                                                 @else
-                                                    <span class="text-xs text-gray-400">â€”</span>
+                                                    <span class="text-xs text-gray-400">—</span>
                                                 @endif
                                             </td>
                                             
@@ -471,7 +471,7 @@
                                                 <div class="flex flex-col justify-center">
                                                     @if($e->qr_status === 'ongoing' && $scans->count())
                                                         <span class="inline-flex items-center text-[10px] border border-blue-100 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
-                                                            Berkunjung ({{ $e->scannedQrCount() }}/{{ $e->visitor_count }})
+                                                            Berkunjung ({{ $e->scanned_qr_count ?? $e->scannedQrCount() }}/{{ $e->visitor_count }})
                                                         </span>
                                                     @elseif($e->qr_token && $e->qr_status !== 'ongoing')
                                                         <div class="flex flex-col gap-1">
@@ -504,7 +504,7 @@
                                                             title="{{ __('app.edit') }}">
                                                         <x-heroicon-o-pencil-square class="w-4 h-4" />
                                                     </button>
-                                                    @if($e->qrCodes()->count() > 0)
+                                                    @if(($e->qr_codes_count ?? $e->qrCodes()->count()) > 0)
                                                         <a href="{{ route('receptionist.guestbook.checkout', $e->guestbook_id) }}"
                                                            class="p-1.5 rounded-lg text-[#CDDEA7] bg-[#4A2F24] hover:bg-[#3a2319] transition-colors"
                                                            title="Scan Checkout">

@@ -158,13 +158,19 @@ class GuestbookForm extends Component
         ]);
 
         $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
+        $nowTs = now();
+        $qrInsertData = [];
         foreach ($qrTokens as $index => $token) {
-            GuestbookQrCode::create([
+            $qrInsertData[] = [
                 'guestbook_id'   => $entry->guestbook_id,
                 'qr_token'       => $token,
                 'visitor_number' => $index + 1,
-            ]);
+                'is_scanned'     => false,
+                'scanned_at'     => null,
+                'created_at'     => $nowTs,
+            ];
         }
+        GuestbookQrCode::insert($qrInsertData);
 
         // Mark the selected lanyard as unavailable
         if (!empty($validated['visitor_lanyard_id'])) {

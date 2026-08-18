@@ -132,7 +132,17 @@ class GuestbookStatus extends Component
     public function getActiveEntriesProperty()
     {
         $q = GuestbookModel::query()
-            ->with(['idType', 'visitorLanyard'])
+            ->with([
+                'idType',
+                'visitorLanyard',
+                'department',
+                'user',
+                'scans' => fn($sq) => $sq->orderByDesc('scanned_at'),
+            ])
+            ->withCount([
+                'qrCodes',
+                'qrCodes as scanned_qr_count' => fn($cq) => $cq->where('is_scanned', true),
+            ])
             ->where('company_id', $this->companyId())
             ->whereNull('jam_out')
             ->whereNull('deleted_at');
@@ -228,13 +238,19 @@ class GuestbookStatus extends Component
             GuestbookQrCode::where('guestbook_id', $row->guestbook_id)->delete();
 
             $qrTokens = GuestbookQrCode::generateTokenBatch($newVisitorCount);
+            $nowTs = now();
+            $qrInsertData = [];
             foreach ($qrTokens as $index => $token) {
-                GuestbookQrCode::create([
+                $qrInsertData[] = [
                     'guestbook_id'   => $row->guestbook_id,
                     'qr_token'       => $token,
                     'visitor_number' => $index + 1,
-                ]);
+                    'is_scanned'     => false,
+                    'scanned_at'     => null,
+                    'created_at'     => $nowTs,
+                ];
             }
+            GuestbookQrCode::insert($qrInsertData);
             $this->dispatch('toast', type: 'warning', title: 'Perhatian!', message: 'Jumlah pengunjung berubah. QR Code baru telah dibuat. Harap klik Resend QR.', duration: 7000);
         } else {
             $this->dispatch('toast', type: 'success', title: __('app.toast_updated_title'), message: __('app.toast_updated_message'), duration: 3000);
