@@ -20,9 +20,6 @@ class ToolDispatcher
         $this->register(app(\App\Services\AI\Tools\ForecastTool::class));
         $this->register(app(\App\Services\AI\Tools\UserManagementTool::class));
         $this->register(app(\App\Services\AI\Tools\OccupancyTool::class));
-        if (class_exists(\App\Services\AI\Tools\AnnouncementTool::class)) {
-            $this->register(app(\App\Services\AI\Tools\AnnouncementTool::class));
-        }
     }
 
     public function register(ToolInterface $tool): void
@@ -65,7 +62,6 @@ class ToolDispatcher
             return "[Tool '{$toolName}' is not available.]";
         }
 
-        // Enforce server-side authentication and role check
         $user = Auth::user();
         if (! $user) {
             Log::warning('ToolDispatcher: unauthenticated tool execution attempted', ['tool' => $toolName]);
@@ -74,7 +70,6 @@ class ToolDispatcher
 
         $roleName = strtolower($user->role?->name ?? $user->role_name ?? '');
 
-        // Check if role is authorized to execute this specific tool
         if (! $this->isToolAuthorizedForRole($toolName, $roleName)) {
             Log::warning('ToolDispatcher: unauthorized role tool execution blocked', [
                 'tool'    => $toolName,
@@ -130,8 +125,7 @@ class ToolDispatcher
         if (in_array($toolName, $itOnlyTools, true)) {
             return $isItOfficer;
         }
-
-        // Base availability/analytics tools can be accessed by authorized KRB staff
+        
         return $isItOfficer || $isManager || $isReceptionist;
     }
 

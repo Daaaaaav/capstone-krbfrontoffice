@@ -38,7 +38,6 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
     {
         parent::setUp();
 
-        // Create companies
         $this->companyBogor = Company::firstOrCreate(
             ['company_name' => 'Kebun Raya Bogor'],
             [
@@ -55,17 +54,14 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
             ]
         );
 
-        // Create roles
         $this->receptionistRole = Role::firstOrCreate(['name' => 'Receptionist']);
         $this->managerRole      = Role::firstOrCreate(['name' => 'Manager']);
         $this->itOfficerRole    = Role::firstOrCreate(['name' => 'IT Officer']);
 
-        // Create departments
         $departmentBogor = \App\Models\Department::firstOrCreate(
             ['company_id' => $this->companyBogor->company_id, 'department_name' => 'General Affairs']
         );
 
-        // Create users
         $this->receptionistUser = User::create([
             'company_id'    => $this->companyBogor->company_id,
             'department_id' => $departmentBogor->department_id,
@@ -166,9 +162,6 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
         ]);
     }
 
-    /**
-     * Test ScopeGuard rejects general-knowledge questions.
-     */
     public function test_rejects_general_knowledge_and_entertainment(): void
     {
         $guard = app(ScopeGuard::class);
@@ -191,9 +184,6 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
         }
     }
 
-    /**
-     * Test ScopeGuard rejects prompt injections.
-     */
     public function test_rejects_prompt_injections(): void
     {
         $guard = app(ScopeGuard::class);
@@ -213,9 +203,6 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
         }
     }
 
-    /**
-     * Test ScopeGuard allows legitimate KRB inquiries and system utilities.
-     */
     public function test_allows_legitimate_krb_and_utilities(): void
     {
         $guard = app(ScopeGuard::class);
@@ -235,16 +222,12 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
             $this->assertTrue($res['allowed'], "Expected '{$q}' to be allowed");
         }
 
-        // Test system utilities (time / date)
         $timeRes = $guard->validate('What time is it?', $this->receptionistUser);
         $this->assertTrue($timeRes['allowed']);
         $this->assertTrue($timeRes['is_utility']);
         $this->assertStringContainsString('WIB', $timeRes['utility_response']);
     }
 
-    /**
-     * Test ChatModal Livewire component enforces scope rejection directly.
-     */
     public function test_chat_modal_scope_refusal_in_livewire(): void
     {
         $this->actingAs($this->receptionistUser);
@@ -258,9 +241,6 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
             ->assertSee(ScopeGuard::REFUSAL_EN);
     }
 
-    /**
-     * Test ItOfficerChatModal Livewire component enforces scope rejection.
-     */
     public function test_it_officer_chat_modal_scope_refusal(): void
     {
         $this->actingAs($this->itOfficerUser);
@@ -270,13 +250,8 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
             ->call('sendMessage')
             ->assertSee(ScopeGuard::REFUSAL_EN);
     }
-
-    /**
-     * Test ToolDispatcher blocks unauthorized role operations.
-     */
     public function test_tool_dispatcher_enforces_role_authorization(): void
     {
-        // Act as Receptionist
         $this->actingAs($this->receptionistUser);
 
         $dispatcher = app(ToolDispatcher::class);
@@ -291,9 +266,6 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
         $this->assertStringContainsString('Available roles', $resIt);
     }
 
-    /**
-     * Test provider isolation in tools: Bogor user cannot see Bali data.
-     */
     public function test_tools_enforce_provider_isolation(): void
     {
         $this->actingAs($this->receptionistUser);
@@ -307,10 +279,7 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
         $this->assertStringContainsString('Ruang Raflesia', $roomAvailability);
         $this->assertStringNotContainsString('Ruang Bedugul Bali', $roomAvailability);
     }
-
-    /**
-     * Test cancellation statistics tool returns authoritative data and does not hallucinate.
-     */
+    
     public function test_cancellation_statistics_tool(): void
     {
         $this->actingAs($this->managerUser);
