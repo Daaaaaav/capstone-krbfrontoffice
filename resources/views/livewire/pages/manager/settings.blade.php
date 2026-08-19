@@ -7,6 +7,10 @@
             subtitle="{{ __('app.settings_manage_sub') }}" />
 
         {{-- ===== TAB SWITCHER ===== --}}
+        @php
+            $userRoleName = auth()->user()->role->name ?? auth()->user()->role ?? null;
+            $isItOfficer  = in_array($userRoleName, ['IT Officer', 'Admin', 'Superadmin']);
+        @endphp
         <div class="flex gap-1 bg-[#e8ede0] rounded-xl p-1 w-fit">
             <button wire:click="$set('activeTab', 'profile')"
                 class="px-5 py-2 text-sm font-medium rounded-lg transition
@@ -22,6 +26,15 @@
                         : 'text-[#7a8f6a] hover:text-[#2d3a24]' }}">
                 AI Model
             </button>
+            @if($isItOfficer)
+            <button wire:click="$set('activeTab', 'validation')"
+                class="px-5 py-2 text-sm font-medium rounded-lg transition
+                    {{ $activeTab === 'validation'
+                        ? 'bg-white text-[#2d3a24] shadow-sm'
+                        : 'text-[#7a8f6a] hover:text-[#2d3a24]' }}">
+                Validation
+            </button>
+            @endif
             <button wire:click="$set('activeTab', 'integrations')"
                 class="px-5 py-2 text-sm font-medium rounded-lg transition
                     {{ $activeTab === 'integrations'
@@ -289,6 +302,123 @@
             </form>
 
         @endif {{-- end ai tab --}}
+
+
+        {{-- ================================================================ --}}
+        {{-- VALIDATION TAB  (IT Officer only — server-side enforced)         --}}
+        {{-- ================================================================ --}}
+        @if($activeTab === 'validation' && $isItOfficer)
+
+            {{-- Validation Alerts --}}
+            @if(isset($validationSuccess) && $validationSuccess)
+                <div class="flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-4 py-3 text-sm">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {{ $validationSuccess }}
+                </div>
+            @endif
+            @if(isset($validationError) && $validationError)
+                <div class="flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01M12 5a7 7 0 100 14A7 7 0 0012 5z" />
+                    </svg>
+                    {{ $validationError }}
+                </div>
+            @endif
+
+            {{-- Info banner --}}
+            <div class="flex gap-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl px-4 py-3 text-sm">
+                <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+                </svg>
+                <span>
+                    These settings control input validation rules that apply across all dashboards
+                    (IT Officer, Manager, and Receptionist). Changes take effect immediately for all users.
+                </span>
+            </div>
+
+            {{-- No Special Characters setting card --}}
+            <div class="bg-white border border-[#d4dfc8] rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-[#e4edd8] bg-[#f0f4eb]">
+                    <h2 class="text-base font-semibold text-[#2d3a24]">Input Validation Rules</h2>
+                    <p class="text-xs text-[#7a8f6a] mt-0.5">
+                        Configure which character-level validation rules are enforced across the application.
+                    </p>
+                </div>
+
+                <div class="px-6 py-6 space-y-6">
+
+                    {{-- ── No Special Characters toggle ──────────────────────── --}}
+                    <div class="flex items-start justify-between gap-6">
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-[#2d3a24]">No Special Characters Validation</p>
+                            <p class="text-sm text-[#7a8f6a] mt-1 leading-relaxed">
+                                @if($noSpecialCharacters)
+                                    <span class="font-medium text-[#4E653D]">ON</span> —
+                                    Text fields using the <code class="text-xs bg-[#eef1e8] px-1 py-0.5 rounded">NoSpecialCharacters</code>
+                                    rule reject special characters such as
+                                    <code class="text-xs bg-[#eef1e8] px-1 py-0.5 rounded">&lt; &gt; { } [ ] | ; : ! @ # $ % ^ &amp; * ( ) = + ?</code>.
+                                @else
+                                    <span class="font-medium text-amber-600">OFF</span> —
+                                    Special characters are <span class="font-medium">allowed</span> in fields that use the
+                                    <code class="text-xs bg-[#eef1e8] px-1 py-0.5 rounded">NoSpecialCharacters</code> rule.
+                                    Other validation rules (required, max length, email format, etc.) are unaffected.
+                                @endif
+                            </p>
+                        </div>
+
+                        {{-- Toggle button — matches the existing AI bool toggle style --}}
+                        <div class="flex items-center gap-3 shrink-0 pt-0.5">
+                            <button
+                                type="button"
+                                wire:click="toggleNoSpecialCharacters"
+                                wire:loading.attr="disabled"
+                                class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent
+                                       transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#4E653D] focus:ring-offset-2
+                                       disabled:opacity-60
+                                       {{ $noSpecialCharacters ? 'bg-[#4E653D]' : 'bg-gray-200' }}"
+                                role="switch"
+                                aria-checked="{{ $noSpecialCharacters ? 'true' : 'false' }}"
+                                aria-label="Toggle No Special Characters Validation"
+                            >
+                                <span
+                                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow
+                                           ring-0 transition duration-200 ease-in-out
+                                           {{ $noSpecialCharacters ? 'translate-x-5' : 'translate-x-0' }}"
+                                ></span>
+                            </button>
+                            <span class="text-sm font-semibold w-8 {{ $noSpecialCharacters ? 'text-[#4E653D]' : 'text-amber-600' }}">
+                                {{ $noSpecialCharacters ? 'ON' : 'OFF' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Warning banner shown when the rule is disabled --}}
+                    @if(! $noSpecialCharacters)
+                        <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+                            <svg class="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" />
+                            </svg>
+                            <div>
+                                <p class="font-semibold">Validation is currently OFF</p>
+                                <p class="mt-0.5 text-xs leading-relaxed">
+                                    Special characters are permitted in all fields that use this rule.
+                                    Other security mechanisms (CSRF protection, SQL parameterization,
+                                    output escaping, and XSS protection) remain fully active.
+                                    Re-enable this setting to restore the original input restrictions.
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+
+                </div>
+            </div>
+
+        @endif {{-- end validation tab --}}
 
 
         {{-- ================================================================ --}}
