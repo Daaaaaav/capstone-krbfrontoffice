@@ -58,7 +58,7 @@
     {{-- ═══════════════════════════════════════════════════ --}}
     {{-- Drawer shell                                        --}}
     {{-- ═══════════════════════════════════════════════════ --}}
-    <div class="fixed top-14 bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm h-[calc(100vh-8.5rem)] flex flex-col z-[70]">
+    <div class="fixed top-14 bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm flex flex-col min-h-0 z-[70]">
         <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col min-h-0 overflow-hidden">
 
             {{-- ───────────────────────────── HEADER ───────────────────────────── --}}
@@ -259,7 +259,8 @@
             @endif
 
             {{-- Message list --}}
-            <div x-ref="messageList"
+            <div id="chat-messages"
+                 x-ref="messageList"
                  x-on:scroll.passive="checkScroll()"
                  class="flex-1 min-h-0 px-4 py-3 overflow-y-auto overscroll-contain bg-muted/20 space-y-3 chat-scrollbar"
                  wire:ignore.self>
@@ -522,7 +523,7 @@
 
             {{-- ────────────────────────── PANEL: HISTORY ──────────────────────────── --}}
             @if ($panel === 'history')
-            <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-muted/10 chat-scrollbar">
+            <div id="chat-history-list" class="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-muted/10 chat-scrollbar">
                 @if (empty($historySessions))
                     <div class="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
                         <div class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -586,7 +587,8 @@
 
             {{-- ─────────────────────────── PANEL: SESSION ─────────────────────────── --}}
             @if ($panel === 'session')
-            <div x-ref="sessionMessageList"
+            <div id="session-chat-messages"
+                 x-ref="sessionMessageList"
                  x-on:scroll.passive="checkScroll()"
                  class="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-muted/20 px-4 py-3 space-y-3 chat-scrollbar">
                 @foreach ($viewingMessages as $msg)
