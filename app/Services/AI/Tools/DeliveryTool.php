@@ -43,11 +43,14 @@ class DeliveryTool implements ToolInterface
     public function execute(array $arguments): array
     {
         $companyId = Auth::user()?->company_id;
-        $status    = $arguments['status'] ?? 'all';
-        $limit     = min((int) ($arguments['limit'] ?? 8), 20);
+        if (! $companyId) {
+            return ['text' => 'Delivery data is currently unavailable.'];
+        }
 
-        $q = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId))
-            ->orderByDesc('created_at');
+        $status = $arguments['status'] ?? 'all';
+        $limit  = min((int) ($arguments['limit'] ?? 8), 20);
+
+        $q = Delivery::where('company_id', $companyId)->orderByDesc('created_at');
 
         if ($status !== 'all') {
             $q->where('status', $status);
@@ -72,10 +75,8 @@ class DeliveryTool implements ToolInterface
             );
         }
 
-        $pending = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId))
-            ->where('status', 'pending')->count();
-        $stored  = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId))
-            ->where('status', 'stored')->count();
+        $pending = Delivery::where('company_id', $companyId)->where('status', 'pending')->count();
+        $stored  = Delivery::where('company_id', $companyId)->where('status', 'stored')->count();
         $lines[] = "Totals — pending:{$pending} stored:{$stored}";
 
         return ['text' => implode("\n", $lines)];

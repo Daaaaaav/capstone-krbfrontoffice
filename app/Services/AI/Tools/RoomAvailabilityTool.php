@@ -38,20 +38,27 @@ class RoomAvailabilityTool implements ToolInterface
 
     public function execute(array $arguments): array
     {
-        $companyId  = Auth::user()?->company_id;
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return ['text' => 'Room availability information is currently unavailable.'];
+        }
+
         $date       = $arguments['date']       ?? Carbon::today('Asia/Jakarta')->toDateString();
         $startTime  = $arguments['start_time'] ?? null;
         $endTime    = $arguments['end_time']   ?? null;
         $roomName   = $arguments['room_name']  ?? null;
 
-        $roomQ = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
-            ->orderBy('room_name');
+        $roomQ = Room::where('company_id', $companyId)->orderBy('room_name');
         if ($roomName) {
             $roomQ->where('room_name', 'like', '%' . $roomName . '%');
         }
         $rooms = $roomQ->get(['room_id', 'room_name', 'capacity']);
 
-        $bookingQ = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        if ($rooms->isEmpty()) {
+            return ['text' => "No rooms found for your facility."];
+        }
+
+        $bookingQ = BookingRoom::where('company_id', $companyId)
             ->whereDate('date', $date)
             ->whereIn('status', ['pending', 'approved'])
             ->with('room');

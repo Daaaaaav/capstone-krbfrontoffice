@@ -10,8 +10,8 @@ return new class extends Migration {
     {
         Schema::table('deliveries', function (Blueprint $table) {
             // Add enum column after status (adjust position if needed)
-            $table->enum('direction', ['taken', 'deliver'])
-                ->default('taken')
+            $table->enum('direction', ['incoming', 'outgoing'])
+                ->default('incoming')
                 ->after('status');
         });
     }

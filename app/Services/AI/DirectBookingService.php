@@ -47,9 +47,14 @@ class DirectBookingService
         }
         if (! preg_match('/^\d{2}:\d{2}$/', $endRaw)) {
             $validationErrors[] = "end_time is invalid (got: '{$endRaw}')";
-        }
-        if (! $isOnline && empty($roomId)) {
-            $validationErrors[] = 'room_id is required for in-room bookings';
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            $validationErrors[] = 'Authenticated company context is missing or invalid';
+        } elseif (! $isOnline && ! empty($roomId)) {
+            $roomExists = \App\Models\Room::where('company_id', $companyId)->where('room_id', $roomId)->exists();
+            if (! $roomExists) {
+                $validationErrors[] = 'Selected room is invalid or unauthorized for your facility';
+            }
         }
 
         if ($validationErrors) {
@@ -218,6 +223,14 @@ class DirectBookingService
         }
         if (! in_array($purposeType, $validPurposeTypes, true)) {
             $validationErrors[] = "purpose_type must be one of: " . implode(', ', $validPurposeTypes);
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            $validationErrors[] = 'Authenticated company context is missing or invalid';
+        } elseif (! empty($vehicleId)) {
+            $vehicleExists = \App\Models\Vehicle::where('company_id', $companyId)->where('vehicle_id', $vehicleId)->exists();
+            if (! $vehicleExists) {
+                $validationErrors[] = 'Selected vehicle is invalid or unauthorized for your facility';
+            }
         }
 
         if ($validationErrors) {

@@ -48,8 +48,12 @@ class AnalyticsTool implements ToolInterface
     public function execute(array $arguments): array
     {
         $companyId = Auth::user()?->company_id;
-        $period    = $arguments['period'] ?? 'this_week';
-        $module    = $arguments['module'] ?? 'all';
+        if (! $companyId) {
+            return ['text' => 'Analytics data is currently unavailable.'];
+        }
+
+        $period = $arguments['period'] ?? 'this_week';
+        $module = $arguments['module'] ?? 'all';
 
         [$start, $end] = $this->periodRange($period);
         $cacheKey = "ai_analytics_{$companyId}_{$period}_{$module}";
@@ -61,14 +65,14 @@ class AnalyticsTool implements ToolInterface
         return ['text' => $text];
     }
 
-    private function buildText(?int $companyId, string $period, string $start, string $end, string $module): string
+    private function buildText(int $companyId, string $period, string $start, string $end, string $module): string
     {
         $lines  = ["Analytics — {$period} ({$start} to {$end}):"];
         $tz     = 'Asia/Jakarta';
         $now    = Carbon::now($tz);
 
         if (in_array($module, ['rooms', 'cancellations', 'all'])) {
-            $rQ        = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
+            $rQ        = BookingRoom::where('company_id', $companyId);
             $total     = (clone $rQ)->whereBetween('created_at', [$start, $end])->count();
             $pending   = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
             $approved  = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'approved')->count();
@@ -89,8 +93,8 @@ class AnalyticsTool implements ToolInterface
             $topDeptName = $topDept?->department?->name ?? 'N/A';
 
             $peakHr  = (clone $rQ)->whereBetween('created_at', [$start, $end])
-                ->selectRaw('HOUR(start_time) as hr, COUNT(*) as cnt')
-                ->whereNotNull('start_time')->groupByRaw('HOUR(start_time)')->orderByDesc('cnt')->value('hr');
+                ->selectRaw('strftime("%H", start_time) as hr, COUNT(*) as cnt')
+                ->whereNotNull('start_time')->groupByRaw('hr')->orderByDesc('cnt')->value('hr');
             $peakStr = $peakHr !== null ? sprintf('%02d:00–%02d:00', $peakHr, $peakHr + 1) : 'N/A';
 
             $lines[] = "ROOMS: total={$total} pending={$pending} approved={$approved} completed={$completed} rejected={$rejected} cancelled={$cancelled} ({$canRate}% cancellation rate, {$rejRate}% rejection rate)";
@@ -98,7 +102,7 @@ class AnalyticsTool implements ToolInterface
         }
 
         if (in_array($module, ['vehicles', 'cancellations', 'all'])) {
-            $vQ        = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+            $vQ        = VehicleBooking::where('company_id', $companyId);
             $total     = (clone $vQ)->whereBetween('created_at', [$start, $end])->count();
             $pending   = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
             $approved  = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'approved')->count();
@@ -111,13 +115,13 @@ class AnalyticsTool implements ToolInterface
         }
 
         if (in_array($module, ['guests', 'all'])) {
-            $gQ    = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId));
+            $gQ    = Guestbook::where('company_id', $companyId);
             $total = (clone $gQ)->whereBetween('created_at', [$start, $end])->count();
             $lines[] = "GUESTS: total={$total}";
         }
 
         if (in_array($module, ['deliveries', 'all'])) {
-            $dQ      = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId));
+            $dQ      = Delivery::where('company_id', $companyId);
             $total   = (clone $dQ)->whereBetween('created_at', [$start, $end])->count();
             $pending = (clone $dQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
             $lines[] = "DELIVERIES: total={$total} pending={$pending}";

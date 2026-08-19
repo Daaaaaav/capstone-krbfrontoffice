@@ -19,7 +19,8 @@ return new class extends Migration {
             $table->string('phone_number')->nullable();
             $table->string('instansi')->nullable();
             $table->string('keperluan');
-            $table->string('petugas_penjaga');
+        $table->string('petugas_penjaga')->nullable();
+
             $table->timestamps();
         });
 
@@ -28,6 +29,6 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::dropIfExists('guestbook');
+        Schema::dropIfExists('guestbooks');
     }
 };

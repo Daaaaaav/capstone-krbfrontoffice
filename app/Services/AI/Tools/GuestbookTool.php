@@ -41,11 +41,15 @@ class GuestbookTool implements ToolInterface
     public function execute(array $arguments): array
     {
         $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return ['text' => 'Guestbook data is currently unavailable.'];
+        }
+
         $date      = $arguments['date']  ?? Carbon::today('Asia/Jakarta')->toDateString();
         $limit     = min((int) ($arguments['limit'] ?? 8), 20);
         $mode      = $arguments['mode']  ?? 'today';
 
-        $q = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $q = Guestbook::where('company_id', $companyId);
 
         if ($mode === 'count') {
             $today     = Carbon::today('Asia/Jakarta')->toDateString();
@@ -66,7 +70,7 @@ class GuestbookTool implements ToolInterface
         }
 
         if ($entries->isEmpty()) {
-            return ['text' => "No visitor entries found for {$date}."];
+            return ['text' => "No visitor entries found for {$date} in your facility."];
         }
 
         $lines = ["Visitors on {$date}:"];

@@ -26,12 +26,14 @@ return new class extends Migration {
             ]);
         }
 
-        DB::statement("
-            UPDATE requirements r
-            LEFT JOIN companies c ON c.company_id = r.company_id
-            SET r.company_id = NULL
-            WHERE r.company_id IS NOT NULL AND c.company_id IS NULL
-        ");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("
+                UPDATE requirements r
+                LEFT JOIN companies c ON c.company_id = r.company_id
+                SET r.company_id = NULL
+                WHERE r.company_id IS NOT NULL AND c.company_id IS NULL
+            ");
+        }
 
         DB::table('requirements')->whereNull('company_id')->update(['company_id' => $defaultCompanyId]);
 
@@ -41,31 +43,33 @@ return new class extends Migration {
             });
         }
 
-        $hasDeletedAtIndex = DB::table('information_schema.STATISTICS')
-            ->where('TABLE_SCHEMA', DB::getDatabaseName())
-            ->where('TABLE_NAME', 'requirements')
-            ->where('INDEX_NAME', 'requirements_deleted_at_index')
-            ->exists();
-        
+        if (DB::getDriverName() === 'mysql') {
+            $hasDeletedAtIndex = DB::table('information_schema.STATISTICS')
+                ->where('TABLE_SCHEMA', DB::getDatabaseName())
+                ->where('TABLE_NAME', 'requirements')
+                ->where('INDEX_NAME', 'requirements_deleted_at_index')
+                ->exists();
+            
             if (!$hasDeletedAtIndex) {
-            Schema::table('requirements', function (Blueprint $table) {
-                $table->index('deleted_at', 'requirements_deleted_at_index');
-            });
-        }
+                Schema::table('requirements', function (Blueprint $table) {
+                    $table->index('deleted_at', 'requirements_deleted_at_index');
+                });
+            }
 
-        $fkExists = DB::table('information_schema.TABLE_CONSTRAINTS')
-            ->where('CONSTRAINT_SCHEMA', DB::getDatabaseName())
-            ->where('TABLE_NAME', 'requirements')
-            ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
-            ->where('CONSTRAINT_NAME', 'requirements_company_id_foreign')
-            ->exists();
+            $fkExists = DB::table('information_schema.TABLE_CONSTRAINTS')
+                ->where('CONSTRAINT_SCHEMA', DB::getDatabaseName())
+                ->where('TABLE_NAME', 'requirements')
+                ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+                ->where('CONSTRAINT_NAME', 'requirements_company_id_foreign')
+                ->exists();
 
-        if (!$fkExists) {
-            Schema::table('requirements', function (Blueprint $table) {
-                $table->foreign('company_id', 'requirements_company_id_foreign')
-                      ->references('company_id')->on('companies')
-                      ->cascadeOnDelete();
-            });
+            if (!$fkExists) {
+                Schema::table('requirements', function (Blueprint $table) {
+                    $table->foreign('company_id', 'requirements_company_id_foreign')
+                          ->references('company_id')->on('companies')
+                          ->cascadeOnDelete();
+                });
+            }
         }
     }
 

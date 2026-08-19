@@ -19,6 +19,10 @@ class GuestbookContextProvider implements ContextProviderInterface
 
     public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
+        if (! $companyId) {
+            return '(no guestbook data available: company not specified)';
+        }
+
         $now   = Carbon::now($this->tz);
         $today = $params['date'] ?? $now->toDateString();
         $level = $detailLevel ?? ContextDetailLevel::DETAILED;
@@ -27,7 +31,7 @@ class GuestbookContextProvider implements ContextProviderInterface
         return Cache::remember($cacheKey, 60, fn() => $this->build($companyId, $now, $today, $level));
     }
 
-    private function build(?int $companyId, Carbon $now, string $today, ContextDetailLevel $level): string
+    private function build(int $companyId, Carbon $now, string $today, ContextDetailLevel $level): string
     {
         return match ($level) {
             ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId, $today),
@@ -37,26 +41,26 @@ class GuestbookContextProvider implements ContextProviderInterface
         };
     }
 
-    private function buildMinimal(?int $companyId, string $today): string
+    private function buildMinimal(int $companyId, string $today): string
     {
-        $q = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $q = Guestbook::where('company_id', $companyId);
         $todayCount = (clone $q)->whereDate('date', $today)->count();
 
         return "GUESTBOOK: {$todayCount} today";
     }
 
-    private function buildNormal(?int $companyId, Carbon $now, string $today): string
+    private function buildNormal(int $companyId, Carbon $now, string $today): string
     {
-        $q = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $q = Guestbook::where('company_id', $companyId);
         $todayCount = (clone $q)->whereDate('date', $today)->count();
         $weekCount  = (clone $q)->where('date', '>=', $now->copy()->startOfWeek()->toDateString())->count();
 
         return "GUESTBOOK ({$today}): {$todayCount} today | {$weekCount} this week";
     }
 
-    private function buildDetailed(?int $companyId, Carbon $now, string $today): string
+    private function buildDetailed(int $companyId, Carbon $now, string $today): string
     {
-        $q = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $q = Guestbook::where('company_id', $companyId);
 
         $todayCount = (clone $q)->whereDate('date', $today)->count();
         $weekCount  = (clone $q)->where('date', '>=', $now->copy()->startOfWeek()->toDateString())->count();

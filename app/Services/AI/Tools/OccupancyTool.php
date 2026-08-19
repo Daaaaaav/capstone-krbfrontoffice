@@ -41,8 +41,12 @@ class OccupancyTool implements ToolInterface
     public function execute(array $arguments): array
     {
         $companyId = Auth::user()?->company_id;
-        $period    = $arguments['period'] ?? 'this_week';
-        $cacheKey  = "ai_occupancy_{$companyId}_{$period}";
+        if (! $companyId) {
+            return ['text' => 'Occupancy statistics are currently unavailable.'];
+        }
+
+        $period   = $arguments['period'] ?? 'this_week';
+        $cacheKey = "ai_occupancy_{$companyId}_{$period}";
 
         $text = Cache::remember($cacheKey, 300, function () use ($companyId, $period) {
             return $this->buildOccupancyText($companyId, $period);
@@ -51,24 +55,24 @@ class OccupancyTool implements ToolInterface
         return ['text' => $text];
     }
 
-    private function buildOccupancyText(?int $companyId, string $period): string
+    private function buildOccupancyText(int $companyId, string $period): string
     {
         $tz  = 'Asia/Jakarta';
         $now = Carbon::now($tz);
 
         [$start, $end, $totalSlots] = $this->periodMeta($now, $period);
 
-        $rooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $rooms = Room::where('company_id', $companyId)
             ->get(['room_id', 'room_name']);
 
         if ($rooms->isEmpty()) {
-            return 'No rooms found.';
+            return 'No rooms found for your facility.';
         }
 
         $lines = ["Room occupancy — {$period} ({$start} to {$end}):"];
 
         foreach ($rooms as $room) {
-            $bookedCount = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            $bookedCount = BookingRoom::where('company_id', $companyId)
                 ->where('room_id', $room->room_id)
                 ->whereBetween('date', [$start, $end])
                 ->whereIn('status', ['approved', 'completed'])
