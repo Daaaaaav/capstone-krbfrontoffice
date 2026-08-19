@@ -355,7 +355,17 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     }
                     if (val !== originalVal) e.target.value = val;
                 } else {
-                    if (/[^a-zA-Z0-9\s]/.test(val)) {
+                    // Only enforce the special-character restriction when the
+                    // IT Officer has the 'No Special Characters' setting ON.
+                    // This variable is rendered by PHP/Blade at page-load time;
+                    // if the IT Officer toggles it, the next full page load picks
+                    // up the new value automatically (cache is busted on toggle).
+                    @php
+                        $noSpecialCharsEnabled = (bool) \App\Models\AISettings::get('no_special_characters', true);
+                    @endphp
+                    const noSpecialCharsEnabled = {{ $noSpecialCharsEnabled ? 'true' : 'false' }};
+
+                    if (noSpecialCharsEnabled && /[^a-zA-Z0-9\s]/.test(val)) {
                         alertMessage('Special characters are not allowed.');
                         e.target.value = val.replace(/[^a-zA-Z0-9\s]/g, '');
                     }

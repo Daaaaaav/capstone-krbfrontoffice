@@ -13,6 +13,7 @@ use App\Models\Department;
 use App\Models\User;
 use App\Models\IdType;
 use App\Models\VisitorLanyard;
+use App\Rules\NoSpecialCharacters;
 use App\Mail\GuestbookQrMail;
 use App\Services\SecurityMonitoringService;
 use Illuminate\Support\Facades\Mail;
@@ -162,11 +163,11 @@ class Guestbook extends Component
     protected function rules(): array
     {
         return [
-            'name'          => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'name'          => ['required', 'string', 'max:255', new NoSpecialCharacters('Name')],
             'email'         => ['required', 'email', 'max:255', 'regex:/^([a-zA-Z0-9\.]*)@?([a-zA-Z0-9\.]*)$/'],
             'phone_number'  => ['nullable', 'string', 'max:50', 'regex:/^(?!(?:.*?\+){2})(?!(?:.*?-){5})[0-9\-\+]*$/'],
-            'instansi'      => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
-            'keperluan'     => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'instansi'      => ['nullable', 'string', 'max:255', new NoSpecialCharacters('Organization')],
+            'keperluan'     => ['required', 'string', 'max:255', new NoSpecialCharacters('Purpose')],
             'visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
             'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
             'department_id' => ['nullable', 'exists:departments,department_id'],
