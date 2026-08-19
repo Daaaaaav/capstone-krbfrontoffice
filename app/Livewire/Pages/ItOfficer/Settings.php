@@ -15,7 +15,8 @@ use App\Livewire\Traits\HasManagerValidation;
 class Settings extends Component
 {
     use HasManagerValidation;
-    // ── Profile ──────────────────────────────────────────────────────────────
+
+    // ── Profile ───────────────────────────────────────────────────────────────
     public string $name            = '';
     public string $email           = '';
     public string $phone           = '';
@@ -27,12 +28,22 @@ class Settings extends Component
     public ?string $successMessage      = null;
     public ?string $errorMessage        = null;
 
-    // ── AI Settings ──────────────────────────────────────────────────────────
-    public string $activeTab      = 'profile';   // 'profile' | 'ai'
-    public array  $aiSettings     = [];           // key => value (string, for inputs)
-    public array  $aiMeta         = [];           // key => [label, description, type, group]
-    public ?string $aiSuccess     = null;
-    public ?string $aiError       = null;
+    // ── AI Settings ───────────────────────────────────────────────────────────
+    public string  $activeTab  = 'profile';   // 'profile' | 'ai' | 'validation' | 'integrations'
+    public array   $aiSettings = [];           // key => value (string, for inputs)
+    public array   $aiMeta     = [];           // key => [label, description, type, group]
+    public ?string $aiSuccess  = null;
+    public ?string $aiError    = null;
+
+    // ── Validation Settings ───────────────────────────────────────────────────
+    /**
+     * Reflects the current state of the 'no_special_characters' toggle.
+     * true  = ON  → NoSpecialCharacters rule is enforced (default).
+     * false = OFF → rule passes immediately for all fields.
+     */
+    public bool    $noSpecialCharacters       = true;
+    public ?string $validationSuccess         = null;
+    public ?string $validationError           = null;
 
     // ── Mount ─────────────────────────────────────────────────────────────────
 
@@ -44,6 +55,10 @@ class Settings extends Component
         $this->phone = $user->phone_number ?? '';
 
         $this->loadAISettings();
+
+        // Load the NoSpecialCharacters toggle from ai_settings (same table the
+        // rule reads from, backed by the AISettings cache).
+        $this->noSpecialCharacters = (bool) AISettings::get('no_special_characters', true);
     }
 
     // ── Profile actions ───────────────────────────────────────────────────────
@@ -102,16 +117,58 @@ class Settings extends Component
         $this->errorMessage   = null;
     }
 
+    // ── Validation Settings actions ───────────────────────────────────────────
+
+    /**
+     * Toggle the application-wide NoSpecialCharacters validation rule ON or OFF.
+     *
+     * Authorization is enforced server-side here, not only through UI
+     * visibility, so this action is safe even if someone calls it directly.
+     */
+    public function toggleNoSpecialCharacters(): void
+    {
+        // ── Server-side authorization ─────────────────────────────────────────
+        $user     = Auth::user();
+        $roleName = $user->role->name ?? $user->role ?? null;
+
+        if (! in_array($roleName, ['IT Officer', 'Admin', 'Superadmin'])) {
+            $this->validationError   = 'Unauthorized: only IT Officers can change this setting.';
+            $this->validationSuccess = null;
+            return;
+        }
+
+        // ── Flip the value ────────────────────────────────────────────────────
+        $newValue = $this->noSpecialCharacters ? false : true;
+
+        AISettings::set('no_special_characters', $newValue ? '1' : '0');
+        // AISettings::set() already calls bustCache(), so the rule reads the
+        // new value on the very next request.
+
+        $this->noSpecialCharacters = $newValue;
+
+        $this->validationSuccess = $newValue
+            ? 'No Special Characters validation is now ON. Special characters are blocked in all validated fields.'
+            : 'No Special Characters validation is now OFF. Special characters are allowed in all validated fields.';
+        $this->validationError = null;
+    }
+
     // ── AI Settings actions ───────────────────────────────────────────────────
 
     /**
      * Load AI settings from the database into component state.
+     * Excludes the 'validation' group — those are managed separately above.
      */
     public function loadAISettings(): void
     {
         $rows = AISettings::orderBy('group')->orderBy('key')->get();
 
         foreach ($rows as $row) {
+            // Skip validation-group settings; they are handled by the
+            // dedicated Validation tab, not the AI Model tab.
+            if ($row->group === 'validation') {
+                continue;
+            }
+
             $this->aiSettings[$row->key] = $row->value;
             $this->aiMeta[$row->key] = [
                 'label'       => $row->label,
@@ -129,7 +186,6 @@ class Settings extends Component
     {
         \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
 
-        // Basic validation: all values must be present and numeric (int/float/bool)
         $rules = [];
         foreach ($this->aiSettings as $key => $value) {
             $type = $this->aiMeta[$key]['type'] ?? 'float';
@@ -167,7 +223,7 @@ class Settings extends Component
             'history_days'                   => '730',
             'confidence_min'                 => '0.30',
             'confidence_max'                 => '0.92',
-        
+
             'ma_window'                      => '7',
             'ma_weekend_factor'              => '0.9',
             'ma_lower_bound'                 => '0.8',
@@ -175,7 +231,7 @@ class Settings extends Component
             'ma_confidence'                  => '0.60',
             'ma_noise_factor'                => '0.1',
             'ma_floor_avg'                   => '3.0',
-        
+
             'urgency_hours'                  => '24',
             'long_duration_hours'            => '4',
             'risk_high_threshold'            => '70',
@@ -189,14 +245,14 @@ class Settings extends Component
             'demand_spike_multiplier'        => '1.5',
             'low_approval_threshold'         => '60',
             'approval_improvement_threshold' => '70',
-        
+
             'spam_threshold'                 => '10',
             'spam_window_seconds'            => '60',
-        
+
             'priority_admin'                 => '1.0',
             'priority_manager'               => '0.8',
             'priority_default'               => '0.5',
-        
+
             'approval_time_validation'       => '1',
         ];
 

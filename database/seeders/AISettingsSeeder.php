@@ -284,6 +284,16 @@ class AISettingsSeeder extends Seeder
                 'description' => 'When ON (default), offline meeting bookings must be created at least 1 hour before the meeting start time. Turn OFF to allow same-hour bookings from the Receptionist Dashboard.',
             ],
 
+            // ── Validation Behaviour ──────────────────────────────────────────
+            [
+                'key'         => 'no_special_characters',
+                'value'       => '1',
+                'type'        => 'bool',
+                'group'       => 'validation',
+                'label'       => 'No Special Characters Validation',
+                'description' => 'When ON (default), text fields that use the NoSpecialCharacters rule reject special characters such as < > { } [ ] | ; : etc. Turn OFF to allow those characters application-wide across all dashboards.',
+            ],
+
             // ── Security / Spam Detection ─────────────────────────────────────
             [
                 'key'         => 'spam_threshold',
