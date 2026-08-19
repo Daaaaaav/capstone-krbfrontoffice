@@ -11,16 +11,9 @@ use Illuminate\Support\Facades\Log;
 class ScopeGuard
 {
     private string $tz = 'Asia/Jakarta';
-
-    /**
-     * Standard scope refusal messages.
-     */
     public const REFUSAL_EN = 'I can only assist with information and tasks related to your authorized KRB System context.';
     public const REFUSAL_ID = 'Saya hanya dapat membantu informasi dan tugas terkait konteks KRB System yang diotorisasi.';
 
-    /**
-     * Check if a message is a system utility request (e.g. current date/time).
-     */
     public function isSystemUtility(string $message): bool
     {
         $msg = mb_strtolower(trim($message));
@@ -41,9 +34,6 @@ class ScopeGuard
         return false;
     }
 
-    /**
-     * Handle a system utility request directly.
-     */
     public function handleSystemUtility(string $message, string $lang = 'en'): string
     {
         $now = Carbon::now($this->tz);
@@ -72,10 +62,6 @@ class ScopeGuard
         return 'Current date and time: ' . $now->format('l, d F Y H:i') . ' (WIB).';
     }
 
-    /**
-     * Validate user message against allowed KRB System scope and authorized role/provider.
-     * Returns array: ['allowed' => bool, 'reason' => string|null, 'refusal' => string|null]
-     */
     public function validate(string $message, ?User $user = null): array
     {
         $msg = trim($message);
@@ -86,7 +72,6 @@ class ScopeGuard
             return ['allowed' => true, 'reason' => null, 'refusal' => null];
         }
 
-        // 1. Check for prompt injection attempts trying to alter role, provider, or bypass instructions
         if ($this->isPromptInjection($msg)) {
             Log::warning('ScopeGuard: prompt injection attempt blocked', [
                 'user_id' => $user?->user_id,
@@ -100,7 +85,6 @@ class ScopeGuard
             ];
         }
 
-        // 2. Check for requests attempting to switch to or inspect unauthorized providers/companies
         if ($this->isCrossProviderAttempt($msg, $user)) {
             Log::warning('ScopeGuard: cross-provider inquiry blocked', [
                 'user_id' => $user?->user_id,
@@ -114,7 +98,6 @@ class ScopeGuard
             ];
         }
 
-        // 3. Check for requests attempting to access sensitive internal implementation or credentials
         if ($this->isInternalLeakRequest($msg)) {
             Log::warning('ScopeGuard: internal leak request blocked', [
                 'user_id' => $user?->user_id,
@@ -127,7 +110,6 @@ class ScopeGuard
             ];
         }
 
-        // 4. Check for system utilities (date/time)
         if ($this->isSystemUtility($msg)) {
             return [
                 'allowed' => true,
@@ -138,7 +120,6 @@ class ScopeGuard
             ];
         }
 
-        // 5. Check if the message is explicitly out-of-scope general-knowledge / entertainment
         if ($this->isOutOfScopeGeneralKnowledge($msg)) {
             Log::info('ScopeGuard: out-of-scope general knowledge question rejected', [
                 'user_id' => $user?->user_id,
@@ -151,7 +132,6 @@ class ScopeGuard
             ];
         }
 
-        // 6. Role-based unauthorized operations check
         if ($user && ! $this->isRoleAuthorized($msg, $user)) {
             Log::warning('ScopeGuard: role-unauthorized operation blocked', [
                 'user_id' => $user->user_id,
@@ -168,33 +148,19 @@ class ScopeGuard
         return ['allowed' => true, 'reason' => null, 'refusal' => null];
     }
 
-    /**
-     * Detect general knowledge, trivia, pop culture, entertainment, sports, politics,
-     * jokes, personal advice, etc. that do not belong to KRB facility management.
-     */
     public function isOutOfScopeGeneralKnowledge(string $message): bool
     {
         $msg = mb_strtolower(trim($message));
 
-        // Obvious general trivia / entertainment patterns
         $disallowedPatterns = [
-            // Pop culture, songs, singers, actors, movies
             '/\b(pop\s*song|taylor\s*swift|famous\s*actor|latest\s*movie|hollywood|billboard|singer|actress|grammy|oscar|celebrity|celebrities)\b/i',
-            // Sports & football matches
             '/\b(football\s*match|world\s*cup|champion\s*league|premier\s*league|who\s*won\s*(yesterday|the\s*match|the\s*game)|nba|fifa|score\s*of\s*the\s*match)\b/i',
-            // Jokes & poems
             '/\b(tell\s*me\s*a\s*joke|make\s*a\s*joke|ceritakan\s*lelucon|beritahu\s*lelucon|lelucon|lawak|stand\s*up\s*comedy|write\s*a\s*poem|puisi|pantun)\b/i',
-            // General geography / capitals / countries trivia
             '/\b(capital\s*of\s*(france|england|usa|germany|japan|italy|spain|russia|australia|canada|brazil|egypt|china)|ibukota\s*(prancis|amerika|inggris|jepang|jerman))\b/i',
-            // General science / physics / astronomy
             '/\b(quantum\s*physics|einstein|theory\s*of\s*relativity|black\s*hole|distance\s*to\s*the\s*moon|speed\s*of\s*light|photosynthesis|dna\s*structure)\b/i',
-            // General politics & world news
             '/\b(news\s*today|today(\'s)?\s*news|berita\s*hari\s*ini|president\s*of\s*(usa|russia|france|indonesia)|pemilu|pilpres|parliament|minister\s*of)\b/i',
-            // General recipe / cooking
             '/\b(recipe\s*for|how\s*to\s*cook|resep\s*masak|cara\s*membuat\s*(kue|nasi\s*goreng|rendang))\b/i',
-            // General personal advice / health / horoscope
             '/\b(horoscope|zodiac|ramalan\s*bintang|medical\s*advice|diagnose\s*my|love\s*advice|relationship\s*advice)\b/i',
-            // Search web / internet
             '/\b(search\s*the\s*(web|internet)|browse\s*the\s*web|cari\s*di\s*internet)\b/i',
         ];
 
@@ -204,9 +170,7 @@ class ScopeGuard
             }
         }
 
-        // Questions starting with "who is [celebrity]" or "what is the capital of"
         if (preg_match('/^who\s+is\s+(?!the\s+visitor|the\s+borrower|the\s+manager|the\s+receptionist|the\s+it\s+officer|the\s+user|the\s+guest)[a-z\s]+(\?)?$/i', $msg)) {
-            // If it's a person not related to system, reject
             if (! preg_match('/\b(user|guest|visitor|tamu|staff|officer|peminjam|manager|receptionist)\b/i', $msg)) {
                 return true;
             }
@@ -215,9 +179,6 @@ class ScopeGuard
         return false;
     }
 
-    /**
-     * Detect prompt injection / jailbreak patterns.
-     */
     public function isPromptInjection(string $message): bool
     {
         $msg = mb_strtolower(trim($message));
@@ -245,14 +206,10 @@ class ScopeGuard
         return false;
     }
 
-    /**
-     * Detect attempts to switch provider or access other providers' data.
-     */
     public function isCrossProviderAttempt(string $message, ?User $user = null): bool
     {
         $msg = mb_strtolower(trim($message));
 
-        // Patterns trying to force another provider ID or provider switch
         if (preg_match('/\b(use\s*provider\s*(id)?\s*\d+|switch\s*to\s*provider\s*\d+|set\s*company\s*(id)?\s*\d+)\b/i', $msg)) {
             return true;
         }
@@ -261,7 +218,6 @@ class ScopeGuard
             return true;
         }
 
-        // If user is bound to a specific company, detect explicit attempts to query another company's specific name
         if ($user && $user->company_id) {
             $userCompanyName = mb_strtolower($user->company?->company_name ?? '');
 
@@ -274,7 +230,6 @@ class ScopeGuard
 
             foreach ($knownCompanies as $companyName) {
                 if (str_contains($msg, $companyName) && ! str_contains($userCompanyName, $companyName)) {
-                    // Asking explicitly about another facility's private bookings/data
                     if (preg_match('/\b(show|lihat|booking|reservasi|data|visitor|tamu|pengguna|user|mobil|ruangan)\b/i', $msg)) {
                         return true;
                     }
@@ -285,9 +240,6 @@ class ScopeGuard
         return false;
     }
 
-    /**
-     * Detect attempts to reveal internal system prompts, tokens, API keys, database credentials.
-     */
     public function isInternalLeakRequest(string $message): bool
     {
         $msg = mb_strtolower(trim($message));
@@ -306,9 +258,6 @@ class ScopeGuard
         return false;
     }
 
-    /**
-     * Check if the user's role is authorized for the requested action.
-     */
     public function isRoleAuthorized(string $message, User $user): bool
     {
         $roleName = strtolower($user->role?->name ?? $user->role_name ?? '');
@@ -318,14 +267,12 @@ class ScopeGuard
         $isManager = str_contains($roleName, 'manager');
         $isItOfficer = str_contains($roleName, 'it') || str_contains($roleName, 'officer');
 
-        // Receptionist cannot perform IT management write operations (creating users, changing storage, etc.)
         if ($isReceptionist && ! $isItOfficer && ! $isManager) {
             if (preg_match('/\b(create\s*user|tambah\s*user|buat\s*user|delete\s*user|hapus\s*user|manage_user|manage_storage)\b/i', $msg)) {
                 return false;
             }
         }
 
-        // Manager cannot create users via chat
         if ($isManager && ! $isItOfficer) {
             if (preg_match('/\b(create\s*user|tambah\s*user|buat\s*user|delete\s*user|hapus\s*user|manage_user)\b/i', $msg)) {
                 return false;
@@ -335,9 +282,6 @@ class ScopeGuard
         return true;
     }
 
-    /**
-     * Detect language based on simple word heuristics.
-     */
     private function detectLanguage(string $message): string
     {
         $idWords = ['apa', 'berapa', 'bagaimana', 'siapa', 'kapan', 'di mana', 'tolong', 'tampilkan', 'buku', 'tamu', 'ruangan', 'kendaraan', 'jadwal', 'batal', 'pembatalan', 'hari', 'ini', 'besok', 'saya', 'apakah'];
