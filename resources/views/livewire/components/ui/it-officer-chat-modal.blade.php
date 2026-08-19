@@ -1,16 +1,44 @@
 <div
     x-data="{
         show: @entangle('isOpen'),
-        scrollToBottom() {
+        isNearBottom: true,
+        hasUnreadBelow: false,
+        checkScroll() {
+            const el = this.$refs.messageList || this.$refs.sessionMessageList;
+            if (!el) return;
+            const threshold = 80;
+            const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+            this.isNearBottom = distance <= threshold;
+            if (this.isNearBottom) {
+                this.hasUnreadBelow = false;
+            }
+        },
+        scrollToBottom(behavior = 'smooth') {
             this.$nextTick(() => {
                 const el = this.$refs.messageList || this.$refs.sessionMessageList;
-                if (el) el.scrollTop = el.scrollHeight;
+                if (!el) return;
+                el.scrollTo({
+                    top: el.scrollHeight,
+                    behavior: behavior
+                });
+                this.isNearBottom = true;
+                this.hasUnreadBelow = false;
             });
+        },
+        forceScrollToBottom() {
+            this.scrollToBottom('smooth');
+        },
+        handleIncomingMessage(force = false) {
+            if (force || this.isNearBottom) {
+                this.scrollToBottom('smooth');
+            } else {
+                this.hasUnreadBelow = true;
+            }
         }
     }"
-    x-init="$watch('show', value => { if (value) scrollToBottom(); })"
+    x-init="$watch('show', value => { if (value) scrollToBottom('auto'); })"
     x-show="show"
-    x-on:chat-scroll-bottom.window="scrollToBottom()"
+    x-on:chat-scroll-bottom.window="handleIncomingMessage($event?.detail?.force ?? false)"
     x-transition:enter="ease-out duration-300 transform"
     x-transition:enter-start="opacity-0 translate-y-8 scale-95"
     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
@@ -170,7 +198,8 @@
 
             {{-- Message list --}}
             <div x-ref="messageList"
-                 class="flex-1 min-h-0 px-4 py-3 overflow-y-auto bg-muted/20 space-y-3"
+                 x-on:scroll.passive="checkScroll()"
+                 class="flex-1 min-h-0 px-4 py-3 overflow-y-auto overscroll-contain bg-muted/20 space-y-3 chat-scrollbar"
                  wire:ignore.self>
 
                 @foreach ($messages as $msg)
@@ -213,9 +242,44 @@
                 @endif
             </div>
 
+            {{-- Floating scroll-to-bottom / new messages indicator --}}
+            <div x-show="hasUnreadBelow || !isNearBottom"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 translate-y-2 scale-90"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-2 scale-90"
+                 class="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+                <button type="button"
+                        x-on:click="forceScrollToBottom()"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg backdrop-blur-md border transition active:scale-95 bg-card/95 text-foreground border-border/80 hover:bg-card hover:shadow-xl hover:border-violet-400">
+                    <template x-if="hasUnreadBelow">
+                        <span class="flex items-center gap-1.5 text-violet-600 font-bold">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-violet-600"></span>
+                            </span>
+                            <span>New messages</span>
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                        </span>
+                    </template>
+                    <template x-if="!hasUnreadBelow">
+                        <span class="flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                            <span>Scroll to bottom</span>
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                        </span>
+                    </template>
+                </button>
+            </div>
+
             {{-- Input --}}
             <div class="px-4 py-3 border-t border-border bg-card shrink-0">
-                <form wire:submit.prevent="sendMessage">
+                <form wire:submit.prevent="sendMessage" x-on:submit="forceScrollToBottom()">
                     <div class="flex items-center gap-2">
                         <input type="text"
                                wire:model="message"
@@ -244,7 +308,7 @@
 
             {{-- ────────────────────────── PANEL: HISTORY ──────────────────────────── --}}
             @if ($panel === 'history')
-            <div class="flex-1 min-h-0 overflow-y-auto bg-muted/10">
+            <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-muted/10 chat-scrollbar">
                 @if (empty($historySessions))
                     <div class="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
                         <div class="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
@@ -302,7 +366,8 @@
             {{-- ─────────────────────────── PANEL: SESSION ─────────────────────────── --}}
             @if ($panel === 'session')
             <div x-ref="sessionMessageList"
-                 class="flex-1 min-h-0 overflow-y-auto bg-muted/20 px-4 py-3 space-y-3">
+                 x-on:scroll.passive="checkScroll()"
+                 class="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-muted/20 px-4 py-3 space-y-3 chat-scrollbar">
                 @foreach ($viewingMessages as $msg)
                     @if ($msg['role'] === 'user')
                         <div class="flex justify-end">
