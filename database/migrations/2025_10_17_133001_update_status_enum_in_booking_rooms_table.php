@@ -7,17 +7,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE booking_rooms 
-            MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'completed') 
-            NOT NULL DEFAULT 'pending'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE booking_rooms 
+                MODIFY COLUMN status ENUM('pending', 'approved', 'rejected', 'completed') 
+                NOT NULL DEFAULT 'pending'");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("UPDATE booking_rooms SET status = 'approved' WHERE status = 'completed'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("UPDATE booking_rooms SET status = 'approved' WHERE status = 'completed'");
 
-        DB::statement("ALTER TABLE booking_rooms 
-            MODIFY COLUMN status ENUM('pending', 'approved', 'rejected') 
-            NOT NULL DEFAULT 'pending'");
+            DB::statement("ALTER TABLE booking_rooms 
+                MODIFY COLUMN status ENUM('pending', 'approved', 'rejected') 
+                NOT NULL DEFAULT 'pending'");
+        }
     }
 };

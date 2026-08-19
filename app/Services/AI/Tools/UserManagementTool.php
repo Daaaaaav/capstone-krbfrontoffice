@@ -69,11 +69,16 @@ class UserManagementTool implements ToolInterface
     {
         $action    = $arguments['action']    ?? '';
         $data      = $arguments['data']      ?? [];
-        $companyId = Auth::user()?->company_id;
+        $user      = Auth::user();
+        $companyId = $user?->company_id;
+
+        if (! $companyId) {
+            return ['text' => 'Company context is missing or unauthorized.', 'success' => false];
+        }
 
         Log::info('UserManagementTool: execute', [
             'action'     => $action,
-            'user_id'    => Auth::id(),
+            'user_id'    => $user?->user_id,
             'company_id' => $companyId,
             // Never log password
             'data_keys'  => array_keys($data),

@@ -38,23 +38,32 @@ class VehicleAvailabilityTool implements ToolInterface
 
     public function execute(array $arguments): array
     {
-        $companyId   = Auth::user()?->company_id;
+        $companyId = Auth::user()?->company_id;
+        if (! $companyId) {
+            return ['text' => 'Vehicle availability information is currently unavailable.'];
+        }
+
         $date        = $arguments['date']         ?? Carbon::today('Asia/Jakarta')->toDateString();
         $startTime   = $arguments['start_time']   ?? null;
         $endTime     = $arguments['end_time']     ?? null;
         $vehicleName = $arguments['vehicle_name'] ?? null;
 
-        $vehicleQ = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $vehicleQ = Vehicle::where('company_id', $companyId)
             ->where('is_active', 1)
             ->orderBy('name');
         if ($vehicleName) {
             $vehicleQ->where('name', 'like', '%' . $vehicleName . '%');
         }
         $vehicles = $vehicleQ->get(['vehicle_id', 'name', 'plate_number', 'category']);
+
+        if ($vehicles->isEmpty()) {
+            return ['text' => "No active vehicles found for your facility."];
+        }
+
         $dayStart = $date . ' 00:00:00';
         $dayEnd   = $date . ' 23:59:59';
 
-        $bookingQ = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $bookingQ = VehicleBooking::where('company_id', $companyId)
             ->whereIn('status', ['pending', 'approved', 'on_progress'])
             ->where('start_at', '<=', $dayEnd)
             ->where('end_at',   '>=', $dayStart);

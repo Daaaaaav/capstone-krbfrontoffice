@@ -257,20 +257,28 @@ class ChatModal extends Component
         $prefill  = null;
         $vprefill = null;
 
-        try {
-            if ($this->userRole() === 'manager') {
-                [$reply] = $this->callManagerAI($text);
-            } else {
-                [$reply, $prefill, $vprefill] = $this->callReceptionistAI($text);
+        // Central ScopeGuard validation
+        $guard = app(\App\Services\AI\ScopeGuard::class)->validate($text, Auth::user());
+        if (! $guard['allowed']) {
+            $reply = $guard['refusal'] ?? \App\Services\AI\ScopeGuard::REFUSAL_EN;
+        } elseif ($guard['is_utility'] ?? false) {
+            $reply = $guard['utility_response'];
+        } else {
+            try {
+                if ($this->userRole() === 'manager') {
+                    [$reply] = $this->callManagerAI($text);
+                } else {
+                    [$reply, $prefill, $vprefill] = $this->callReceptionistAI($text);
+                }
+            } catch (\Throwable $e) {
+                Log::error('ChatModal: AI call failed', [
+                    'stage'     => $this->userRole() === 'manager' ? 'manager_ai_call' : 'receptionist_ai_call',
+                    'class'     => get_class($e),
+                    'error'     => $e->getMessage(),
+                    'file'      => $e->getFile() . ':' . $e->getLine(),
+                    'user_role' => $this->userRole(),
+                ]);
             }
-        } catch (\Throwable $e) {
-            Log::error('ChatModal: AI call failed', [
-                'stage'     => $this->userRole() === 'manager' ? 'manager_ai_call' : 'receptionist_ai_call',
-                'class'     => get_class($e),
-                'error'     => $e->getMessage(),
-                'file'      => $e->getFile() . ':' . $e->getLine(),
-                'user_role' => $this->userRole(),
-            ]);
         }
 
         $this->messages[] = [
@@ -304,7 +312,9 @@ class ChatModal extends Component
 
     private function callManagerAI(string $userMessage): array
     {
-        $companyId = Auth::user()->company_id;
+        $user        = Auth::user();
+        $companyId   = $user?->company_id;
+        $companyName = $user?->company?->company_name ?? 'Kebun Raya Bogor';
 
         $router  = app(ContextRouter::class);
         $context = $router->route($userMessage, $companyId, 'manager', $this->getRecentHistory());
@@ -313,7 +323,7 @@ class ChatModal extends Component
         $this->contextMemory['active_domains'] = $domains;
 
         $builder      = app(PromptBuilder::class);
-        $systemPrompt = $builder->managerSystemPrompt($context);
+        $systemPrompt = $builder->managerSystemPrompt($context, $companyName);
         $history      = $this->getRecentHistory(exclude: 'last');
 
         $ai    = app(AIService::class);
@@ -325,7 +335,9 @@ class ChatModal extends Component
 
     private function callReceptionistAI(string $userMessage): array
     {
-        $companyId    = Auth::user()->company_id;
+        $user         = Auth::user();
+        $companyId    = $user?->company_id;
+        $companyName  = $user?->company?->company_name ?? 'Kebun Raya Bogor';
         $builder      = app(PromptBuilder::class);
         $draftService = app(BookingDraftService::class);
         $router       = app(ContextRouter::class);
@@ -356,8 +368,8 @@ class ChatModal extends Component
         $draftContext = $draftService->buildDraftContext($this->bookingDraft);
         
         $systemPrompt = $isBookingIntent
-            ? $builder->receptionistBookingPrompt($context, $draftContext)
-            : $builder->receptionistGeneralPrompt($context);
+            ? $builder->receptionistBookingPrompt($context, $draftContext, $companyName)
+            : $builder->receptionistGeneralPrompt($context, $companyName);
         
         $recentHistory = $this->getRecentHistory(exclude: 'last');
 

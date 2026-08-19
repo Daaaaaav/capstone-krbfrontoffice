@@ -23,13 +23,17 @@ class AnalyticsContextProvider implements ContextProviderInterface
 
     public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
+        if (! $companyId) {
+            return '(no analytics data available: company not specified)';
+        }
+
         $period   = $params['period'] ?? 'this_week_and_ytd';
         $level = $detailLevel ?? ContextDetailLevel::DETAILED;
         $cacheKey = "ctx_analytics_{$companyId}_{$period}_{$level->value}";
         return Cache::remember($cacheKey, 180, fn() => $this->build($companyId, $level));
     }
 
-    private function build(?int $companyId, ContextDetailLevel $level): string
+    private function build(int $companyId, ContextDetailLevel $level): string
     {
         return match ($level) {
             ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId),
@@ -39,37 +43,37 @@ class AnalyticsContextProvider implements ContextProviderInterface
         };
     }
 
-    private function buildMinimal(?int $companyId): string
+    private function buildMinimal(int $companyId): string
     {
         $now = Carbon::now($this->tz);
         $today = $now->toDateString();
 
-        $rQ = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $rQ = BookingRoom::where('company_id', $companyId);
         $rToday = (clone $rQ)->whereDate('date', $today)->count();
         $rCancel = (clone $rQ)->whereDate('date', $today)->where('status', 'cancelled')->count();
 
-        $vQ = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $vQ = VehicleBooking::where('company_id', $companyId);
         $vToday = (clone $vQ)->whereDate('start_at', $today)->count();
         $vCancel = (clone $vQ)->whereDate('start_at', $today)->where('status', 'cancelled')->count();
 
         return "TODAY: Rooms:{$rToday} (cancelled:{$rCancel}) | Vehicles:{$vToday} (cancelled:{$vCancel})";
     }
 
-    private function buildNormal(?int $companyId): string
+    private function buildNormal(int $companyId): string
     {
         $now = Carbon::now($this->tz);
         $weekStart = $now->copy()->startOfWeek()->toDateString();
         $weekEnd = $now->copy()->endOfWeek()->toDateString();
         $today = $now->toDateString();
 
-        $rQ = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $rQ = BookingRoom::where('company_id', $companyId);
         $rWeek = (clone $rQ)->whereBetween('date', [$weekStart, $weekEnd])->count();
         $rWeekCancelled = (clone $rQ)->whereBetween('date', [$weekStart, $weekEnd])->where('status', 'cancelled')->count();
         $rToday = (clone $rQ)->whereDate('date', $today)->count();
         $rPending = (clone $rQ)->where('status', 'pending')->count();
         $rCancelledTotal = (clone $rQ)->where('status', 'cancelled')->count();
 
-        $vQ = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $vQ = VehicleBooking::where('company_id', $companyId);
         $vWeek = (clone $vQ)->whereBetween('start_at', [$weekStart . ' 00:00:00', $weekEnd . ' 23:59:59'])->count();
         $vWeekCancelled = (clone $vQ)->whereBetween('start_at', [$weekStart . ' 00:00:00', $weekEnd . ' 23:59:59'])->where('status', 'cancelled')->count();
         $vPending = (clone $vQ)->where('status', 'pending')->count();
@@ -83,7 +87,7 @@ class AnalyticsContextProvider implements ContextProviderInterface
         BLOCK;
     }
 
-    private function buildDetailed(?int $companyId): string
+    private function buildDetailed(int $companyId): string
     {
         $now       = Carbon::now($this->tz);
         $yearStart = $now->copy()->startOfYear()->toDateTimeString();
@@ -96,7 +100,7 @@ class AnalyticsContextProvider implements ContextProviderInterface
         $monthEnd  = $now->copy()->endOfMonth()->toDateTimeString();
         $today     = $now->toDateString();
 
-        $rQ  = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $rQ  = BookingRoom::where('company_id', $companyId);
         $rY  = (clone $rQ)->whereBetween('created_at', [$yearStart, $yearEnd]);
         $rP  = (clone $rQ)->whereBetween('created_at', [$prevStart, $prevEnd])->count();
         $rW  = (clone $rQ)->whereBetween('date', [$weekStart, $weekEnd]);
@@ -130,7 +134,7 @@ class AnalyticsContextProvider implements ContextProviderInterface
             ->whereNotNull('start_time')->groupByRaw('HOUR(start_time)')->orderByDesc('cnt')->value('hr');
         $peakStr = $peakHr !== null ? sprintf('%02d:00–%02d:00', $peakHr, $peakHr + 1) : 'N/A';
 
-        $vQ          = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $vQ          = VehicleBooking::where('company_id', $companyId);
         $vTotal      = (clone $vQ)->whereBetween('created_at', [$yearStart, $yearEnd])->count();
         $vPrev       = (clone $vQ)->whereBetween('created_at', [$prevStart, $prevEnd])->count();
         $vWeek       = (clone $vQ)->whereBetween('start_at', [$weekStart . ' 00:00:00', $weekEnd . ' 23:59:59'])->count();
@@ -147,16 +151,16 @@ class AnalyticsContextProvider implements ContextProviderInterface
         $vCancelRate = $vTotal > 0 ? round($vCancelled / $vTotal * 100, 1) : 0;
         $vTrend      = $this->trend($vPrev, $vTotal);
 
-        $gTotal  = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $gTotal  = Guestbook::where('company_id', $companyId)
             ->whereBetween('created_at', [$yearStart, $yearEnd])->count();
-        $gToday  = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $gToday  = Guestbook::where('company_id', $companyId)
             ->whereDate('date', $today)->count();
-        $gWeek   = Guestbook::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $gWeek   = Guestbook::where('company_id', $companyId)
             ->whereBetween('date', [$weekStart, $weekEnd])->count();
 
-        $dTotal  = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $dTotal  = Delivery::where('company_id', $companyId)
             ->whereBetween('created_at', [$yearStart, $yearEnd])->count();
-        $dPend   = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $dPend   = Delivery::where('company_id', $companyId)
             ->where('status', 'pending')->count();
 
         return <<<BLOCK

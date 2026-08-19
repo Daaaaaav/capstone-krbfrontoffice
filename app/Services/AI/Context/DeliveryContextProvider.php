@@ -18,12 +18,16 @@ class DeliveryContextProvider implements ContextProviderInterface
 
     public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
+        if (! $companyId) {
+            return '(no delivery data available: company not specified)';
+        }
+
         $level = $detailLevel ?? ContextDetailLevel::DETAILED;
         $cacheKey = "ctx_deliveries_{$companyId}_{$level->value}";
         return Cache::remember($cacheKey, 90, fn() => $this->build($companyId, $level));
     }
 
-    private function build(?int $companyId, ContextDetailLevel $level): string
+    private function build(int $companyId, ContextDetailLevel $level): string
     {
         return match ($level) {
             ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId),
@@ -33,23 +37,23 @@ class DeliveryContextProvider implements ContextProviderInterface
         };
     }
 
-    private function buildMinimal(?int $companyId): string
+    private function buildMinimal(int $companyId): string
     {
-        $q = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $q = Delivery::where('company_id', $companyId);
         $pending = (clone $q)->where('status', 'pending')->count();
         $stored  = (clone $q)->where('status', 'stored')->count();
 
         return "DELIVERIES: pending:{$pending} stored:{$stored}";
     }
 
-    private function buildNormal(?int $companyId): string
+    private function buildNormal(int $companyId): string
     {
         return $this->buildMinimal($companyId);
     }
 
-    private function buildDetailed(?int $companyId): string
+    private function buildDetailed(int $companyId): string
     {
-        $q = Delivery::when($companyId, fn($q) => $q->where('company_id', $companyId));
+        $q = Delivery::where('company_id', $companyId);
 
         $pending = (clone $q)->where('status', 'pending')->count();
         $stored  = (clone $q)->where('status', 'stored')->count();

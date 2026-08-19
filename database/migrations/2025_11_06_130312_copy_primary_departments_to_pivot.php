@@ -8,13 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('
-            INSERT INTO user_departments (user_id, department_id)
-            SELECT user_id, department_id
-            FROM users
-            WHERE department_id IS NOT NULL
-            ON DUPLICATE KEY UPDATE user_id = users.user_id
-        ');
+        $users = DB::table('users')->whereNotNull('department_id')->get(['user_id', 'department_id']);
+        foreach ($users as $u) {
+            DB::table('user_departments')->updateOrInsert(
+                ['user_id' => $u->user_id, 'department_id' => $u->department_id],
+                []
+            );
+        }
     }
 
     public function down(): void

@@ -20,6 +20,10 @@ class RoomContextProvider implements ContextProviderInterface
 
     public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
+        if (! $companyId) {
+            return '(no room data available: company not specified)';
+        }
+
         $now   = Carbon::now($this->tz);
         $today = $params['date'] ?? $now->toDateString();
         $level = $detailLevel ?? ContextDetailLevel::DETAILED;
@@ -28,7 +32,7 @@ class RoomContextProvider implements ContextProviderInterface
         return Cache::remember($cacheKey, 90, fn() => $this->build($companyId, $now, $today, $level));
     }
 
-    private function build(?int $companyId, Carbon $now, string $today, ContextDetailLevel $level): string
+    private function build(int $companyId, Carbon $now, string $today, ContextDetailLevel $level): string
     {
         return match ($level) {
             ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId),
@@ -38,9 +42,9 @@ class RoomContextProvider implements ContextProviderInterface
         };
     }
 
-    private function buildMinimal(?int $companyId): string
+    private function buildMinimal(int $companyId): string
     {
-        $rooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $rooms = Room::where('company_id', $companyId)
             ->orderBy('room_name')
             ->pluck('room_name')
             ->join(', ') ?: 'none';
@@ -48,9 +52,9 @@ class RoomContextProvider implements ContextProviderInterface
         return "ROOMS: {$rooms}";
     }
 
-    private function buildNormal(?int $companyId): string
+    private function buildNormal(int $companyId): string
     {
-        $rooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $rooms = Room::where('company_id', $companyId)
             ->orderBy('room_name')
             ->get(['room_name', 'capacity'])
             ->map(fn($r) => "{$r->room_name} (Cap:{$r->capacity})")
@@ -59,15 +63,15 @@ class RoomContextProvider implements ContextProviderInterface
         return "ROOMS: {$rooms}";
     }
 
-    private function buildBooking(?int $companyId, Carbon $now, string $today): string
+    private function buildBooking(int $companyId, Carbon $now, string $today): string
     {
-        $rooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $rooms = Room::where('company_id', $companyId)
             ->orderBy('room_name')
             ->get(['room_id', 'room_name', 'capacity'])
             ->map(fn($r) => sprintf('[RoomID:%d] %s | Cap:%s', $r->room_id, $r->room_name, $r->capacity ?? '—'))
             ->join("\n  ") ?: '(none)';
 
-        $todayRooms = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $todayRooms = BookingRoom::where('company_id', $companyId)
             ->with(['room'])
             ->whereDate('date', $today)
             ->orderBy('start_time')
@@ -89,15 +93,15 @@ class RoomContextProvider implements ContextProviderInterface
         BLOCK;
     }
 
-    private function buildDetailed(?int $companyId, Carbon $now, string $today): string
+    private function buildDetailed(int $companyId, Carbon $now, string $today): string
     {
-        $availableRooms = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $availableRooms = Room::where('company_id', $companyId)
             ->orderBy('room_name')
             ->get(['room_id', 'room_name', 'capacity'])
             ->map(fn($r) => sprintf('  [RoomID:%d] %s | Cap:%s', $r->room_id, $r->room_name ?? '—', $r->capacity ?? '—'))
             ->join("\n") ?: '  (none)';
 
-        $todayRooms = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $todayRooms = BookingRoom::where('company_id', $companyId)
             ->with(['room', 'department'])
             ->whereDate('date', $today)
             ->orderBy('start_time')
@@ -110,7 +114,7 @@ class RoomContextProvider implements ContextProviderInterface
                 ucfirst($b->status ?? '—')
             ))->join("\n") ?: '  (none)';
 
-        $pending = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $pending = BookingRoom::where('company_id', $companyId)
             ->with(['room', 'department'])
             ->where('status', 'pending')
             ->orderBy('date')->orderBy('start_time')
@@ -124,7 +128,7 @@ class RoomContextProvider implements ContextProviderInterface
                 $b->department?->name ?? '—'
             ))->join("\n") ?: '  (none)';
 
-        $recent = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $recent = BookingRoom::where('company_id', $companyId)
             ->with(['room'])
             ->whereBetween('date', [$now->copy()->subDays(6)->toDateString(), $today])
             ->orderByDesc('date')->take(6)->get()
@@ -137,7 +141,7 @@ class RoomContextProvider implements ContextProviderInterface
                 ucfirst($b->status ?? '—')
             ))->join("\n") ?: '  (none)';
 
-        $online = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $online = BookingRoom::where('company_id', $companyId)
             ->with(['department'])->where('booking_type', 'online_meeting')
             ->whereBetween('date', [$now->copy()->subDays(29)->toDateString(), $today])
             ->orderByDesc('date')->take(5)->get()
