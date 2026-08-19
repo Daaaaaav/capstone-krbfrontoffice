@@ -33,14 +33,13 @@
     <div class="fixed top-14 bottom-[5rem] right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-full max-w-sm h-[calc(100vh-8.5rem)] flex flex-col z-[70]">
         <div class="relative rounded-2xl border border-border bg-card shadow-2xl w-full h-full flex flex-col min-h-0 overflow-hidden">
 
-            {{-- ─────────────────────────────────────────── --}}
-            {{-- HEADER (shared across all panels)           --}}
-            {{-- ─────────────────────────────────────────── --}}
+            {{-- ───────────────────────────── HEADER ───────────────────────────── --}}
             <div class="flex items-center justify-between px-4 py-3 bg-sidebar text-sidebar-foreground border-b border-sidebar-border shadow-sm shrink-0">
 
-                {{-- Left: back button (history/session panels) or avatar --}}
                 @if ($panel === 'history' || $panel === 'session')
-                    <button type="button" wire:click="{{ $panel === 'session' ? 'backToHistory' : 'showChat' }}"
+                    {{-- Back button --}}
+                    <button type="button"
+                            wire:click="{{ $panel === 'session' ? 'backToHistory' : 'showChat' }}"
                             class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/70 hover:text-white hover:bg-white/10 transition mr-1">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
@@ -54,7 +53,7 @@
                                 Chat History
                             @endif
                         </h3>
-                        <p class="text-[10px] text-emerald-400 font-semibold tracking-wide uppercase mt-0.5">
+                        <p class="text-[10px] {{ $userRole === 'manager' ? 'text-violet-400' : 'text-emerald-400' }} font-semibold tracking-wide uppercase mt-0.5">
                             @if ($panel === 'session')
                                 {{ $viewingSessionDate }}
                             @else
@@ -63,13 +62,18 @@
                         </p>
                     </div>
                 @else
+                    {{-- Identity header --}}
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shrink-0">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <div class="w-8 h-8 rounded-full {{ $userRole === 'manager' ? 'bg-violet-500/20 border-violet-500/30' : 'bg-emerald-500/20 border-emerald-500/30' }} flex items-center justify-center border shrink-0">
+                            <span class="w-2.5 h-2.5 rounded-full {{ $userRole === 'manager' ? 'bg-violet-400' : 'bg-emerald-400' }} animate-pulse"></span>
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold tracking-tight text-white leading-tight" id="chat-modal-title">AI Assistant</h3>
-                            <p class="text-[10px] text-emerald-400 font-semibold tracking-wide uppercase mt-0.5">Powered by Qwen&nbsp;3</p>
+                            <h3 class="text-sm font-bold tracking-tight text-white leading-tight" id="chat-modal-title">
+                                {{ $userRole === 'manager' ? 'KRB Manager Assistant' : 'KRB Receptionist Assistant' }}
+                            </h3>
+                            <p class="text-[10px] {{ $userRole === 'manager' ? 'text-violet-400' : 'text-emerald-400' }} font-semibold tracking-wide uppercase mt-0.5">
+                                {{ $userRole === 'manager' ? 'Quick Analytics & Insights' : 'Quick Submit & Booking' }}
+                            </p>
                         </div>
                     </div>
                 @endif
@@ -77,23 +81,7 @@
                 {{-- Right: action buttons --}}
                 <div class="flex items-center gap-1 ml-2 shrink-0">
                     @if ($panel === 'chat')
-                        {{-- History --}}
-                        <button type="button" wire:click="showHistory" title="Chat history"
-                                class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-white hover:bg-white/10 transition">
-                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </button>
-                        {{-- Clear --}}
-                        <button type="button" wire:click="clearChat" title="New conversation"
-                                class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-white hover:bg-white/10 transition">
-                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                        </button>
-                        {{-- Export buttons (manager only) --}}
+                        {{-- Export buttons (Manager only) --}}
                         @if ($userRole === 'manager' && count($messages) > 1)
                             {{-- Export PDF --}}
                             <button type="button" wire:click="exportPdf" title="Export chat as PDF"
@@ -112,8 +100,26 @@
                                 </svg>
                             </button>
                         @endif
+
+                        {{-- History --}}
+                        <button type="button" wire:click="showHistory" title="Chat history"
+                                class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-white hover:bg-white/10 transition">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </button>
+                        {{-- Clear / New conversation --}}
+                        <button type="button" wire:click="clearChat" title="New conversation"
+                                class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/50 hover:text-white hover:bg-white/10 transition">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
                     @endif
-                    {{-- Export buttons for session viewer (manager only) --}}
+
+                    {{-- Export buttons for session viewer (Manager only) --}}
                     @if ($panel === 'session' && $userRole === 'manager' && count($viewingMessages) > 0)
                         {{-- Export PDF --}}
                         <button type="button" wire:click="exportPdf" title="Export session as PDF"
@@ -132,7 +138,8 @@
                             </svg>
                         </button>
                     @endif
-                    {{-- Close (always) --}}
+
+                    {{-- Close --}}
                     <button type="button" x-on:click="show = false; $wire.closeModal()"
                             class="w-7 h-7 flex items-center justify-center rounded-lg text-sidebar-foreground/70 hover:text-white hover:bg-white/10 transition">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,10 +150,85 @@
             </div>
             {{-- /HEADER --}}
 
-            {{-- ═══════════════════════════════════════════ --}}
-            {{-- PANEL 1 — CHAT                             --}}
-            {{-- ═══════════════════════════════════════════ --}}
+            {{-- ─────────────────────────── PANEL: CHAT ─────────────────────────── --}}
             @if ($panel === 'chat')
+
+            {{-- Quick Access Toolbar --}}
+            <div class="px-3 pt-2.5 pb-2 border-b border-border/60 bg-muted/10 shrink-0">
+                @if ($userRole === 'manager')
+                    <p class="text-[10px] text-muted-foreground/60 uppercase tracking-wider font-semibold mb-1.5">Quick Analytics</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        {{-- Guestbook Analytics --}}
+                        <button type="button" wire:click="quickAnalytics('guestbook')"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-green-100 text-green-800 hover:bg-green-200 border border-green-200 transition active:scale-95 shrink-0"
+                                title="Guestbook Analytics">
+                            <span>🟢</span>
+                            <span>Guestbook Analytics</span>
+                        </button>
+                        {{-- Room Booking Analytics --}}
+                        <button type="button" wire:click="quickAnalytics('room')"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-200 transition active:scale-95 shrink-0"
+                                title="Room Booking Analytics">
+                            <span>🟠</span>
+                            <span>Room Booking Analytics</span>
+                        </button>
+                        {{-- Vehicle Booking Analytics --}}
+                        <button type="button" wire:click="quickAnalytics('vehicle')"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200 transition active:scale-95 shrink-0"
+                                title="Vehicle Booking Analytics">
+                            <span>🔵</span>
+                            <span>Vehicle Booking Analytics</span>
+                        </button>
+                        {{-- Document/Package Delivery Analytics --}}
+                        <button type="button" wire:click="quickAnalytics('delivery')"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-purple-100 text-purple-800 hover:bg-purple-200 border border-purple-200 transition active:scale-95 shrink-0"
+                                title="Document/Package Delivery Analytics">
+                            <span>🟣</span>
+                            <span>Document/Package Analytics</span>
+                        </button>
+                    </div>
+                @else
+                    <p class="text-[10px] text-muted-foreground/60 uppercase tracking-wider font-semibold mb-1.5">Quick Submit</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        {{-- Auto Room Booking --}}
+                        <button type="button" wire:click="quickBookRoom"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-orange-100 text-orange-800 hover:bg-orange-200 border border-orange-200 transition active:scale-95 shrink-0"
+                                title="Auto Room Booking">
+                            <span>🟠</span>
+                            <span>Auto Room Booking</span>
+                        </button>
+                        {{-- Auto Vehicle Booking --}}
+                        <button type="button" wire:click="quickBookVehicle"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200 transition active:scale-95 shrink-0"
+                                title="Auto Vehicle Booking">
+                            <span>🔵</span>
+                            <span>Auto Vehicle Booking</span>
+                        </button>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Active Receptionist Quick Booking state indicator --}}
+            @if ($userRole === 'receptionist' && ($bookingDraft['active'] ?? false))
+                @php
+                    $draftType = $bookingDraft['type'] ?? 'room';
+                    $typeLabel = $draftType === 'vehicle' ? 'Vehicle Booking' : 'Room Booking';
+                @endphp
+                <div class="px-3 py-1.5 bg-emerald-50 border-b border-emerald-200/60 shrink-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
+                            <span class="text-[11px] font-semibold text-emerald-700">
+                                Auto {{ $typeLabel }} in progress
+                            </span>
+                        </div>
+                        <button type="button" wire:click="clearChat"
+                                class="text-[10px] text-emerald-600 hover:text-emerald-800 font-medium shrink-0">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            @endif
 
             {{-- Message list --}}
             <div x-ref="messageList"
@@ -175,7 +257,7 @@
                                     @endif
                                 </div>
 
-                                {{-- ── Room booking panel ── --}}
+                                {{-- ── Room booking prefill panel (Receptionist) ── --}}
                                 @if (isset($msg['booking_prefill']) && is_array($msg['booking_prefill']))
                                     @php
                                         $prefill = $msg['booking_prefill'];
@@ -218,7 +300,6 @@
                                                                    ? substr($prefill['end_time'], 0, 5) : null,
                                             'Requirements'    => !$isOnline ? ($prefill['special_notes'] ?? null) : null,
                                         ];
-                                        // Remove null-only rows that are type-specific
                                         $roomRows = array_filter($roomRows, fn($v) => $v !== null);
                                     @endphp
                                     <div class="border-t border-border/60 {{ $isOnline ? 'bg-blue-500/5' : 'bg-primary/5' }}">
@@ -262,7 +343,7 @@
                                     </div>
                                 @endif
 
-                                {{-- ── Vehicle booking panel ── --}}
+                                {{-- ── Vehicle booking prefill panel (Receptionist) ── --}}
                                 @if (isset($msg['vehicle_prefill']) && is_array($msg['vehicle_prefill']))
                                     @php
                                         $vp = $msg['vehicle_prefill'];
@@ -350,7 +431,10 @@
             <div class="px-4 py-3 border-t border-border bg-card shrink-0">
                 <form wire:submit.prevent="sendMessage">
                     <div class="flex items-center gap-2">
-                        <input type="text" wire:model="message" placeholder="Type a message…" autocomplete="off"
+                        <input type="text"
+                               wire:model="message"
+                               placeholder="{{ app()->getLocale() === 'id' ? 'Ketik pesan…' : 'Type a message…' }}"
+                               autocomplete="off"
                                @disabled($isLoading)
                                class="flex-grow h-9 px-3.5 border border-input rounded-xl bg-background text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                         <button type="submit" @disabled($isLoading)
@@ -372,9 +456,7 @@
 
             @endif {{-- /panel chat --}}
 
-            {{-- ═══════════════════════════════════════════ --}}
-            {{-- PANEL 2 — HISTORY (session list)           --}}
-            {{-- ═══════════════════════════════════════════ --}}
+            {{-- ────────────────────────── PANEL: HISTORY ──────────────────────────── --}}
             @if ($panel === 'history')
             <div class="flex-1 min-h-0 overflow-y-auto bg-muted/10">
                 @if (empty($historySessions))
@@ -386,15 +468,14 @@
                             </svg>
                         </div>
                         <p class="text-xs text-muted-foreground">No saved conversations yet.</p>
-                        <p class="text-[10px] text-muted-foreground/60">Start a chat and click the new-conversation button to archive it here.</p>
+                        <p class="text-[10px] text-muted-foreground/60">Start a chat and use the clear button to archive it here.</p>
                     </div>
                 @else
                     <div class="divide-y divide-border/50">
                         @foreach ($historySessions as $s)
-                            <div class="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition group">
-                                {{-- Role badge --}}
-                                <div class="mt-0.5 shrink-0 w-7 h-7 rounded-lg flex items-center justify-center
-                                            {{ $s['role'] === 'manager' ? 'bg-violet-500/15 text-violet-400' : 'bg-emerald-500/15 text-emerald-400' }}">
+                            <div class="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition group cursor-pointer"
+                                 wire:click="viewSession({{ $s['id'] }})">
+                                <div class="w-7 h-7 rounded-lg {{ $s['role'] === 'manager' ? 'bg-violet-500/10 text-violet-500' : 'bg-emerald-500/10 text-emerald-500' }} flex items-center justify-center shrink-0 mt-0.5">
                                     @if ($s['role'] === 'manager')
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -407,32 +488,25 @@
                                         </svg>
                                     @endif
                                 </div>
-
-                                {{-- Session info (click to view) --}}
-                                <button type="button" wire:click="viewSession({{ $s['id'] }})"
-                                        class="flex-1 min-w-0 text-left">
-                                    <p class="text-xs font-medium text-foreground truncate">{{ $s['title'] }}</p>
-                                    <p class="text-[10px] text-muted-foreground mt-0.5">
-                                        {{ $s['started_at'] }}
-                                        <span class="mx-1">·</span>
-                                        {{ $s['message_count'] }} msg{{ $s['message_count'] !== 1 ? 's' : '' }}
-                                    </p>
-                                </button>
-
-                                {{-- Actions: restore + delete --}}
-                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0 mt-0.5">
-                                    <button type="button" wire:click="restoreSession({{ $s['id'] }})"
-                                            title="Restore to active chat"
-                                            class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-semibold text-foreground truncate">{{ $s['title'] }}</p>
+                                    <p class="text-[10px] text-muted-foreground mt-0.5">{{ $s['started_at'] }} · {{ $s['message_count'] }} msg(s)</p>
+                                </div>
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
+                                    <button type="button"
+                                            wire:click.stop="restoreSession({{ $s['id'] }})"
+                                            class="w-6 h-6 flex items-center justify-center rounded text-primary hover:bg-primary/10 transition"
+                                            title="Restore">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                                         </svg>
                                     </button>
-                                    <button type="button" wire:click="deleteSession({{ $s['id'] }})"
+                                    <button type="button"
+                                            wire:click.stop="deleteSession({{ $s['id'] }})"
                                             wire:confirm="Delete this conversation?"
-                                            title="Delete session"
-                                            class="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition">
+                                            class="w-6 h-6 flex items-center justify-center rounded text-red-400 hover:bg-red-100 transition"
+                                            title="Delete">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -446,13 +520,11 @@
             </div>
             @endif {{-- /panel history --}}
 
-            {{-- ═══════════════════════════════════════════ --}}
-            {{-- PANEL 3 — SESSION VIEWER (read-only replay) --}}
-            {{-- ═══════════════════════════════════════════ --}}
+            {{-- ─────────────────────────── PANEL: SESSION ─────────────────────────── --}}
             @if ($panel === 'session')
             <div x-ref="sessionMessageList"
                  class="flex-1 min-h-0 overflow-y-auto bg-muted/20 px-4 py-3 space-y-3">
-                @forelse ($viewingMessages as $msg)
+                @foreach ($viewingMessages as $msg)
                     @if ($msg['role'] === 'user')
                         <div class="flex justify-end">
                             <div class="bg-primary text-primary-foreground px-3.5 py-2.5 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm">
@@ -464,60 +536,20 @@
                         </div>
                     @else
                         <div class="flex justify-start">
-                            <div class="bg-card border border-border rounded-2xl rounded-tl-none max-w-[88%] shadow-sm overflow-hidden">
-                                <div class="px-3.5 py-2.5 text-xs text-foreground leading-relaxed break-words space-y-1.5 [&_p]:leading-relaxed [&_p]:mb-1.5 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-1.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-1.5 [&_li]:mb-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-[11px] [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1">
-                                    {!! \Illuminate\Support\Str::markdown($msg['text'], ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
-                                    @if (!empty($msg['sent_at']))
-                                        <p class="text-[9px] text-muted-foreground/50 mt-1 not-prose">{{ $msg['sent_at'] }}</p>
-                                    @endif
-                                </div>
-
-                                {{-- Booking prefill summary (read-only in history) --}}
-                                @if (!empty($msg['booking_prefill']) && is_array($msg['booking_prefill']))
-                                    @php
-                                        $vp = $msg['booking_prefill'];
-                                        $vpRows = [
-                                            'Meeting Title'   => $vp['meeting_title']       ?? null,
-                                            'Room'            => $vp['room_name']            ?? null,
-                                            'Department'      => $vp['department']           ?? null,
-                                            'Historical User' => $vp['historical_user']      ?? null,
-                                            'Date'            => !empty($vp['date'])
-                                                                   ? \Carbon\Carbon::parse($vp['date'])->format('d M Y') : null,
-                                            'Participants'    => $vp['number_of_attendees']  ?? null,
-                                            'Start'           => !empty($vp['start_time'])
-                                                                   ? substr($vp['start_time'], 0, 5) : null,
-                                            'End'             => !empty($vp['end_time'])
-                                                                   ? substr($vp['end_time'], 0, 5) : null,
-                                            'Requirements'    => $vp['special_notes']        ?? null,
-                                        ];
-                                        $vpHasData = collect($vpRows)->filter(fn($v) => $v !== null && $v !== '')->isNotEmpty();
-                                    @endphp
-                                    @if ($vpHasData)
-                                        <div class="border-t border-border/60 px-3.5 py-2 bg-primary/5">
-                                            <p class="text-[10px] font-semibold text-primary/60 uppercase tracking-wider mb-1">Booking Details</p>
-                                            @foreach ($vpRows as $label => $value)
-                                                @if ($value !== null && $value !== '')
-                                                    <div class="flex items-baseline gap-1.5">
-                                                        <span class="text-[10px] text-muted-foreground shrink-0 w-[88px]">{{ $label }}:</span>
-                                                        <span class="text-[10px] text-foreground font-medium break-words">{{ $value }}</span>
-                                                    </div>
-                                                @endif
-                                            @endforeach
-                                        </div>
-                                    @endif
+                            <div class="bg-card border border-border rounded-2xl rounded-tl-none max-w-[88%] shadow-sm overflow-hidden px-3.5 py-2.5 text-xs text-foreground leading-relaxed break-words space-y-1.5 [&_p]:leading-relaxed [&_p]:mb-1.5 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-1.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-1.5 [&_li]:mb-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-[11px] [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1">
+                                {!! \Illuminate\Support\Str::markdown($msg['text'], ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
+                                @if (!empty($msg['sent_at']))
+                                    <p class="text-[9px] text-muted-foreground/50 mt-1 not-prose">{{ $msg['sent_at'] }}</p>
                                 @endif
                             </div>
                         </div>
                     @endif
-                @empty
-                    <p class="text-xs text-muted-foreground text-center py-8">No messages in this session.</p>
-                @endforelse
+                @endforeach
             </div>
-
-            {{-- Restore footer --}}
+            {{-- Session footer --}}
             <div class="px-4 py-3 border-t border-border bg-card shrink-0">
                 <button type="button" wire:click="restoreSession({{ $viewingSessionId }})"
-                        class="w-full flex items-center justify-center gap-2 h-9 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm">
+                        class="w-full flex items-center justify-center gap-2 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -527,6 +559,6 @@
             </div>
             @endif {{-- /panel session --}}
 
-        </div>{{-- /drawer inner --}}
-    </div>{{-- /drawer --}}
-</div>{{-- /root --}}
+        </div>
+    </div>
+</div>

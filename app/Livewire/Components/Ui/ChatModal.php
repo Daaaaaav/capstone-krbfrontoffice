@@ -145,9 +145,94 @@ class ChatModal extends Component
         $this->dispatch('chat-scroll-bottom');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Quick Actions (Receptionist & Manager)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function quickBookRoom(): void
+    {
+        $this->ensureSession();
+        $this->bookingDraft = app(BookingDraftService::class)->startRoomDraft($this->bookingDraft);
+
+        $isId = app()->getLocale() === 'id';
+        $text = $isId
+            ? "Baik! Mari buat pemesanan ruangan. Apa judul rapat/keperluan, ruangan yang diinginkan, tanggal, dan waktunya?"
+            : "Sure! Let's create a room booking. What is the meeting title/purpose, desired room, date, start time, and end time?";
+
+        $this->messages[] = [
+            'role'            => 'assistant',
+            'text'            => $text,
+            'booking_prefill' => null,
+            'vehicle_prefill' => null,
+            'sent_at'         => now()->format('H:i'),
+        ];
+        $this->persistMessage('assistant', $text, null, null);
+        $this->appendToHistory('assistant', $text);
+        $this->isOpen = true;
+        $this->panel  = 'chat';
+        $this->dispatch('chat-scroll-bottom');
+    }
+
+    public function quickBookVehicle(): void
+    {
+        $this->ensureSession();
+        $this->bookingDraft = app(BookingDraftService::class)->startVehicleDraft($this->bookingDraft);
+
+        $isId = app()->getLocale() === 'id';
+        $text = $isId
+            ? "Baik! Mari buat pemesanan kendaraan. Siapa nama peminjam, kendaraan apa yang dibutuhkan, tanggal pemakaian, waktu, tujuan, dan keperluannya?"
+            : "Sure! Let's create a vehicle booking. What is the borrower's name, vehicle required, date, time, destination, and purpose?";
+
+        $this->messages[] = [
+            'role'            => 'assistant',
+            'text'            => $text,
+            'booking_prefill' => null,
+            'vehicle_prefill' => null,
+            'sent_at'         => now()->format('H:i'),
+        ];
+        $this->persistMessage('assistant', $text, null, null);
+        $this->appendToHistory('assistant', $text);
+        $this->isOpen = true;
+        $this->panel  = 'chat';
+        $this->dispatch('chat-scroll-bottom');
+    }
+
+    public function quickAnalytics(string $type): void
+    {
+        $isId = app()->getLocale() === 'id';
+        $query = match ($type) {
+            'guestbook' => $isId
+                ? 'Tampilkan ringkasan analitik buku tamu dan pengunjung termasuk total kunjungan, tren, dan pengunjung terkini.'
+                : 'Show guestbook and visitor analytics overview including visitor counts, recent visitors, and trends.',
+            'room' => $isId
+                ? 'Tampilkan ringkasan analitik pemesanan ruangan termasuk total booking, utilisasi, status disetujui, pending, dan pembatalan.'
+                : 'Show room booking analytics summary including total room bookings, utilization, approved, pending, and cancelled bookings.',
+            'vehicle' => $isId
+                ? 'Tampilkan ringkasan analitik pemesanan kendaraan termasuk total booking, utilisasi, status disetujui, pending, selesai, dan pembatalan.'
+                : 'Show vehicle booking analytics summary including total vehicle bookings, vehicle utilization, approved, pending, completed, and cancelled bookings.',
+            'delivery' => $isId
+                ? 'Tampilkan ringkasan analitik pengiriman dokumen dan paket termasuk total dokumen/paket diterima, dikirim, status pending, dan tersimpan.'
+                : 'Show document and package delivery analytics summary including packages/documents received, sent, pending, and completed deliveries.',
+            default => 'Show an analytics overview.',
+        };
+
+        $this->isOpen = true;
+        $this->panel  = 'chat';
+        $this->sendMessageText($query);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Send Message
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function sendMessage(): void
     {
-        $text = trim($this->message);
+        $this->sendMessageText($this->message);
+    }
+
+    public function sendMessageText(string $input): void
+    {
+        $text = trim($input);
         if ($text === '' || $this->isLoading) return;
 
         $this->ensureMemoryDefaults();
@@ -744,12 +829,27 @@ class ChatModal extends Component
 
     private function seedGreeting(): void
     {
-        $role     = $this->userRole();
-        $greeting = $role === 'manager'
-            ? "Hello! I'm your analytics assistant. Ask me about bookings, occupancy trends, vehicle usage, or any statistics."
-            : "Hello! I'm your booking assistant. Ask me about today's schedule, pending approvals, or say something like \"Book Meeting Room A tomorrow from 9 to 11 for the weekly sync\" and I'll create the booking for you.";
+        $role   = $this->userRole();
+        $locale = app()->getLocale();
+        $isId   = $locale === 'id';
 
-        $this->messages[] = ['role' => 'assistant', 'text' => $greeting, 'booking_prefill' => null, 'vehicle_prefill' => null, 'sent_at' => now()->format('H:i')];
+        if ($role === 'manager') {
+            $text = $isId
+                ? "Halo! Saya KRB Manager Assistant. Saya siap membantu Anda menganalisis operasional:\n\n• **Buku Tamu & Pengunjung** (tren, kunjungan, statistik)\n• **Pemesanan Ruangan** (utilisasi, status, pembatalan)\n• **Pemesanan Kendaraan** (utilisasi, status, pembatalan)\n• **Pengiriman Dokumen & Paket** (status, riwayat pengiriman)\n\nGunakan tombol pintas di atas atau tanyakan langsung."
+                : "Hello! I'm the KRB Manager Assistant. I can help you analyze operations:\n\n• **Guestbook & Visitors** (trends, counts, statistics)\n• **Room Bookings** (utilization, statuses, cancellations)\n• **Vehicle Bookings** (utilization, statuses, cancellations)\n• **Document & Package Deliveries** (status, delivery logs)\n\nUse the quick actions above or ask any question.";
+        } else {
+            $text = $isId
+                ? "Halo! Saya KRB Receptionist Assistant. Saya bisa membantu Anda:\n\n• **Auto Room Booking** (buat reservasi ruangan rapat secara cepat)\n• **Auto Vehicle Booking** (buat reservasi kendaraan dinas/operasional)\n• **Informasi Jadwal & Ketersediaan** fasilitas dan kendaraan\n\nGunakan tombol pintas di atas atau ketik detail reservasi Anda."
+                : "Hello! I'm the KRB Receptionist Assistant. I can help you with:\n\n• **Auto Room Booking** (quickly create meeting room reservations)\n• **Auto Vehicle Booking** (quickly create vehicle reservations)\n• **Schedules & Availability** for rooms and vehicles\n\nUse the quick actions above or type your booking details directly.";
+        }
+
+        $this->messages[] = [
+            'role'            => 'assistant',
+            'text'            => $text,
+            'booking_prefill' => null,
+            'vehicle_prefill' => null,
+            'sent_at'         => now()->format('H:i'),
+        ];
     }
 
     private function userRole(): string { 
