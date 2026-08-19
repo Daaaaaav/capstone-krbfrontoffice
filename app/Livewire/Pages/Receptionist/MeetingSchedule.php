@@ -15,6 +15,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Rules\NoSpecialCharacters;
 
 #[Layout('layouts.receptionist')]
 #[Title('Meeting Schedule')]
@@ -310,14 +311,14 @@ class MeetingSchedule extends Component
         $roomPk = $this->pickColumn('rooms', ['room_id', 'id'], 'room_id');
 
         return [
-            'form.meeting_title' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'form.meeting_title' => ['required', 'string', 'max:255', new NoSpecialCharacters('Meeting title')],
             'form.room_id'       => ['required', 'integer', "exists:rooms,{$roomPk}"],
             'form.department_id' => ['required', 'integer', "exists:departments,{$deptPk}"],
             'form.date'          => ['required', 'date_format:Y-m-d'],
             'form.time'          => ['required', 'date_format:H:i'],
             'form.time_end'      => ['required', 'date_format:H:i', 'after:form.time'],
             'form.participant'   => ['required', 'integer', 'min:1'],
-            'form.notes'         => ['nullable', 'string', 'max:1000', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'form.notes'         => ['nullable', 'string', 'max:1000', new NoSpecialCharacters('Notes')],
             'form.requirements'  => ['array'],
             'form.requirements.*' => ['nullable', 'sometimes', 'distinct', function ($attribute, $value, $fail) {
                 if (!is_numeric($value) && $value !== 'Other') {
@@ -498,7 +499,7 @@ class MeetingSchedule extends Component
         \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
 
         $data = $this->validate([
-            'online_meeting_title' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'online_meeting_title' => ['required', 'string', 'max:255', new NoSpecialCharacters('Meeting title')],
             'online_platform'      => ['required', Rule::in(['google_meet', 'zoom'])],
             'online_date'          => ['required', 'date_format:Y-m-d'],
             'online_start_time'    => ['required', 'date_format:H:i'],

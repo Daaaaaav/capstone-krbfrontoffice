@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use App\Services\SecurityMonitoringService;
+use App\Rules\NoSpecialCharacters;
 
 #[Layout('layouts.receptionist')]
 #[Title('Package')]
@@ -35,11 +36,11 @@ class Package extends Component
     protected function rules(): array
     {
         return [
-            'form.package_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
-            'form.nama_pengirim' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
-            'form.nama_penerima' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
-            'form.penyimpanan' => ['nullable', 'integer', 'exists:storages,storage_id'],
-            'form.pengambilan' => ['nullable', 'date_format:Y-m-d\TH:i'],
+            'form.package_name'  => ['required', 'string', 'max:255', new NoSpecialCharacters('Package name')],
+            'form.nama_pengirim' => ['required', 'string', 'max:255', new NoSpecialCharacters('Sender name')],
+            'form.nama_penerima' => ['required', 'string', 'max:255', new NoSpecialCharacters('Receiver name')],
+            'form.penyimpanan'   => ['nullable', 'integer', 'exists:storages,storage_id'],
+            'form.pengambilan'   => ['nullable', 'date_format:Y-m-d\TH:i'],
         ];
     }
 
