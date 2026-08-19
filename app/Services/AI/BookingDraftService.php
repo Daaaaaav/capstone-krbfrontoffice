@@ -19,6 +19,20 @@ class BookingDraftService
         ];
     }
 
+    public function startRoomDraft(array $draft): array
+    {
+        $draft['type']   = 'room';
+        $draft['active'] = true;
+        return $draft;
+    }
+
+    public function startVehicleDraft(array $draft): array
+    {
+        $draft['type']   = 'vehicle';
+        $draft['active'] = true;
+        return $draft;
+    }
+
     public function mergePrefill(array $draft, ?array $roomPrefill, ?array $vehiclePrefill): array
     {
         $hasRoomData    = $this->hasAnyField($roomPrefill    ?? []);

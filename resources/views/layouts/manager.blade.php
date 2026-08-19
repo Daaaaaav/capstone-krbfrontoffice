@@ -231,19 +231,34 @@ $invertStyle = 'filter: brightness(0) invert(1);';
 
     @livewire('components.ui.chat-modal')
 
-    {{-- Floating chat button --}}
-    <div class="fixed bottom-6 right-6 z-[70]">
-        <button
-            x-data
-            x-on:click="$dispatch('openChatModal')"
-            class="bg-primary hover:bg-primary/90 text-primary-foreground p-3.5 rounded-2xl shadow-xl shadow-primary/10
-                   hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:-translate-y-1 active:scale-95
-                   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-            aria-label="Open AI assistant"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    {{-- Manager Chatbot FAB --}}
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2"
+         x-data="{ show: false }"
+         x-on:keydown.escape.window="show = false">
+
+        {{-- Tooltip label (appears on hover) --}}
+        <div x-show="show"
+             x-transition:enter="ease-out duration-150"
+             x-transition:enter-start="opacity-0 scale-95 translate-y-1"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             x-transition:leave="ease-in duration-100"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="bg-sidebar text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg border border-white/10 whitespace-nowrap"
+             style="display: none;">
+            KRB Manager Assistant
+        </div>
+
+        {{-- FAB button --}}
+        <button type="button"
+                x-on:mouseenter="show = true"
+                x-on:mouseleave="show = false"
+                x-on:click="$dispatch('openChatModal'); show = false"
+                class="w-14 h-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label="Open Manager AI Assistant">
+            {{-- Chat icon --}}
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
         </button>
     </div>
