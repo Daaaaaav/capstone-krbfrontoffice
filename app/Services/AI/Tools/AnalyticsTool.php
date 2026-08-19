@@ -21,9 +21,8 @@ class AnalyticsTool implements ToolInterface
 
     public function description(): string
     {
-        return 'Retrieve booking and operational statistics for a time period. '
-             . 'Use for questions about totals, trends, most-used rooms, peak hours, '
-             . 'department usage, year-over-year comparisons, or any numerical summary.';
+        return 'Retrieve booking and operational statistics for a time period, including room and vehicle cancellation statistics, '
+             . 'rejection rates, totals, trends, most-used rooms, peak hours, department usage, or year-over-year comparisons.';
     }
 
     public function parameters(): array
@@ -38,8 +37,8 @@ class AnalyticsTool implements ToolInterface
                 ],
                 'module' => [
                     'type'        => 'string',
-                    'enum'        => ['rooms', 'vehicles', 'guests', 'deliveries', 'all'],
-                    'description' => 'Which module to include. Use "all" for a full summary.',
+                    'enum'        => ['rooms', 'vehicles', 'guests', 'deliveries', 'cancellations', 'all'],
+                    'description' => 'Which module to include. Use "cancellations" for cancellation-specific stats, or "all" for a full summary.',
                 ],
             ],
             'required' => ['period'],
@@ -68,14 +67,16 @@ class AnalyticsTool implements ToolInterface
         $tz     = 'Asia/Jakarta';
         $now    = Carbon::now($tz);
 
-        if (in_array($module, ['rooms', 'all'])) {
+        if (in_array($module, ['rooms', 'cancellations', 'all'])) {
             $rQ        = BookingRoom::when($companyId, fn($q) => $q->where('company_id', $companyId));
             $total     = (clone $rQ)->whereBetween('created_at', [$start, $end])->count();
             $pending   = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
             $approved  = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'approved')->count();
             $rejected  = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'rejected')->count();
-            $completed = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'completed')->count();
+            $cancelled = (clone $rQ)->whereBetween('created_at', [$start, $end])->where('status', 'cancelled')->count();
+            $completed = (clone $rQ)->whereBetween('created_at', [$start, $end])->whereIn('status', ['completed', 'done'])->count();
             $rejRate   = $total > 0 ? round($rejected / $total * 100, 1) : 0;
+            $canRate   = $total > 0 ? round($cancelled / $total * 100, 1) : 0;
 
             $topRoom = (clone $rQ)->whereBetween('created_at', [$start, $end])
                 ->select('room_id', DB::raw('COUNT(*) as cnt'))
@@ -92,17 +93,21 @@ class AnalyticsTool implements ToolInterface
                 ->whereNotNull('start_time')->groupByRaw('HOUR(start_time)')->orderByDesc('cnt')->value('hr');
             $peakStr = $peakHr !== null ? sprintf('%02d:00–%02d:00', $peakHr, $peakHr + 1) : 'N/A';
 
-            $lines[] = "ROOMS: total={$total} pending={$pending} approved={$approved} completed={$completed} rejected={$rejected} ({$rejRate}% rejection rate)";
+            $lines[] = "ROOMS: total={$total} pending={$pending} approved={$approved} completed={$completed} rejected={$rejected} cancelled={$cancelled} ({$canRate}% cancellation rate, {$rejRate}% rejection rate)";
             $lines[] = "  Most booked room: {$topRoomName} | Top dept: {$topDeptName} | Peak hour: {$peakStr}";
         }
 
-        if (in_array($module, ['vehicles', 'all'])) {
-            $vQ      = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
-            $total   = (clone $vQ)->whereBetween('created_at', [$start, $end])->count();
-            $pending = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
-            $approved= (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'approved')->count();
-            $rejected= (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'rejected')->count();
-            $lines[] = "VEHICLES: total={$total} pending={$pending} approved={$approved} rejected={$rejected}";
+        if (in_array($module, ['vehicles', 'cancellations', 'all'])) {
+            $vQ        = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId));
+            $total     = (clone $vQ)->whereBetween('created_at', [$start, $end])->count();
+            $pending   = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
+            $approved  = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'approved')->count();
+            $onProgress= (clone $vQ)->whereBetween('created_at', [$start, $end])->whereIn('status', ['on_progress', 'late_return'])->count();
+            $completed = (clone $vQ)->whereBetween('created_at', [$start, $end])->whereIn('status', ['completed', 'returned'])->count();
+            $rejected  = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'rejected')->count();
+            $cancelled = (clone $vQ)->whereBetween('created_at', [$start, $end])->where('status', 'cancelled')->count();
+            $canRate   = $total > 0 ? round($cancelled / $total * 100, 1) : 0;
+            $lines[]   = "VEHICLES: total={$total} pending={$pending} approved={$approved} on_progress={$onProgress} completed={$completed} rejected={$rejected} cancelled={$cancelled} ({$canRate}% cancellation rate)";
         }
 
         if (in_array($module, ['guests', 'all'])) {

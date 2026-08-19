@@ -167,11 +167,11 @@
                     @else
                         {{-- Assistant bubble --}}
                         <div class="flex justify-start">
-                            <div class="bg-card border border-border rounded-2xl rounded-tl-none max-w-[85%] shadow-sm overflow-hidden">
-                                <div class="px-3.5 py-2.5">
-                                    <p class="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">{{ $msg['text'] }}</p>
+                            <div class="bg-card border border-border rounded-2xl rounded-tl-none max-w-[88%] shadow-sm overflow-hidden">
+                                <div class="px-3.5 py-2.5 text-xs text-foreground leading-relaxed break-words space-y-1.5 [&_p]:leading-relaxed [&_p]:mb-1.5 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-1.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-1.5 [&_li]:mb-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-[11px] [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1">
+                                    {!! \Illuminate\Support\Str::markdown($msg['text'], ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
                                     @if (!empty($msg['sent_at']))
-                                        <p class="text-[9px] text-muted-foreground/50 mt-1">{{ $msg['sent_at'] }}</p>
+                                        <p class="text-[9px] text-muted-foreground/50 mt-1 not-prose">{{ $msg['sent_at'] }}</p>
                                     @endif
                                 </div>
 
@@ -464,11 +464,11 @@
                         </div>
                     @else
                         <div class="flex justify-start">
-                            <div class="bg-card border border-border rounded-2xl rounded-tl-none max-w-[85%] shadow-sm overflow-hidden">
-                                <div class="px-3.5 py-2.5">
-                                    <p class="text-xs text-foreground leading-relaxed whitespace-pre-wrap break-words">{{ $msg['text'] }}</p>
+                            <div class="bg-card border border-border rounded-2xl rounded-tl-none max-w-[88%] shadow-sm overflow-hidden">
+                                <div class="px-3.5 py-2.5 text-xs text-foreground leading-relaxed break-words space-y-1.5 [&_p]:leading-relaxed [&_p]:mb-1.5 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:mb-1.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:mb-1.5 [&_li]:mb-0.5 [&_strong]:font-semibold [&_strong]:text-foreground [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_table]:w-full [&_table]:border-collapse [&_table]:my-2 [&_table]:text-[11px] [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted/50 [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1">
+                                    {!! \Illuminate\Support\Str::markdown($msg['text'], ['html_input' => 'strip', 'allow_unsafe_links' => false]) !!}
                                     @if (!empty($msg['sent_at']))
-                                        <p class="text-[9px] text-muted-foreground/50 mt-1">{{ $msg['sent_at'] }}</p>
+                                        <p class="text-[9px] text-muted-foreground/50 mt-1 not-prose">{{ $msg['sent_at'] }}</p>
                                     @endif
                                 </div>
 
