@@ -1,3 +1,9 @@
+@php
+    $filteredAlerts = $this->filteredAlerts ?? [];
+    if (!is_array($filteredAlerts)) {
+        $filteredAlerts = is_array($alerts ?? null) ? $alerts : [];
+    }
+@endphp
 <div
     class="min-h-screen bg-[#f5f7f2]"
     @if($autoRefresh) wire:poll.30s="pollRefresh" @endif
@@ -183,14 +189,15 @@
                 {{ __('app.loading') }}
             </div>
             {{-- Table header --}}
-            @if(count($this->filteredAlerts) > 0)
+            @if(count($filteredAlerts) > 0)
                 {{-- Desktop Layout --}}
                 <div class="hidden lg:block overflow-x-auto">
                     <div class="min-w-[1050px]">
                         {{-- Desktop Table Header --}}
                         <div class="grid grid-cols-[120px_60px_minmax(250px,1fr)_140px_80px_180px_100px_80px]
                                     gap-x-3 px-5 py-3 bg-[#f0f4eb] border-b border-[#d4dfc8]
-                                    text-xs font-semibold uppercase tracking-wide text-[#7a8f6a]">
+                                    text-xs font-semibold uppercase tracking-wide text-[#7a8f6a]"
+                             style="grid-template-columns: 120px 60px minmax(250px, 1fr) 140px 80px 180px 100px 80px;">
                             <span>Severity</span>
                             <span>Level</span>
                             <span>Description</span>
@@ -202,7 +209,7 @@
                         </div>
 
                         {{-- Desktop Rows --}}
-                        @foreach($this->filteredAlerts as $index => $alert)
+                        @foreach($filteredAlerts as $index => $alert)
                             @php
                                 $alertKey = $alert['id']
                                     ?? $alert['alert_id']
@@ -229,7 +236,8 @@
                             >
                                 <div class="px-5 py-4">
                                     <div class="grid grid-cols-[120px_60px_minmax(250px,1fr)_140px_80px_180px_100px_80px]
-                                                gap-x-3 items-center">
+                                                gap-x-3 items-center"
+                                         style="grid-template-columns: 120px 60px minmax(250px, 1fr) 140px 80px 180px 100px 80px;">
                                         {{-- Severity badge --}}
                                         <span class="px-2.5 py-1 border rounded-full text-xs font-medium text-center {{ $alert['badge_class'] }}">
                                             {{ $alert['severity_label'] }}
@@ -360,7 +368,7 @@
 
                 {{-- Mobile Layout --}}
                 <div class="lg:hidden">
-                    @foreach($this->filteredAlerts as $index => $alert)
+                    @foreach($filteredAlerts as $index => $alert)
                         @php
                             $alertKey = $alert['id']
                                 ?? $alert['alert_id']
@@ -538,9 +546,9 @@
         {{-- ================================================================
              FOOTER: Alert count info and severity note
         ================================================================ --}}
-        @if($wazuhAvailable && count($this->filteredAlerts) > 0)
+        @if($wazuhAvailable && count($filteredAlerts) > 0)
             <p class="text-xs text-[#9aaa8a] text-center pb-2">
-                Showing {{ count($this->filteredAlerts) }} alert{{ count($this->filteredAlerts) !== 1 ? 's' : '' }}
+                Showing {{ count($filteredAlerts) }} alert{{ count($filteredAlerts) !== 1 ? 's' : '' }}
                 @if($selectedSeverity !== 'all') (filtered: {{ $selectedSeverity }}) @endif
                 &middot; Fetched from Wazuh Indexer (last 50 alerts) &middot;
                 Counts reflect this page&rsquo;s dataset, not total history.
