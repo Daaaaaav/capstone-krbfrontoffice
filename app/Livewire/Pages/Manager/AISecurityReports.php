@@ -70,11 +70,13 @@ class AISecurityReports extends Component
 
     /**
      * Called by wire:poll.30s on the Blade template.
-     * Delegates to the same method as manual refresh to avoid duplication.
+     * Only loads when auto-refresh is enabled; avoids wasted requests when paused.
      */
     public function pollRefresh(): void
     {
-        $this->loadAlerts();
+        if ($this->autoRefresh) {
+            $this->loadAlerts();
+        }
     }
 
     public function toggleAutoRefresh(): void
@@ -122,11 +124,20 @@ class AISecurityReports extends Component
             $this->summary        = (array) ($result['summary']  ?? $this->summary);
             $this->lastUpdated    = (string) ($result['last_updated'] ?? now()->toIso8601String());
 
+            // Log a brief summary only when the Indexer transitions to unavailable,
+            // to avoid filling logs during normal polling.
+            if (!$this->wazuhAvailable) {
+                \Illuminate\Support\Facades\Log::warning('WazuhSecurityReports: Indexer unavailable', [
+                    'component' => static::class,
+                ]);
+            }
+
         } catch (\Throwable $e) {
-            // Defensive catch – WazuhService already logs internally.
+            // Defensive catch – WazuhService already logs the full error internally.
             // This ensures the component never crashes the dashboard.
             \Illuminate\Support\Facades\Log::error(
-                'AISecurityReports failed to load alerts: ' . $e->getMessage()
+                'WazuhSecurityReports: unexpected exception in component: ' . $e->getMessage(),
+                ['component' => static::class, 'exception_class' => get_class($e)]
             );
 
             $this->wazuhAvailable = false;
