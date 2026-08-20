@@ -1,23 +1,3 @@
-{{--
-    Wazuh Security Reports – shared view for Manager and IT Officer.
-    Variables injected by AISecurityReports::render():
-      $filteredAlerts  array   – normalised alert rows after severity filter
-                                 Each row has: rule_level, rule_id, rule_description,
-                                 agent_name, agent_id, agent_ip, manager_name,
-                                 decoder_name, location, timestamp, full_log,
-                                 severity, severity_label, badge_class
-    Public properties (available directly in Blade):
-      $autoRefresh      bool
-      $selectedSeverity string
-      $wazuhAvailable   bool
-      $summary          array  (total, critical, high, medium, low)
-      $lastUpdated      string (ISO 8601)
-      $expandedIndex    int|null
-    SECURITY: full_log is untrusted external data. It is ALWAYS rendered with
-    {{ }} (HTML-escaped). Never use {!! !!} on alert content.
-    Auto-refresh uses wire:poll.30s="pollRefresh" and is only active when
-    $autoRefresh is true. Manual refresh uses wire:click="refreshAlerts".
---}}
 <div
     class="min-h-screen bg-[#f5f7f2]"
     @if($autoRefresh) wire:poll.30s="pollRefresh" @endif
@@ -203,7 +183,7 @@
                 {{ __('app.loading') }}
             </div>
             {{-- Table header --}}
-            @if(count($filteredAlerts ?? []) > 0)
+            @if(count($this->filteredAlerts) > 0)
                 <div class="hidden lg:grid grid-cols-[120px_60px_1fr_140px_80px_180px_100px_80px]
                             gap-x-3 px-5 py-3 bg-[#f0f4eb] border-b border-[#d4dfc8]
                             text-xs font-semibold uppercase tracking-wide text-[#7a8f6a]">
@@ -218,7 +198,7 @@
                 </div>
             @endif
             {{-- Alert rows --}}
-            @forelse($filteredAlerts as $index => $alert)
+            @forelse($this->filteredAlerts as $index => $alert)
                 @php
                     $isExpanded = ($expandedIndex === $index);
                     $ts = $alert['timestamp'] ?? '';
@@ -444,9 +424,9 @@
         {{-- ================================================================
              FOOTER: Alert count info and severity note
         ================================================================ --}}
-        @if($wazuhAvailable && count($filteredAlerts ?? []) > 0)
+        @if($wazuhAvailable && count($this->filteredAlerts) > 0)
             <p class="text-xs text-[#9aaa8a] text-center pb-2">
-                Showing {{ count($filteredAlerts ?? []) }} alert{{ count($filteredAlerts ?? []) !== 1 ? 's' : '' }}
+                Showing {{ count($this->filteredAlerts) }} alert{{ count($this->filteredAlerts) !== 1 ? 's' : '' }}
                 @if($selectedSeverity !== 'all') (filtered: {{ $selectedSeverity }}) @endif
                 &middot; Fetched from Wazuh Indexer (last 50 alerts) &middot;
                 Counts reflect this page&rsquo;s dataset, not total history.
