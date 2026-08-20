@@ -9,21 +9,20 @@ use App\Livewire\Pages\Manager\AISecurityReports as ManagerAISecurityReports;
 /**
  * IT Officer – Wazuh Security Reports
  *
- * Inherits ALL data-loading logic, refresh methods, and state from the Manager
- * component. The only differences are the layout wrapper (it-officer sidebar)
- * and the explicit render() override that follows the same pattern used by every
- * other IT Officer subclass in this project (see LSTMPredictions, OccupancyForecasting).
+ * Inherits ALL data-loading logic, refresh methods, state, and the
+ * #[Computed] filteredAlerts property from the Manager component.
+ * The only differences are the layout wrapper (it-officer sidebar)
+ * and the render() override that applies it — matching the established
+ * pattern used by every other IT Officer subclass in this project
+ * (see LSTMPredictions, OccupancyForecasting).
  *
- * Without the render() override, the inherited Manager render() returns a plain
- * view() object without ->layout() chained on it. While Livewire v3's SupportPageComponents
- * interceptor reads the #[Layout] attribute from the actual class and applies it, the
- * explicit override is the established project pattern and makes the layout contract clear.
+ * The shared Blade view (livewire.pages.manager.a-i-security-reports)
+ * accesses filteredAlerts via $this->filteredAlerts (the #[Computed]
+ * property), so it renders identically for both roles.
  *
- * Authorization is enforced at the route level via the 'is.it.officer' middleware
- * (see routes/web.php). No additional permission logic is needed here.
- *
- * The shared Blade view (livewire.pages.manager.a-i-security-reports) renders
- * identically for both roles.
+ * Authorization is enforced at the route level via the 'is.it.officer'
+ * middleware (see routes/web.php). No additional permission logic is
+ * needed here.
  */
 #[Layout('layouts.it-officer')]
 #[Title('Wazuh Security Reports')]
@@ -31,6 +30,9 @@ class AISecurityReports extends ManagerAISecurityReports
 {
     public function render()
     {
+        // parent::render() returns a plain view() – apply the IT Officer
+        // layout via the Livewire v3 View::macro('layout', ...) exactly
+        // as LSTMPredictions and OccupancyForecasting do.
         return parent::render()->layout('layouts.it-officer');
     }
 }

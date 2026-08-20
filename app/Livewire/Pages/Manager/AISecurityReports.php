@@ -3,6 +3,7 @@
 namespace App\Livewire\Pages\Manager;
 
 use Livewire\Component;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use App\Services\WazuhService;
@@ -88,7 +89,7 @@ class AISecurityReports extends Component
     {
         $this->selectedSeverity = $level;
         $this->expandedIndex    = null;
-        // No re-fetch needed; filtering is done in the view over already-loaded $alerts
+        // No re-fetch needed; the filteredAlerts computed property re-evaluates automatically.
     }
 
     public function toggleDetail(int $index): void
@@ -147,22 +148,44 @@ class AISecurityReports extends Component
     }
 
     // -------------------------------------------------------------------------
+    // Computed properties
+    // -------------------------------------------------------------------------
+
+    /**
+     * Severity-filtered view of the loaded alerts.
+     *
+     * Livewire v3 #[Computed] properties are evaluated lazily on each render
+     * request and are available in Blade as $this->filteredAlerts.  Because
+     * they derive from public properties ($alerts, $selectedSeverity) that are
+     * already serialised on every request, the Blade always sees the correct
+     * filtered data – even after setSeverity(), refreshAlerts(), and
+     * pollRefresh() updates.
+     *
+     * The cache is intentionally NOT persisted across requests (persist: false
+     * is the default) so that every render always reflects the current state.
+     */
+    #[Computed]
+    public function filteredAlerts(): array
+    {
+        $collection = collect($this->alerts);
+
+        if ($this->selectedSeverity !== 'all') {
+            $collection = $collection->filter(
+                fn ($alert) => ($alert['severity'] ?? '') === $this->selectedSeverity
+            );
+        }
+
+        return $collection->values()->all();
+    }
+
+    // -------------------------------------------------------------------------
     // Render
     // -------------------------------------------------------------------------
 
     public function render()
     {
-        // Apply severity filter to the already-loaded alerts (no extra HTTP request)
-        $filtered = collect($this->alerts);
-
-        if ($this->selectedSeverity !== 'all') {
-            $filtered = $filtered->filter(
-                fn ($alert) => ($alert['severity'] ?? '') === $this->selectedSeverity
-            );
-        }
-
-        return view('livewire.pages.manager.a-i-security-reports', [
-            'filteredAlerts' => $filtered->values()->all(),
-        ]);
+        // filteredAlerts is now a #[Computed] property; no need to pass it as
+        // a view variable.  The Blade accesses it via $this->filteredAlerts.
+        return view('livewire.pages.manager.a-i-security-reports');
     }
 }
