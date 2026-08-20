@@ -41,6 +41,23 @@ return [
         'model'   => env('GROQ_MODEL', 'qwen/qwen3-32b'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Wazuh Indexer (OpenSearch) – used by App\Services\WazuhService
+    |--------------------------------------------------------------------------
+    | WAZUH_INDEXER_URL  : Full base URL of the Wazuh Indexer, e.g. https://localhost:9200
+    | WAZUH_INDEXER_USER : Basic-auth username  (default: admin)
+    | WAZUH_INDEXER_PASS : Basic-auth password
+    |
+    | These credentials are NEVER exposed to Blade, Livewire public properties,
+    | JavaScript, or browser requests – they exist on the server only.
+    */
+    'wazuh' => [
+        'url'      => env('WAZUH_INDEXER_URL', 'https://localhost:9200'),
+        'username' => env('WAZUH_INDEXER_USER', 'admin'),
+        'password' => env('WAZUH_INDEXER_PASS', ''),
+    ],
+
     'zoom' => [
         'account_id'    => env('ZOOM_ACCOUNT_ID'),
         'client_id'     => env('ZOOM_CLIENT_ID'),
