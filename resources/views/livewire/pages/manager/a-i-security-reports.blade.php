@@ -203,7 +203,7 @@
                 {{ __('app.loading') }}
             </div>
             {{-- Table header --}}
-            @if(count($filteredAlerts) > 0)
+            @if(count($filteredAlerts ?? []) > 0)
                 <div class="hidden lg:grid grid-cols-[120px_60px_1fr_140px_80px_180px_100px_80px]
                             gap-x-3 px-5 py-3 bg-[#f0f4eb] border-b border-[#d4dfc8]
                             text-xs font-semibold uppercase tracking-wide text-[#7a8f6a]">
@@ -444,9 +444,9 @@
         {{-- ================================================================
              FOOTER: Alert count info and severity note
         ================================================================ --}}
-        @if($wazuhAvailable && count($filteredAlerts) > 0)
+        @if($wazuhAvailable && count($filteredAlerts ?? []) > 0)
             <p class="text-xs text-[#9aaa8a] text-center pb-2">
-                Showing {{ count($filteredAlerts) }} alert{{ count($filteredAlerts) !== 1 ? 's' : '' }}
+                Showing {{ count($filteredAlerts ?? []) }} alert{{ count($filteredAlerts ?? []) !== 1 ? 's' : '' }}
                 @if($selectedSeverity !== 'all') (filtered: {{ $selectedSeverity }}) @endif
                 &middot; Fetched from Wazuh Indexer (last 50 alerts) &middot;
                 Counts reflect this page&rsquo;s dataset, not total history.
