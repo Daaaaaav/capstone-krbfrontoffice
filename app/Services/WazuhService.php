@@ -141,7 +141,10 @@ class WazuhService
                 ->all();
 
         } catch (\Throwable $e) {
-            Log::error('Wazuh connection error: ' . $e->getMessage());
+            Log::error('WazuhService::getRecentAlerts connection error: ' . $e->getMessage(), [
+                'indexer_url' => config('services.wazuh.url'),
+                'user_set'    => (config('services.wazuh.username') !== null && config('services.wazuh.username') !== ''),
+            ]);
 
             return [];
         }
@@ -220,9 +223,11 @@ class WazuhService
 
         } catch (\Throwable $e) {
             Log::error('WazuhService::getSecuritySummary exception: ' . $e->getMessage(), [
-                'class' => get_class($e),
-                // stack trace intentionally omitted from log to avoid leaking
-                // internal paths; use the log channel's stack trace if needed
+                'class'        => get_class($e),
+                'indexer_url'  => config('services.wazuh.url'),
+                'user_set'     => (config('services.wazuh.username') !== null && config('services.wazuh.username') !== ''),
+                'pass_set'     => (config('services.wazuh.password') !== null && config('services.wazuh.password') !== ''),
+                // Credentials are intentionally NOT logged.
             ]);
 
             return $this->unavailableResponse($lastUpdated);
