@@ -184,204 +184,318 @@
             </div>
             {{-- Table header --}}
             @if(count($this->filteredAlerts) > 0)
-                <div class="hidden lg:grid grid-cols-[120px_60px_1fr_140px_80px_180px_100px_80px]
-                            gap-x-3 px-5 py-3 bg-[#f0f4eb] border-b border-[#d4dfc8]
-                            text-xs font-semibold uppercase tracking-wide text-[#7a8f6a]">
-                    <span>Severity</span>
-                    <span>Level</span>
-                    <span>Description</span>
-                    <span>Agent</span>
-                    <span>Rule ID</span>
-                    <span>Location</span>
-                    <span>Time</span>
-                    <span class="text-right">{{ __('app.actions') }}</span>
-                </div>
-            @endif
-            {{-- Alert rows --}}
-            @forelse($this->filteredAlerts as $index => $alert)
-                @php
-                    $isExpanded = ($expandedIndex === $index);
-                    $ts = $alert['timestamp'] ?? '';
-                    try {
-                        $formatted = $ts ? \Carbon\Carbon::parse($ts)->format('d M H:i') : '-';
-                        $fullTime  = $ts ? \Carbon\Carbon::parse($ts)->toDateTimeString() : '-';
-                    } catch (\Throwable $e) {
-                        $formatted = $ts ?: '-';
-                        $fullTime  = $ts ?: '-';
-                    }
-                @endphp
-                <div class="border-b border-[#e8ede2] last:border-b-0
-                            {{ $isExpanded ? 'bg-[#f5f7f2]' : 'hover:bg-[#fafbf8]' }} transition">
-                    {{-- Main row --}}
-                    <div class="px-5 py-4">
-                        {{-- Mobile layout (stacked) --}}
-                        <div class="lg:hidden space-y-2">
-                            <div class="flex items-start justify-between gap-3">
-                                <span class="px-2.5 py-1 border rounded-full text-xs font-medium {{ $alert['badge_class'] }}">
-                                    {{ $alert['severity_label'] }}
-                                </span>
-                                <span class="text-xs text-[#9aaa8a]">{{ $formatted }}</span>
-                            </div>
-                            <p class="text-sm font-semibold text-[#2d3a24]">
-                                {{-- Escaped – rule_description is untrusted Wazuh data --}}
-                                {{ $alert['rule_description'] }}
-                            </p>
-                            <div class="flex flex-wrap gap-2 text-xs text-[#7a8f6a]">
-                                @if($alert['agent_name'] !== 'Unknown')
-                                    <span class="px-2 py-0.5 bg-[#eef1e8] rounded-full">{{ $alert['agent_name'] }}</span>
-                                @endif
-                                @if($alert['rule_id'] !== '-')
-                                    <span class="px-2 py-0.5 bg-[#eef1e8] rounded-full">
-                                        {{ __('app.rule_label') }} {{ $alert['rule_id'] }}
-                                    </span>
-                                @endif
-                                @if($alert['location'] !== '-')
-                                    <span class="px-2 py-0.5 bg-[#eef1e8] rounded-full truncate max-w-[160px]">
-                                        {{ $alert['location'] }}
-                                    </span>
-                                @endif
-                            </div>
-                            <button
-                                wire:click="toggleDetail({{ $index }})"
-                                class="text-xs text-[#4E653D] hover:text-[#354C2B] font-medium"
+                {{-- Desktop Layout --}}
+                <div class="hidden lg:block overflow-x-auto">
+                    <div class="min-w-[1050px]">
+                        {{-- Desktop Table Header --}}
+                        <div class="grid grid-cols-[120px_60px_minmax(250px,1fr)_140px_80px_180px_100px_80px]
+                                    gap-x-3 px-5 py-3 bg-[#f0f4eb] border-b border-[#d4dfc8]
+                                    text-xs font-semibold uppercase tracking-wide text-[#7a8f6a]">
+                            <span>Severity</span>
+                            <span>Level</span>
+                            <span>Description</span>
+                            <span>Agent</span>
+                            <span>Rule ID</span>
+                            <span>Location</span>
+                            <span>Time</span>
+                            <span class="text-right">{{ __('app.actions') }}</span>
+                        </div>
+
+                        {{-- Desktop Rows --}}
+                        @foreach($this->filteredAlerts as $index => $alert)
+                            @php
+                                $alertKey = $alert['id']
+                                    ?? $alert['alert_id']
+                                    ?? md5(
+                                        ($alert['timestamp'] ?? '') . '|' .
+                                        ($alert['rule_id'] ?? '') . '|' .
+                                        ($alert['agent_id'] ?? '') . '|' .
+                                        $index
+                                    );
+                                $isExpanded = ($expandedIndex === $index);
+                                $ts = $alert['timestamp'] ?? '';
+                                try {
+                                    $formatted = $ts ? \Carbon\Carbon::parse($ts)->format('d M H:i') : '-';
+                                    $fullTime  = $ts ? \Carbon\Carbon::parse($ts)->toDateTimeString() : '-';
+                                } catch (\Throwable $e) {
+                                    $formatted = $ts ?: '-';
+                                    $fullTime  = $ts ?: '-';
+                                }
+                            @endphp
+                            <div
+                                wire:key="wazuh-alert-desktop-{{ $alertKey }}"
+                                class="border-b border-[#e8ede2] last:border-b-0
+                                       {{ $isExpanded ? 'bg-[#f5f7f2]' : 'hover:bg-[#fafbf8]' }} transition"
                             >
-                                {{ $isExpanded ? '▲ Hide Details' : '▼ Show Details' }}
-                            </button>
-                        </div>
-                        {{-- Desktop layout (grid) --}}
-                        <div class="hidden lg:grid grid-cols-[120px_60px_1fr_140px_80px_180px_100px_80px]
-                                    gap-x-3 items-center">
-                            {{-- Severity badge --}}
-                            <span class="px-2.5 py-1 border rounded-full text-xs font-medium text-center {{ $alert['badge_class'] }}">
-                                {{ $alert['severity_label'] }}
-                            </span>
-                            {{-- Level --}}
-                            <span class="text-sm font-mono font-semibold text-[#4A2F24]">
-                                {{ $alert['rule_level'] }}
-                            </span>
-                            {{-- Description – escaped, truncated on desktop with title for full text --}}
-                            <span class="text-sm text-[#2d3a24] truncate"
-                                  title="{{ htmlspecialchars($alert['rule_description'], ENT_QUOTES, 'UTF-8') }}">
-                                {{ $alert['rule_description'] }}
-                            </span>
-                            {{-- Agent --}}
-                            <span class="text-xs text-[#5a6e4a] truncate"
-                                  title="{{ htmlspecialchars($alert['agent_name'], ENT_QUOTES, 'UTF-8') }}">
-                                {{ $alert['agent_name'] }}
-                            </span>
-                            {{-- Rule ID --}}
-                            <span class="text-xs font-mono text-[#7a8f6a]">
-                                {{ $alert['rule_id'] }}
-                            </span>
-                            {{-- Location --}}
-                            <span class="text-xs text-[#7a8f6a] truncate"
-                                  title="{{ htmlspecialchars($alert['location'], ENT_QUOTES, 'UTF-8') }}">
-                                {{ $alert['location'] }}
-                            </span>
-                            {{-- Timestamp --}}
-                            <span class="text-xs text-[#9aaa8a]" title="{{ $fullTime }}">
-                                {{ $formatted }}
-                            </span>
-                            {{-- Details toggle --}}
-                            <div class="text-right">
-                                <button
-                                    wire:click="toggleDetail({{ $index }})"
-                                    class="px-3 py-1 rounded-lg text-xs font-medium border transition
-                                        {{ $isExpanded
-                                            ? 'bg-[#4A2F24] text-white border-[#4A2F24]'
-                                            : 'bg-white border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}"
-                                >
-                                    {{ $isExpanded ? 'Close' : __('app.detail') }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {{-- ============================================================
-                         DETAIL PANEL
-                         Expanded when toggleDetail($index) is called.
-                         SECURITY: ALL alert text fields are rendered with {{ }}
-                         (HTML-escaped), especially full_log which is untrusted
-                         external log data from monitored systems.
-                         NEVER use {!! !!} here.
-                    ============================================================ --}}
-                    @if($isExpanded)
-                        <div class="px-5 pb-5 border-t border-[#e8ede2] bg-[#f5f7f2]">
-                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {{-- Severity --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Severity</p>
-                                    <span class="px-2.5 py-1 border rounded-full text-xs font-medium {{ $alert['badge_class'] }}">
-                                        {{ $alert['severity_label'] }}
-                                    </span>
+                                <div class="px-5 py-4">
+                                    <div class="grid grid-cols-[120px_60px_minmax(250px,1fr)_140px_80px_180px_100px_80px]
+                                                gap-x-3 items-center">
+                                        {{-- Severity badge --}}
+                                        <span class="px-2.5 py-1 border rounded-full text-xs font-medium text-center {{ $alert['badge_class'] }}">
+                                            {{ $alert['severity_label'] }}
+                                        </span>
+                                        {{-- Level --}}
+                                        <span class="text-sm font-mono font-semibold text-[#4A2F24]">
+                                            {{ $alert['rule_level'] }}
+                                        </span>
+                                        {{-- Description --}}
+                                        <span class="text-sm text-[#2d3a24] truncate"
+                                              title="{{ htmlspecialchars($alert['rule_description'], ENT_QUOTES, 'UTF-8') }}">
+                                            {{ $alert['rule_description'] }}
+                                        </span>
+                                        {{-- Agent --}}
+                                        <span class="text-xs text-[#5a6e4a] truncate"
+                                              title="{{ htmlspecialchars($alert['agent_name'], ENT_QUOTES, 'UTF-8') }}">
+                                            {{ $alert['agent_name'] }}
+                                        </span>
+                                        {{-- Rule ID --}}
+                                        <span class="text-xs font-mono text-[#7a8f6a]">
+                                            {{ $alert['rule_id'] }}
+                                        </span>
+                                        {{-- Location --}}
+                                        <span class="text-xs text-[#7a8f6a] truncate"
+                                              title="{{ htmlspecialchars($alert['location'], ENT_QUOTES, 'UTF-8') }}">
+                                            {{ $alert['location'] }}
+                                        </span>
+                                        {{-- Timestamp --}}
+                                        <span class="text-xs text-[#9aaa8a]" title="{{ $fullTime }}">
+                                            {{ $formatted }}
+                                        </span>
+                                        {{-- Details toggle --}}
+                                        <div class="text-right">
+                                            <button
+                                                wire:click="toggleDetail({{ $index }})"
+                                                class="px-3 py-1 rounded-lg text-xs font-medium border transition
+                                                    {{ $isExpanded
+                                                        ? 'bg-[#4A2F24] text-white border-[#4A2F24]'
+                                                        : 'bg-white border-[#d4dfc8] text-[#4E653D] hover:bg-[#f0f4eb]' }}"
+                                            >
+                                                {{ $isExpanded ? 'Close' : __('app.detail') }}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                {{-- Rule Level --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Rule Level</p>
-                                    <p class="text-2xl font-bold text-[#4A2F24]">{{ $alert['rule_level'] }}</p>
-                                </div>
-                                {{-- Rule ID --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">{{ __('app.rule_label') }} ID</p>
-                                    <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['rule_id'] }}</p>
-                                </div>
-                                {{-- Rule Description --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3 sm:col-span-2 lg:col-span-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Description</p>
-                                    <p class="text-sm text-[#2d3a24]">{{ $alert['rule_description'] }}</p>
-                                </div>
-                                {{-- Agent Name --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent Name</p>
-                                    <p class="text-sm text-[#2d3a24]">{{ $alert['agent_name'] }}</p>
-                                </div>
-                                {{-- Agent ID --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent ID</p>
-                                    <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['agent_id'] }}</p>
-                                </div>
-                                {{-- Agent IP --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent IP</p>
-                                    <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['agent_ip'] }}</p>
-                                </div>
-                                {{-- Manager --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Manager</p>
-                                    <p class="text-sm text-[#2d3a24]">{{ $alert['manager_name'] }}</p>
-                                </div>
-                                {{-- Decoder --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Decoder</p>
-                                    <p class="text-sm text-[#2d3a24]">{{ $alert['decoder_name'] }}</p>
-                                </div>
-                                {{-- Location --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Location</p>
-                                    <p class="text-sm text-[#2d3a24] break-all">{{ $alert['location'] }}</p>
-                                </div>
-                                {{-- Timestamp --}}
-                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
-                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Timestamp</p>
-                                    <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['timestamp'] ?: '-' }}</p>
-                                </div>
-                                {{-- Full Log
-                                     SECURITY: full_log is untrusted external log data received from
-                                     monitored systems via the Wazuh agent. It MUST be HTML-escaped.
-                                     Blade's {{ }} double-curly syntax escapes automatically.
-                                     This value must NEVER be rendered with {!! !!}.
-                                --}}
-                                @if($alert['full_log'] !== '')
-                                    <div class="bg-white border border-[#d4dfc8] rounded-xl p-3 sm:col-span-2 lg:col-span-3">
-                                        <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-2">{{ __('app.show_raw_log') }}</p>
-                                        <pre class="overflow-x-auto rounded-lg bg-[#2d3a24] text-[#CDDEA7] text-xs
-                                                    leading-5 p-4 whitespace-pre-wrap break-all">{{ $alert['full_log'] }}</pre>
+
+                                {{-- Detail Panel (Desktop) --}}
+                                @if($isExpanded)
+                                    <div class="px-5 pb-5 border-t border-[#e8ede2] bg-[#f5f7f2]">
+                                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {{-- Severity --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Severity</p>
+                                                <span class="px-2.5 py-1 border rounded-full text-xs font-medium {{ $alert['badge_class'] }}">
+                                                    {{ $alert['severity_label'] }}
+                                                </span>
+                                            </div>
+                                            {{-- Rule Level --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Rule Level</p>
+                                                <p class="text-2xl font-bold text-[#4A2F24]">{{ $alert['rule_level'] }}</p>
+                                            </div>
+                                            {{-- Rule ID --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">{{ __('app.rule_label') }} ID</p>
+                                                <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['rule_id'] }}</p>
+                                            </div>
+                                            {{-- Rule Description --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3 sm:col-span-2 lg:col-span-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Description</p>
+                                                <p class="text-sm text-[#2d3a24]">{{ $alert['rule_description'] }}</p>
+                                            </div>
+                                            {{-- Agent Name --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent Name</p>
+                                                <p class="text-sm text-[#2d3a24]">{{ $alert['agent_name'] }}</p>
+                                            </div>
+                                            {{-- Agent ID --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent ID</p>
+                                                <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['agent_id'] }}</p>
+                                            </div>
+                                            {{-- Agent IP --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent IP</p>
+                                                <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['agent_ip'] }}</p>
+                                            </div>
+                                            {{-- Manager --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Manager</p>
+                                                <p class="text-sm text-[#2d3a24]">{{ $alert['manager_name'] }}</p>
+                                            </div>
+                                            {{-- Decoder --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Decoder</p>
+                                                <p class="text-sm text-[#2d3a24]">{{ $alert['decoder_name'] }}</p>
+                                            </div>
+                                            {{-- Location --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Location</p>
+                                                <p class="text-sm text-[#2d3a24] break-all">{{ $alert['location'] }}</p>
+                                            </div>
+                                            {{-- Timestamp --}}
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Timestamp</p>
+                                                <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['timestamp'] ?: '-' }}</p>
+                                            </div>
+                                            {{-- Full Log
+                                                 SECURITY: full_log is untrusted external log data received from
+                                                 monitored systems via the Wazuh agent. It MUST be HTML-escaped.
+                                                 Blade's {{ }} double-curly syntax escapes automatically.
+                                                 This value must NEVER be rendered with {!! !!}.
+                                            --}}
+                                            @if($alert['full_log'] !== '')
+                                                <div class="bg-white border border-[#d4dfc8] rounded-xl p-3 sm:col-span-2 lg:col-span-3">
+                                                    <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-2">{{ __('app.show_raw_log') }}</p>
+                                                    <pre class="overflow-x-auto rounded-lg bg-[#2d3a24] text-[#CDDEA7] text-xs
+                                                                leading-5 p-4 whitespace-pre-wrap break-all">{{ $alert['full_log'] }}</pre>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
                                 @endif
                             </div>
-                        </div>
-                    @endif
+                        @endforeach
+                    </div>
                 </div>
-            @empty
+
+                {{-- Mobile Layout --}}
+                <div class="lg:hidden">
+                    @foreach($this->filteredAlerts as $index => $alert)
+                        @php
+                            $alertKey = $alert['id']
+                                ?? $alert['alert_id']
+                                ?? md5(
+                                    ($alert['timestamp'] ?? '') . '|' .
+                                    ($alert['rule_id'] ?? '') . '|' .
+                                    ($alert['agent_id'] ?? '') . '|' .
+                                    $index
+                                );
+                            $isExpanded = ($expandedIndex === $index);
+                            $ts = $alert['timestamp'] ?? '';
+                            try {
+                                $formatted = $ts ? \Carbon\Carbon::parse($ts)->format('d M H:i') : '-';
+                                $fullTime  = $ts ? \Carbon\Carbon::parse($ts)->toDateTimeString() : '-';
+                            } catch (\Throwable $e) {
+                                $formatted = $ts ?: '-';
+                                $fullTime  = $ts ?: '-';
+                            }
+                        @endphp
+                        <div
+                            wire:key="wazuh-alert-mobile-{{ $alertKey }}"
+                            class="border-b border-[#e8ede2] last:border-b-0
+                                   {{ $isExpanded ? 'bg-[#f5f7f2]' : 'hover:bg-[#fafbf8]' }} transition"
+                        >
+                            {{-- Mobile row --}}
+                            <div class="px-5 py-4 space-y-2">
+                                <div class="flex items-start justify-between gap-3">
+                                    <span class="px-2.5 py-1 border rounded-full text-xs font-medium {{ $alert['badge_class'] }}">
+                                        {{ $alert['severity_label'] }}
+                                    </span>
+                                    <span class="text-xs text-[#9aaa8a]">{{ $formatted }}</span>
+                                </div>
+                                <p class="text-sm font-semibold text-[#2d3a24]">
+                                    {{-- Escaped – rule_description is untrusted Wazuh data --}}
+                                    {{ $alert['rule_description'] }}
+                                </p>
+                                <div class="flex flex-wrap gap-2 text-xs text-[#7a8f6a]">
+                                    @if($alert['agent_name'] !== 'Unknown')
+                                        <span class="px-2 py-0.5 bg-[#eef1e8] rounded-full">{{ $alert['agent_name'] }}</span>
+                                    @endif
+                                    @if($alert['rule_id'] !== '-')
+                                        <span class="px-2 py-0.5 bg-[#eef1e8] rounded-full">
+                                            {{ __('app.rule_label') }} {{ $alert['rule_id'] }}
+                                        </span>
+                                    @endif
+                                    @if($alert['location'] !== '-')
+                                        <span class="px-2 py-0.5 bg-[#eef1e8] rounded-full truncate max-w-[160px]">
+                                            {{ $alert['location'] }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <button
+                                    wire:click="toggleDetail({{ $index }})"
+                                    class="text-xs text-[#4E653D] hover:text-[#354C2B] font-medium"
+                                >
+                                    {{ $isExpanded ? '▲ Hide Details' : '▼ Show Details' }}
+                                </button>
+                            </div>
+
+                            {{-- Mobile Detail Panel --}}
+                            @if($isExpanded)
+                                <div class="px-5 pb-5 border-t border-[#e8ede2] bg-[#f5f7f2]">
+                                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {{-- Severity --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Severity</p>
+                                            <span class="px-2.5 py-1 border rounded-full text-xs font-medium {{ $alert['badge_class'] }}">
+                                                {{ $alert['severity_label'] }}
+                                            </span>
+                                        </div>
+                                        {{-- Rule Level --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Rule Level</p>
+                                            <p class="text-2xl font-bold text-[#4A2F24]">{{ $alert['rule_level'] }}</p>
+                                        </div>
+                                        {{-- Rule ID --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">{{ __('app.rule_label') }} ID</p>
+                                            <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['rule_id'] }}</p>
+                                        </div>
+                                        {{-- Rule Description --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3 sm:col-span-2">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Description</p>
+                                            <p class="text-sm text-[#2d3a24]">{{ $alert['rule_description'] }}</p>
+                                        </div>
+                                        {{-- Agent Name --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent Name</p>
+                                            <p class="text-sm text-[#2d3a24]">{{ $alert['agent_name'] }}</p>
+                                        </div>
+                                        {{-- Agent ID --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent ID</p>
+                                            <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['agent_id'] }}</p>
+                                        </div>
+                                        {{-- Agent IP --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Agent IP</p>
+                                            <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['agent_ip'] }}</p>
+                                        </div>
+                                        {{-- Manager --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Manager</p>
+                                            <p class="text-sm text-[#2d3a24]">{{ $alert['manager_name'] }}</p>
+                                        </div>
+                                        {{-- Decoder --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Decoder</p>
+                                            <p class="text-sm text-[#2d3a24]">{{ $alert['decoder_name'] }}</p>
+                                        </div>
+                                        {{-- Location --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Location</p>
+                                            <p class="text-sm text-[#2d3a24] break-all">{{ $alert['location'] }}</p>
+                                        </div>
+                                        {{-- Timestamp --}}
+                                        <div class="bg-white border border-[#d4dfc8] rounded-xl p-3">
+                                            <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-1">Timestamp</p>
+                                            <p class="text-sm font-mono text-[#2d3a24]">{{ $alert['timestamp'] ?: '-' }}</p>
+                                        </div>
+                                        {{-- Full Log --}}
+                                        @if($alert['full_log'] !== '')
+                                            <div class="bg-white border border-[#d4dfc8] rounded-xl p-3 sm:col-span-2">
+                                                <p class="text-xs font-semibold text-[#7a8f6a] uppercase tracking-wide mb-2">{{ __('app.show_raw_log') }}</p>
+                                                <pre class="overflow-x-auto rounded-lg bg-[#2d3a24] text-[#CDDEA7] text-xs
+                                                            leading-5 p-4 whitespace-pre-wrap break-all">{{ $alert['full_log'] }}</pre>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @else
                 {{-- ============================================================
                      EMPTY STATE
                      Distinguishes between:
@@ -419,7 +533,7 @@
                         </p>
                     @endif
                 </div>
-            @endforelse
+            @endif
         </div>
         {{-- ================================================================
              FOOTER: Alert count info and severity note
