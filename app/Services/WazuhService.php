@@ -80,7 +80,7 @@ class WazuhService
 
             // Location / timestamp / log
             'location'         => (string) data_get($source, 'location', '-'),
-            'timestamp'        => (string) data_get($source, '@timestamp', ''),
+            'timestamp'        => (string) data_get($source, 'timestamp', ''),
 
             // full_log is untrusted external data – kept as plain string only.
             // It MUST be rendered with {{ }} (escaped) in Blade, never {!! !!}.
@@ -115,7 +115,7 @@ class WazuhService
                         'size' => $limit,
                         'sort' => [
                             [
-                                '@timestamp' => [
+                                'timestamp' => [
                                     'order' => 'desc',
                                 ],
                             ],
@@ -185,7 +185,7 @@ class WazuhService
                     [
                         'size' => $limit,
                         'sort' => [
-                            ['@timestamp' => ['order' => 'desc']],
+                            ['timestamp' => ['order' => 'desc']],
                         ],
                         'query' => [
                             'match_all' => new \stdClass(),
