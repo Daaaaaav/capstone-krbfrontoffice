@@ -10,7 +10,7 @@ class WazuhSecurityMonitor
 {
     public function handle(Request $request, Closure $next)
     {
-        if ($request->is('livewire/update') || $request->is('livewire/*')) {
+        if ($request->is('livewire/update') || $request->is('livewire/*') || $request->is('health')) {
             return $next($request);
         }
 

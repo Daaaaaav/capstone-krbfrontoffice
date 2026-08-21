@@ -1222,22 +1222,4 @@ return [
     'failed_to_load_requirement'    => 'Failed to load requirement',
     'failed_to_save_requirement'    => 'Failed to save requirement',
     'failed_to_delete_requirement'  => 'Failed to delete requirement',
-
-    // IT Officer - Application Health Monitoring
-    'application_health'            => 'Application Health',
-    'application_health_desc'       => 'Real-time HTTP endpoint availability and latency monitoring',
-    'all_services_operational'      => 'All Services Operational',
-    'degraded_performance'          => 'Degraded Performance',
-    'system_outage'                 => 'System Outage',
-    'endpoint'                      => 'Endpoint',
-    'latency'                       => 'Latency',
-    'last_checked'                  => 'Last Checked',
-    'check_health'                  => 'Check Health',
-    'healthy'                       => 'Healthy',
-    'down'                          => 'Down',
-    'unknown'                       => 'Unknown',
-    'local_service'                 => 'Local Service',
-    'public_service'                => 'Public Service',
-    'systemd_service_status'        => 'Systemd Service Status',
-    'endpoint_availability'         => 'Endpoint Availability',
 ];

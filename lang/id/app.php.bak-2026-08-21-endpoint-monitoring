@@ -1206,22 +1206,4 @@ return [
     'failed_to_load_requirement'    => 'Gagal memuat persyaratan',
     'failed_to_save_requirement'    => 'Gagal menyimpan persyaratan',
     'failed_to_delete_requirement'  => 'Gagal menghapus persyaratan',
-
-    // IT Officer - Application Health Monitoring
-    'application_health'            => 'Kesehatan Aplikasi',
-    'application_health_desc'       => 'Pemantauan ketersediaan dan latensi endpoint HTTP waktu-nyata',
-    'all_services_operational'      => 'Semua Layanan Beroperasi Normal',
-    'degraded_performance'          => 'Kinerja Menurun',
-    'system_outage'                 => 'Gangguan Sistem',
-    'endpoint'                      => 'Endpoint',
-    'latency'                       => 'Latensi',
-    'last_checked'                  => 'Terakhir Diperiksa',
-    'check_health'                  => 'Periksa Kesehatan',
-    'healthy'                       => 'Sehat',
-    'down'                          => 'Mati',
-    'unknown'                       => 'Tidak Diketahui',
-    'local_service'                 => 'Layanan Lokal',
-    'public_service'                => 'Layanan Publik',
-    'systemd_service_status'        => 'Status Layanan Systemd',
-    'endpoint_availability'         => 'Ketersediaan Endpoint',
 ];
