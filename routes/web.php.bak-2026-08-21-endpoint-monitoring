@@ -103,19 +103,6 @@ Route::get('/guestbook/qr/{token}', [GuestbookScanController::class, 'qrImage'])
 
 /*
 |--------------------------------------------------------------------------
-| Application Health Check Endpoint (Endpoint-Based Monitoring)
-|--------------------------------------------------------------------------
-*/
-Route::get('/health', function () {
-    return response()->json([
-        'status'    => 'healthy',
-        'service'   => 'KRB Application',
-        'timestamp' => now()->toIso8601String(),
-    ], 200, ['Content-Type' => 'application/json']);
-});
-
-/*
-|--------------------------------------------------------------------------
 | Root: redirect to login
 |--------------------------------------------------------------------------
 */

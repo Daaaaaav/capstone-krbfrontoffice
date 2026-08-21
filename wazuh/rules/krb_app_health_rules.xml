@@ -1,0 +1,78 @@
+<!--
+  KRB Application Health Monitoring Rules
+  Dedicated namespace: 100800 - 100807
+  Note: Built-in Wazuh Rule 40704 is strictly preserved for systemd service failures.
+-->
+<group name="krb_health,application_availability,">
+
+  <!-- Base rule for health check logs -->
+  <rule id="100800" level="3">
+    <decoded_as>krb-endpoint-checker</decoded_as>
+    <field name="monitor">krb-endpoint-checker</field>
+    <description>KRB Application health monitoring event recorded.</description>
+    <group>krb_health,</group>
+  </rule>
+
+  <!-- Laravel Local Down -->
+  <rule id="100801" level="7">
+    <if_sid>100800</if_sid>
+    <field name="service">krb_laravel_local</field>
+    <field name="status">down</field>
+    <description>KRB Laravel application endpoint is unavailable.</description>
+    <group>krb_health,service_down,</group>
+  </rule>
+
+  <!-- LSTM Local Down -->
+  <rule id="100802" level="7">
+    <if_sid>100800</if_sid>
+    <field name="service">lstm_local</field>
+    <field name="status">down</field>
+    <description>LSTM Forecast Service endpoint is unavailable.</description>
+    <group>krb_health,service_down,</group>
+  </rule>
+
+  <!-- KRB Public Endpoint Down -->
+  <rule id="100803" level="7">
+    <if_sid>100800</if_sid>
+    <field name="service">krb_public</field>
+    <field name="status">down</field>
+    <description>KRB public endpoint is unavailable.</description>
+    <group>krb_health,service_down,</group>
+  </rule>
+
+  <!-- Multiple Outages / System Down -->
+  <rule id="100804" level="9" frequency="2" timeframe="60">
+    <if_matched_sid>100801</if_matched_sid>
+    <if_matched_sid>100803</if_matched_sid>
+    <description>Multiple KRB application endpoints unavailable (Degraded or System Outage).</description>
+    <group>krb_health,service_down,critical_availability,</group>
+  </rule>
+
+  <!-- Laravel Local Recovered -->
+  <rule id="100805" level="3">
+    <if_sid>100800</if_sid>
+    <field name="service">krb_laravel_local</field>
+    <field name="status">recovered</field>
+    <description>KRB Laravel application endpoint recovered.</description>
+    <group>krb_health,service_recovered,</group>
+  </rule>
+
+  <!-- LSTM Local Recovered -->
+  <rule id="100806" level="3">
+    <if_sid>100800</if_sid>
+    <field name="service">lstm_local</field>
+    <field name="status">recovered</field>
+    <description>LSTM Forecast Service endpoint recovered.</description>
+    <group>krb_health,service_recovered,</group>
+  </rule>
+
+  <!-- KRB Public Recovered -->
+  <rule id="100807" level="3">
+    <if_sid>100800</if_sid>
+    <field name="service">krb_public</field>
+    <field name="status">recovered</field>
+    <description>KRB public endpoint recovered.</description>
+    <group>krb_health,service_recovered,</group>
+  </rule>
+
+</group>

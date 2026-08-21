@@ -1,0 +1,11 @@
+[Unit]
+Description=Run KRB Application Health Check every 30 seconds
+After=network.target
+
+[Timer]
+OnBootSec=15sec
+OnUnitActiveSec=30sec
+AccuracySec=1sec
+
+[Install]
+WantedBy=timers.target
