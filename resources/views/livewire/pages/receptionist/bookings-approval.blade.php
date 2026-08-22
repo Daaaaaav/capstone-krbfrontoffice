@@ -1,4 +1,4 @@
-﻿<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
+<div class="min-h-screen bg-background" wire:poll.1000ms.keep-alive x-data="{ showFilterModal: false }">
     @php
     use Carbon\Carbon;
     use App\Models\Requirement; // ADDED: Required for the temporary bug workaround
@@ -782,6 +782,15 @@
                                                             <x-heroicon-o-eye class="w-3.5 h-3.5 inline-block mr-0.5"/>
                                                             {{ __('app.detail') }}
                                                         </button>
+                                                        {{-- MARK DONE BUTTON --}}
+                                                        <button type="button"
+                                                            wire:click="markDone({{ $b->bookingroom_id }})"
+                                                            wire:loading.attr="disabled"
+                                                            wire:target="markDone({{ $b->bookingroom_id }})"
+                                                            class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-white bg-[#4E653D] hover:bg-[#354C2B] focus:outline-none transition shadow-sm inline-flex items-center justify-center gap-1">
+                                                            <x-heroicon-o-check-circle class="w-3.5 h-3.5 inline-block mr-0.5"/>
+                                                            {{ __('app.mark_done') ?? 'Mark Done' }}
+                                                        </button>
                                                     </div>
 
                                                     <span class="inline-block text-[10px] px-2 py-0.5 rounded-lg bg-gray-50 text-gray-500 border border-gray-200">
@@ -878,6 +887,14 @@
                                                                 wire:click="openDetailModal({{ $b->bookingroom_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none transition">
                                                                 {{ __('app.detail') }}
+                                                            </button>
+                                                            <button type="button"
+                                                                wire:click="markDone({{ $b->bookingroom_id }})"
+                                                                wire:loading.attr="disabled"
+                                                                wire:target="markDone({{ $b->bookingroom_id }})"
+                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg text-white bg-[#4E653D] hover:bg-[#354C2B] focus:outline-none transition shadow-sm inline-flex items-center gap-1">
+                                                                <x-heroicon-o-check-circle class="w-3.5 h-3.5"/>
+                                                                {{ __('app.mark_done') ?? 'Mark Done' }}
                                                             </button>
                                                         </div>
                                                     </td>

@@ -132,6 +132,18 @@ class QuickVehicleBookModal extends Component
             return;
         }
 
+        $userConflict = VehicleBooking::findUserBookingConflict(
+            Auth::user()->company_id ?? 1,
+            Auth::id(),
+            $this->borrower_name,
+            $startAt,
+            $endAt
+        );
+        if ($userConflict) {
+            $this->dispatch('toast', type: 'error', message: $userConflict);
+            return;
+        }
+
         SecurityMonitoringService::logFormSubmit('quick_vehicle_booking', [
             'vehicle_id'   => $this->vehicle_id,
             'borrower_name'=> $this->borrower_name,

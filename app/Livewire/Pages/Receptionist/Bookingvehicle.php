@@ -251,6 +251,24 @@ class Bookingvehicle extends Component
             return;
         }
 
+        $userConflict = VehicleBooking::findUserBookingConflict(
+            $companyId,
+            $this->borrower_user_id,
+            $borrowerName,
+            $startAt,
+            $endAt
+        );
+        if ($userConflict) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Schedule Conflict',
+                message: $userConflict,
+                duration: 7000,
+            );
+            return;
+        }
+
             VehicleBooking::create([
                 'vehicle_id'     => $this->vehicle_id,
                 'company_id'     => $companyId,

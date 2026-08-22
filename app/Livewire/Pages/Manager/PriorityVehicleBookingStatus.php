@@ -46,6 +46,12 @@ class PriorityVehicleBookingStatus extends Component
     public ?int $doneId = null;
     public ?string $donePhotoData = null;
 
+    // Cancel Approved modal (requires proof-after / return key photo)
+    public bool $showCancelApprovedModal = false;
+    public ?int $cancelApprovedId = null;
+    public string $cancelApprovedReason = '';
+    public ?string $cancelApprovedPhotoData = null;
+
     // Edit modal (mirrors ordinary VehicleBooking editing)
     public bool $showEditModal = false;
     public ?int $editId = null;
@@ -264,9 +270,24 @@ class PriorityVehicleBookingStatus extends Component
         }
 
         $companyId = Auth::user()->company_id ?? null;
+        $startAt   = Carbon::parse($this->editForm['start_at'], $this->tz);
+        $endAt     = Carbon::parse($this->editForm['end_at'], $this->tz);
+
+        $userConflict = VehicleBooking::findUserBookingConflict(
+            $companyId,
+            null,
+            $this->editForm['borrower_name'],
+            $startAt,
+            $endAt,
+            excludePriorityId: $this->editId
+        );
+        if ($userConflict) {
+            $this->dispatch('toast', type: 'error', title: 'Schedule Conflict', message: $userConflict, duration: 7000);
+            return;
+        }
 
         try {
-            DB::transaction(function () use ($companyId) {
+            DB::transaction(function () use ($companyId, $startAt, $endAt) {
                 $booking = PriorityVehicleBooking::lockForUpdate()
                     ->where('id', $this->editId)
                     ->forCompany($companyId)
@@ -275,8 +296,8 @@ class PriorityVehicleBookingStatus extends Component
                 $booking->borrower_name = $this->editForm['borrower_name'];
                 $booking->purpose       = $this->editForm['purpose'];
                 $booking->destination   = $this->editForm['destination'] ?: null;
-                $booking->start_at      = Carbon::parse($this->editForm['start_at'])->format('Y-m-d H:i:s');
-                $booking->end_at        = Carbon::parse($this->editForm['end_at'])->format('Y-m-d H:i:s');
+                $booking->start_at      = $startAt->format('Y-m-d H:i:s');
+                $booking->end_at        = $endAt->format('Y-m-d H:i:s');
                 $booking->special_notes = $this->editForm['special_notes'] ?: null;
                 $booking->save();
             });
@@ -430,6 +451,95 @@ class PriorityVehicleBookingStatus extends Component
             report($e);
             $this->dispatch('toast', type: 'error', title: 'Error',
                 message: 'Failed to mark booking as done: ' . $e->getMessage());
+        }
+    }
+
+    // ─── Cancel Approved (requires return key photo proof) ───────────────────
+
+    public function openCancelApproved(int $id): void
+    {
+        $companyId = Auth::user()->company_id ?? null;
+        $booking = PriorityVehicleBooking::forCompany($companyId)->find($id);
+
+        if (!$booking || $booking->status !== PriorityVehicleBooking::STATUS_APPROVED || now($this->tz)->gte($booking->start_at)) {
+            $this->dispatch('toast', type: 'error', title: 'Cannot Cancel', message: 'Only upcoming approved priority bookings can be cancelled.');
+            return;
+        }
+
+        $this->cancelApprovedId = $id;
+        $this->cancelApprovedReason = '';
+        $this->cancelApprovedPhotoData = null;
+        $this->showCancelApprovedModal = true;
+    }
+
+    public function closeCancelApproved(): void
+    {
+        $this->showCancelApprovedModal = false;
+        $this->cancelApprovedId = null;
+        $this->cancelApprovedReason = '';
+        $this->cancelApprovedPhotoData = null;
+    }
+
+    public function confirmCancelApproved(): void
+    {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
+        $this->validate([
+            'cancelApprovedId'        => 'required|integer',
+            'cancelApprovedPhotoData' => 'required|string',
+            'cancelApprovedReason'    => 'nullable|string|max:1000',
+        ]);
+
+        if (!$this->cancelApprovedId) {
+            return;
+        }
+
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($user, $companyId) {
+                $booking = PriorityVehicleBooking::lockForUpdate()
+                    ->where('id', $this->cancelApprovedId)
+                    ->forCompany($companyId)
+                    ->firstOrFail();
+
+                if ($booking->status !== PriorityVehicleBooking::STATUS_APPROVED) {
+                    throw new \RuntimeException("Booking #{$booking->id} is not in approved status.");
+                }
+
+                if (now($this->tz)->gte($booking->start_at)) {
+                    throw new \RuntimeException("Booking #{$booking->id} has already started and cannot be cancelled.");
+                }
+
+                // Save return key photo proof
+                if ($this->cancelApprovedPhotoData) {
+                    $booking->return_photo = ImageHelper::storeBase64AsWebp(
+                        $this->cancelApprovedPhotoData,
+                        'vehicle_evidences',
+                        'priority_cancel_return_' . $booking->id
+                    );
+                }
+
+                $booking->status = PriorityVehicleBooking::STATUS_REJECTED;
+                $booking->handled_by = $user->user_id;
+                $booking->rejection_reason = $this->cancelApprovedReason ?: 'Cancelled by manager with return key proof.';
+                $booking->save();
+
+                ManagerNotification::where('notifiable_id', $booking->id)
+                    ->where('notifiable_type', PriorityVehicleBooking::class)
+                    ->whereNull('action_taken')
+                    ->update(['action_taken' => 'rejected', 'is_read' => true]);
+            });
+
+            $this->closeCancelApproved();
+            $this->resetPage();
+            $this->dispatch('toast', type: 'success', title: 'Booking Cancelled', message: 'Priority vehicle booking cancelled with return key proof.');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Cancel', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to cancel booking: ' . $e->getMessage());
         }
     }
 
