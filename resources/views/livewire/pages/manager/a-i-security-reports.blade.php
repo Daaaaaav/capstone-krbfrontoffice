@@ -1,8 +1,5 @@
 @php
-    $filteredAlerts = $this->filteredAlerts ?? [];
-    if (!is_array($filteredAlerts)) {
-        $filteredAlerts = is_array($alerts ?? null) ? $alerts : [];
-    }
+    $filteredAlerts = $this->filteredAlerts;
 @endphp
 <div
     class="min-h-screen bg-[#f5f7f2]"
