@@ -243,13 +243,29 @@ class Vehicleshistory extends Component
         $booking = $query->find($this->editId);
 
         if ($booking) {
+            $startAt = Carbon::parse($this->edit['start_at'], $this->tz);
+            $endAt   = Carbon::parse($this->edit['end_at'], $this->tz);
+
+            $userConflict = VehicleBooking::findUserBookingConflict(
+                $companyId,
+                $booking->user_id,
+                $this->edit['borrower_name'],
+                $startAt,
+                $endAt,
+                excludeRegularId: $this->editId
+            );
+            if ($userConflict) {
+                $this->dispatch('toast', type: 'error', title: 'Schedule Conflict', message: $userConflict, duration: 7000);
+                return;
+            }
+
             $booking->update([
                 'borrower_name' => $this->edit['borrower_name'],
                 'purpose'       => $this->edit['purpose'],
                 'destination'   => $this->edit['destination'],
                 'notes'         => $this->edit['notes'],
-                'start_at'      => Carbon::parse($this->edit['start_at'])->format('Y-m-d H:i:s'),
-                'end_at'        => Carbon::parse($this->edit['end_at'])->format('Y-m-d H:i:s'),
+                'start_at'      => $startAt->format('Y-m-d H:i:s'),
+                'end_at'        => $endAt->format('Y-m-d H:i:s'),
             ]);
             $this->dispatch('toast', type: 'success', title: 'Disimpan', message: "Data #{$this->editId} berhasil diperbarui.", duration: 3000);
         }

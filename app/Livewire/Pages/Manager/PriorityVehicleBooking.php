@@ -202,6 +202,25 @@ class PriorityVehicleBooking extends Component
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
 
+        $userConflict = VehicleBooking::findUserBookingConflict(
+            $companyId,
+            null,
+            $this->borrower_name,
+            $startAt,
+            $endAt,
+            excludeRegularId: $this->conflicting_vehicle_booking_id
+        );
+        if ($userConflict) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Schedule Conflict',
+                message: $userConflict,
+                duration: 7000
+            );
+            return;
+        }
+
         $this->detectConflict();
 
         if ($this->conflicting_vehicle_booking_id && !$this->requestCancellation) {
@@ -317,12 +336,28 @@ class PriorityVehicleBooking extends Component
             return;
         }
 
+        $startAt = Carbon::parse($this->date_from . ' ' . $this->start_time, $this->tz);
+        $endAt = Carbon::parse($this->date_to . ' ' . $this->end_time, $this->tz);
+
+        $userConflict = VehicleBooking::findUserBookingConflict(
+            $companyId,
+            null,
+            $this->borrower_name,
+            $startAt,
+            $endAt,
+            excludeRegularId: $this->conflicting_vehicle_booking_id
+        );
+        if ($userConflict) {
+            $this->showConflictModal = false;
+            $this->conflicting_vehicle_booking_id = null;
+            $this->dispatch('toast', type: 'error', title: 'Schedule Conflict', message: $userConflict, duration: 7000);
+            return;
+        }
+
         $this->requestCancellation = true;
         $this->showConflictModal = false;
 
-        DB::transaction(function () use ($conflictingBooking, $user, $companyId) {
-            $startAt = Carbon::parse($this->date_from . ' ' . $this->start_time, $this->tz);
-            $endAt = Carbon::parse($this->date_to . ' ' . $this->end_time, $this->tz);
+        DB::transaction(function () use ($conflictingBooking, $user, $companyId, $startAt, $endAt) {
 
             $conflictingBooking->update([
                 'status' => 'rejected',

@@ -104,25 +104,33 @@
                                     </span>
                                 </td>
 
-                                {{-- Actions --}}
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-2">
-                                        <button wire:click="openDetail({{ $booking->id }})"
-                                            class="text-blue-600 hover:text-blue-800 text-xs font-medium">
-                                            View
-                                        </button>
-                                        @if($booking->isActionable())
-                                            <button wire:click="openApprove({{ $booking->id }})"
-                                                class="text-green-600 hover:text-green-800 text-xs font-medium">
-                                                Approve
-                                            </button>
-                                            <button wire:click="openReject({{ $booking->id }})"
-                                                class="text-red-600 hover:text-red-800 text-xs font-medium">
-                                                Reject
-                                            </button>
-                                        @endif
-                                    </div>
-                                </td>
+                                        {{-- Actions --}}
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center gap-2">
+                                                <button wire:click="openDetail({{ $booking->id }})"
+                                                    class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                                                    View
+                                                </button>
+                                                @if($booking->isActionable())
+                                                    <button wire:click="openApprove({{ $booking->id }})"
+                                                        class="text-green-600 hover:text-green-800 text-xs font-medium">
+                                                        Approve
+                                                    </button>
+                                                    <button wire:click="openReject({{ $booking->id }})"
+                                                        class="text-red-600 hover:text-red-800 text-xs font-medium">
+                                                        Reject
+                                                    </button>
+                                                @endif
+                                                @if($this->isOngoing($booking))
+                                                    <button wire:click="markDone({{ $booking->id }})"
+                                                        wire:loading.attr="disabled"
+                                                        wire:target="markDone({{ $booking->id }})"
+                                                        class="text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded text-xs font-semibold transition">
+                                                        Mark Done
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </td>
                             </tr>
                         @empty
                             <tr>

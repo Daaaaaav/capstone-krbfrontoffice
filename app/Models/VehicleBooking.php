@@ -67,4 +67,85 @@ class VehicleBooking extends Model
             ->orderBy('end_at')
             ->first();
     }
+
+    /**
+     * Prevent one user from having multiple overlapping vehicle bookings (across regular and priority).
+     */
+    public static function findUserBookingConflict(
+        ?int $companyId,
+        ?int $userId,
+        string $borrowerName,
+        \Carbon\Carbon $startAt,
+        \Carbon\Carbon $endAt,
+        ?int $excludeRegularId = null,
+        ?int $excludePriorityId = null
+    ): ?string {
+        $cleanBorrower = trim($borrowerName);
+        $userNames = array_filter([$cleanBorrower]);
+
+        if ($userId) {
+            $user = \App\Models\User::find($userId);
+            if ($user) {
+                if ($user->full_name) $userNames[] = trim($user->full_name);
+                if ($user->name) $userNames[] = trim($user->name);
+            }
+        }
+        $userNames = array_unique(array_filter($userNames));
+
+        // 1. Check Regular Vehicle Bookings
+        $regConflict = static::query()
+            ->with(['vehicle'])
+            ->whereNull('deleted_at')
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status', ['pending', 'approved', 'on_progress', 'late_return'])
+            ->when($excludeRegularId, fn($q) => $q->where('vehiclebooking_id', '!=', $excludeRegularId))
+            ->where('start_at', '<', $endAt->toDateTimeString())
+            ->where('end_at', '>', $startAt->toDateTimeString())
+            ->where(function($q) use ($userId, $userNames) {
+                if ($userId) {
+                    $q->where('user_id', $userId);
+                }
+                foreach ($userNames as $name) {
+                    $q->orWhereRaw('LOWER(TRIM(borrower_name)) = ?', [strtolower($name)]);
+                }
+            })
+            ->first();
+
+        if ($regConflict) {
+            $veh = $regConflict->vehicle ? ($regConflict->vehicle->name ?? ('Vehicle #' . $regConflict->vehicle_id)) : 'a vehicle';
+            $s = $regConflict->start_at ? $regConflict->start_at->format('d M Y H:i') : '—';
+            $e = $regConflict->end_at ? $regConflict->end_at->format('d M Y H:i') : '—';
+            return "This user already has a regular vehicle booking ({$veh}) scheduled from {$s} to {$e}.";
+        }
+
+        // 2. Check Priority Vehicle Bookings
+        $priorityConflict = \App\Models\PriorityVehicleBooking::query()
+            ->with(['vehicle'])
+            ->when($companyId, fn($q) => $q->where('company_id', $companyId))
+            ->whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+                \App\Models\PriorityVehicleBooking::STATUS_APPROVED,
+                \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS,
+                \App\Models\PriorityVehicleBooking::STATUS_LATE_RETURN,
+            ])
+            ->when($excludePriorityId, fn($q) => $q->where('id', '!=', $excludePriorityId))
+            ->where('start_at', '<', $endAt->toDateTimeString())
+            ->where('end_at', '>', $startAt->toDateTimeString())
+            ->where(function($q) use ($userNames) {
+                foreach ($userNames as $name) {
+                    $q->orWhereRaw('LOWER(TRIM(borrower_name)) = ?', [strtolower($name)]);
+                }
+            })
+            ->first();
+
+        if ($priorityConflict) {
+            $veh = $priorityConflict->vehicle ? ($priorityConflict->vehicle->name ?? ('Vehicle #' . $priorityConflict->vehicle_id)) : 'a vehicle';
+            $s = $priorityConflict->start_at ? $priorityConflict->start_at->format('d M Y H:i') : '—';
+            $e = $priorityConflict->end_at ? $priorityConflict->end_at->format('d M Y H:i') : '—';
+            return "This user already has a priority vehicle booking ({$veh}) scheduled from {$s} to {$e}.";
+        }
+
+        return null;
+    }
 }

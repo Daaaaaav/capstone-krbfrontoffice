@@ -266,6 +266,63 @@ class PriorityRoomBookingStatus extends Component
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to reject booking: ' . $e->getMessage());
         }
     }
+
+    public function isOngoing(PriorityRoomBooking $booking): bool
+    {
+        if ($booking->status !== PriorityRoomBooking::STATUS_APPROVED) {
+            return false;
+        }
+
+        if (!$booking->date || !$booking->start_time) {
+            return false;
+        }
+
+        try {
+            $dateStr = $booking->date instanceof \DateTimeInterface
+                ? $booking->date->format('Y-m-d')
+                : substr((string)$booking->date, 0, 10);
+            $start = Carbon::parse($dateStr . ' ' . $booking->start_time, $this->tz);
+            $now   = Carbon::now($this->tz);
+            return $now->gte($start);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function markDone(int $id): void
+    {
+        $user = Auth::user();
+        $companyId = $user->company_id ?? null;
+
+        try {
+            DB::transaction(function () use ($id, $companyId) {
+                $booking = PriorityRoomBooking::lockForUpdate()
+                    ->where('id', $id)
+                    ->forCompany($companyId)
+                    ->firstOrFail();
+
+                if ($booking->status !== PriorityRoomBooking::STATUS_APPROVED) {
+                    throw new \RuntimeException("Booking #{$booking->id} is not in approved status.");
+                }
+
+                if (!$this->isOngoing($booking)) {
+                    throw new \RuntimeException("Booking #{$booking->id} is upcoming and cannot be marked as done yet.");
+                }
+
+                $booking->status = PriorityRoomBooking::STATUS_COMPLETED;
+                $booking->updated_at = Carbon::now($this->tz)->toDateTimeString();
+                $booking->save();
+            });
+
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Priority room booking marked as completed.');
+            $this->resetPage();
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Complete', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to complete booking: ' . $e->getMessage());
+        }
+    }
     
     public function render()
     {

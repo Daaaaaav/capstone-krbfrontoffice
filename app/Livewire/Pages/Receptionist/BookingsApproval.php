@@ -479,6 +479,39 @@ class BookingsApproval extends Component
         }
     }
 
+    public function markDone(int $id): void
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $b = BookingRoom::lockForUpdate()->findOrFail($id);
+
+                if (!in_array(strtolower(trim((string)$b->status)), ['approved', '1'], true)) {
+                    throw new \RuntimeException("Booking #{$b->bookingroom_id} is not in approved status.");
+                }
+
+                $start = $this->buildDt($b->date, $b->start_time);
+                $now = Carbon::now($this->tz);
+
+                if ($now->lt($start)) {
+                    throw new \RuntimeException("Booking #{$b->bookingroom_id} is upcoming and has not started yet.");
+                }
+
+                $b->status = 'completed';
+                $b->updated_at = $now->toDateTimeString();
+                $b->save();
+            });
+
+            $this->dispatch('toast', type: 'success', title: 'Completed', message: 'Room booking marked as completed.');
+            $this->resetPage('ongoingPage');
+            $this->resetPage('pendingPage');
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Complete', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to complete booking: ' . $e->getMessage());
+        }
+    }
+
     public function openReschedule(int $id): void
     {
         $b = BookingRoom::findOrFail($id);
