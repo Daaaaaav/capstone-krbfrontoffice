@@ -55,6 +55,11 @@ class Vehiclestatus extends Component
     public bool $showDoneModal = false;
     public ?int $doneId = null;
     public ?string $photoData = null;
+
+    public bool $showCancelApprovedModal = false;
+    public ?int $cancelApprovedId = null;
+    public string $cancelApprovedNote = '';
+    public ?string $cancelApprovedPhotoData = null;
     protected $queryString = [
         'q' => ['except' => ''],
         'vehicleFilter' => ['except' => null],
@@ -351,6 +356,80 @@ class Vehiclestatus extends Component
             $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to update: ' . $e->getMessage());
         }
     }
+
+    public function openCancelApprovedModal(int $id): void
+    {
+        $booking = VehicleBooking::find($id);
+        if (!$booking || $booking->status !== 'approved' || now($this->tz)->gte($booking->start_at)) {
+            $this->dispatch('toast', type: 'error', title: 'Cannot Cancel', message: 'Only upcoming approved bookings can be cancelled.');
+            return;
+        }
+
+        $this->cancelApprovedId = $id;
+        $this->cancelApprovedNote = '';
+        $this->cancelApprovedPhotoData = null;
+        $this->showCancelApprovedModal = true;
+    }
+
+    public function closeCancelApprovedModal(): void
+    {
+        $this->showCancelApprovedModal = false;
+        $this->cancelApprovedId = null;
+        $this->cancelApprovedNote = '';
+        $this->cancelApprovedPhotoData = null;
+    }
+
+    public function submitCancelApproved(): void
+    {
+        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
+
+        $this->validate([
+            'cancelApprovedId'        => 'required|integer',
+            'cancelApprovedPhotoData' => 'required|string',
+            'cancelApprovedNote'      => 'nullable|string|max:1000',
+        ]);
+
+        $bookingId = (int) $this->cancelApprovedId;
+        $reason = trim($this->cancelApprovedNote);
+
+        try {
+            DB::transaction(function () use ($bookingId, $reason) {
+                $b = VehicleBooking::lockForUpdate()->findOrFail($bookingId);
+
+                if ($b->status !== 'approved') {
+                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} is not in approved status.");
+                }
+
+                if (now($this->tz)->gte($b->start_at)) {
+                    throw new \RuntimeException("Booking #{$b->vehiclebooking_id} has already started and cannot be cancelled.");
+                }
+
+                // Save return key photo proof
+                if ($this->cancelApprovedPhotoData) {
+                    $b->return_photo = ImageHelper::storeBase64AsWebp(
+                        $this->cancelApprovedPhotoData,
+                        'vehicle_evidences',
+                        'cancel_return_' . $b->vehiclebooking_id
+                    );
+                }
+
+                $fullNote = '[Cancelled] ' . ($reason ?: 'Cancelled by receptionist with return key proof.');
+                $b->status = 'rejected';
+                $b->notes = trim(($b->notes ? $b->notes . "\n" : '') . $fullNote);
+                $b->save();
+            });
+
+            $this->closeCancelApprovedModal();
+            $this->dispatch('toast', type: 'success', title: 'Booking Cancelled', message: "Booking #{$bookingId} has been cancelled with return key proof.");
+            $this->resetPage();
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'warning', title: 'Cannot Cancel', message: $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('toast', type: 'error', title: 'Error', message: 'Failed to cancel: ' . $e->getMessage());
+        }
+    }
+
     public function overdueDuration(VehicleBooking $booking): string
     {
         if (!$booking->end_at) {

@@ -3,11 +3,12 @@
 namespace App\Services\AI;
 
 use App\Services\AI\Contracts\ToolInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class ToolDispatcher
 {
-    private array $tools = [];
+    protected array $tools = [];
 
     public function __construct()
     {
@@ -17,10 +18,8 @@ class ToolDispatcher
         $this->register(app(\App\Services\AI\Tools\GuestbookTool::class));
         $this->register(app(\App\Services\AI\Tools\DeliveryTool::class));
         $this->register(app(\App\Services\AI\Tools\ForecastTool::class));
+        $this->register(app(\App\Services\AI\Tools\UserManagementTool::class));
         $this->register(app(\App\Services\AI\Tools\OccupancyTool::class));
-        if (class_exists(\App\Services\AI\Tools\AnnouncementTool::class)) {
-            $this->register(app(\App\Services\AI\Tools\AnnouncementTool::class));
-        }
     }
 
     public function register(ToolInterface $tool): void
@@ -63,12 +62,31 @@ class ToolDispatcher
             return "[Tool '{$toolName}' is not available.]";
         }
 
+        $user = Auth::user();
+        if (! $user) {
+            Log::warning('ToolDispatcher: unauthenticated tool execution attempted', ['tool' => $toolName]);
+            return "[Unauthorized: Authentication required.]";
+        }
+
+        $roleName = strtolower($user->role?->name ?? $user->role_name ?? '');
+
+        if (! $this->isToolAuthorizedForRole($toolName, $roleName)) {
+            Log::warning('ToolDispatcher: unauthorized role tool execution blocked', [
+                'tool'    => $toolName,
+                'user_id' => $user->user_id,
+                'role'    => $roleName,
+            ]);
+            return "I can only assist with information and tasks related to your authorized KRB System context.";
+        }
+
         try {
             Log::info('ToolDispatcher: executing tool', [
-                'stage'    => 'tool_execution',
-                'tool'     => $toolName,
-                'class'    => get_class($this->tools[$toolName]),
-                'args'     => $arguments,
+                'stage'      => 'tool_execution',
+                'tool'       => $toolName,
+                'class'      => get_class($this->tools[$toolName]),
+                'company_id' => $user->company_id,
+                'user_id'    => $user->user_id,
+                'args'       => $arguments,
             ]);
 
             $result = $this->tools[$toolName]->execute($arguments);
@@ -84,16 +102,31 @@ class ToolDispatcher
 
         } catch (\Throwable $e) {
             Log::error('ToolDispatcher: tool threw an exception', [
-                'stage'  => 'tool_execution',
-                'tool'   => $toolName,
-                'class'  => get_class($this->tools[$toolName]),
-                'args'   => $arguments,
+                'stage'           => 'tool_execution',
+                'tool'            => $toolName,
+                'class'           => get_class($this->tools[$toolName]),
+                'args'            => $arguments,
                 'exception_class' => get_class($e),
-                'error'  => $e->getMessage(),
-                'file'   => $e->getFile() . ':' . $e->getLine(),
+                'error'           => $e->getMessage(),
+                'file'            => $e->getFile() . ':' . $e->getLine(),
             ]);
             return "[Tool '{$toolName}' failed: {$e->getMessage()}]";
         }
+    }
+
+    protected function isToolAuthorizedForRole(string $toolName, string $roleName): bool
+    {
+        $isItOfficer = str_contains($roleName, 'it') || str_contains($roleName, 'officer');
+        $isManager = str_contains($roleName, 'manager');
+        $isReceptionist = str_contains($roleName, 'receptionist');
+
+        $itOnlyTools = ['manage_user', 'manage_room', 'manage_vehicle', 'manage_storage'];
+
+        if (in_array($toolName, $itOnlyTools, true)) {
+            return $isItOfficer;
+        }
+        
+        return $isItOfficer || $isManager || $isReceptionist;
     }
 
     public function parseAndDispatch(array $responseBody): array

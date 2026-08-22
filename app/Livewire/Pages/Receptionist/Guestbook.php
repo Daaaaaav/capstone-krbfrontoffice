@@ -13,6 +13,7 @@ use App\Models\Department;
 use App\Models\User;
 use App\Models\IdType;
 use App\Models\VisitorLanyard;
+use App\Rules\NoSpecialCharacters;
 use App\Mail\GuestbookQrMail;
 use App\Services\SecurityMonitoringService;
 use Illuminate\Support\Facades\Mail;
@@ -90,11 +91,13 @@ class Guestbook extends Component
 
         if (strlen($value) >= 2) {
             $companyId = $this->companyId();
-            $query = GuestbookModel::where('name', 'like', "%{$value}%");
+            $query = GuestbookModel::query()
+                ->select(['name', 'email', 'phone_number', 'instansi', 'keperluan'])
+                ->where('name', 'like', "%{$value}%");
             if ($companyId) {
                 $query->where('company_id', $companyId);
             }
-            $rows = $query->orderBy('created_at', 'desc')->get();
+            $rows = $query->orderBy('created_at', 'desc')->limit(50)->get();
             $byName = [];
             foreach ($rows as $g) {
                 $name = $g->name;
@@ -160,11 +163,11 @@ class Guestbook extends Component
     protected function rules(): array
     {
         return [
-            'name'          => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'name'          => ['required', 'string', 'max:255', new NoSpecialCharacters('Name')],
             'email'         => ['required', 'email', 'max:255', 'regex:/^([a-zA-Z0-9\.]*)@?([a-zA-Z0-9\.]*)$/'],
             'phone_number'  => ['nullable', 'string', 'max:50', 'regex:/^(?!(?:.*?\+){2})(?!(?:.*?-){5})[0-9\-\+]*$/'],
-            'instansi'      => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
-            'keperluan'     => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'instansi'      => ['nullable', 'string', 'max:255', new NoSpecialCharacters('Organization')],
+            'keperluan'     => ['required', 'string', 'max:255', new NoSpecialCharacters('Purpose')],
             'visitor_count' => ['required', 'integer', 'min:1', 'max:999'],
             'storage_place' => ['nullable', 'integer', 'min:1', 'max:100'],
             'department_id' => ['nullable', 'exists:departments,department_id'],
@@ -181,8 +184,6 @@ class Guestbook extends Component
 
     public function save(): void
     {
-        \App\Services\SecurityMonitoringService::logFormSubmit(class_basename($this), method_exists($this, 'all') ? $this->all() : []);
-
         $now = Carbon::now(config('app.timezone', 'Asia/Jakarta'));
         $this->date   = $now->toDateString();
         $this->jam_in = $now->format('H:i');
@@ -219,13 +220,19 @@ class Guestbook extends Component
 
         $entry = GuestbookModel::create($entryData);
         $qrTokens = GuestbookQrCode::generateTokenBatch($visitorCount);
+        $nowTs = now();
+        $qrInsertData = [];
         foreach ($qrTokens as $index => $token) {
-            GuestbookQrCode::create([
+            $qrInsertData[] = [
                 'guestbook_id'   => $entry->guestbook_id,
                 'qr_token'       => $token,
                 'visitor_number' => $index + 1,
-            ]);
+                'is_scanned'     => false,
+                'scanned_at'     => null,
+                'created_at'     => $nowTs,
+            ];
         }
+        GuestbookQrCode::insert($qrInsertData);
 
         // Mark the selected lanyard as unavailable
         if ($this->visitor_lanyard_id) {

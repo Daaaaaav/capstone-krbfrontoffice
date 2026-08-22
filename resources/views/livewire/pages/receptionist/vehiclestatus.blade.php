@@ -422,6 +422,14 @@
                                                     class="px-4 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] focus:outline-none focus:ring-2 focus:ring-[#4E653D]/20 disabled:opacity-60 transition shadow-sm">
                                                 {{ __('app.approve') }}
                                             </button>
+                                        @elseif($b->status === 'approved')
+                                            <button type="button"
+                                                    wire:click.stop="openCancelApprovedModal({{ $b->vehiclebooking_id }})"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="openCancelApprovedModal({{ $b->vehiclebooking_id }})"
+                                                    class="px-3.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500/20 disabled:opacity-60 transition shadow-sm">
+                                                {{ __('app.cancel') ?? 'Cancel' }}
+                                            </button>
                                         @elseif($b->status === 'on_progress' || $b->status === 'late_return')
                                             {{-- Overdue badge (only when past end_at) --}}
                                             @php $overdue = $this->overdueDuration($b); @endphp
@@ -521,6 +529,11 @@
                                                             <button type="button" wire:click.stop="openApproveModal({{ $b->vehiclebooking_id }})"
                                                                 class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-[#4E653D] text-white hover:bg-[#354C2B] transition">
                                                                 {{ __('app.approve') }}
+                                                            </button>
+                                                        @elseif($b->status === 'approved')
+                                                            <button type="button" wire:click.stop="openCancelApprovedModal({{ $b->vehiclebooking_id }})"
+                                                                class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+                                                                {{ __('app.cancel') ?? 'Cancel' }}
                                                             </button>
                                                         @elseif($b->status === 'on_progress' || $b->status === 'late_return')
                                                             @php $overdueTable = $this->overdueDuration($b); @endphp
@@ -1195,14 +1208,35 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('photoData', canvas.toDataURL('image/png'));
+                    $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.85));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        $wire.set('photoData', ev.target.result);
+                        const img = new Image();
+                        img.onload = () => {
+                            const maxDim = 1280;
+                            let w = img.width;
+                            let h = img.height;
+                            if (w > maxDim || h > maxDim) {
+                                if (w > h) {
+                                    h = Math.round(h * (maxDim / w));
+                                    w = maxDim;
+                                } else {
+                                    w = Math.round(w * (maxDim / h));
+                                    h = maxDim;
+                                }
+                            }
+                            const c = document.createElement('canvas');
+                            c.width = w;
+                            c.height = h;
+                            const ctx = c.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            $wire.set('photoData', c.toDataURL('image/jpeg', 0.85));
+                        };
+                        img.src = ev.target.result;
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1360,14 +1394,35 @@
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                    $wire.set('photoData', canvas.toDataURL('image/png'));
+                    $wire.set('photoData', canvas.toDataURL('image/jpeg', 0.85));
                 },
                 handleFile(e) {
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        $wire.set('photoData', ev.target.result);
+                        const img = new Image();
+                        img.onload = () => {
+                            const maxDim = 1280;
+                            let w = img.width;
+                            let h = img.height;
+                            if (w > maxDim || h > maxDim) {
+                                if (w > h) {
+                                    h = Math.round(h * (maxDim / w));
+                                    w = maxDim;
+                                } else {
+                                    w = Math.round(w * (maxDim / h));
+                                    h = maxDim;
+                                }
+                            }
+                            const c = document.createElement('canvas');
+                            c.width = w;
+                            c.height = h;
+                            const ctx = c.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            $wire.set('photoData', c.toDataURL('image/jpeg', 0.85));
+                        };
+                        img.src = ev.target.result;
                     };
                     reader.readAsDataURL(file);
                 }
@@ -1458,6 +1513,201 @@
                             wire:loading.attr="disabled" wire:target="submitDone">
                             <x-heroicon-o-check class="w-5 h-5" />
                             <span>Simpan & Return</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- CANCEL APPROVED MODAL (Return Key Photo Proof) --}}
+        <div class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
+            role="dialog" aria-modal="true"
+            wire:key="cancel-approved-modal-container"
+            x-data="{
+                show: @entangle('showCancelApprovedModal').live,
+                stream: null,
+                devices: [],
+                selectedDeviceId: null,
+                init() {
+                    this.$watch('show', value => {
+                        if (value) {
+                            this.getDevices();
+                        } else {
+                            this.stopCamera();
+                        }
+                    });
+                },
+                async getDevices() {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                        alert('Browser tidak mendukung kamera.');
+                        return;
+                    }
+                    try {
+                        const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        initialStream.getTracks().forEach(t => t.stop());
+                        const allDevices = await navigator.mediaDevices.enumerateDevices();
+                        this.devices = allDevices.filter(d => d.kind === 'videoinput');
+                        if (this.devices.length > 0) {
+                            this.selectedDeviceId = this.devices[0].deviceId;
+                            this.startCamera();
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Gagal mengakses kamera: ' + e.message);
+                    }
+                },
+                async startCamera() {
+                    this.stopCamera();
+                    if (!this.selectedDeviceId) return;
+                    try {
+                        this.stream = await navigator.mediaDevices.getUserMedia({
+                            video: { deviceId: { exact: this.selectedDeviceId } }
+                        });
+                        this.$refs.video.srcObject = this.stream;
+                    } catch (e) {
+                        console.error(e);
+                    }
+                },
+                stopCamera() {
+                    if (this.stream) {
+                        this.stream.getTracks().forEach(t => t.stop());
+                        this.stream = null;
+                    }
+                },
+                capture() {
+                    const canvas = this.$refs.canvas;
+                    const video = this.$refs.video;
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    $wire.set('cancelApprovedPhotoData', canvas.toDataURL('image/jpeg', 0.85));
+                },
+                handleFile(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const maxDim = 1280;
+                            let w = img.width;
+                            let h = img.height;
+                            if (w > maxDim || h > maxDim) {
+                                if (w > h) {
+                                    h = Math.round(h * (maxDim / w));
+                                    w = maxDim;
+                                } else {
+                                    w = Math.round(w * (maxDim / h));
+                                    h = maxDim;
+                                }
+                            }
+                            const c = document.createElement('canvas');
+                            c.width = w;
+                            c.height = h;
+                            const ctx = c.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            $wire.set('cancelApprovedPhotoData', c.toDataURL('image/jpeg', 0.85));
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }"
+            x-show="show"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            style="display: none;"
+            >
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-md" 
+                wire:click="closeCancelApprovedModal" @click="show = false"></div>
+
+            <div x-show="show"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-white overflow-hidden flex flex-col">
+                
+                {{-- Flush Header --}}
+                <div class="px-5 py-4 bg-rose-700 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full border border-rose-200/30 flex items-center justify-center bg-white/10 text-white">
+                            <x-heroicon-o-key class="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-[15px] tracking-wide text-white">Return Key Proof</h3>
+                            <p class="text-xs text-rose-100">Upload return key photo to cancel approved booking</p>
+                        </div>
+                    </div>
+                    <button type="button" class="text-rose-100 hover:text-white transition p-1" 
+                        wire:click="closeCancelApprovedModal" @click="show = false">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                {{-- Body --}}
+                <div class="p-5 flex flex-col gap-4">
+                    <div class="flex justify-between items-center text-sm px-2" x-show="devices.length > 1">
+                        <label class="font-medium text-gray-700 text-xs">Pilih Kamera:</label>
+                        <select x-model="selectedDeviceId" @change="startCamera()" class="p-1 border border-gray-200 rounded-lg text-xs bg-gray-50 focus:ring focus:ring-rose-500/50 outline-none">
+                            <template x-for="(device, index) in devices" :key="device.deviceId">
+                                <option :value="device.deviceId" x-text="device.label || 'Kamera ' + (index + 1)"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    {{-- Camera Viewport --}}
+                    <div x-show="!$wire.cancelApprovedPhotoData" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <video x-ref="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                        <canvas x-ref="canvas" style="display: none;"></canvas>
+                        
+                        {{-- Reticle --}}
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                            <svg width="220" height="220" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M50 30H30V50" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M190 30H210V50" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M50 210H30V190" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M190 210H210V190" stroke="#f43f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    {{-- Preview --}}
+                    <div x-show="$wire.cancelApprovedPhotoData" style="display: none;" class="relative bg-gray-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center aspect-[4/3] w-full">
+                        <img :src="$wire.cancelApprovedPhotoData" class="w-full h-full object-cover" />
+                        <button type="button" @click="$wire.set('cancelApprovedPhotoData', null)" class="absolute top-3 right-3 px-4 py-2 text-xs font-semibold rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition inline-flex items-center gap-1.5 shadow-lg border border-white/10">
+                            <x-heroicon-o-arrow-path class="w-4 h-4"/>
+                            Retake
+                        </button>
+                    </div>
+
+                    {{-- Reason/Notes --}}
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Cancellation Reason (Optional)</label>
+                        <textarea wire:model="cancelApprovedNote" rows="2" class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none resize-none" placeholder="Enter reason for cancelling approved booking..."></textarea>
+                    </div>
+
+                    {{-- Actions (Capture/Gallery) --}}
+                    <div x-show="!$wire.cancelApprovedPhotoData" class="flex items-center gap-3">
+                        <button type="button" @click="$refs.fileInput.click()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-gray-100 text-gray-800 font-bold text-sm hover:bg-gray-200 transition border border-gray-200 shadow-sm">
+                            <x-heroicon-o-photo class="w-5 h-5"/>
+                            Buka Galeri
+                        </button>
+                        <input type="file" accept="image/*" x-ref="fileInput" @change="handleFile" class="hidden">
+                        
+                        <button type="button" @click="capture()" class="flex-1 flex items-center justify-center gap-2 h-12 rounded-full bg-rose-700 text-white font-bold text-sm hover:bg-rose-800 transition shadow-md">
+                            <x-heroicon-o-camera class="w-5 h-5 text-rose-200"/>
+                            Ambil Foto
+                        </button>
+                    </div>
+
+                    {{-- Actions (Submit) --}}
+                    <div x-show="$wire.cancelApprovedPhotoData" style="display: none;" class="flex items-center">
+                        <button type="button" wire:click="submitCancelApproved" @click="stopCamera()"
+                            class="w-full flex items-center justify-center gap-2 h-12 rounded-full bg-rose-700 text-white font-bold text-sm hover:bg-rose-800 transition shadow-md"
+                            wire:loading.attr="disabled" wire:target="submitCancelApproved">
+                            <x-heroicon-o-check class="w-5 h-5" />
+                            <span>Confirm Cancellation</span>
                         </button>
                     </div>
                 </div>

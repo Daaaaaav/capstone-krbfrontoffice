@@ -11,6 +11,7 @@ use App\Models\VehicleBooking;
 use App\Models\Vehicle;
 use App\Models\Department;
 use App\Models\User;
+use App\Rules\NoSpecialCharacters;
 use App\Services\SecurityMonitoringService;
 
 #[Layout('layouts.receptionist')]
@@ -53,7 +54,7 @@ class Bookingvehicle extends Component
         return [
             'department_id'        => ['required', 'integer', 'exists:departments,department_id'],
             'borrower_user_id'     => ['nullable', 'integer', 'exists:users,user_id'],
-            'borrower_name'        => ['required_without:borrower_user_id', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'borrower_name'        => ['required_without:borrower_user_id', 'string', 'max:255', new NoSpecialCharacters('Borrower name')],
             'vehicle_id'           => ['required', 'integer', 'exists:vehicles,vehicle_id'],
 
             'date_from'            => ['required', 'date'],
@@ -61,11 +62,11 @@ class Bookingvehicle extends Component
             'start_time'           => ['required'],
             'end_time'             => ['required'],
 
-            'purpose'              => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
-            'destination'          => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'purpose'              => ['required', 'string', 'max:255', new NoSpecialCharacters('Purpose')],
+            'destination'          => ['nullable', 'string', 'max:255', new NoSpecialCharacters('Destination')],
             'odd_even_area'        => ['nullable', 'string', 'max:50'],
             'purpose_type'         => ['required', 'string', 'in:dinas,operasional,antar_jemput,lainnya'],
-            'purpose_type_other'   => ['required_if:purpose_type,lainnya', 'nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'purpose_type_other'   => ['required_if:purpose_type,lainnya', 'nullable', 'string', 'max:255', new NoSpecialCharacters('Other purpose')],
         ];
     }
 
@@ -245,6 +246,24 @@ class Bookingvehicle extends Component
                 type: 'error',
                 title: 'Vehicle Unavailable',
                 message: 'This vehicle is already booked from ' . $conflict->start_at->format('H:i') . ' to ' . $conflict->end_at->format('H:i') . '. There is a mandatory 1-hour buffer before it can be booked again.',
+                duration: 7000,
+            );
+            return;
+        }
+
+        $userConflict = VehicleBooking::findUserBookingConflict(
+            $companyId,
+            $this->borrower_user_id,
+            $borrowerName,
+            $startAt,
+            $endAt
+        );
+        if ($userConflict) {
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                title: 'Schedule Conflict',
+                message: $userConflict,
                 duration: 7000,
             );
             return;

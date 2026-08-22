@@ -229,6 +229,7 @@ class ContextRouter
             'trend', 'total', 'how many', 'berapa', 'most', 'terbanyak', 'usage',
             'occupancy', 'peak', 'rejection', 'year', 'month', 'week', 'tahun',
             'bulan', 'minggu', 'compare', 'increase', 'decrease', 'naik', 'turun',
+            'cancel', 'cancellation', 'cancelled', 'batal', 'pembatalan', 'dibatal', 'rate',
         ])) {
             $domains[] = 'analytics';
         }
@@ -264,7 +265,7 @@ class ContextRouter
             $content = mb_strtolower($turn['content'] ?? '');
             if ($this->matches($content, ['room', 'booking', 'meeting', 'rapat'])) $domains[] = 'rooms';
             if ($this->matches($content, ['vehicle', 'car', 'kendaraan'])) $domains[] = 'vehicles';
-            if ($this->matches($content, ['statistic', 'total', 'trend', 'analytic'])) $domains[] = 'analytics';
+            if ($this->matches($content, ['statistic', 'total', 'trend', 'analytic', 'cancel', 'batal'])) $domains[] = 'analytics';
             if ($this->matches($content, ['guest', 'visitor', 'tamu'])) $domains[] = 'guestbook';
             if ($this->matches($content, ['package', 'document', 'delivery'])) $domains[] = 'deliveries';
         }

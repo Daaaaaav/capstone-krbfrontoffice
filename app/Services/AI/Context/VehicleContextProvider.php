@@ -20,6 +20,10 @@ class VehicleContextProvider implements ContextProviderInterface
 
     public function load(?int $companyId, array $params = [], ?ContextDetailLevel $detailLevel = null): string
     {
+        if (! $companyId) {
+            return '(no vehicle data available: company not specified)';
+        }
+
         $now   = Carbon::now($this->tz);
         $today = $params['date'] ?? $now->toDateString();
         $level = $detailLevel ?? ContextDetailLevel::DETAILED;
@@ -28,7 +32,7 @@ class VehicleContextProvider implements ContextProviderInterface
         return Cache::remember($cacheKey, 90, fn() => $this->build($companyId, $now, $today, $level));
     }
 
-    private function build(?int $companyId, Carbon $now, string $today, ContextDetailLevel $level): string
+    private function build(int $companyId, Carbon $now, string $today, ContextDetailLevel $level): string
     {
         return match ($level) {
             ContextDetailLevel::MINIMAL => $this->buildMinimal($companyId),
@@ -38,9 +42,9 @@ class VehicleContextProvider implements ContextProviderInterface
         };
     }
 
-    private function buildMinimal(?int $companyId): string
+    private function buildMinimal(int $companyId): string
     {
-        $vehicles = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $vehicles = Vehicle::where('company_id', $companyId)
             ->where('is_active', 1)->orderBy('name')
             ->pluck('name')
             ->join(', ') ?: 'none';
@@ -48,9 +52,9 @@ class VehicleContextProvider implements ContextProviderInterface
         return "VEHICLES: {$vehicles}";
     }
 
-    private function buildNormal(?int $companyId): string
+    private function buildNormal(int $companyId): string
     {
-        $vehicles = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $vehicles = Vehicle::where('company_id', $companyId)
             ->where('is_active', 1)->orderBy('name')
             ->get(['name', 'category'])
             ->map(fn($v) => "{$v->name} ({$v->category})")
@@ -59,9 +63,9 @@ class VehicleContextProvider implements ContextProviderInterface
         return "VEHICLES: {$vehicles}";
     }
 
-    private function buildBooking(?int $companyId, Carbon $now, string $today): string
+    private function buildBooking(int $companyId, Carbon $now, string $today): string
     {
-        $fleet = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $fleet = Vehicle::where('company_id', $companyId)
             ->where('is_active', 1)->orderBy('name')
             ->get(['vehicle_id', 'name', 'plate_number', 'category'])
             ->map(fn($v) => sprintf(
@@ -69,7 +73,7 @@ class VehicleContextProvider implements ContextProviderInterface
                 $v->vehicle_id, $v->name ?? '—', $v->plate_number ?? '—', $v->category ?? '—'
             ))->join("\n  ") ?: '(none)';
 
-        $todayTrips = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $todayTrips = VehicleBooking::where('company_id', $companyId)
             ->with(['vehicle'])
             ->whereDate('start_at', $today)->orderBy('start_at')->take(6)->get()
             ->map(fn($v) => sprintf(
@@ -90,9 +94,9 @@ class VehicleContextProvider implements ContextProviderInterface
         BLOCK;
     }
 
-    private function buildDetailed(?int $companyId, Carbon $now, string $today): string
+    private function buildDetailed(int $companyId, Carbon $now, string $today): string
     {
-        $fleet = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $fleet = Vehicle::where('company_id', $companyId)
             ->where('is_active', 1)->orderBy('name')
             ->get(['vehicle_id', 'name', 'plate_number', 'category'])
             ->map(fn($v) => sprintf(
@@ -100,7 +104,7 @@ class VehicleContextProvider implements ContextProviderInterface
                 $v->vehicle_id, $v->name ?? '—', $v->plate_number ?? '—', $v->category ?? '—'
             ))->join("\n") ?: '  (none)';
 
-        $todayTrips = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $todayTrips = VehicleBooking::where('company_id', $companyId)
             ->with(['vehicle', 'department'])
             ->whereDate('start_at', $today)->orderBy('start_at')->take(6)->get()
             ->map(fn($v) => sprintf(
@@ -113,7 +117,7 @@ class VehicleContextProvider implements ContextProviderInterface
                 ucfirst($v->status ?? '—')
             ))->join("\n") ?: '  (none)';
 
-        $recent = VehicleBooking::when($companyId, fn($q) => $q->where('company_id', $companyId))
+        $recent = VehicleBooking::where('company_id', $companyId)
             ->with(['vehicle', 'department'])
             ->where('start_at', '>=', $now->copy()->subDays(59)->startOfDay())
             ->orderByDesc('start_at')->take(8)->get()

@@ -13,6 +13,7 @@ use App\Models\Storage;
 use App\Models\Delivery;
 use App\Services\ImageHelper;
 use App\Services\SecurityMonitoringService;
+use App\Rules\NoSpecialCharacters;
 use Carbon\Carbon;
 
 #[Layout('layouts.receptionist')]
@@ -42,16 +43,16 @@ class DocPackForm extends Component
             'direction'    => ['required', 'in:taken,deliver'],
             'itemType'     => ['required', 'in:package,document'],
             'storageId'    => ['required', 'integer', 'exists:storages,storage_id'],
-            'itemName'     => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'],
+            'itemName'     => ['required', 'string', 'max:255', new NoSpecialCharacters('Item name')],
             'departmentId' => ['required', 'integer'],
             'userId'       => ['required', 'integer'],
             'photo'        => ['required', 'image', 'max:2048'], // 2MB
         ];
 
         if ($this->direction === 'taken') {
-            $base['senderText'] = ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'];
+            $base['senderText'] = ['required', 'string', 'max:255', new NoSpecialCharacters('Sender name')];
         } else {
-            $base['receiverText'] = ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s]*$/'];
+            $base['receiverText'] = ['required', 'string', 'max:255', new NoSpecialCharacters('Receiver name')];
         }
 
         return $base;

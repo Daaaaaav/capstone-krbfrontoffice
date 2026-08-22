@@ -16,15 +16,17 @@ return new class extends Migration
             ->where('booking_type', 'etc')
             ->update(['booking_type' => 'meeting']);
 
-        DB::statement("
-            ALTER TABLE `booking_rooms`
-            MODIFY `booking_type`
-            ENUM('meeting','online_meeting')
-            CHARACTER SET utf8mb4
-            COLLATE utf8mb4_unicode_ci
-            NOT NULL
-            DEFAULT 'meeting'
-        ");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("
+                ALTER TABLE `booking_rooms`
+                MODIFY `booking_type`
+                ENUM('meeting','online_meeting')
+                CHARACTER SET utf8mb4
+                COLLATE utf8mb4_unicode_ci
+                NOT NULL
+                DEFAULT 'meeting'
+            ");
+        }
     }
 
     public function down(): void

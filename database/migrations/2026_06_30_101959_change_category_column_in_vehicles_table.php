@@ -9,11 +9,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE `vehicles` MODIFY `category` VARCHAR(100) NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `vehicles` MODIFY `category` VARCHAR(100) NOT NULL");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE `vehicles` MODIFY `category` ENUM('car','pickup','motorcycle','other') NOT NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE `vehicles` MODIFY `category` ENUM('car','pickup','motorcycle','other') NOT NULL");
+        }
     }
 };

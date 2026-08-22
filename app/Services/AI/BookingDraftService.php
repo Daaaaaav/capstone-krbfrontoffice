@@ -19,6 +19,20 @@ class BookingDraftService
         ];
     }
 
+    public function startRoomDraft(array $draft): array
+    {
+        $draft['type']   = 'room';
+        $draft['active'] = true;
+        return $draft;
+    }
+
+    public function startVehicleDraft(array $draft): array
+    {
+        $draft['type']   = 'vehicle';
+        $draft['active'] = true;
+        return $draft;
+    }
+
     public function mergePrefill(array $draft, ?array $roomPrefill, ?array $vehiclePrefill): array
     {
         $hasRoomData    = $this->hasAnyField($roomPrefill    ?? []);
@@ -189,8 +203,12 @@ class BookingDraftService
 
     public function resolveRoomId(array $draft, ?int $companyId): array
     {
+        if (! $companyId) {
+            return $draft;
+        }
+
         if (empty($draft['room']['room_id']) && !empty($draft['room']['room_name'])) {
-            $room = Room::when($companyId, fn($q) => $q->where('company_id', $companyId))
+            $room = Room::where('company_id', $companyId)
                 ->where('room_name', 'like', '%' . trim($draft['room']['room_name']) . '%')
                 ->first();
             $draft['room']['room_id']   = $room?->room_id;
@@ -201,14 +219,26 @@ class BookingDraftService
 
     public function resolveVehicleId(array $draft, ?int $companyId): array
     {
+        if (! $companyId) {
+            return $draft;
+        }
+
         if (empty($draft['vehicle']['vehicle_id'])) {
             $name  = $draft['vehicle']['vehicle_name']  ?? null;
             $plate = $draft['vehicle']['plate_number']  ?? null;
 
             if ($name || $plate) {
-                $q = Vehicle::when($companyId, fn($q) => $q->where('company_id', $companyId));
-                if ($name)  $q->where('name',         'like', '%' . trim($name)  . '%');
-                if ($plate) $q->orWhere('plate_number', 'like', '%' . trim($plate) . '%');
+                $q = Vehicle::where('company_id', $companyId);
+                $q->where(function ($sub) use ($name, $plate) {
+                    if ($name && $plate) {
+                        $sub->where('name', 'like', '%' . trim($name) . '%')
+                            ->orWhere('plate_number', 'like', '%' . trim($plate) . '%');
+                    } elseif ($name) {
+                        $sub->where('name', 'like', '%' . trim($name) . '%');
+                    } elseif ($plate) {
+                        $sub->where('plate_number', 'like', '%' . trim($plate) . '%');
+                    }
+                });
                 $vehicle = $q->first();
 
                 $draft['vehicle']['vehicle_id']   = $vehicle?->vehicle_id;

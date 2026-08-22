@@ -182,14 +182,22 @@ class ItOfficerChatModal extends Component
 
         $reply = 'Maaf, terjadi kesalahan. Silakan coba lagi. / Sorry, something went wrong. Please try again.';
 
-        try {
-            $reply = $this->callItOfficerAI($text);
-        } catch (\Throwable $e) {
-            Log::error('ItOfficerChatModal: AI call failed', [
-                'class' => get_class($e),
-                'error' => $e->getMessage(),
-                'file'  => $e->getFile() . ':' . $e->getLine(),
-            ]);
+        // Central ScopeGuard validation
+        $guard = app(\App\Services\AI\ScopeGuard::class)->validate($text, Auth::user());
+        if (! $guard['allowed']) {
+            $reply = $guard['refusal'] ?? \App\Services\AI\ScopeGuard::REFUSAL_EN;
+        } elseif ($guard['is_utility'] ?? false) {
+            $reply = $guard['utility_response'];
+        } else {
+            try {
+                $reply = $this->callItOfficerAI($text);
+            } catch (\Throwable $e) {
+                Log::error('ItOfficerChatModal: AI call failed', [
+                    'class' => get_class($e),
+                    'error' => $e->getMessage(),
+                    'file'  => $e->getFile() . ':' . $e->getLine(),
+                ]);
+            }
         }
 
         $this->messages[] = [
@@ -211,7 +219,9 @@ class ItOfficerChatModal extends Component
 
     private function callItOfficerAI(string $userMessage): string
     {
-        $companyId       = Auth::user()->company_id;
+        $user            = Auth::user();
+        $companyId       = $user?->company_id;
+        $companyName     = $user?->company?->company_name ?? 'Kebun Raya Bogor';
         $service         = app(ItOfficerQuickSubmitService::class);
         $router          = app(ContextRouter::class);
         $builder         = app(PromptBuilder::class);
@@ -255,7 +265,7 @@ class ItOfficerChatModal extends Component
         $quickSubmitContext = $service->buildStateContext($this->quickSubmitState);
 
         // ── 6. Build system prompt ────────────────────────────────────────────
-        $systemPrompt = $builder->itOfficerSystemPrompt($dataContext, $quickSubmitContext);
+        $systemPrompt = $builder->itOfficerSystemPrompt($dataContext, $quickSubmitContext, $companyName);
 
         // ── 7. Call AI ────────────────────────────────────────────────────────
         $raw   = $ai->chat($systemPrompt, $userMessage, $history);

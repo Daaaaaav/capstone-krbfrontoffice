@@ -7,25 +7,33 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        $dbName  = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
-        $indexes = \Illuminate\Support\Facades\DB::select(
-            "SELECT INDEX_NAME FROM information_schema.STATISTICS
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'",
-            [$dbName]
-        );
-        $existing = collect($indexes)->pluck('INDEX_NAME')->unique()->all();
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'mysql') {
+            $dbName  = \Illuminate\Support\Facades\DB::connection()->getDatabaseName();
+            $indexes = \Illuminate\Support\Facades\DB::select(
+                "SELECT INDEX_NAME FROM information_schema.STATISTICS
+                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'",
+                [$dbName]
+            );
+            $existing = collect($indexes)->pluck('INDEX_NAME')->unique()->all();
 
-        Schema::table('users', function (Blueprint $table) use ($existing) {
-            if (!in_array('users_full_name_index', $existing, true)) {
+            Schema::table('users', function (Blueprint $table) use ($existing) {
+                if (!in_array('users_full_name_index', $existing, true)) {
+                    $table->index('full_name', 'users_full_name_index');
+                }
+                if (!in_array('users_phone_number_index', $existing, true)) {
+                    $table->index('phone_number', 'users_phone_number_index');
+                }
+                if (!in_array('users_company_role_index', $existing, true)) {
+                    $table->index(['company_id', 'role_id'], 'users_company_role_index');
+                }
+            });
+        } else {
+            Schema::table('users', function (Blueprint $table) {
                 $table->index('full_name', 'users_full_name_index');
-            }
-            if (!in_array('users_phone_number_index', $existing, true)) {
                 $table->index('phone_number', 'users_phone_number_index');
-            }
-            if (!in_array('users_company_role_index', $existing, true)) {
                 $table->index(['company_id', 'role_id'], 'users_company_role_index');
-            }
-        });
+            });
+        }
     }
 
     public function down(): void
