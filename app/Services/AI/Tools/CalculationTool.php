@@ -3,6 +3,7 @@
 namespace App\Services\AI\Tools;
 
 use App\Services\AI\Contracts\ToolInterface;
+use App\Services\AI\Enums\ChatDataSource;
 
 class CalculationTool implements ToolInterface
 {
@@ -43,6 +44,10 @@ class CalculationTool implements ToolInterface
                     'type'        => 'integer',
                     'description' => 'Decimal precision (default 2).',
                 ],
+                'sources' => [
+                    'type'        => 'array',
+                    'description' => 'Optional upstream data source provenance to preserve.',
+                ],
             ],
             'required' => ['operation'],
         ];
@@ -55,6 +60,9 @@ class CalculationTool implements ToolInterface
         $values = array_map('floatval', (array) ($arguments['values'] ?? []));
         $num = isset($arguments['numerator']) ? (float) $arguments['numerator'] : 0.0;
         $den = isset($arguments['denominator']) ? (float) $arguments['denominator'] : 0.0;
+        $sources = (array) ($arguments['sources'] ?? []);
+
+        $sourceTag = ! empty($sources) ? "\n\n" . ChatDataSource::formatSourcesTag($sources) : '';
 
         switch ($operation) {
             case 'average':
@@ -69,24 +77,27 @@ class CalculationTool implements ToolInterface
                         'count'     => $cnt,
                         'sum'       => $sum,
                         'result'    => $res,
-                        'text'      => "Average of {$cnt} values: {$res} (sum: {$sum}).",
+                        'sources'   => $sources,
+                        'text'      => "Average of {$cnt} values: {$res} (sum: {$sum}).{$sourceTag}",
                     ];
                 }
                 if ($den == 0) {
                     return [
                         'success' => false,
                         'error'   => 'Division by zero is not permitted.',
+                        'sources' => $sources,
                         'text'    => 'Calculation error: Denominator cannot be zero.',
                     ];
                 }
                 $res = round($num / $den, $precision);
                 return [
-                    'success'   => true,
-                    'operation' => 'average',
-                    'numerator' => $num,
+                    'success'     => true,
+                    'operation'   => 'average',
+                    'numerator'   => $num,
                     'denominator' => $den,
-                    'result'    => $res,
-                    'text'      => "Average: {$res} ({$num} / {$den}).",
+                    'result'      => $res,
+                    'sources'     => $sources,
+                    'text'        => "Average: {$res} ({$num} / {$den}).{$sourceTag}",
                 ];
 
             case 'percentage':
@@ -94,6 +105,7 @@ class CalculationTool implements ToolInterface
                     return [
                         'success' => false,
                         'error'   => 'Division by zero is not permitted.',
+                        'sources' => $sources,
                         'text'    => 'Calculation error: Denominator cannot be zero.',
                     ];
                 }
@@ -104,7 +116,8 @@ class CalculationTool implements ToolInterface
                     'numerator'   => $num,
                     'denominator' => $den,
                     'result'      => $res,
-                    'text'        => "Percentage: {$res}% ({$num} out of {$den}).",
+                    'sources'     => $sources,
+                    'text'        => "Percentage: {$res}% ({$num} out of {$den}).{$sourceTag}",
                 ];
 
             case 'ratio':
@@ -113,6 +126,7 @@ class CalculationTool implements ToolInterface
                     return [
                         'success' => false,
                         'error'   => 'Division by zero is not permitted.',
+                        'sources' => $sources,
                         'text'    => 'Calculation error: Division by zero.',
                     ];
                 }
@@ -123,18 +137,20 @@ class CalculationTool implements ToolInterface
                     'numerator'   => $num,
                     'denominator' => $den,
                     'result'      => $res,
-                    'text'        => "Result: {$res} ({$num} ÷ {$den}).",
+                    'sources'     => $sources,
+                    'text'        => "Result: {$res} ({$num} ÷ {$den}).{$sourceTag}",
                 ];
 
             case 'difference':
                 $res = round($num - $den, $precision);
                 return [
-                    'success'   => true,
-                    'operation' => 'difference',
-                    'minuend'   => $num,
-                    'subtrahend'=> $den,
-                    'result'    => $res,
-                    'text'      => "Difference: {$res} ({$num} - {$den}).",
+                    'success'    => true,
+                    'operation'  => 'difference',
+                    'minuend'    => $num,
+                    'subtrahend' => $den,
+                    'result'     => $res,
+                    'sources'    => $sources,
+                    'text'       => "Difference: {$res} ({$num} - {$den}).{$sourceTag}",
                 ];
 
             case 'growth_rate':
@@ -150,7 +166,8 @@ class CalculationTool implements ToolInterface
                     'current'   => $num,
                     'previous'  => $den,
                     'result'    => $res,
-                    'text'      => "Growth rate: {$sign}{$res}% (from {$den} to {$num}).",
+                    'sources'   => $sources,
+                    'text'      => "Growth rate: {$sign}{$res}% (from {$den} to {$num}).{$sourceTag}",
                 ];
 
             case 'sum':
@@ -163,7 +180,8 @@ class CalculationTool implements ToolInterface
                     'success'   => true,
                     'operation' => 'sum',
                     'result'    => $res,
-                    'text'      => "Total sum: {$res}.",
+                    'sources'   => $sources,
+                    'text'      => "Total sum: {$res}.{$sourceTag}",
                 ];
 
             case 'multiply':
@@ -172,13 +190,15 @@ class CalculationTool implements ToolInterface
                     'success'   => true,
                     'operation' => 'multiply',
                     'result'    => $res,
-                    'text'      => "Product: {$res} ({$num} × {$den}).",
+                    'sources'   => $sources,
+                    'text'      => "Product: {$res} ({$num} × {$den}).{$sourceTag}",
                 ];
 
             default:
                 return [
                     'success' => false,
                     'error'   => "Unsupported operation: '{$operation}'.",
+                    'sources' => $sources,
                     'text'    => "Unsupported calculation operation.",
                 ];
         }
