@@ -7,7 +7,9 @@ use App\Models\Delivery;
 use App\Models\Guestbook;
 use App\Models\VehicleBooking;
 use App\Services\AI\Contracts\ToolInterface;
+use App\Services\AI\CsvDataReader;
 use App\Services\AI\DynamicAnalyticsService;
+use App\Services\AI\Enums\ChatDataSource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -15,9 +17,12 @@ use Illuminate\Support\Facades\DB;
 
 class AnalyticsTool implements ToolInterface
 {
-    public function __construct(private ?DynamicAnalyticsService $dynamicService = null)
-    {
+    public function __construct(
+        private ?DynamicAnalyticsService $dynamicService = null,
+        private ?CsvDataReader $csvReader = null
+    ) {
         $this->dynamicService = $dynamicService ?? app(DynamicAnalyticsService::class);
+        $this->csvReader = $csvReader ?? app(CsvDataReader::class);
     }
 
     public function name(): string
@@ -28,7 +33,7 @@ class AnalyticsTool implements ToolInterface
     public function description(): string
     {
         return 'Retrieve booking and operational statistics for a time period, or perform dynamic aggregations (weekday average, busiest day/month, breakdown by period). '
-             . 'Use for room and vehicle cancellations, totals, trends, or specific weekday metrics.';
+             . 'Supports Live System Data (end_to_end), Server Historical CSV (server_csv), or Combined comparison.';
     }
 
     public function parameters(): array
@@ -68,6 +73,11 @@ class AnalyticsTool implements ToolInterface
                     'type'        => 'boolean',
                     'description' => 'Whether zero-booking days should be included in the denominator for period averages (default true).',
                 ],
+                'data_source' => [
+                    'type'        => 'string',
+                    'enum'        => ['auto', 'end_to_end', 'server_csv', 'combined'],
+                    'description' => 'Data source preference: "end_to_end" (live application records), "server_csv" (krb_historical_data.csv), or "combined" (comparison). Default is "auto".',
+                ],
             ],
             'required' => [],
         ];
@@ -80,12 +90,13 @@ class AnalyticsTool implements ToolInterface
             return ['text' => 'Analytics data is currently unavailable.'];
         }
 
-        // If dynamic aggregation parameters are specified, route through DynamicAnalyticsService
-        if (isset($arguments['weekday']) || isset($arguments['entity']) || (isset($arguments['operation']) && $arguments['operation'] !== 'count')) {
+        // If dynamic aggregation parameters or specific data_source is specified, route through DynamicAnalyticsService
+        if (isset($arguments['weekday']) || isset($arguments['entity']) || isset($arguments['data_source']) || (isset($arguments['operation']) && $arguments['operation'] !== 'count')) {
             $dynResult = $this->dynamicService->aggregate($companyId, $arguments);
             return [
-                'text' => $dynResult['text'] ?? json_encode($dynResult),
-                'data' => $dynResult,
+                'text'    => $dynResult['text'] ?? json_encode($dynResult),
+                'sources' => $dynResult['sources'] ?? [],
+                'data'    => $dynResult,
             ];
         }
 
@@ -95,14 +106,25 @@ class AnalyticsTool implements ToolInterface
         [$start, $end] = $this->periodRange($period);
         $cacheKey = "ai_analytics_{$companyId}_{$period}_{$module}";
 
-        $text = Cache::remember($cacheKey, 120, function () use ($companyId, $period, $start, $end, $module) {
-            return $this->buildText($companyId, $period, $start, $end, $module);
+        $sources = [
+            [
+                'type'        => ChatDataSource::END_TO_END->value,
+                'label'       => ChatDataSource::END_TO_END->label(),
+                'description' => ChatDataSource::END_TO_END->description(),
+            ]
+        ];
+
+        $text = Cache::remember($cacheKey, 120, function () use ($companyId, $period, $start, $end, $module, $sources) {
+            return $this->buildText($companyId, $period, $start, $end, $module, $sources);
         });
 
-        return ['text' => $text];
+        return [
+            'text'    => $text,
+            'sources' => $sources,
+        ];
     }
 
-    private function buildText(int $companyId, string $period, string $start, string $end, string $module): string
+    private function buildText(int $companyId, string $period, string $start, string $end, string $module, array $sources = []): string
     {
         $lines  = ["Analytics — {$period} ({$start} to {$end}):"];
         $tz     = 'Asia/Jakarta';
@@ -162,6 +184,11 @@ class AnalyticsTool implements ToolInterface
             $total   = (clone $dQ)->whereBetween('created_at', [$start, $end])->count();
             $pending = (clone $dQ)->whereBetween('created_at', [$start, $end])->where('status', 'pending')->count();
             $lines[] = "DELIVERIES: total={$total} pending={$pending}";
+        }
+
+        if (! empty($sources)) {
+            $lines[] = "";
+            $lines[] = ChatDataSource::formatSourcesTag($sources);
         }
 
         return implode("\n", $lines);

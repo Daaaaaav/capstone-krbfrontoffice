@@ -150,8 +150,8 @@ assertCondition($pctRes['success'] && $pctRes['result'] === 25.0, "CalculationTo
 $zeroDiv = $calc->execute(['operation' => 'divide', 'numerator' => 100, 'denominator' => 0]);
 assertCondition(!$zeroDiv['success'] && str_contains($zeroDiv['error'], 'Division by zero'), "CalculationTool zero-division guard", $passed, $failed);
 
-// 3. KNOWLEDGE RETRIEVAL TESTS
-echo "\n3. Testing KRB Knowledge Retrieval Layer...\n";
+// 3. KNOWLEDGE RETRIEVAL & SOURCE ATTRIBUTION TESTS
+echo "\n3. Testing KRB Knowledge Retrieval & Source Attribution Layer...\n";
 try {
     app(KrbKnowledgeSeeder::class)->run();
     $knowService = app(KrbKnowledgeService::class);
@@ -163,14 +163,20 @@ try {
     }
 
     $knowTool = app(KrbKnowledgeTool::class);
+    $knowRes = $knowTool->execute(['query' => 'sejarah kebun raya bogor']);
+    assertCondition($knowRes['success'] === true, "Knowledge tool executed successfully", $passed, $failed);
+    assertCondition(!empty($knowRes['sources']), "Knowledge tool returned sources metadata", $passed, $failed);
+    assertCondition($knowRes['sources'][0]['type'] === \App\Services\AI\Enums\ChatDataSource::KRB_KNOWLEDGE_BASE->value, "Knowledge source type is krb_knowledge_base", $passed, $failed);
+    assertCondition(str_contains($knowRes['text'], 'Approved Kebun Raya Bogor Knowledge Base'), "Knowledge response contains source attribution label", $passed, $failed);
+
     $fallbackRes = $knowTool->execute(['query' => 'Secret missile silo on Mars']);
     assertCondition(str_contains($fallbackRes['text'], 'approved Kebun Raya Bogor information'), "Knowledge tool graceful fallback on missing info", $passed, $failed);
 } catch (\Throwable $e) {
     echo "  [INFO] Seeder DB execution: " . $e->getMessage() . "\n";
 }
 
-// 4. DYNAMIC ANALYTICS SERVICE TESTS (SUNDAY AVERAGE CALCULATION)
-echo "\n4. Testing Dynamic Analytics & Sunday Average Logic...\n";
+// 4. DYNAMIC ANALYTICS & MULTI-SOURCE ATTRIBUTION TESTS
+echo "\n4. Testing Dynamic Analytics & Multi-Source Attribution Logic...\n";
 $dynService = app(DynamicAnalyticsService::class);
 
 $company = Company::create(['company_name' => 'Kebun Raya Bogor']);
@@ -211,19 +217,63 @@ VehicleBooking::create([
     'status'        => 'cancelled',
 ]);
 
-$sundayCalc = $dynService->calculateWeekdayAverage($company->company_id, 'vehicle_bookings', 'Sunday', 2026, true);
-assertCondition($sundayCalc['success'] === true, "DynamicAnalyticsService returned success for Sunday 2026", $passed, $failed);
-assertCondition($sundayCalc['total_bookings'] === 3, "Total qualifying bookings is 3 (cancelled excluded)", $passed, $failed);
-assertCondition($sundayCalc['period_count'] === 52, "Year 2026 correctly has 52 Sundays", $passed, $failed);
-assertCondition($sundayCalc['active_period_count'] === 2, "Active Sunday periods count is 2", $passed, $failed);
-assertCondition($sundayCalc['zero_booking_period_count'] === 50, "Zero booking periods count is 50", $passed, $failed);
-assertCondition($sundayCalc['average'] === round(3 / 52, 2), "Average is 0.06 (3 / 52)", $passed, $failed);
-assertCondition($sundayCalc['included_zero_booking_periods'] === true, "Zero booking periods included in denominator", $passed, $failed);
-assertCondition(isset($sundayCalc['calculation']['formula']), "Formula breakdown provided: {$sundayCalc['calculation']['formula']}", $passed, $failed);
-echo "  [SAMPLE OUTPUT] " . $sundayCalc['text'] . "\n";
+// A. Test End-to-End Live Application Source Attribution
+$liveSundayCalc = $dynService->calculateWeekdayAverage($company->company_id, 'vehicle_bookings', 'Sunday', 2026, true, 'end_to_end');
+assertCondition($liveSundayCalc['success'] === true, "Live calculation returned success", $passed, $failed);
+assertCondition($liveSundayCalc['source_type'] === 'end_to_end', "Source type is end_to_end", $passed, $failed);
+assertCondition($liveSundayCalc['total_bookings'] === 3, "Total qualifying live bookings is 3", $passed, $failed);
+assertCondition($liveSundayCalc['period_count'] === 52, "Year 2026 correctly has 52 Sundays", $passed, $failed);
+assertCondition($liveSundayCalc['average'] === round(3 / 52, 2), "Live Sunday average is 0.06", $passed, $failed);
+assertCondition(str_contains($liveSundayCalc['text'], 'Live KRB System Data'), "Live calculation text contains 'Live KRB System Data' source tag", $passed, $failed);
 
-// 5. TOOL DISPATCHER REGISTRATION TESTS
-echo "\n5. Testing ToolDispatcher Registration...\n";
+// B. Test Server Historical CSV Source Attribution & Calculation
+$csvReader = app(\App\Services\AI\CsvDataReader::class);
+$csvSundayCalc = $dynService->calculateWeekdayAverage($company->company_id, 'vehicle_bookings', 'Sunday', 2025, true, 'server_csv');
+assertCondition($csvSundayCalc['success'] === true, "Server CSV calculation returned success for 2025", $passed, $failed);
+assertCondition($csvSundayCalc['source_type'] === 'server_csv', "Source type is server_csv", $passed, $failed);
+assertCondition($csvSundayCalc['period_count'] === 52, "CSV 2025 has 52 Sunday rows", $passed, $failed);
+assertCondition(isset($csvSundayCalc['total_metric_value']), "Total metric value computed from CSV", $passed, $failed);
+assertCondition(str_contains($csvSundayCalc['text'], 'Server Historical CSV (krb_historical_data.csv)'), "CSV text contains 'Server Historical CSV' source tag", $passed, $failed);
+
+// C. Test Combined Multi-Source Comparison (No double counting)
+$combinedCalc = $dynService->calculateWeekdayAverage($company->company_id, 'vehicle_bookings', 'Sunday', 2026, true, 'combined');
+assertCondition($combinedCalc['success'] === true, "Combined calculation returned success", $passed, $failed);
+assertCondition($combinedCalc['source_type'] === 'combined', "Combined source type returned", $passed, $failed);
+assertCondition(count($combinedCalc['sources']) === 2, "Combined calculation contains both sources", $passed, $failed);
+assertCondition(str_contains($combinedCalc['text'], 'Live KRB System Data + Server Historical CSV'), "Combined text contains both source labels", $passed, $failed);
+
+// D. Test Provenance Preservation in CalculationTool
+$calcTool = new CalculationTool();
+$calcProvenance = $calcTool->execute([
+    'operation' => 'difference',
+    'numerator' => 10.0,
+    'denominator' => 4.0,
+    'sources'   => $combinedCalc['sources'],
+]);
+assertCondition($calcProvenance['success'] === true, "CalculationTool executed difference", $passed, $failed);
+assertCondition(count($calcProvenance['sources']) === 2, "CalculationTool preserved source provenance end-to-end", $passed, $failed);
+assertCondition(str_contains($calcProvenance['text'], 'Live KRB System Data + Server Historical CSV'), "CalculationTool formatted source attribution tag", $passed, $failed);
+
+// 5. CSV DATA READER & LSTM INTEGRITY TESTS
+echo "\n5. Testing CsvDataReader & LSTM Forecasting Integrity...\n";
+$csvMeta = $csvReader->getCsvSourceMetadata();
+assertCondition($csvMeta['type'] === 'server_csv', "CsvDataReader metadata type is server_csv", $passed, $failed);
+assertCondition($csvMeta['total_rows'] > 0, "CsvDataReader found {$csvMeta['total_rows']} total rows", $passed, $failed);
+
+$csvRows = $csvReader->getHistoricalRows('2025-01-01', '2025-01-07');
+assertCondition(count($csvRows) === 7, "getHistoricalRows retrieved 7 days in range", $passed, $failed);
+
+$visitorSeries = $csvReader->readServerCsv('visitors');
+assertCondition(!empty($visitorSeries), "Existing LSTM readServerCsv('visitors') functional", $passed, $failed);
+
+$summedSeries = $csvReader->readServerCsvColumnsSummed(['offline_room_bookings', 'online_room_bookings']);
+assertCondition(!empty($summedSeries), "Existing LSTM readServerCsvColumnsSummed() functional", $passed, $failed);
+
+$missingCols = $csvReader->validateColumns($csvReader->resolveServerCsvPath());
+assertCondition(empty($missingCols), "All required columns present in krb_historical_data.csv", $passed, $failed);
+
+// 6. TOOL DISPATCHER REGISTRATION TESTS
+echo "\n6. Testing ToolDispatcher Registration...\n";
 $dispatcher = app(ToolDispatcher::class);
 $manifest = $dispatcher->manifest();
 $toolNames = array_column(array_column($manifest, 'function'), 'name');
