@@ -51,16 +51,9 @@ return [
     |
     | These credentials are NEVER exposed to Blade, Livewire public properties,
     | JavaScript, or browser requests – they exist on the server only.
-    |
-    | NOTE: Only one 'wazuh' key is defined here. A previous duplicate was
-    | removed — PHP silently discards the first of any duplicated array key,
-    | which caused config('services.wazuh.url') to return null at runtime,
-    | breaking every WazuhService API call.
     */
     'wazuh' => [
-        // Full base URL — used by WazuhService::getSecuritySummary() / getRecentAlerts()
         'url'      => env('WAZUH_INDEXER_URL', 'https://localhost:9200'),
-        // Basic-auth credentials for the Wazuh Indexer OpenSearch API
         'username' => env('WAZUH_INDEXER_USER', 'admin'),
         'password' => env('WAZUH_INDEXER_PASS', ''),
     ],
@@ -80,6 +73,14 @@ return [
         'token_path'         => env('GOOGLE_TOKEN_PATH', 'storage/app/google/token.json'),
         'calendar_id'        => env('GOOGLE_CALENDAR_ID', 'primary'),
         'impersonate_email'  => env('GOOGLE_IMPERSONATE_EMAIL'),
+    ],
+
+    'wazuh' => [
+        // Internal IP/hostname of the Wazuh Indexer (OpenSearch/Elasticsearch)
+        'indexer_ip'  => env('WAZUH_INDEXER_INTERNAL_IP', '10.0.0.50'),
+        // Credentials — no hardcoded defaults; must be set in .env
+        'indexer_user' => env('WAZUH_INDEXER_USER', env('WAZUH_API_USER')),
+        'indexer_pass' => env('WAZUH_INDEXER_PASSWORD', env('WAZUH_API_PASS')),
     ],
 
 ];
