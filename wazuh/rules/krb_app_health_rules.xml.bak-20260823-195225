@@ -19,7 +19,7 @@
     <field name="service">krb_laravel_local</field>
     <field name="status">down</field>
     <description>KRB Laravel application endpoint is unavailable.</description>
-    <group>krb_health,service_down,krb_service_down_critical,</group>
+    <group>krb_health,service_down,</group>
   </rule>
 
   <!-- LSTM Local Down -->
@@ -28,7 +28,7 @@
     <field name="service">lstm_local</field>
     <field name="status">down</field>
     <description>LSTM Forecast Service endpoint is unavailable.</description>
-    <group>krb_health,service_down,krb_service_down_critical,</group>
+    <group>krb_health,service_down,</group>
   </rule>
 
   <!-- KRB Public Endpoint Down -->
@@ -37,22 +37,13 @@
     <field name="service">krb_public</field>
     <field name="status">down</field>
     <description>KRB public endpoint is unavailable.</description>
-    <group>krb_health,service_down,krb_service_down_critical,</group>
+    <group>krb_health,service_down,</group>
   </rule>
 
-  <!-- Multiple Outages / System Down
-       Wazuh only allows one <if_matched_sid> per rule. The previous version
-       had two, which is invalid XML for the analysisd parser and would cause
-       a configuration validation failure. The correct approach for correlating
-       multiple rule IDs is to share a common group and use <if_matched_group>
-       with a frequency/timeframe composite.
-
-       Rules 100801 and 100803 both carry the group 'krb_service_down_critical'
-       (added below) so this rule triggers when 2 or more "down" events from
-       any KRB service are seen within 60 seconds.
-  -->
+  <!-- Multiple Outages / System Down -->
   <rule id="100804" level="9" frequency="2" timeframe="60">
-    <if_matched_group>krb_service_down_critical</if_matched_group>
+    <if_matched_sid>100801</if_matched_sid>
+    <if_matched_sid>100803</if_matched_sid>
     <description>Multiple KRB application endpoints unavailable (Degraded or System Outage).</description>
     <group>krb_health,service_down,critical_availability,</group>
   </rule>
