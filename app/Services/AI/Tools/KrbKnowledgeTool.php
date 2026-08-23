@@ -3,6 +3,7 @@
 namespace App\Services\AI\Tools;
 
 use App\Services\AI\Contracts\ToolInterface;
+use App\Services\AI\Enums\ChatDataSource;
 use App\Services\AI\KrbKnowledgeService;
 
 class KrbKnowledgeTool implements ToolInterface
@@ -46,16 +47,37 @@ class KrbKnowledgeTool implements ToolInterface
         $category = ($arguments['category'] ?? 'all') === 'all' ? null : $arguments['category'];
 
         if (trim($query) === '') {
-            return ['text' => KrbKnowledgeService::NOT_ENOUGH_INFO_EN];
+            return [
+                'success' => false,
+                'text'    => KrbKnowledgeService::NOT_ENOUGH_INFO_EN,
+                'sources' => [],
+            ];
+        }
+
+        $docs = $this->knowledgeService->search($query, $category);
+        if ($docs->isEmpty()) {
+            return [
+                'success' => false,
+                'text'    => KrbKnowledgeService::NOT_ENOUGH_INFO_EN,
+                'sources' => [],
+            ];
         }
 
         $context = $this->knowledgeService->buildContext($query, $category);
 
-        if ($context === '') {
-            return ['text' => KrbKnowledgeService::NOT_ENOUGH_INFO_EN];
-        }
+        $sources = [
+            [
+                'type'        => ChatDataSource::KRB_KNOWLEDGE_BASE->value,
+                'label'       => ChatDataSource::KRB_KNOWLEDGE_BASE->label(),
+                'description' => ChatDataSource::KRB_KNOWLEDGE_BASE->description(),
+            ]
+        ];
 
-        return ['text' => $context];
+        return [
+            'success' => true,
+            'text'    => $context . "\n\n" . ChatDataSource::formatSourcesTag($sources),
+            'sources' => $sources,
+        ];
     }
 }
 

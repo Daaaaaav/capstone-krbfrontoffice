@@ -24,9 +24,24 @@ class CsvDataReader
 
     private const PARSE_TTL = 3600;
 
-    public function readServerCsv(string $metric = 'visitors'): array
+    public function resolveServerCsvPath(): string
     {
         $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
+        if (file_exists($path)) {
+            return $path;
+        }
+
+        $fallback = base_path('docs/krb_historical_data.csv');
+        if (file_exists($fallback)) {
+            return $fallback;
+        }
+
+        return $path;
+    }
+
+    public function readServerCsv(string $metric = 'visitors'): array
+    {
+        $path = $this->resolveServerCsvPath();
 
         if (!file_exists($path)) {
             throw new \RuntimeException(
@@ -51,7 +66,7 @@ class CsvDataReader
 
     public function readServerCsvColumnsSummed(array $metrics): array
     {
-        $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
+        $path = $this->resolveServerCsvPath();
 
         if (!file_exists($path)) {
             throw new \RuntimeException(
@@ -76,10 +91,17 @@ class CsvDataReader
 
     public function validateColumns(string $storagePath): array
     {
-        $path = Storage::disk(self::DISK)->path($storagePath);
+        $path = file_exists($storagePath)
+            ? $storagePath
+            : Storage::disk(self::DISK)->path($storagePath);
 
         if (!file_exists($path)) {
-            return self::REQUIRED_COLUMNS;
+            $fallback = base_path('docs/' . basename($storagePath));
+            if (file_exists($fallback)) {
+                $path = $fallback;
+            } else {
+                return self::REQUIRED_COLUMNS;
+            }
         }
 
         $handle = fopen($path, 'r');
@@ -351,5 +373,191 @@ class CsvDataReader
         usort($timeSeries, fn($a, $b) => strcmp($a['date'], $b['date']));
 
         return $timeSeries;
+    }
+
+    public function getCsvSourceMetadata(): array
+    {
+        $info = $this->serverCsvInfo();
+        return [
+            'type'        => 'server_csv',
+            'label'       => 'Server Historical CSV (krb_historical_data.csv)',
+            'file'        => 'krb_historical_data.csv',
+            'description' => 'Retrieved from server-side historical time-series dataset (krb_historical_data.csv)',
+            'total_rows'  => $info['rows'] ?? 0,
+            'start_date'  => $info['start'] ?? null,
+            'end_date'    => $info['end'] ?? null,
+        ];
+    }
+
+    public function getHistoricalRows(?string $startDate = null, ?string $endDate = null, ?string $weekday = null): array
+    {
+        $path = $this->resolveServerCsvPath();
+        if (!file_exists($path)) {
+            return [];
+        }
+
+        $mtime = (int) filemtime($path);
+        $cacheKey = 'csv.all_rows.' . md5($path) . '.' . $mtime;
+
+        $allRows = Cache::remember($cacheKey, self::PARSE_TTL, function () use ($path) {
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
+                return [];
+            }
+
+            $rawHeaders = fgetcsv($handle);
+            if ($rawHeaders === false) {
+                fclose($handle);
+                return [];
+            }
+
+            $headers = array_map('trim', array_map('strtolower', $rawHeaders));
+            $dateIdx = array_search('date', $headers, true);
+            $dayNameIdx = array_search('day_name', $headers, true);
+            $visitorsIdx = array_search('visitors', $headers, true);
+            $docRecIdx = array_search('docs_packages_received', $headers, true);
+            $docSentIdx = array_search('docs_packages_sent', $headers, true);
+            $offRoomIdx = array_search('offline_room_bookings', $headers, true);
+            $onRoomIdx = array_search('online_room_bookings', $headers, true);
+            $vehIdx = array_search('vehicle_bookings', $headers, true);
+
+            $rows = [];
+            while (($row = fgetcsv($handle)) !== false) {
+                if (!isset($row[$dateIdx])) {
+                    continue;
+                }
+                $date = trim($row[$dateIdx]);
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    continue;
+                }
+
+                $dayName = $dayNameIdx !== false && isset($row[$dayNameIdx]) ? trim($row[$dayNameIdx]) : date('l', strtotime($date));
+
+                $rows[] = [
+                    'date'                   => $date,
+                    'day_name'               => $dayName,
+                    'visitors'               => $visitorsIdx !== false && isset($row[$visitorsIdx]) ? max(0, (int) $row[$visitorsIdx]) : 0,
+                    'docs_packages_received' => $docRecIdx !== false && isset($row[$docRecIdx]) ? max(0, (int) $row[$docRecIdx]) : 0,
+                    'docs_packages_sent'     => $docSentIdx !== false && isset($row[$docSentIdx]) ? max(0, (int) $row[$docSentIdx]) : 0,
+                    'offline_room_bookings'  => $offRoomIdx !== false && isset($row[$offRoomIdx]) ? max(0, (int) $row[$offRoomIdx]) : 0,
+                    'online_room_bookings'   => $onRoomIdx !== false && isset($row[$onRoomIdx]) ? max(0, (int) $row[$onRoomIdx]) : 0,
+                    'room_bookings'          => ($offRoomIdx !== false && isset($row[$offRoomIdx]) ? max(0, (int) $row[$offRoomIdx]) : 0)
+                                              + ($onRoomIdx !== false && isset($row[$onRoomIdx]) ? max(0, (int) $row[$onRoomIdx]) : 0),
+                    'vehicle_bookings'       => $vehIdx !== false && isset($row[$vehIdx]) ? max(0, (int) $row[$vehIdx]) : 0,
+                ];
+            }
+
+            fclose($handle);
+            usort($rows, fn($a, $b) => strcmp($a['date'], $b['date']));
+            return $rows;
+        });
+
+        // Filter rows in memory
+        $filtered = [];
+        $weekdayFilter = $weekday ? strtolower($weekday) : null;
+
+        foreach ($allRows as $r) {
+            if ($startDate !== null && $r['date'] < $startDate) {
+                continue;
+            }
+            if ($endDate !== null && $r['date'] > $endDate) {
+                continue;
+            }
+            if ($weekdayFilter !== null && strtolower($r['day_name']) !== $weekdayFilter) {
+                continue;
+            }
+            $filtered[] = $r;
+        }
+
+        return $filtered;
+    }
+
+    public function getWeekdayAverageFromCsv(string $metric, string $weekday, int|string $year): array
+    {
+        $metricKey = match (strtolower($metric)) {
+            'vehicle', 'vehicles', 'vehicle_booking', 'vehicle_bookings' => 'vehicle_bookings',
+            'room', 'rooms', 'room_booking', 'room_bookings' => 'room_bookings',
+            'offline_room_bookings' => 'offline_room_bookings',
+            'online_room_bookings' => 'online_room_bookings',
+            'visitor', 'visitors', 'guest', 'guests' => 'visitors',
+            'delivery', 'deliveries', 'docs_packages_received', 'package', 'packages' => 'docs_packages_received',
+            'docs_packages_sent' => 'docs_packages_sent',
+            default => 'vehicle_bookings',
+        };
+
+        $startDate = "{$year}-01-01";
+        $endDate = "{$year}-12-31";
+
+        $rows = $this->getHistoricalRows($startDate, $endDate, $weekday);
+
+        $rowCount = count($rows);
+        if ($rowCount === 0) {
+            return [
+                'success'                       => false,
+                'error'                         => "No historical CSV rows found for {$weekday} in year {$year}.",
+                'metric'                        => $metricKey,
+                'weekday'                       => ucfirst($weekday),
+                'year'                          => (int) $year,
+                'period_count'                  => 0,
+                'total_metric_value'            => 0,
+                'average'                       => 0.0,
+                'zero_value_period_count'       => 0,
+                'active_period_count'           => 0,
+                'sources'                       => [$this->getCsvSourceMetadata()],
+                'text'                          => "No historical CSV records found for " . ucfirst($weekday) . " in {$year}.",
+            ];
+        }
+
+        $totalVal = 0;
+        $zeroCount = 0;
+        $activeCount = 0;
+
+        foreach ($rows as $r) {
+            $val = (int) ($r[$metricKey] ?? 0);
+            $totalVal += $val;
+            if ($val === 0) {
+                $zeroCount++;
+            } else {
+                $activeCount++;
+            }
+        }
+
+        $average = round($totalVal / $rowCount, 2);
+
+        $metricLabel = match ($metricKey) {
+            'vehicle_bookings'       => 'vehicle bookings',
+            'room_bookings'          => 'room bookings',
+            'offline_room_bookings'  => 'offline room bookings',
+            'online_room_bookings'   => 'online room bookings',
+            'visitors'               => 'visitors',
+            'docs_packages_received' => 'packages received',
+            'docs_packages_sent'     => 'packages sent',
+            default                  => $metricKey,
+        };
+
+        $pluralWeekday = ucfirst($weekday) . 's';
+        $text = "The historical average was **{$average} {$metricLabel} per {$weekday}** in {$year} (from {$rowCount} recorded {$pluralWeekday} in the historical dataset, including {$zeroCount} {$pluralWeekday} with 0 {$metricLabel}).";
+
+        return [
+            'success'                       => true,
+            'source_type'                   => 'server_csv',
+            'metric'                        => $metricKey,
+            'weekday'                       => ucfirst($weekday),
+            'year'                          => (int) $year,
+            'period_count'                  => $rowCount,
+            'total_metric_value'            => $totalVal,
+            'average'                       => $average,
+            'zero_value_period_count'       => $zeroCount,
+            'active_period_count'           => $activeCount,
+            'included_zero_booking_periods' => true,
+            'calculation'                   => [
+                'formula'     => "total_metric_value / period_count",
+                'numerator'   => $totalVal,
+                'denominator' => $rowCount,
+                'result'      => $average,
+            ],
+            'sources'                       => [$this->getCsvSourceMetadata()],
+            'text'                          => $text,
+        ];
     }
 }

@@ -6,6 +6,7 @@ use App\Models\BookingRoom;
 use App\Models\Delivery;
 use App\Models\Guestbook;
 use App\Models\VehicleBooking;
+use App\Services\AI\Enums\ChatDataSource;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\Log;
 class DynamicAnalyticsService
 {
     private string $tz = 'Asia/Jakarta';
+
+    public function __construct(private ?CsvDataReader $csvReader = null)
+    {
+        $this->csvReader = $csvReader ?? app(CsvDataReader::class);
+    }
 
     /**
      * Compute dynamic aggregations based on structured parameters.
@@ -25,17 +31,18 @@ class DynamicAnalyticsService
         $year = isset($params['year']) ? (int) $params['year'] : Carbon::now($this->tz)->year;
         $weekday = isset($params['weekday']) ? ucfirst(strtolower(trim((string) $params['weekday']))) : null;
         $includeZeroPeriods = (bool) ($params['include_zero_periods'] ?? true);
+        $sourcePreference = strtolower((string) ($params['data_source'] ?? $params['source'] ?? 'auto'));
 
         if ($weekday !== null && in_array($operation, ['average', 'mean', 'avg', 'count', 'weekday_occurrence', 'summary'], true)) {
-            return $this->calculateWeekdayAverage($companyId, $entity, $weekday, $year, $includeZeroPeriods);
+            return $this->calculateWeekdayAverage($companyId, $entity, $weekday, $year, $includeZeroPeriods, $sourcePreference);
         }
 
         if (in_array($operation, ['weekday_breakdown', 'busiest_weekday'], true)) {
-            return $this->calculateAllWeekdaysBreakdown($companyId, $entity, $year);
+            return $this->calculateAllWeekdaysBreakdown($companyId, $entity, $year, $sourcePreference);
         }
 
         if (in_array($operation, ['monthly_breakdown', 'busiest_month'], true)) {
-            return $this->calculateMonthlyBreakdown($companyId, $entity, $year);
+            return $this->calculateMonthlyBreakdown($companyId, $entity, $year, $sourcePreference);
         }
 
         return $this->calculateGeneralAggregate($companyId, $entity, $params);
@@ -49,8 +56,48 @@ class DynamicAnalyticsService
         string $entity,
         string $weekday,
         int $year,
-        bool $includeZeroPeriods = true
+        bool $includeZeroPeriods = true,
+        string $sourcePreference = 'auto'
     ): array {
+        // Handle SERVER_CSV routing
+        if ($sourcePreference === 'server_csv') {
+            $res = $this->csvReader->getWeekdayAverageFromCsv($entity, $weekday, $year);
+            $res['sources'] = [$this->csvReader->getCsvSourceMetadata()];
+            $res['source_type'] = 'server_csv';
+            $res['text'] .= "\n\n" . ChatDataSource::formatSourcesTag($res['sources']);
+            return $res;
+        }
+
+        // Handle COMBINED routing (comparison)
+        if ($sourcePreference === 'combined') {
+            $liveRes = $this->calculateWeekdayAverage($companyId, $entity, $weekday, $year, $includeZeroPeriods, 'end_to_end');
+            $csvRes = $this->csvReader->getWeekdayAverageFromCsv($entity, $weekday, $year);
+
+            $sources = [
+                [
+                    'type'        => ChatDataSource::END_TO_END->value,
+                    'label'       => ChatDataSource::END_TO_END->label(),
+                    'description' => ChatDataSource::END_TO_END->description(),
+                ],
+                $this->csvReader->getCsvSourceMetadata(),
+            ];
+
+            $text = "### Multi-Source Comparison for {$weekday}s in {$year}\n"
+                  . "• **Live System Data:** {$liveRes['average']} average bookings ({$liveRes['total_bookings']} bookings across {$liveRes['period_count']} {$weekday}s)\n"
+                  . "• **Server Historical CSV:** " . ($csvRes['success'] ? "{$csvRes['average']} average ({$csvRes['total_metric_value']} total across {$csvRes['period_count']} recorded {$weekday}s)" : "No matching historical CSV rows") . "\n\n"
+                  . ChatDataSource::formatSourcesTag($sources);
+
+            return [
+                'success'     => true,
+                'source_type' => 'combined',
+                'live_data'   => $liveRes,
+                'csv_data'    => $csvRes,
+                'sources'     => $sources,
+                'text'        => $text,
+            ];
+        }
+
+        // AUTO or END_TO_END routing
         $now = Carbon::now($this->tz);
         $weekdayMap = [
             'Sunday' => Carbon::SUNDAY,
@@ -110,8 +157,16 @@ class DynamicAnalyticsService
 
         $entityLabel = str_contains($entity, 'room') ? 'room bookings' : 'vehicle bookings';
 
+        $sources = [
+            [
+                'type'        => ChatDataSource::END_TO_END->value,
+                'label'       => ChatDataSource::END_TO_END->label(),
+                'description' => ChatDataSource::END_TO_END->description(),
+            ]
+        ];
+
         $explanation = sprintf(
-            "The average was **%s %s per %s** in %d. This was calculated from **%d qualifying bookings across %d %ss**, including %d %ss with zero bookings.",
+            "The average was **%s %s per %s** in %d. This was calculated from **%d qualifying bookings across %d %ss**, including %d %ss with zero bookings.\n\n%s",
             number_format($average, 2),
             $entityLabel,
             $standardWeekdayName,
@@ -120,11 +175,13 @@ class DynamicAnalyticsService
             $totalPeriods,
             $standardWeekdayName,
             $zeroPeriods,
-            $standardWeekdayName
+            $standardWeekdayName,
+            ChatDataSource::formatSourcesTag($sources)
         );
 
         return [
             'success'                      => true,
+            'source_type'                  => 'end_to_end',
             'metric'                       => "average_{$entity}_on_{$standardWeekdayName}",
             'entity'                       => $entity,
             'weekday'                      => $standardWeekdayName,
@@ -141,6 +198,7 @@ class DynamicAnalyticsService
                 'denominator' => $denominator,
                 'result'      => $average,
             ],
+            'sources'                      => $sources,
             'text'                         => $explanation,
         ];
     }
@@ -148,7 +206,7 @@ class DynamicAnalyticsService
     /**
      * Calculate breakdown for all weekdays in a year.
      */
-    public function calculateAllWeekdaysBreakdown(int $companyId, string $entity, int $year): array
+    public function calculateAllWeekdaysBreakdown(int $companyId, string $entity, int $year, string $sourcePreference = 'auto'): array
     {
         $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         $results = [];
@@ -156,9 +214,9 @@ class DynamicAnalyticsService
         $maxAvg = -1.0;
 
         foreach ($weekdays as $day) {
-            $stat = $this->calculateWeekdayAverage($companyId, $entity, $day, $year, true);
+            $stat = $this->calculateWeekdayAverage($companyId, $entity, $day, $year, true, $sourcePreference);
             $results[$day] = [
-                'total_bookings' => $stat['total_bookings'],
+                'total_bookings' => $stat['total_bookings'] ?? $stat['total_metric_value'] ?? 0,
                 'period_count'   => $stat['period_count'],
                 'average'        => $stat['average'],
             ];
@@ -169,11 +227,23 @@ class DynamicAnalyticsService
             }
         }
 
+        $sources = [
+            $sourcePreference === 'server_csv'
+                ? $this->csvReader->getCsvSourceMetadata()
+                : [
+                    'type'        => ChatDataSource::END_TO_END->value,
+                    'label'       => ChatDataSource::END_TO_END->label(),
+                    'description' => ChatDataSource::END_TO_END->description(),
+                ]
+        ];
+
         $lines = ["Weekday Breakdown for {$entity} in {$year}:"];
         foreach ($results as $day => $data) {
             $lines[] = sprintf("  - %s: %d total bookings across %d days (Avg: %.2f/day)", $day, $data['total_bookings'], $data['period_count'], $data['average']);
         }
         $lines[] = sprintf("Busiest weekday: **%s** (average %.2f bookings per %s).", $busiestDay, $maxAvg, $busiestDay);
+        $lines[] = "";
+        $lines[] = ChatDataSource::formatSourcesTag($sources);
 
         return [
             'success'     => true,
@@ -181,6 +251,7 @@ class DynamicAnalyticsService
             'entity'      => $entity,
             'busiest_day' => $busiestDay,
             'breakdown'   => $results,
+            'sources'     => $sources,
             'text'        => implode("\n", $lines),
         ];
     }
@@ -188,7 +259,7 @@ class DynamicAnalyticsService
     /**
      * Calculate monthly breakdown in a year.
      */
-    public function calculateMonthlyBreakdown(int $companyId, string $entity, int $year): array
+    public function calculateMonthlyBreakdown(int $companyId, string $entity, int $year, string $sourcePreference = 'auto'): array
     {
         $months = [
             1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
@@ -213,11 +284,21 @@ class DynamicAnalyticsService
             }
         }
 
+        $sources = [
+            [
+                'type'        => ChatDataSource::END_TO_END->value,
+                'label'       => ChatDataSource::END_TO_END->label(),
+                'description' => ChatDataSource::END_TO_END->description(),
+            ]
+        ];
+
         $lines = ["Monthly Breakdown for {$entity} in {$year}:"];
         foreach ($results as $name => $count) {
             $lines[] = sprintf("  - %s: %d bookings", $name, $count);
         }
         $lines[] = sprintf("Month with most bookings: **%s** (%d bookings).", $busiestMonth, $maxCount);
+        $lines[] = "";
+        $lines[] = ChatDataSource::formatSourcesTag($sources);
 
         return [
             'success'       => true,
@@ -225,6 +306,7 @@ class DynamicAnalyticsService
             'entity'        => $entity,
             'busiest_month' => $busiestMonth,
             'breakdown'     => $results,
+            'sources'       => $sources,
             'text'          => implode("\n", $lines),
         ];
     }
@@ -309,13 +391,22 @@ class DynamicAnalyticsService
 
         $count = $this->queryEntityCount($companyId, $entity, $start, $end);
 
+        $sources = [
+            [
+                'type'        => ChatDataSource::END_TO_END->value,
+                'label'       => ChatDataSource::END_TO_END->label(),
+                'description' => ChatDataSource::END_TO_END->description(),
+            ]
+        ];
+
         return [
             'success'    => true,
             'entity'     => $entity,
             'start_date' => $start->toDateString(),
             'end_date'   => $end->toDateString(),
             'count'      => $count,
-            'text'       => sprintf("Total %s between %s and %s: %d.", $entity, $start->toDateString(), $end->toDateString(), $count),
+            'sources'    => $sources,
+            'text'       => sprintf("Total %s between %s and %s: %d.\n\n%s", $entity, $start->toDateString(), $end->toDateString(), $count, ChatDataSource::formatSourcesTag($sources)),
         ];
     }
 }
