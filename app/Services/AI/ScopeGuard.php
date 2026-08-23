@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Models\Company;
 use App\Models\User;
+use App\Services\AI\Enums\ChatDomain;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -69,7 +70,7 @@ class ScopeGuard
         $refusal = $lang === 'id' ? self::REFUSAL_ID : self::REFUSAL_EN;
 
         if ($msg === '') {
-            return ['allowed' => true, 'reason' => null, 'refusal' => null];
+            return ['allowed' => true, 'reason' => null, 'refusal' => null, 'domains' => [ChatDomain::ADMINISTRATIVE->value]];
         }
 
         if ($this->isPromptInjection($msg)) {
@@ -82,6 +83,7 @@ class ScopeGuard
                 'allowed' => false,
                 'reason' => 'prompt_injection',
                 'refusal' => $refusal,
+                'domains' => [ChatDomain::OUT_OF_SCOPE->value],
             ];
         }
 
@@ -95,6 +97,7 @@ class ScopeGuard
                 'allowed' => false,
                 'reason' => 'cross_provider_unauthorized',
                 'refusal' => $refusal,
+                'domains' => [ChatDomain::OUT_OF_SCOPE->value],
             ];
         }
 
@@ -107,6 +110,7 @@ class ScopeGuard
                 'allowed' => false,
                 'reason' => 'internal_leak_attempt',
                 'refusal' => $refusal,
+                'domains' => [ChatDomain::OUT_OF_SCOPE->value],
             ];
         }
 
@@ -117,6 +121,7 @@ class ScopeGuard
                 'utility_response' => $this->handleSystemUtility($msg, $lang),
                 'reason' => 'system_utility',
                 'refusal' => null,
+                'domains' => [ChatDomain::SYSTEM_UTILITY->value],
             ];
         }
 
@@ -129,6 +134,7 @@ class ScopeGuard
                 'allowed' => false,
                 'reason' => 'out_of_scope_general_knowledge',
                 'refusal' => $refusal,
+                'domains' => [ChatDomain::OUT_OF_SCOPE->value],
             ];
         }
 
@@ -142,26 +148,109 @@ class ScopeGuard
                 'allowed' => false,
                 'reason' => 'role_unauthorized',
                 'refusal' => $refusal,
+                'domains' => [ChatDomain::OUT_OF_SCOPE->value],
             ];
         }
 
-        return ['allowed' => true, 'reason' => null, 'refusal' => null];
+        $domains = $this->classifyDomains($msg);
+
+        return ['allowed' => true, 'reason' => null, 'refusal' => null, 'domains' => $domains];
+    }
+
+    public function classify(string $message, ?User $user = null): array
+    {
+        return $this->validate($message, $user);
+    }
+
+    public function classifyDomains(string $message): array
+    {
+        $msg = mb_strtolower(trim($message));
+        $domains = [];
+
+        if ($this->isGeneralKrbKnowledge($msg)) {
+            $domains[] = ChatDomain::GENERAL_KRB_KNOWLEDGE->value;
+        }
+
+        if ($this->matchesKeywords($msg, [
+            'average', 'rata-rata', 'mean', 'calculate', 'hitung', 'calculation', 'perhitungan',
+            'compare', 'bandingkan', 'growth', 'pertumbuhan', 'percentage', 'persentase', 'ratio', 'rasio',
+        ])) {
+            $domains[] = ChatDomain::CALCULATION->value;
+        }
+
+        if ($this->matchesKeywords($msg, [
+            'statistic', 'statistik', 'analytic', 'analitik', 'report', 'laporan', 'summary', 'ringkasan',
+            'trend', 'total', 'how many', 'berapa', 'most', 'terbanyak', 'usage', 'penggunaan',
+            'occupancy', 'okupansi', 'peak', 'puncak', 'cancellation', 'pembatalan', 'batal', 'rate', 'tingkat',
+            'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+            'minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu',
+        ])) {
+            $domains[] = ChatDomain::ANALYTICS->value;
+        }
+
+        if ($this->matchesKeywords($msg, [
+            'forecast', 'prediksi', 'prediction', 'lstm', 'future demand', 'ramalan',
+        ])) {
+            $domains[] = ChatDomain::FORECAST->value;
+        }
+
+        if ($this->matchesKeywords($msg, [
+            'available', 'ketersediaan', 'free slot', 'slot kosong', 'jadwal kosong', 'check room', 'check vehicle',
+        ])) {
+            $domains[] = ChatDomain::AVAILABILITY->value;
+        }
+
+        if (empty($domains) || $this->matchesKeywords($msg, ['room', 'ruang', 'vehicle', 'kendaraan', 'booking', 'guest', 'tamu', 'delivery', 'paket', 'user'])) {
+            $domains[] = ChatDomain::ADMINISTRATIVE->value;
+        }
+
+        return array_values(array_unique($domains));
+    }
+
+    public function isGeneralKrbKnowledge(string $message): bool
+    {
+        $msg = mb_strtolower(trim($message));
+
+        $krbPatterns = [
+            '/\b(kebun\s*raya(\s*bogor)?|bogor\s*botanic(al)?\s*gardens?|lands\s*plantentuin)\b/i',
+            '/\b(reinwardt|caspar\s*georg\s*carl|c\.g\.c\.\s*reinwardt)\b/i',
+            '/\b(rafflesia(\s*patma|\s*arnoldii)?|bunga\s*bangkai|amorphophallus(\s*titanum)?|titan\s*arum)\b/i',
+            '/\b(victoria\s*amazonica|teratai\s*raksasa|griya\s*anggrek|orchidarium|taman\s*meksiko|taman\s*obat|taman\s*akuatik|taman\s*astrid)\b/i',
+            '/\b(danau\s*gunting|jembatan\s*merah|jembatan\s*gantung|monumen\s*lady\s*raffles|olivia\s*raffles|makam\s*belanda|museum\s*zoologi|herbarium\s*bogoriense|ecodome)\b/i',
+            '/\b(brin|konservasi\s*ex-situ|koleksi\s*tanaman|koleksi\s*tumbuhan|koleksi\s*palem|kelapa\s*sawit\s*pertama|elaeis\s*guineensis|pohon\s*raja|koompassia)\b/i',
+            '/\b(sejarah\s*kebun\s*raya|history\s*of\s*kebun\s*raya|luas\s*kebun\s*raya|tahun\s*berdiri\s*kebun\s*raya|founder\s*of\s*kebun\s*raya|pendiri\s*kebun\s*raya)\b/i',
+            '/\b(wisata\s*kebun\s*raya|fasilitas\s*kebun\s*raya|jam\s*buka\s*kebun\s*raya|shuttle\s*bus\s*kebun\s*raya|sewa\s*sepeda\s*kebun\s*raya)\b/i',
+        ];
+
+        foreach ($krbPatterns as $pattern) {
+            if (preg_match($pattern, $msg)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isOutOfScopeGeneralKnowledge(string $message): bool
     {
         $msg = mb_strtolower(trim($message));
 
+        // If the question is specifically about Kebun Raya Bogor or its known collections/history/facilities, it is IN SCOPE (Domain B)
+        if ($this->isGeneralKrbKnowledge($msg)) {
+            return false;
+        }
+
         $disallowedPatterns = [
             '/\b(pop\s*song|taylor\s*swift|famous\s*actor|latest\s*movie|hollywood|billboard|singer|actress|grammy|oscar|celebrity|celebrities)\b/i',
             '/\b(football\s*match|world\s*cup|champion\s*league|premier\s*league|who\s*won\s*(yesterday|the\s*match|the\s*game)|nba|fifa|score\s*of\s*the\s*match)\b/i',
             '/\b(tell\s*me\s*a\s*joke|make\s*a\s*joke|ceritakan\s*lelucon|beritahu\s*lelucon|lelucon|lawak|stand\s*up\s*comedy|write\s*a\s*poem|puisi|pantun)\b/i',
             '/\b(capital\s*of\s*(france|england|usa|germany|japan|italy|spain|russia|australia|canada|brazil|egypt|china)|ibukota\s*(prancis|amerika|inggris|jepang|jerman))\b/i',
-            '/\b(quantum\s*physics|einstein|theory\s*of\s*relativity|black\s*hole|distance\s*to\s*the\s*moon|speed\s*of\s*light|photosynthesis|dna\s*structure)\b/i',
+            '/\b(quantum\s*physics|einstein|theory\s*of\s*relativity|black\s*hole|distance\s*to\s*the\s*moon|speed\s*of\s*light|dna\s*structure)\b/i',
             '/\b(news\s*today|today(\'s)?\s*news|berita\s*hari\s*ini|president\s*of\s*(usa|russia|france|indonesia)|pemilu|pilpres|parliament|minister\s*of)\b/i',
             '/\b(recipe\s*for|how\s*to\s*cook|resep\s*masak|cara\s*membuat\s*(kue|nasi\s*goreng|rendang))\b/i',
             '/\b(horoscope|zodiac|ramalan\s*bintang|medical\s*advice|diagnose\s*my|love\s*advice|relationship\s*advice)\b/i',
             '/\b(search\s*the\s*(web|internet)|browse\s*the\s*web|cari\s*di\s*internet)\b/i',
+            '/\b(write\s*a\s*(python|javascript|php|java|c\+\+)\s*script|write\s*code\s*for|solve\s*my\s*homework|buatkan\s*kode\s*program)\b/i',
         ];
 
         foreach ($disallowedPatterns as $pattern) {
@@ -170,8 +259,8 @@ class ScopeGuard
             }
         }
 
-        if (preg_match('/^who\s+is\s+(?!the\s+visitor|the\s+borrower|the\s+manager|the\s+receptionist|the\s+it\s+officer|the\s+user|the\s+guest)[a-z\s]+(\?)?$/i', $msg)) {
-            if (! preg_match('/\b(user|guest|visitor|tamu|staff|officer|peminjam|manager|receptionist)\b/i', $msg)) {
+        if (preg_match('/^who\s+is\s+(?!the\s+visitor|the\s+borrower|the\s+manager|the\s+receptionist|the\s+it\s+officer|the\s+user|the\s+guest|reinwardt|c\.g\.c|caspar)[a-z\s]+(\?)?$/i', $msg)) {
+            if (! preg_match('/\b(user|guest|visitor|tamu|staff|officer|peminjam|manager|receptionist|founder|reinwardt)\b/i', $msg)) {
                 return true;
             }
         }
@@ -282,9 +371,19 @@ class ScopeGuard
         return true;
     }
 
+    private function matchesKeywords(string $haystack, array $keywords): bool
+    {
+        foreach ($keywords as $kw) {
+            if (str_contains($haystack, $kw)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function detectLanguage(string $message): string
     {
-        $idWords = ['apa', 'berapa', 'bagaimana', 'siapa', 'kapan', 'di mana', 'tolong', 'tampilkan', 'buku', 'tamu', 'ruangan', 'kendaraan', 'jadwal', 'batal', 'pembatalan', 'hari', 'ini', 'besok', 'saya', 'apakah'];
+        $idWords = ['apa', 'berapa', 'bagaimana', 'siapa', 'kapan', 'di mana', 'tolong', 'tampilkan', 'buku', 'tamu', 'ruangan', 'kendaraan', 'jadwal', 'batal', 'pembatalan', 'hari', 'ini', 'besok', 'saya', 'apakah', 'sejarah', 'koleksi', 'pohon', 'bunga', 'fasilitas'];
         $msg = mb_strtolower($message);
         
         foreach ($idWords as $word) {

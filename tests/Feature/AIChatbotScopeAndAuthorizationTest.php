@@ -228,6 +228,37 @@ class AIChatbotScopeAndAuthorizationTest extends TestCase
         $this->assertStringContainsString('WIB', $timeRes['utility_response']);
     }
 
+    public function test_allows_general_kebun_raya_bogor_knowledge_queries(): void
+    {
+        $guard = app(ScopeGuard::class);
+
+        $allowedKrbQueries = [
+            'When was Kebun Raya Bogor founded?',
+            'Who is Caspar Georg Carl Reinwardt?',
+            'Tell me about Rafflesia patma in Kebun Raya Bogor',
+            'What is Griya Anggrek?',
+            'Where is Danau Gunting located?',
+            'What is the history of oil palm in Kebun Raya Bogor?',
+            'What are the visitor facilities at Kebun Raya Bogor?',
+        ];
+
+        foreach ($allowedKrbQueries as $q) {
+            $res = $guard->validate($q, $this->receptionistUser);
+            $this->assertTrue($res['allowed'], "Expected KRB query '{$q}' to be allowed");
+            $this->assertContains(\App\Services\AI\Enums\ChatDomain::GENERAL_KRB_KNOWLEDGE->value, $res['domains']);
+        }
+    }
+
+    public function test_classifies_domains_correctly(): void
+    {
+        $guard = app(ScopeGuard::class);
+
+        $sundayAvg = $guard->classify('What is the average number of vehicle bookings on Sundays in 2026?');
+        $this->assertTrue($sundayAvg['allowed']);
+        $this->assertContains(\App\Services\AI\Enums\ChatDomain::CALCULATION->value, $sundayAvg['domains']);
+        $this->assertContains(\App\Services\AI\Enums\ChatDomain::ANALYTICS->value, $sundayAvg['domains']);
+    }
+
     public function test_chat_modal_scope_refusal_in_livewire(): void
     {
         $this->actingAs($this->receptionistUser);
