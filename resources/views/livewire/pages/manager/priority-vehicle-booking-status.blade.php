@@ -766,33 +766,17 @@
                 this.$watch('show', value => {
                     if (value) {
                         this.photoPreview = null;
-                        this.getDevices();
+                        this.startCamera();
                     } else {
                         this.stopCamera();
+                        this.photoPreview = null;
                     }
                 });
             },
-            async getDevices() {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-                    return;
-                }
-                try {
-                    const initialStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    initialStream.getTracks().forEach(t => t.stop());
-                    const allDevices = await navigator.mediaDevices.enumerateDevices();
-                    this.devices = allDevices.filter(d => d.kind === 'videoinput');
-                    if (this.devices.length > 0) {
-                        this.selectedDeviceId = this.devices[0].deviceId;
-                        this.startCamera();
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            },
             async startCamera() {
-                this.stopCamera();
-                if (!this.selectedDeviceId) return;
                 try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    this.devices = devices.filter(d => d.kind === 'videoinput');
                     const constraints = {
                         video: this.selectedDeviceId
                             ? { deviceId: { exact: this.selectedDeviceId } }
@@ -803,6 +787,14 @@
                 } catch (err) {
                     console.error('Camera error:', err);
                 }
+            },
+            async switchCamera() {
+                if (this.devices.length <= 1) return;
+                const currentIndex = this.devices.findIndex(d => d.deviceId === this.selectedDeviceId);
+                const nextIndex = (currentIndex + 1) % this.devices.length;
+                this.selectedDeviceId = this.devices[nextIndex].deviceId;
+                this.stopCamera();
+                await this.startCamera();
             },
             stopCamera() {
                 if (this.stream) {
@@ -893,6 +885,10 @@
                     <div class="absolute bottom-4 left-0 right-0 flex justify-center items-center gap-4">
                         <button type="button" @click="capturePhoto()"
                             class="w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:border-gray-400 transition shadow-lg">
+                        </button>
+                        <button type="button" @click="switchCamera()" x-show="devices.length > 1"
+                            class="w-12 h-12 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-md transition shadow-lg border border-white/10 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         </button>
                     </div>
                 </div>
