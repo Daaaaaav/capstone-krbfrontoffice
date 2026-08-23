@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            // Detect SQL injection, XSS, and command injection in HTTP request
+            // parameters and log them to the security channel for Wazuh ingestion.
+            // This middleware skips Livewire wire:update requests internally
+            // so it does not interfere with normal Livewire component polling.
+            \App\Http\Middleware\WazuhSecurityMonitor::class,
         ]);
 
         $middleware->alias([

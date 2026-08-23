@@ -121,7 +121,9 @@ class WazuhService
                             ],
                         ],
                         'query' => [
-                            'match_all' => new \stdClass(),
+                            'range' => [
+                                'rule.level' => ['gte' => 5],
+                            ],
                         ],
                     ]
                 );
@@ -188,7 +190,13 @@ class WazuhService
                             ['timestamp' => ['order' => 'desc']],
                         ],
                         'query' => [
-                            'match_all' => new \stdClass(),
+                            // Minimum level 5 — filters out the level-3 base-anchor
+                            // rule (100100) that fires for every security-channel event
+                            // and would otherwise flood the display with low-noise entries
+                            // that mask the specific attack detections (level 5–12).
+                            'range' => [
+                                'rule.level' => ['gte' => 5],
+                            ],
                         ],
                     ]
                 );
