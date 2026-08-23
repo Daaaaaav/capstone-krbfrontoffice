@@ -1,0 +1,46 @@
+<!--
+  KRB Laravel Application Security Event Decoder
+  ===============================================================
+  Decodes JSON log entries written by App\Services\SecurityMonitoringService
+  via the Laravel 'security' Monolog channel to
+  storage/logs/security-YYYY-MM-DD.log on the application server.
+
+  Actual log format produced by Monolog\Formatter\JsonFormatter:
+  {
+    "message":    "LOGIN_FAILED",
+    "context":    { "ip": "1.2.3.4", "email": "user@example.com", "reason": "invalid_credentials" },
+    "level":      300,
+    "level_name": "WARNING",
+    "channel":    "security",
+    "datetime":   "2026-08-23T14:00:00.000000+07:00",
+    "extra":      {}
+  }
+
+  The Wazuh built-in JSON_Decoder plugin parses the outer object and
+  exposes top-level keys as decoded fields. Nested fields under "context"
+  are accessible as "context.ip", "context.email", etc. in rules.
+
+  This decoder is intentionally narrow: it matches ONLY log lines from
+  the 'security' channel to avoid accidentally matching other JSON sources
+  (health check logs, Laravel general logs, etc.).
+
+  Deployment:
+    docker exec <wazuh-manager-container> \
+      cp /path/to/repo/wazuh/decoders/krb_laravel_security_decoders.xml \
+         /var/ossec/etc/decoders/krb_laravel_security_decoders.xml
+    docker exec <wazuh-manager-container> /var/ossec/bin/wazuh-analysisd -t
+    docker restart <wazuh-manager-container>
+-->
+<decoder name="krb-laravel-security">
+  <!--
+    Pre-match on the literal string "security" appearing as the channel
+    value.  This discriminates Laravel security-channel JSON from the
+    health-check JSON (which uses "monitor":"krb-endpoint-checker")
+    and from generic laravel.log lines (channel value is "local" or "testing").
+    The prematch anchors on the opening brace of the JSON object followed
+    by the channel field anywhere in the line. Monolog always includes
+    "channel" in its output.
+  -->
+  <prematch>\"channel\":\"security\"</prematch>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
