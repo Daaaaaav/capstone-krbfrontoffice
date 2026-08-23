@@ -316,6 +316,14 @@ class ChatModal extends Component
         $companyId   = $user?->company_id;
         $companyName = $user?->company?->company_name ?? 'Kebun Raya Bogor';
 
+        $resolver = app(\App\Services\AI\DataSourceResolver::class);
+        $sourcePref = $resolver->detectSourcePreference(
+            $userMessage,
+            $this->getRecentHistory(),
+            $this->contextMemory['source_preference'] ?? null
+        );
+        $this->contextMemory['source_preference'] = $sourcePref->value;
+
         $router  = app(ContextRouter::class);
         $context = $router->route($userMessage, $companyId, 'manager', $this->getRecentHistory());
 
@@ -571,11 +579,12 @@ class ChatModal extends Component
     private function emptyMemory(): array
     {
         return [
-            'last_room_id'    => null,
-            'last_room_name'  => null,
-            'last_vehicle_id' => null,
-            'last_date'       => null,
-            'active_domains'  => [],
+            'last_room_id'      => null,
+            'last_room_name'    => null,
+            'last_vehicle_id'   => null,
+            'last_date'         => null,
+            'active_domains'    => [],
+            'source_preference' => 'combined_auto',
         ];
     }
 

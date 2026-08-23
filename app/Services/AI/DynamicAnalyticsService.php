@@ -31,7 +31,15 @@ class DynamicAnalyticsService
         $year = isset($params['year']) ? (int) $params['year'] : Carbon::now($this->tz)->year;
         $weekday = isset($params['weekday']) ? ucfirst(strtolower(trim((string) $params['weekday']))) : null;
         $includeZeroPeriods = (bool) ($params['include_zero_periods'] ?? true);
-        $sourcePreference = strtolower((string) ($params['data_source'] ?? $params['source'] ?? 'auto'));
+        $sourcePreference = strtolower((string) ($params['data_source'] ?? $params['source'] ?? 'combined_auto'));
+        if ($sourcePreference === 'auto') {
+            $sourcePreference = 'combined_auto';
+        }
+
+        // If user is explicitly asking for server CSV analytics overview
+        if ($sourcePreference === 'server_csv' && empty($weekday) && ($operation === 'summary' || $operation === 'count' || empty($params['operation']))) {
+            return $this->csvReader->getComprehensiveServerCsvSummary($params['start_date'] ?? null, $params['end_date'] ?? null);
+        }
 
         if ($weekday !== null && in_array($operation, ['average', 'mean', 'avg', 'count', 'weekday_occurrence', 'summary'], true)) {
             return $this->calculateWeekdayAverage($companyId, $entity, $weekday, $year, $includeZeroPeriods, $sourcePreference);
@@ -43,6 +51,12 @@ class DynamicAnalyticsService
 
         if (in_array($operation, ['monthly_breakdown', 'busiest_month'], true)) {
             return $this->calculateMonthlyBreakdown($companyId, $entity, $year, $sourcePreference);
+        }
+
+        if ($operation === 'summary') {
+            if ($sourcePreference === 'server_csv') {
+                return $this->csvReader->getComprehensiveServerCsvSummary($params['start_date'] ?? null, $params['end_date'] ?? null);
+            }
         }
 
         return $this->calculateGeneralAggregate($companyId, $entity, $params);
@@ -57,8 +71,12 @@ class DynamicAnalyticsService
         string $weekday,
         int $year,
         bool $includeZeroPeriods = true,
-        string $sourcePreference = 'auto'
+        string $sourcePreference = 'combined_auto'
     ): array {
+        if ($sourcePreference === 'auto') {
+            $sourcePreference = 'combined_auto';
+        }
+
         // Handle SERVER_CSV routing
         if ($sourcePreference === 'server_csv') {
             $res = $this->csvReader->getWeekdayAverageFromCsv($entity, $weekday, $year);
@@ -68,36 +86,63 @@ class DynamicAnalyticsService
             return $res;
         }
 
-        // Handle COMBINED routing (comparison)
-        if ($sourcePreference === 'combined') {
+        // Handle COMBINED_AUTO and COMBINED routing
+        if ($sourcePreference === 'combined_auto' || $sourcePreference === 'combined') {
             $liveRes = $this->calculateWeekdayAverage($companyId, $entity, $weekday, $year, $includeZeroPeriods, 'end_to_end');
             $csvRes = $this->csvReader->getWeekdayAverageFromCsv($entity, $weekday, $year);
 
-            $sources = [
-                [
-                    'type'        => ChatDataSource::END_TO_END->value,
-                    'label'       => ChatDataSource::END_TO_END->label(),
-                    'description' => ChatDataSource::END_TO_END->description(),
-                ],
-                $this->csvReader->getCsvSourceMetadata(),
-            ];
+            // Determine if CSV has matching data
+            $hasCsvData = ($csvRes['success'] ?? false) && ($csvRes['period_count'] ?? 0) > 0;
+            $hasLiveData = ($liveRes['success'] ?? false) && (($liveRes['total_bookings'] ?? 0) > 0 || ($liveRes['period_count'] ?? 0) > 0);
 
-            $text = "### Multi-Source Comparison for {$weekday}s in {$year}\n"
-                  . "• **Live System Data:** {$liveRes['average']} average bookings ({$liveRes['total_bookings']} bookings across {$liveRes['period_count']} {$weekday}s)\n"
-                  . "• **Server Historical CSV:** " . ($csvRes['success'] ? "{$csvRes['average']} average ({$csvRes['total_metric_value']} total across {$csvRes['period_count']} recorded {$weekday}s)" : "No matching historical CSV rows") . "\n\n"
-                  . ChatDataSource::formatSourcesTag($sources);
+            // If only CSV has records (e.g. historical years where live DB has 0 records)
+            if ($hasCsvData && ! $hasLiveData) {
+                return $this->calculateWeekdayAverage($companyId, $entity, $weekday, $year, $includeZeroPeriods, 'server_csv');
+            }
 
-            return [
-                'success'     => true,
-                'source_type' => 'combined',
-                'live_data'   => $liveRes,
-                'csv_data'    => $csvRes,
-                'sources'     => $sources,
-                'text'        => $text,
-            ];
+            // If both sources exist, present a combined-auto breakdown with clear provenance and no duplicate counting
+            if ($hasCsvData && $hasLiveData) {
+                $sources = [
+                    [
+                        'type'        => ChatDataSource::END_TO_END->value,
+                        'label'       => ChatDataSource::END_TO_END->label(),
+                        'description' => ChatDataSource::END_TO_END->description(),
+                    ],
+                    $this->csvReader->getCsvSourceMetadata(),
+                ];
+
+                $entityLabel = str_contains($entity, 'room') ? 'room bookings' : 'vehicle bookings';
+                $standardWeekdayName = ucfirst(strtolower($weekday));
+
+                $text = "### Combined Data Analysis for {$standardWeekdayName}s in {$year}\n\n"
+                      . "• **Live System Records:** Average **{$liveRes['average']} {$entityLabel} per {$standardWeekdayName}** ({$liveRes['total_bookings']} qualifying bookings across {$liveRes['period_count']} {$standardWeekdayName}s, including {$liveRes['zero_booking_period_count']} {$standardWeekdayName}s with zero bookings).\n"
+                      . "• **Server Historical CSV Baseline:** Average **{$csvRes['average']} {$entityLabel} per {$standardWeekdayName}** ({$csvRes['total_metric_value']} total recorded across {$csvRes['period_count']} historical {$standardWeekdayName}s).\n\n"
+                      . ChatDataSource::formatSourcesTag($sources);
+
+                return [
+                    'success'                      => true,
+                    'source_type'                  => 'combined',
+                    'metric'                       => "average_{$entity}_on_{$standardWeekdayName}",
+                    'entity'                       => $entity,
+                    'weekday'                      => $standardWeekdayName,
+                    'year'                         => $year,
+                    'total_bookings'               => $liveRes['total_bookings'] ?? 0,
+                    'period_count'                 => $liveRes['period_count'] ?? 0,
+                    'zero_booking_period_count'    => $liveRes['zero_booking_period_count'] ?? 0,
+                    'active_period_count'          => $liveRes['active_period_count'] ?? 0,
+                    'average'                      => $liveRes['average'] ?? 0.0,
+                    'live_data'                    => $liveRes,
+                    'csv_data'                     => $csvRes,
+                    'sources'                      => $sources,
+                    'text'                         => $text,
+                ];
+            }
+
+            // Otherwise, return Live result
+            return $liveRes;
         }
 
-        // AUTO or END_TO_END routing
+        // END_TO_END routing
         $now = Carbon::now($this->tz);
         $weekdayMap = [
             'Sunday' => Carbon::SUNDAY,

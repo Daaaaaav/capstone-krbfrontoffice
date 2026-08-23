@@ -28,19 +28,73 @@ class AnalyticsContextProvider implements ContextProviderInterface
         }
 
         $period   = $params['period'] ?? 'this_week_and_ytd';
-        $level = $detailLevel ?? ContextDetailLevel::DETAILED;
-        $weekday = $params['weekday'] ?? null;
-        $year = $params['year'] ?? null;
-        $cacheKey = "ctx_analytics_{$companyId}_{$period}_{$level->value}_{$weekday}_{$year}";
+        $level    = $detailLevel ?? ContextDetailLevel::DETAILED;
+        $weekday  = $params['weekday'] ?? null;
+        $year     = $params['year'] ?? null;
+        $message  = $params['message'] ?? $params['query'] ?? '';
 
-        return Cache::remember($cacheKey, 120, function () use ($companyId, $level, $params) {
+        $resolver = app(\App\Services\AI\DataSourceResolver::class);
+        $sourcePref = $resolver->detectSourcePreference($message);
+
+        $cacheKey = "ctx_analytics_{$companyId}_{$period}_{$level->value}_{$weekday}_{$year}_{$sourcePref->value}";
+
+        return Cache::remember($cacheKey, 120, function () use ($companyId, $level, $params, $weekday, $sourcePref) {
+            $dynService = app(\App\Services\AI\DynamicAnalyticsService::class);
+            $csvReader = app(\App\Services\AI\CsvDataReader::class);
+            $year = $params['year'] ?? Carbon::now($this->tz)->year;
+
+            // 1. If explicit SERVER_CSV requested
+            if ($sourcePref === \App\Services\AI\Enums\ChatDataSource::SERVER_CSV) {
+                $csvSummary = $csvReader->getComprehensiveServerCsvSummary();
+                $base = "=== SERVER HISTORICAL CSV ANALYTICS (krb_historical_data.csv) ===\n\n" . $csvSummary['text'];
+
+                if (! empty($weekday)) {
+                    $vResult = $dynService->calculateWeekdayAverage($companyId, 'vehicle_bookings', $weekday, $year, true, 'server_csv');
+                    $rResult = $dynService->calculateWeekdayAverage($companyId, 'room_bookings', $weekday, $year, true, 'server_csv');
+                    $base .= "\n\n=== CSV DETERMINISTIC CALCULATION BREAKDOWN (" . ucfirst($weekday) . " in {$year}) ===\n"
+                        . "• Vehicles: " . $vResult['text'] . "\n"
+                        . "• Rooms: " . $rResult['text'];
+                }
+
+                return $base;
+            }
+
+            // 2. If explicit END_TO_END requested
+            if ($sourcePref === \App\Services\AI\Enums\ChatDataSource::END_TO_END) {
+                $base = $this->build($companyId, $level);
+
+                if (! empty($weekday)) {
+                    $vResult = $dynService->calculateWeekdayAverage($companyId, 'vehicle_bookings', $weekday, $year, true, 'end_to_end');
+                    $rResult = $dynService->calculateWeekdayAverage($companyId, 'room_bookings', $weekday, $year, true, 'end_to_end');
+                    $base .= "\n\n=== LIVE SYSTEM CALCULATION BREAKDOWN (" . ucfirst($weekday) . " in {$year}) ===\n"
+                        . "• Vehicles: " . $vResult['text'] . "\n"
+                        . "• Rooms: " . $rResult['text'];
+                }
+
+                return $base;
+            }
+
+            // 3. COMBINED_AUTO (Default)
             $base = $this->build($companyId, $level);
-            
-            if (! empty($params['weekday'])) {
-                $year = $params['year'] ?? Carbon::now($this->tz)->year;
-                $vResult = app(\App\Services\AI\DynamicAnalyticsService::class)->calculateWeekdayAverage($companyId, 'vehicle_bookings', $params['weekday'], $year, true);
-                $rResult = app(\App\Services\AI\DynamicAnalyticsService::class)->calculateWeekdayAverage($companyId, 'room_bookings', $params['weekday'], $year, true);
-                $base .= "\n\n=== DYNAMIC CALCULATION BREAKDOWN (" . ucfirst($params['weekday']) . " in {$year}) ===\n"
+
+            // Include Server Historical CSV overview in detailed context
+            if ($level === ContextDetailLevel::DETAILED || $level === ContextDetailLevel::NORMAL) {
+                $csvSummary = $csvReader->getComprehensiveServerCsvSummary();
+                if ($csvSummary['success'] ?? false) {
+                    $base .= "\n\n=== SERVER HISTORICAL CSV OVERVIEW (krb_historical_data.csv) ===\n"
+                        . "• Period: {$csvSummary['start_date']} to {$csvSummary['end_date']} (" . number_format($csvSummary['total_records']) . " daily records)\n"
+                        . "• Total Visitors: " . number_format($csvSummary['visitors']['total']) . " (Daily avg: {$csvSummary['visitors']['daily_avg']})\n"
+                        . "• Total Room Bookings: " . number_format($csvSummary['room_bookings']['total']) . " (Online: " . number_format($csvSummary['room_bookings']['online']) . ", Offline: " . number_format($csvSummary['room_bookings']['offline']) . ", avg: {$csvSummary['room_bookings']['daily_avg']}/day)\n"
+                        . "• Total Vehicle Bookings: " . number_format($csvSummary['vehicle_bookings']['total']) . " (Daily avg: {$csvSummary['vehicle_bookings']['daily_avg']})\n"
+                        . "• Documents/Packages: " . number_format($csvSummary['packages']['received_total']) . " received (avg: {$csvSummary['packages']['received_avg']}/day), " . number_format($csvSummary['packages']['sent_total']) . " sent\n"
+                        . "• Source attribution: Server Historical CSV (krb_historical_data.csv)";
+                }
+            }
+
+            if (! empty($weekday)) {
+                $vResult = $dynService->calculateWeekdayAverage($companyId, 'vehicle_bookings', $weekday, $year, true, 'combined_auto');
+                $rResult = $dynService->calculateWeekdayAverage($companyId, 'room_bookings', $weekday, $year, true, 'combined_auto');
+                $base .= "\n\n=== DYNAMIC CALCULATION BREAKDOWN (" . ucfirst($weekday) . " in {$year}) ===\n"
                     . "• Vehicles: " . $vResult['text'] . "\n"
                     . "• Rooms: " . $rResult['text'];
             }

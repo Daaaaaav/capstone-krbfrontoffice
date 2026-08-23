@@ -33,7 +33,7 @@ class AnalyticsTool implements ToolInterface
     public function description(): string
     {
         return 'Retrieve booking and operational statistics for a time period, or perform dynamic aggregations (weekday average, busiest day/month, breakdown by period). '
-             . 'Supports Live System Data (end_to_end), Server Historical CSV (server_csv), or Combined comparison.';
+             . 'Directly accesses the application\'s configured server-side historical CSV (krb_historical_data.csv) and live application database records with Combined/Auto strategy (combined_auto), Server Historical CSV (server_csv), or Live System Data (end_to_end).';
     }
 
     public function parameters(): array
@@ -53,13 +53,13 @@ class AnalyticsTool implements ToolInterface
                 ],
                 'entity' => [
                     'type'        => 'string',
-                    'enum'        => ['vehicle_bookings', 'room_bookings', 'guests', 'deliveries'],
+                    'enum'        => ['vehicle_bookings', 'room_bookings', 'guests', 'deliveries', 'visitors'],
                     'description' => 'Target entity for dynamic aggregations.',
                 ],
                 'operation' => [
                     'type'        => 'string',
-                    'enum'        => ['average', 'count', 'weekday_breakdown', 'monthly_breakdown', 'busiest_weekday', 'busiest_month'],
-                    'description' => 'Type of dynamic aggregation to perform.',
+                    'enum'        => ['average', 'count', 'summary', 'weekday_breakdown', 'monthly_breakdown', 'busiest_weekday', 'busiest_month'],
+                    'description' => 'Type of dynamic aggregation or summary to perform.',
                 ],
                 'weekday' => [
                     'type'        => 'string',
@@ -75,8 +75,8 @@ class AnalyticsTool implements ToolInterface
                 ],
                 'data_source' => [
                     'type'        => 'string',
-                    'enum'        => ['auto', 'end_to_end', 'server_csv', 'combined'],
-                    'description' => 'Data source preference: "end_to_end" (live application records), "server_csv" (krb_historical_data.csv), or "combined" (comparison). Default is "auto".',
+                    'enum'        => ['combined_auto', 'end_to_end', 'server_csv', 'combined', 'auto'],
+                    'description' => 'Data source preference: "combined_auto" (default: checks Live system and Server CSV with safe overlap resolution), "server_csv" (krb_historical_data.csv on server), or "end_to_end" (live application records).',
                 ],
             ],
             'required' => [],
@@ -90,8 +90,13 @@ class AnalyticsTool implements ToolInterface
             return ['text' => 'Analytics data is currently unavailable.'];
         }
 
-        // If dynamic aggregation parameters or specific data_source is specified, route through DynamicAnalyticsService
-        if (isset($arguments['weekday']) || isset($arguments['entity']) || isset($arguments['data_source']) || (isset($arguments['operation']) && $arguments['operation'] !== 'count')) {
+        $sourcePref = strtolower((string) ($arguments['data_source'] ?? 'combined_auto'));
+        if ($sourcePref === 'auto') {
+            $sourcePref = 'combined_auto';
+        }
+
+        // If server_csv is explicitly requested without a module filter, or if dynamic params are present
+        if ($sourcePref === 'server_csv' || isset($arguments['weekday']) || isset($arguments['entity']) || (isset($arguments['operation']) && $arguments['operation'] !== 'count')) {
             $dynResult = $this->dynamicService->aggregate($companyId, $arguments);
             return [
                 'text'    => $dynResult['text'] ?? json_encode($dynResult),
