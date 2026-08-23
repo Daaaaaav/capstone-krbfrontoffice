@@ -737,7 +737,17 @@ class BookingsApproval extends Component
         // Receptionists can view these but cannot approve/reject (read-only)
         $priorityRoomQuery = PriorityRoomBooking::query()
             ->with(['room', 'manager', 'cancelledBooking'])
-            ->forCompany($companyId);
+            ->forCompany($companyId)
+            ->when($this->q !== '', function ($q) {
+                $like = '%' . $this->q . '%';
+                $q->where(function ($qq) use ($like) {
+                    $qq->where('meeting_title', 'like', $like)
+                       ->orWhereHas('manager', fn($qm) => $qm->where('full_name', 'like', $like)->orWhere('name', 'like', $like))
+                       ->orWhereHas('room', fn($qr) => $qr->where('room_name', 'like', $like));
+                });
+            })
+            ->when($this->selectedDate, fn($q) => $q->whereDate('date', $this->selectedDate))
+            ->when(!is_null($this->roomFilterId), fn($q) => $q->where('room_id', $this->roomFilterId));
 
         $priorityRoomPending = (clone $priorityRoomQuery)
             ->whereIn('status', [

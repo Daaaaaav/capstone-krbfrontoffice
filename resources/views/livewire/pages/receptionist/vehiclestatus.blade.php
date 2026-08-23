@@ -219,6 +219,7 @@
                                 'approved'   => 'bg-emerald-100 text-emerald-700',
                                 'pending_receipt','pending_cancellation' => 'bg-amber-100 text-amber-700',
                                 'on_progress' => 'bg-blue-100 text-blue-700',
+                                'late_return' => 'bg-red-100 text-red-700 border border-red-200',
                                 default => 'bg-gray-100 text-gray-600',
                             };
                         @endphp

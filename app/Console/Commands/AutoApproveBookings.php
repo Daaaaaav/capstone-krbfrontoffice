@@ -74,6 +74,45 @@ class AutoApproveBookings extends Command
             $this->line('  Room bookings: none to auto-approve.');
         }
 
+        // ── Priority Room Bookings: auto-approve when start time arrives ───────
+        $priorityRoomQuery = \App\Models\PriorityRoomBooking::query()
+            ->whereIn('status', [
+                \App\Models\PriorityRoomBooking::STATUS_PENDING_RECEIPT,
+                \App\Models\PriorityRoomBooking::STATUS_PENDING_CANCELLATION,
+            ])
+            ->where(function ($q) use ($now) {
+                $q->whereDate('date', '<', $now->toDateString())
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->whereDate('date', $now->toDateString())
+                         ->where('start_time', '<=', $now->format('H:i:s'));
+                  });
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereDate('date', '>', $now->toDateString())
+                  ->orWhere(function ($q2) use ($now) {
+                      $q2->whereDate('date', $now->toDateString())
+                         ->where('end_time', '>', $now->format('H:i:s'));
+                  });
+            });
+
+        // ── Priority Room Bookings: auto-approve when start time arrives ───────
+        $priorityRoomCount = (clone $priorityRoomQuery)->count();
+
+        if ($priorityRoomCount > 0) {
+            if ($isDry) {
+                $this->line("  [DRY-RUN] Would auto-approve {$priorityRoomCount} priority room booking(s) whose start time has arrived.");
+            } else {
+                $affected = $priorityRoomQuery->update([
+                    'status'     => \App\Models\PriorityRoomBooking::STATUS_APPROVED,
+                    'updated_at' => $nowStr,
+                ]);
+
+                $this->info("  ✓ Priority room bookings auto-approved (start time reached): {$affected}");
+            }
+        } else {
+            $this->line('  Priority room bookings: none to auto-approve.');
+        }
+
         $progressQuery = DB::table('vehicle_bookings')
             ->whereNull('deleted_at')
             ->where('status', 'approved')
@@ -106,11 +145,13 @@ class AutoApproveBookings extends Command
             $this->line('  Vehicle bookings: none to mark as on_progress.');
         }
 
+        $oneHourAgo = $now->copy()->subHour()->toDateTimeString();
+
         $lateQuery = DB::table('vehicle_bookings')
             ->whereNull('deleted_at')
             ->whereIn('status', ['approved', 'on_progress'])
             ->whereNotNull('end_at')
-            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr]);
+            ->where('end_at', '<', $oneHourAgo);
 
         $lateCount = $lateQuery->count();
 
@@ -122,7 +163,7 @@ class AutoApproveBookings extends Command
                     ->whereNull('deleted_at')
                     ->whereIn('status', ['approved', 'on_progress'])
                     ->whereNotNull('end_at')
-                    ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr])
+                    ->where('end_at', '<', $oneHourAgo)
                     ->update([
                         'status'     => 'late_return',
                         'updated_at' => $nowStr,
@@ -163,7 +204,7 @@ class AutoApproveBookings extends Command
                 \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS,
             ])
             ->whereNotNull('end_at')
-            ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr]);
+            ->where('end_at', '<', $oneHourAgo);
 
         $pvLateCount = $pvLate->count();
         if ($pvLateCount > 0) {
@@ -176,7 +217,7 @@ class AutoApproveBookings extends Command
                         \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS,
                     ])
                     ->whereNotNull('end_at')
-                    ->whereRaw('DATE_ADD(end_at, INTERVAL 1 HOUR) < ?', [$nowStr])
+                    ->where('end_at', '<', $oneHourAgo)
                     ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_LATE_RETURN, 'updated_at' => $nowStr]);
                 $this->info("  ✓ Priority vehicle bookings flagged as late_return: {$affected}");
             }
