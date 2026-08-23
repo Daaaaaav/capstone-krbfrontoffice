@@ -6,6 +6,7 @@ use App\Services\AI\Contracts\ContextProviderInterface;
 use App\Services\AI\Context\AnalyticsContextProvider;
 use App\Services\AI\Context\DeliveryContextProvider;
 use App\Services\AI\Context\GuestbookContextProvider;
+use App\Services\AI\Context\KrbKnowledgeContextProvider;
 use App\Services\AI\Context\RoomContextProvider;
 use App\Services\AI\Context\VehicleContextProvider;
 use App\Services\AI\Enums\ContextDetailLevel;
@@ -20,11 +21,12 @@ class ContextRouter
     public function __construct()
     {
         $this->providers = [
-            'rooms'     => app(RoomContextProvider::class),
-            'vehicles'  => app(VehicleContextProvider::class),
-            'analytics' => app(AnalyticsContextProvider::class),
-            'guestbook' => app(GuestbookContextProvider::class),
-            'deliveries'=> app(DeliveryContextProvider::class),
+            'rooms'         => app(RoomContextProvider::class),
+            'vehicles'      => app(VehicleContextProvider::class),
+            'analytics'     => app(AnalyticsContextProvider::class),
+            'guestbook'     => app(GuestbookContextProvider::class),
+            'deliveries'    => app(DeliveryContextProvider::class),
+            'krb_knowledge' => app(KrbKnowledgeContextProvider::class),
         ];
     }
 
@@ -230,6 +232,8 @@ class ContextRouter
             'occupancy', 'peak', 'rejection', 'year', 'month', 'week', 'tahun',
             'bulan', 'minggu', 'compare', 'increase', 'decrease', 'naik', 'turun',
             'cancel', 'cancellation', 'cancelled', 'batal', 'pembatalan', 'dibatal', 'rate',
+            'average', 'rata-rata', 'mean', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
+            'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu',
         ])) {
             $domains[] = 'analytics';
         }
@@ -246,6 +250,16 @@ class ContextRouter
             'surat', 'letter', 'parcel', 'item', 'stored', 'tersimpan',
         ])) {
             $domains[] = 'deliveries';
+        }
+
+        if ($this->matches($msg, [
+            'kebun raya', 'reinwardt', 'rafflesia', 'bunga bangkai', 'amorphophallus', 'titan arum',
+            'victoria amazonica', 'teratai raksasa', 'griya anggrek', 'taman meksiko', 'taman obat',
+            'danau gunting', 'jembatan merah', 'monumen lady raffles', 'makam belanda', 'astrid',
+            'museum zoologi', 'herbarium', 'ecodome', 'sejarah', 'founder', 'pendiri', 'koleksi',
+            'kelapa sawit', 'sawit', 'spesies', 'luas', 'hektar', 'brin', 'jam buka', 'jam operasional',
+        ]) || app(ScopeGuard::class)->isGeneralKrbKnowledge($msg)) {
+            $domains[] = 'krb_knowledge';
         }
 
         $wordCount = str_word_count($msg);
@@ -268,13 +282,17 @@ class ContextRouter
             if ($this->matches($content, ['statistic', 'total', 'trend', 'analytic', 'cancel', 'batal'])) $domains[] = 'analytics';
             if ($this->matches($content, ['guest', 'visitor', 'tamu'])) $domains[] = 'guestbook';
             if ($this->matches($content, ['package', 'document', 'delivery'])) $domains[] = 'deliveries';
+            if ($this->matches($content, ['kebun raya', 'reinwardt', 'rafflesia', 'griya anggrek', 'koleksi', 'sejarah'])) $domains[] = 'krb_knowledge';
         }
         return array_unique($domains);
     }
 
     private function extractParams(string $message): array
     {
-        $params = [];
+        $params = [
+            'query'   => $message,
+            'message' => $message,
+        ];
         $now    = Carbon::now($this->tz);
         $msg    = mb_strtolower($message);
 
@@ -294,6 +312,18 @@ class ContextRouter
             $params['period'] = 'last_month';
         } elseif (str_contains($msg, 'last year') || str_contains($msg, 'tahun lalu')) {
             $params['period'] = 'last_year';
+        }
+
+        if (preg_match('/\b(19\d{2}|20\d{2})\b/', $msg, $m)) {
+            $params['year'] = (int) $m[1];
+        }
+
+        $weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+        foreach ($weekdays as $wd) {
+            if (str_contains($msg, $wd)) {
+                $params['weekday'] = $wd;
+                break;
+            }
         }
 
         return $params;

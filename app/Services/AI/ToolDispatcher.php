@@ -20,6 +20,8 @@ class ToolDispatcher
         $this->register(app(\App\Services\AI\Tools\ForecastTool::class));
         $this->register(app(\App\Services\AI\Tools\UserManagementTool::class));
         $this->register(app(\App\Services\AI\Tools\OccupancyTool::class));
+        $this->register(app(\App\Services\AI\Tools\CalculationTool::class));
+        $this->register(app(\App\Services\AI\Tools\KrbKnowledgeTool::class));
     }
 
     public function register(ToolInterface $tool): void

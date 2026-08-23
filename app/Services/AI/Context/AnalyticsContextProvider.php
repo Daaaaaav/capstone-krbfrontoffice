@@ -29,8 +29,24 @@ class AnalyticsContextProvider implements ContextProviderInterface
 
         $period   = $params['period'] ?? 'this_week_and_ytd';
         $level = $detailLevel ?? ContextDetailLevel::DETAILED;
-        $cacheKey = "ctx_analytics_{$companyId}_{$period}_{$level->value}";
-        return Cache::remember($cacheKey, 180, fn() => $this->build($companyId, $level));
+        $weekday = $params['weekday'] ?? null;
+        $year = $params['year'] ?? null;
+        $cacheKey = "ctx_analytics_{$companyId}_{$period}_{$level->value}_{$weekday}_{$year}";
+
+        return Cache::remember($cacheKey, 120, function () use ($companyId, $level, $params) {
+            $base = $this->build($companyId, $level);
+            
+            if (! empty($params['weekday'])) {
+                $year = $params['year'] ?? Carbon::now($this->tz)->year;
+                $vResult = app(\App\Services\AI\DynamicAnalyticsService::class)->calculateWeekdayAverage($companyId, 'vehicle_bookings', $params['weekday'], $year, true);
+                $rResult = app(\App\Services\AI\DynamicAnalyticsService::class)->calculateWeekdayAverage($companyId, 'room_bookings', $params['weekday'], $year, true);
+                $base .= "\n\n=== DYNAMIC CALCULATION BREAKDOWN (" . ucfirst($params['weekday']) . " in {$year}) ===\n"
+                    . "• Vehicles: " . $vResult['text'] . "\n"
+                    . "• Rooms: " . $rResult['text'];
+            }
+
+            return $base;
+        });
     }
 
     private function build(int $companyId, ContextDetailLevel $level): string

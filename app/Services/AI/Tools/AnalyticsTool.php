@@ -7,6 +7,7 @@ use App\Models\Delivery;
 use App\Models\Guestbook;
 use App\Models\VehicleBooking;
 use App\Services\AI\Contracts\ToolInterface;
+use App\Services\AI\DynamicAnalyticsService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -14,6 +15,11 @@ use Illuminate\Support\Facades\DB;
 
 class AnalyticsTool implements ToolInterface
 {
+    public function __construct(private ?DynamicAnalyticsService $dynamicService = null)
+    {
+        $this->dynamicService = $dynamicService ?? app(DynamicAnalyticsService::class);
+    }
+
     public function name(): string
     {
         return 'get_analytics';
@@ -21,8 +27,8 @@ class AnalyticsTool implements ToolInterface
 
     public function description(): string
     {
-        return 'Retrieve booking and operational statistics for a time period, including room and vehicle cancellation statistics, '
-             . 'rejection rates, totals, trends, most-used rooms, peak hours, department usage, or year-over-year comparisons.';
+        return 'Retrieve booking and operational statistics for a time period, or perform dynamic aggregations (weekday average, busiest day/month, breakdown by period). '
+             . 'Use for room and vehicle cancellations, totals, trends, or specific weekday metrics.';
     }
 
     public function parameters(): array
@@ -33,15 +39,37 @@ class AnalyticsTool implements ToolInterface
                 'period' => [
                     'type'        => 'string',
                     'enum'        => ['today', 'this_week', 'this_month', 'this_year', 'last_month', 'last_year'],
-                    'description' => 'The time period to analyse.',
+                    'description' => 'Optional predefined time period to analyse.',
                 ],
                 'module' => [
                     'type'        => 'string',
                     'enum'        => ['rooms', 'vehicles', 'guests', 'deliveries', 'cancellations', 'all'],
                     'description' => 'Which module to include. Use "cancellations" for cancellation-specific stats, or "all" for a full summary.',
                 ],
+                'entity' => [
+                    'type'        => 'string',
+                    'enum'        => ['vehicle_bookings', 'room_bookings', 'guests', 'deliveries'],
+                    'description' => 'Target entity for dynamic aggregations.',
+                ],
+                'operation' => [
+                    'type'        => 'string',
+                    'enum'        => ['average', 'count', 'weekday_breakdown', 'monthly_breakdown', 'busiest_weekday', 'busiest_month'],
+                    'description' => 'Type of dynamic aggregation to perform.',
+                ],
+                'weekday' => [
+                    'type'        => 'string',
+                    'description' => 'Weekday to filter (e.g. Sunday, Monday, etc.).',
+                ],
+                'year' => [
+                    'type'        => 'integer',
+                    'description' => 'Year to filter (e.g. 2026, 2025).',
+                ],
+                'include_zero_periods' => [
+                    'type'        => 'boolean',
+                    'description' => 'Whether zero-booking days should be included in the denominator for period averages (default true).',
+                ],
             ],
-            'required' => ['period'],
+            'required' => [],
         ];
     }
 
@@ -50,6 +78,15 @@ class AnalyticsTool implements ToolInterface
         $companyId = Auth::user()?->company_id;
         if (! $companyId) {
             return ['text' => 'Analytics data is currently unavailable.'];
+        }
+
+        // If dynamic aggregation parameters are specified, route through DynamicAnalyticsService
+        if (isset($arguments['weekday']) || isset($arguments['entity']) || (isset($arguments['operation']) && $arguments['operation'] !== 'count')) {
+            $dynResult = $this->dynamicService->aggregate($companyId, $arguments);
+            return [
+                'text' => $dynResult['text'] ?? json_encode($dynResult),
+                'data' => $dynResult,
+            ];
         }
 
         $period = $arguments['period'] ?? 'this_week';

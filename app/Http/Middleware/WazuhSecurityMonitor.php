@@ -23,18 +23,21 @@ class WazuhSecurityMonitor
                      . "|--\s*$/im";
         if ($this->detectPattern($input, $sqliPattern)) {
             Log::info("level 12 srcip: {$ip} location: /{$location} -> SQLI_DETECTED");
+            \App\Models\WazuhAlert::create(['rule_level' => 12, 'description' => 'SQLI_DETECTED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
             abort(403, 'Forbidden: Malicious activity detected.');
         }
 
         $xssPattern = '/(<script[\s>]|javascript\s*:|onerror\s*=|onload\s*=|eval\s*\(|document\.cookie)/i';
         if ($this->detectPattern($input, $xssPattern)) {
             Log::info("level 12 srcip: {$ip} location: /{$location} -> XSS_DETECTED");
+            \App\Models\WazuhAlert::create(['rule_level' => 12, 'description' => 'XSS_DETECTED', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
             abort(403, 'Forbidden: Malicious activity detected.');
         }
 
         $cmdPattern = '/(\||;|&|`)\s*\b(ls|cat|whoami|pwd|wget|curl|echo|ping|bash|sh)\b/i';
         if ($this->detectPattern($input, $cmdPattern)) {
             Log::info("level 12 srcip: {$ip} location: /{$location} -> COMMAND_INJECTION");
+            \App\Models\WazuhAlert::create(['rule_level' => 12, 'description' => 'COMMAND_INJECTION', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
             abort(403, 'Forbidden: Malicious activity detected.');
         }
 
@@ -43,6 +46,7 @@ class WazuhSecurityMonitor
             foreach ($files as $f) {
                 if ($this->isFileMalicious($f)) {
                     Log::info("level 12 srcip: {$ip} location: /{$location} -> FILE_UPLOAD_ATTACK");
+                    \App\Models\WazuhAlert::create(['rule_level' => 12, 'description' => 'FILE_UPLOAD_ATTACK', 'agent_name' => 'laravel-app', 'raw_log' => "srcip: $ip, location: $location"]);
                     abort(403, 'Forbidden: Malicious file upload detected.');
                 }
             }

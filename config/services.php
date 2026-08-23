@@ -75,4 +75,12 @@ return [
         'impersonate_email'  => env('GOOGLE_IMPERSONATE_EMAIL'),
     ],
 
+    'wazuh' => [
+        // Internal IP/hostname of the Wazuh Indexer (OpenSearch/Elasticsearch)
+        'indexer_ip'  => env('WAZUH_INDEXER_INTERNAL_IP', '10.0.0.50'),
+        // Credentials — no hardcoded defaults; must be set in .env
+        'indexer_user' => env('WAZUH_INDEXER_USER', env('WAZUH_API_USER')),
+        'indexer_pass' => env('WAZUH_INDEXER_PASSWORD', env('WAZUH_API_PASS')),
+    ],
+
 ];
