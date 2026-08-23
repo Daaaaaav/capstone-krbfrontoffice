@@ -45,6 +45,7 @@ class DynamicAnalyticsTest extends TestCase
             'role_id'       => $role->role_id,
             'full_name'     => 'Manager Budi',
             'email'         => 'budi.mgr@krbogor.id',
+            'phone_number'  => '081234567890',
             'password'      => bcrypt('password'),
             'status'        => 'active',
         ]);
@@ -72,6 +73,7 @@ class DynamicAnalyticsTest extends TestCase
 
         VehicleBooking::create([
             'company_id'    => $this->company->company_id,
+            'department_id' => $this->user->department_id,
             'vehicle_id'    => $this->vehicle->vehicle_id,
             'user_id'       => $this->user->user_id,
             'borrower_name' => 'Staff A',
@@ -85,6 +87,7 @@ class DynamicAnalyticsTest extends TestCase
 
         VehicleBooking::create([
             'company_id'    => $this->company->company_id,
+            'department_id' => $this->user->department_id,
             'vehicle_id'    => $this->vehicle->vehicle_id,
             'user_id'       => $this->user->user_id,
             'borrower_name' => 'Staff B',
@@ -98,6 +101,7 @@ class DynamicAnalyticsTest extends TestCase
 
         VehicleBooking::create([
             'company_id'    => $this->company->company_id,
+            'department_id' => $this->user->department_id,
             'vehicle_id'    => $this->vehicle->vehicle_id,
             'user_id'       => $this->user->user_id,
             'borrower_name' => 'Staff C',
@@ -111,6 +115,7 @@ class DynamicAnalyticsTest extends TestCase
 
         VehicleBooking::create([
             'company_id'    => $this->company->company_id,
+            'department_id' => $this->user->department_id,
             'vehicle_id'    => $this->vehicle->vehicle_id,
             'user_id'       => $this->user->user_id,
             'borrower_name' => 'Staff D',
