@@ -112,10 +112,6 @@
                                                     View
                                                 </button>
                                                 @if($booking->isActionable())
-                                                    <button wire:click="openApprove({{ $booking->id }})"
-                                                        class="text-green-600 hover:text-green-800 text-xs font-medium">
-                                                        Approve
-                                                    </button>
                                                     <button wire:click="openReject({{ $booking->id }})"
                                                         class="text-red-600 hover:text-red-800 text-xs font-medium">
                                                         Reject
@@ -224,32 +220,6 @@
                             <p class="text-sm text-red-900">{{ $detailBooking->rejection_reason }}</p>
                         </div>
                     @endif
-                </div>
-            </div>
-        </div>
-    @endif
-
-    {{-- APPROVE MODAL --}}
-    @if($showApproveModal)
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            x-data
-            @click.self="$wire.closeApprove()">
-            <div class="bg-white rounded-xl max-w-md w-full">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-bold text-[#2d3a24]">Confirm Approval</h3>
-                </div>
-                <div class="px-6 py-4">
-                    <p class="text-sm text-[#5a6e4a]">Are you sure you want to approve this priority room booking?</p>
-                </div>
-                <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
-                    <button wire:click="closeApprove"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-                        Cancel
-                    </button>
-                    <button wire:click="confirmApprove"
-                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">
-                        Approve
-                    </button>
                 </div>
             </div>
         </div>

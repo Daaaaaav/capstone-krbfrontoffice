@@ -103,16 +103,18 @@ class Vehiclestatus extends Component
 
     public function render()
     {
+        $companyId = optional(\Illuminate\Support\Facades\Auth::user())->company_id;
+
         // Auto-transition 'approved' regular bookings to 'on_progress' when start time arrives
         VehicleBooking::where('status', 'approved')
             ->where('start_at', '<=', now($this->tz))
             ->update(['status' => 'on_progress']);
 
-        // Auto-transition priority bookings to 'on_progress' when start time arrives
-        // CRITICAL: Only transition if already approved, NOT if still pending
-        \App\Models\PriorityVehicleBooking::where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED)
-            ->where('start_at', '<=', now($this->tz))
-            ->update(['status' => \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS]);
+        // Priority Vehicle Bookings: auto-transition approved to on_progress when start_at arrives,
+        // flag late_returns, and expire stale pending bookings
+        \App\Models\PriorityVehicleBooking::autoProgressToOnProgress($companyId);
+        \App\Models\PriorityVehicleBooking::autoFlagLateReturns($companyId);
+        \App\Models\PriorityVehicleBooking::autoExpirePending($companyId);
 
         $bookings = VehicleBooking::query()
             ->when($this->vehicleFilter, fn(Builder $q) => $q->where('vehicle_id', $this->vehicleFilter))
@@ -139,28 +141,41 @@ class Vehiclestatus extends Component
             ->when($this->sortFilter === 'nearest', fn(Builder $q) => $q->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, NOW(), start_at))'))
             ->paginate($this->perPage);
 
+        $priorityVehicleBookings = \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager', 'department'])
+            ->forCompany($companyId)
+            ->when($this->vehicleFilter, fn($q) => $q->where('vehicle_id', $this->vehicleFilter))
+            ->when($this->selectedDate, fn($q) => $q->whereDate('start_at', $this->selectedDate))
+            ->when($this->statusTab === 'pending', fn($q) => $q->whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
+                \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
+            ]))
+            ->when($this->statusTab === 'approved', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
+            ->when($this->statusTab === 'on_progress', fn($q) => $q->whereIn('status', [
+                \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS,
+                \App\Models\PriorityVehicleBooking::STATUS_LATE_RETURN,
+            ]))
+            ->when($this->q !== '', function ($q) {
+                $like = '%' . $this->q . '%';
+                $q->where(function ($qq) use ($like) {
+                    $qq->where('purpose', 'like', $like)
+                       ->orWhere('borrower_name', 'like', $like)
+                       ->orWhere('destination', 'like', $like)
+                       ->orWhereHas('manager', fn($qm) => $qm->where('full_name', 'like', $like)->orWhere('name', 'like', $like))
+                       ->orWhereHas('vehicle', fn($qv) => $qv->where('name', 'like', $like)->orWhere('plate_number', 'like', $like));
+                });
+            })
+            ->when($this->sortFilter === 'recent', fn($q) => $q->orderByDesc('id'))
+            ->when($this->sortFilter === 'oldest', fn($q) => $q->orderBy('id'))
+            ->when($this->sortFilter === 'nearest', fn($q) => $q->orderByRaw('ABS(TIMESTAMPDIFF(SECOND, NOW(), start_at))'))
+            ->get();
+
         return view('livewire.pages.receptionist.vehiclestatus', [
             'bookings'               => $bookings,
             'vehicleNotifCount'      => $this->vehicleNotifCount,
             'vehicleNotifs'          => $this->vehicleNotifs,
             'priorityVehicleDetailBooking' => $this->priorityVehicleDetailBooking,
             'selectedBooking'        => $this->selectedBooking,
-            'priorityVehicleBookings' => \App\Models\PriorityVehicleBooking::with(['vehicle', 'manager'])
-                ->forCompany(optional(\Illuminate\Support\Facades\Auth::user())->company_id)
-                ->when($this->statusTab === 'pending', fn($q) => $q->whereIn('status', [
-                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_RECEIPT,
-                    \App\Models\PriorityVehicleBooking::STATUS_PENDING_CANCELLATION,
-                ]))
-                ->when($this->statusTab === 'approved', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_APPROVED))
-                ->when($this->statusTab === 'on_progress', fn($q) => $q->where('status', \App\Models\PriorityVehicleBooking::STATUS_ON_PROGRESS))
-                ->when($this->q !== '', fn($q) => $q->where(function($qq) {
-                    $like = '%' . $this->q . '%';
-                    $qq->where('purpose', 'like', $like)
-                       ->orWhere('borrower_name', 'like', $like)
-                       ->orWhere('destination', 'like', $like);
-                }))
-                ->orderByDesc('created_at')
-                ->get(),
+            'priorityVehicleBookings' => $priorityVehicleBookings,
         ]);
     }
 
