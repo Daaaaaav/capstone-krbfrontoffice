@@ -2,49 +2,68 @@
 
 namespace App\Livewire\Pages\Manager;
 
-use Livewire\Component;
-use Livewire\Attributes\Computed;
+use App\Services\WazuhService;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
-use App\Services\WazuhService;
+use Livewire\Component;
 
 #[Layout('layouts.manager')]
 #[Title('Wazuh Security Reports')]
 class AISecurityReports extends Component
 {
     // -------------------------------------------------------------------------
-    // Public state – these are serialised between Livewire requests.
+    // Public state
     //
     // SECURITY: None of these properties contain Wazuh credentials.
-    // Credentials live exclusively in config/services.php → .env and are
-    // accessed only inside WazuhService (server-side).
+    // Credentials remain exclusively in config/services.php and .env and are
+    // accessed only by WazuhService on the server.
     // -------------------------------------------------------------------------
 
-    /** Which severity filter is active: all | critical | high | medium | low */
+    /**
+     * Active severity filter:
+     * all | critical | high | medium | low
+     */
     public string $selectedSeverity = 'all';
 
-    /** Whether automatic 30-second polling is enabled */
+    /**
+     * Whether automatic 30-second polling is enabled.
+     */
     public bool $autoRefresh = true;
 
-    /** Whether the Wazuh Indexer responded successfully on the last fetch */
+    /**
+     * Whether the Wazuh Indexer responded successfully on the last fetch.
+     */
     public bool $wazuhAvailable = false;
 
-    /** Normalised alert rows (plain arrays, NOT Eloquent models) */
+    /**
+     * Normalised alert rows.
+     *
+     * These are plain arrays, not Eloquent models.
+     */
     public array $alerts = [];
 
-    /** Severity summary counts: total, critical, high, medium, low */
+    /**
+     * Severity summary counts for the current bounded Wazuh dataset.
+     */
     public array $summary = [
-        'total'    => 0,
+        'total' => 0,
         'critical' => 0,
-        'high'     => 0,
-        'medium'   => 0,
-        'low'      => 0,
+        'high' => 0,
+        'medium' => 0,
+        'low' => 0,
     ];
 
-    /** ISO 8601 string of when data was last fetched */
+    /**
+     * ISO 8601 timestamp of the most recent fetch.
+     */
     public string $lastUpdated = '';
 
-    /** Which alert index is expanded in the detail panel (null = none) */
+    /**
+     * Index within the CURRENT FILTERED LIST that has its details expanded.
+     *
+     * null means no alert is expanded.
+     */
     public ?int $expandedIndex = null;
 
     // -------------------------------------------------------------------------
@@ -61,40 +80,75 @@ class AISecurityReports extends Component
     // -------------------------------------------------------------------------
 
     /**
-     * Manual refresh – called by the "Refresh" button.
-     * Uses the same loading logic as auto-poll.
+     * Manual refresh.
      */
     public function refreshAlerts(): void
     {
         $this->loadAlerts();
+
+        // Alert ordering or filtering may have changed after a fresh fetch.
+        $this->expandedIndex = null;
     }
 
     /**
-     * Called by wire:poll.30s on the Blade template.
-     * Only loads when auto-refresh is enabled; avoids wasted requests when paused.
+     * Called by wire:poll.30s.
      */
     public function pollRefresh(): void
     {
-        if ($this->autoRefresh) {
-            $this->loadAlerts();
+        if (!$this->autoRefresh) {
+            return;
         }
+
+        $this->loadAlerts();
+
+        // The latest Wazuh results may have a different ordering.
+        $this->expandedIndex = null;
     }
 
+    /**
+     * Enable or disable automatic refresh.
+     */
     public function toggleAutoRefresh(): void
     {
         $this->autoRefresh = !$this->autoRefresh;
     }
 
+    /**
+     * Change the severity filter.
+     *
+     * No Wazuh request is needed because filtering happens locally against the
+     * already-loaded alerts.
+     */
     public function setSeverity(string $level): void
     {
+        $allowedLevels = [
+            'all',
+            'critical',
+            'high',
+            'medium',
+            'low',
+        ];
+
+        // Defensive validation so an unexpected client value cannot leave the
+        // component in an invalid filtering state.
+        if (!in_array($level, $allowedLevels, true)) {
+            $level = 'all';
+        }
+
         $this->selectedSeverity = $level;
-        $this->expandedIndex    = null;
-        // No re-fetch needed; the filteredAlerts computed property re-evaluates automatically.
+        $this->expandedIndex = null;
     }
 
+    /**
+     * Expand or collapse an alert's detail panel.
+     *
+     * The index belongs to the currently filtered alert list.
+     */
     public function toggleDetail(int $index): void
     {
-        $this->expandedIndex = ($this->expandedIndex === $index) ? null : $index;
+        $this->expandedIndex = (
+            $this->expandedIndex === $index
+        ) ? null : $index;
     }
 
     // -------------------------------------------------------------------------
@@ -102,15 +156,19 @@ class AISecurityReports extends Component
     // -------------------------------------------------------------------------
 
     /**
-     * Fetch fresh data from the Wazuh Indexer via the centralised WazuhService.
+     * Fetch fresh data from Wazuh through the centralised WazuhService.
      *
-     * This is the ONLY place that touches WazuhService in both the Manager and
-     * IT Officer pages. The IT Officer component inherits this method.
+     * This method is inherited by the IT Officer component.
      *
-     * Outcome states:
-     *   wazuhAvailable=true  + alerts non-empty → display alerts
-     *   wazuhAvailable=true  + alerts empty     → "No security alerts found."
-     *   wazuhAvailable=false                    → "Security monitoring temporarily unavailable."
+     * States:
+     * - available=true, alerts non-empty:
+     *   Wazuh is connected and alerts are displayed.
+     *
+     * - available=true, alerts empty:
+     *   Wazuh is connected but there are no matching recent alerts.
+     *
+     * - available=false:
+     *   Wazuh is unavailable or the request failed.
      */
     protected function loadAlerts(): void
     {
@@ -120,72 +178,108 @@ class AISecurityReports extends Component
 
             $result = $service->getSecuritySummary(50);
 
-            $this->wazuhAvailable = (bool) ($result['available'] ?? false);
-            $this->alerts         = (array) ($result['alerts']   ?? []);
-            $this->summary        = (array) ($result['summary']  ?? $this->summary);
-            $this->lastUpdated    = (string) ($result['last_updated'] ?? now()->toIso8601String());
+            $this->wazuhAvailable = (bool) (
+                $result['available'] ?? false
+            );
 
-            // Log a brief summary only when the Indexer transitions to unavailable,
-            // to avoid filling logs during normal polling.
+            $this->alerts = is_array($result['alerts'] ?? null)
+                ? $result['alerts']
+                : [];
+
+            $this->summary = is_array($result['summary'] ?? null)
+                ? $result['summary']
+                : [
+                    'total' => 0,
+                    'critical' => 0,
+                    'high' => 0,
+                    'medium' => 0,
+                    'low' => 0,
+                ];
+
+            $this->lastUpdated = (string) (
+                $result['last_updated'] ?? now()->toIso8601String()
+            );
+
             if (!$this->wazuhAvailable) {
-                \Illuminate\Support\Facades\Log::warning('WazuhSecurityReports: Indexer unavailable', [
-                    'component' => static::class,
-                ]);
+                Log::warning(
+                    'WazuhSecurityReports: Indexer unavailable',
+                    [
+                        'component' => static::class,
+                    ]
+                );
             }
-
         } catch (\Throwable $e) {
-            // Defensive catch – WazuhService already logs the full error internally.
-            // This ensures the component never crashes the dashboard.
-            \Illuminate\Support\Facades\Log::error(
-                'WazuhSecurityReports: unexpected exception in component: ' . $e->getMessage(),
-                ['component' => static::class, 'exception_class' => get_class($e)]
+            // WazuhService already handles and logs its own connection errors.
+            // This additional catch ensures the Livewire component itself never
+            // crashes the dashboard because of an unexpected exception.
+            Log::error(
+                'WazuhSecurityReports: unexpected exception in component: '
+                    . $e->getMessage(),
+                [
+                    'component' => static::class,
+                    'exception_class' => get_class($e),
+                ]
             );
 
             $this->wazuhAvailable = false;
-            $this->alerts         = [];
-            $this->lastUpdated    = now()->toIso8601String();
+            $this->alerts = [];
+
+            $this->summary = [
+                'total' => 0,
+                'critical' => 0,
+                'high' => 0,
+                'medium' => 0,
+                'low' => 0,
+            ];
+
+            $this->lastUpdated = now()->toIso8601String();
         }
     }
 
     // -------------------------------------------------------------------------
-    // Computed properties
+    // Filtering
     // -------------------------------------------------------------------------
 
     /**
-     * Severity-filtered view of the loaded alerts.
+     * Return alerts filtered by the currently selected severity.
      *
-     * Livewire v3 #[Computed] properties are evaluated lazily on each render
-     * request and are available in Blade as $this->filteredAlerts.  Because
-     * they derive from public properties ($alerts, $selectedSeverity) that are
-     * already serialised on every request, the Blade always sees the correct
-     * filtered data – even after setSeverity(), refreshAlerts(), and
-     * pollRefresh() updates.
-     *
-     * The cache is intentionally NOT persisted across requests (persist: false
-     * is the default) so that every render always reflects the current state.
+     * This deliberately uses a normal method rather than Livewire's
+     * #[Computed] property mechanism. The result is explicitly passed to the
+     * Blade view from render(), avoiding computed-property resolution issues.
      */
-    #[Computed]
-    public function filteredAlerts(): array
+    public function getFilteredAlerts(): array
     {
         $collection = collect($this->alerts);
 
         if ($this->selectedSeverity !== 'all') {
             $collection = $collection->filter(
-                fn ($alert) => ($alert['severity'] ?? '') === $this->selectedSeverity
+                fn (array $alert): bool =>
+                    ($alert['severity'] ?? '') === $this->selectedSeverity
             );
         }
 
-        return $collection->values()->all();
+        return $collection
+            ->values()
+            ->all();
     }
 
     // -------------------------------------------------------------------------
     // Render
     // -------------------------------------------------------------------------
 
+    /**
+     * Render the Manager Security Reports page.
+     *
+     * filteredAlerts is explicitly supplied as a normal Blade view variable.
+     * Do not access it as $this->filteredAlerts in the Blade.
+     */
     public function render()
     {
-        // filteredAlerts is now a #[Computed] property; no need to pass it as
-        // a view variable.  The Blade accesses it via $this->filteredAlerts.
-        return view('livewire.pages.manager.a-i-security-reports');
+        return view(
+            'livewire.pages.manager.a-i-security-reports',
+            [
+                'filteredAlerts' => $this->getFilteredAlerts(),
+            ]
+        );
     }
 }
