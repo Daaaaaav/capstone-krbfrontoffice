@@ -90,28 +90,6 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
-        // -------------------------------------------------------------------------
-        // Dedicated application security event log.
-        //
-        // All security-relevant Laravel events (login failures, injection attempts,
-        // brute-force detection, etc.) are written here rather than to laravel.log
-        // so they can be monitored independently by the Wazuh agent without
-        // interference from high-volume normal application log entries.
-        //
-        // Format : JSON (one object per line) — matches the Wazuh JSON decoder
-        //          configured in wazuh/decoders/krb_laravel_security_decoders.xml
-        // Path   : storage/logs/security-YYYY-MM-DD.log (daily rotation, 30 days)
-        // Channel: 'security' — reference with Log::channel('security')
-        // -------------------------------------------------------------------------
-        'security' => [
-            'driver'              => 'daily',
-            'path'                => storage_path('logs/security.log'),
-            'level'               => 'debug',
-            'days'                => 30,
-            'replace_placeholders' => true,
-            'formatter'           => \App\Logging\SecurityJsonFormatter::class,
-        ],
-
     ],
 
 ];

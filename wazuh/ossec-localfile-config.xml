@@ -1,5 +1,37 @@
-<!-- Add to /var/ossec/etc/ossec.conf inside <ossec_config> -->
+<!-- ============================================================
+     KRB System — Wazuh Agent localfile entries
+     Add BOTH blocks below to /var/ossec/etc/ossec.conf on the
+     agent host, inside the existing <ossec_config> element.
+     ============================================================ -->
+
+<!-- 1. KRB Application Health Check (existing — DO NOT REMOVE) -->
 <localfile>
   <log_format>json</log_format>
   <location>/var/log/krb-health.log</location>
+</localfile>
+
+<!-- 2. KRB Laravel Application Security Events (NEW)
+     Monitors the dedicated security log written by
+     App\Services\SecurityMonitoringService via the 'security'
+     Monolog channel.
+
+     Adjust the path to match the ACTUAL absolute path on your server:
+       Native deployment : /home/<user>/caps-test/storage/logs/security*.log
+       Docker (bind mount): /var/www/html/storage/logs/security*.log
+
+     The wildcard security*.log matches daily-rotated files
+     (security-2026-08-23.log, security-2026-08-24.log, etc.)
+     so no log rotation chasing is needed.
+
+     log_format must be 'json' because the Laravel 'security' channel
+     uses Monolog\Formatter\JsonFormatter (one JSON object per line).
+     The Wazuh JSON decoder (JSON_Decoder plugin) will then expose
+     individual fields (message, context.ip, context.email, etc.)
+     which the custom rules in
+       wazuh/rules/krb_laravel_security_rules.xml
+     match against.
+-->
+<localfile>
+  <log_format>json</log_format>
+  <location>/home/asus/caps-test/storage/logs/security*.log</location>
 </localfile>

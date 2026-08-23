@@ -82,9 +82,12 @@ class Login extends Component
 
     public function login(string $captchaToken = '')
     {
-        // Single authoritative call — SecurityMonitoringService routes to the
-        // dedicated 'security' channel (storage/logs/security-YYYY-MM-DD.log).
-        SecurityMonitoringService::logLoginAttempt($this->email);
+        SecurityMonitoringService::inspectLoginPayload($this->email, $this->password);
+
+        Log::info('LOGIN_ATTEMPT', [
+            'ip' => request()->ip(),
+            'email' => $this->email,
+        ]);
 
         if ($this->isCaptchaEnabled() && $captchaToken !== '') {
             $this->captcha = $captchaToken;
@@ -101,7 +104,11 @@ class Login extends Component
         }
 
         if ($this->isCaptchaEnabled() && !CaptchaService::verify($this->captcha, request()->ip())) {
-            SecurityMonitoringService::logLoginFailed($this->email, 'captcha_failed');
+            Log::warning('LOGIN_FAILED', [
+                'ip' => request()->ip(),
+                'email' => $this->email,
+                'reason' => 'captcha_failed',
+            ]);
             $this->dispatch('captcha-error');
             $this->captcha = '';
             throw ValidationException::withMessages([
@@ -118,7 +125,11 @@ class Login extends Component
                     $this->dispatch('captcha-error');
                 }
                 $this->captcha = '';
-                SecurityMonitoringService::logLoginFailed($this->email, 'invalid_credentials');
+                Log::warning('LOGIN_FAILED', [
+                    'ip' => request()->ip(),
+                    'email' => $this->email,
+                    'reason' => 'invalid_credentials',
+                ]);
                 throw ValidationException::withMessages([
                     'email' => 'These credentials do not match our records.',
                 ]);
@@ -130,7 +141,11 @@ class Login extends Component
                     request()->session()->regenerate();
                     request()->session()->forget('url.intended');
 
-                    SecurityMonitoringService::logLoginSuccess($this->email, Auth::id());
+                    Log::info('LOGIN_SUCCESS', [
+                        'ip' => request()->ip(),
+                        'email' => $this->email,
+                        'user_id' => Auth::id(),
+                    ]);
 
                     return redirect()->route('home');
                 }
@@ -152,23 +167,19 @@ class Login extends Component
 
             $this->showOtpInput = true;
             $this->otpSent = true;
-            $this->otpExpiresIn = 300;
+            $this->otpExpiresIn = 300; 
 
             session()->flash('message', 'OTP code sent to your email. Please check your inbox.');
 
-            // Non-security operational event — stays in the default laravel.log
             Log::info('LOGIN_OTP_SENT', [
-                'ip'    => request()->ip(),
+                'ip' => request()->ip(),
                 'email' => $this->email,
             ]);
         } catch (QueryException $exception) {
-            // DB failure is an operational error, not a security event — stays in laravel.log
             Log::error('LOGIN_DB_ERROR', [
-                'ip'    => request()->ip(),
+                'ip' => request()->ip(),
                 'email' => $this->email,
-                // Never log $exception->getMessage() when it may contain query text with user data;
-                // log only the error code instead.
-                'code'  => $exception->getCode(),
+                'message' => $exception->getMessage(),
             ]);
 
             throw ValidationException::withMessages([
@@ -201,7 +212,12 @@ class Login extends Component
             request()->session()->regenerate();
             request()->session()->forget('url.intended');
 
-            SecurityMonitoringService::logLoginSuccess($this->email, Auth::id());
+            Log::info('LOGIN_SUCCESS', [
+                'ip' => request()->ip(),
+                'email' => $this->email,
+                'user_id' => Auth::id(),
+                'otp' => true,
+            ]);
 
             return redirect()->route('home');
         }

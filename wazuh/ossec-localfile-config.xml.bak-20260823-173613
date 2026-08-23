@@ -1,0 +1,5 @@
+<!-- Add to /var/ossec/etc/ossec.conf inside <ossec_config> -->
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/log/krb-health.log</location>
+</localfile>
