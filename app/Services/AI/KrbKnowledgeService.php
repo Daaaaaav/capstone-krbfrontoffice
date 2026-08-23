@@ -76,7 +76,7 @@ class KrbKnowledgeService
     {
         $clean = mb_strtolower(preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $query));
         $stopWords = [
-            'what', 'is', 'the', 'are', 'who', 'when', 'where', 'how', 'why', 'in', 'on', 'at', 'of', 'and', 'or', 'to', 'for', 'about', 'tell', 'me', 'explain', 'show',
+            'what', 'is', 'the', 'are', 'who', 'when', 'where', 'how', 'why', 'in', 'on', 'at', 'of', 'and', 'or', 'to', 'for', 'about', 'tell', 'me', 'explain', 'show', 'base',
             'apa', 'siapa', 'kapan', 'di', 'mana', 'bagaimana', 'kenapa', 'mengapa', 'dari', 'ke', 'pada', 'yang', 'dan', 'atau', 'untuk', 'tentang', 'ceritakan', 'jelaskan', 'tampilkan', 'kebun', 'raya', 'bogor'
         ];
 
@@ -103,26 +103,26 @@ class KrbKnowledgeService
             $score += 10.0;
         }
 
-        // Keyword matches
+        // Keyword matches (exact keyword phrase in query)
         foreach ($keywords as $kw) {
             if (str_contains($rawLower, $kw)) {
                 $score += 8.0;
             }
         }
 
-        // Term matches
+        // Term matches with word boundaries
         foreach ($terms as $term) {
-            if (str_contains($titleLower, $term)) {
+            if (preg_match('/\b' . preg_quote($term, '/') . '\b/i', $titleLower)) {
                 $score += 5.0;
             }
-            if (str_contains($summaryLower, $term)) {
+            if (preg_match('/\b' . preg_quote($term, '/') . '\b/i', $summaryLower)) {
                 $score += 3.0;
             }
-            if (str_contains($contentLower, $term)) {
+            if (preg_match('/\b' . preg_quote($term, '/') . '\b/i', $contentLower)) {
                 $score += 1.5;
             }
             foreach ($keywords as $kw) {
-                if (str_contains($kw, $term)) {
+                if (preg_match('/\b' . preg_quote($term, '/') . '\b/i', $kw)) {
                     $score += 4.0;
                 }
             }

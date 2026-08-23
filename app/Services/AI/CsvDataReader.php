@@ -130,7 +130,7 @@ class CsvDataReader
 
     public function serverCsvInfo(): array
     {
-        $path = Storage::disk(self::DISK)->path(self::SERVER_CSV_PATH);
+        $path = $this->resolveServerCsvPath();
 
         if (!file_exists($path)) {
             return ['rows' => 0, 'start' => null, 'end' => null, 'error' => 'CSV file not found'];
@@ -557,6 +557,131 @@ class CsvDataReader
                 'result'      => $average,
             ],
             'sources'                       => [$this->getCsvSourceMetadata()],
+            'text'                          => $text,
+        ];
+    }
+
+    /**
+     * Get a comprehensive summary of all metrics in the server CSV.
+     */
+    public function getComprehensiveServerCsvSummary(?string $startDate = null, ?string $endDate = null): array
+    {
+        $rows = $this->getHistoricalRows($startDate, $endDate);
+        $totalRows = count($rows);
+
+        if ($totalRows === 0) {
+            $metadata = $this->getCsvSourceMetadata();
+            return [
+                'success'     => false,
+                'error'       => 'The configured server historical CSV does not contain records matching the requested period.',
+                'total_rows'  => 0,
+                'sources'     => [$metadata],
+                'text'        => "The configured server historical CSV does not contain records matching the requested period.\n\n" . \App\Services\AI\Enums\ChatDataSource::formatSourcesTag([$metadata]),
+            ];
+        }
+
+        $firstDate = $rows[0]['date'];
+        $lastDate = $rows[$totalRows - 1]['date'];
+
+        $totalVisitors = 0;
+        $maxVisitors = -1;
+        $maxVisitorsDate = null;
+        $minVisitors = PHP_INT_MAX;
+        $minVisitorsDate = null;
+
+        $totalDocRec = 0;
+        $totalDocSent = 0;
+        $totalOffRoom = 0;
+        $totalOnRoom = 0;
+        $totalVehicles = 0;
+        $maxVehicles = -1;
+        $maxVehiclesDate = null;
+
+        foreach ($rows as $r) {
+            $vis = $r['visitors'];
+            $totalVisitors += $vis;
+            if ($vis > $maxVisitors) {
+                $maxVisitors = $vis;
+                $maxVisitorsDate = $r['date'];
+            }
+            if ($vis < $minVisitors) {
+                $minVisitors = $vis;
+                $minVisitorsDate = $r['date'];
+            }
+
+            $totalDocRec += $r['docs_packages_received'];
+            $totalDocSent += $r['docs_packages_sent'];
+            $totalOffRoom += $r['offline_room_bookings'];
+            $totalOnRoom += $r['online_room_bookings'];
+
+            $veh = $r['vehicle_bookings'];
+            $totalVehicles += $veh;
+            if ($veh > $maxVehicles) {
+                $maxVehicles = $veh;
+                $maxVehiclesDate = $r['date'];
+            }
+        }
+
+        $totalRooms = $totalOffRoom + $totalOnRoom;
+        $avgVisitors = round($totalVisitors / $totalRows, 2);
+        $avgDocRec = round($totalDocRec / $totalRows, 2);
+        $avgDocSent = round($totalDocSent / $totalRows, 2);
+        $avgRooms = round($totalRooms / $totalRows, 2);
+        $avgVehicles = round($totalVehicles / $totalRows, 2);
+
+        $metadata = [
+            'type'         => 'server_csv',
+            'label'        => 'Server Historical CSV (krb_historical_data.csv)',
+            'file'         => 'krb_historical_data.csv',
+            'display_name' => 'krb_historical_data.csv',
+            'description'  => 'Retrieved from server-side historical time-series dataset (krb_historical_data.csv)',
+            'total_rows'   => $totalRows,
+            'start_date'   => $firstDate,
+            'end_date'     => $lastDate,
+        ];
+
+        $text = "### Server Historical Data Summary\n\n"
+              . "• **Period Covered:** {$firstDate} to {$lastDate}\n"
+              . "• **Total Records:** " . number_format($totalRows) . " daily records\n"
+              . "• **Visitors:** " . number_format($totalVisitors) . " total (avg: {$avgVisitors}/day, peak: " . number_format($maxVisitors) . " on {$maxVisitorsDate})\n"
+              . "• **Room Bookings:** " . number_format($totalRooms) . " total (Online: " . number_format($totalOnRoom) . ", Offline: " . number_format($totalOffRoom) . ", avg: {$avgRooms}/day)\n"
+              . "• **Vehicle Bookings:** " . number_format($totalVehicles) . " total (avg: {$avgVehicles}/day, peak: " . number_format($maxVehicles) . " on {$maxVehiclesDate})\n"
+              . "• **Documents & Packages:** " . number_format($totalDocRec) . " received (avg: {$avgDocRec}/day), " . number_format($totalDocSent) . " sent (avg: {$avgDocSent}/day)\n\n"
+              . \App\Services\AI\Enums\ChatDataSource::formatSourcesTag([$metadata]);
+
+        return [
+            'success'                       => true,
+            'source_type'                   => 'server_csv',
+            'start_date'                    => $firstDate,
+            'end_date'                      => $lastDate,
+            'total_records'                 => $totalRows,
+            'visitors'                      => [
+                'total'        => $totalVisitors,
+                'daily_avg'    => $avgVisitors,
+                'peak_count'   => $maxVisitors,
+                'peak_date'    => $maxVisitorsDate,
+                'min_count'    => $minVisitors,
+                'min_date'     => $minVisitorsDate,
+            ],
+            'room_bookings'                 => [
+                'total'        => $totalRooms,
+                'online'       => $totalOnRoom,
+                'offline'      => $totalOffRoom,
+                'daily_avg'    => $avgRooms,
+            ],
+            'vehicle_bookings'              => [
+                'total'        => $totalVehicles,
+                'daily_avg'    => $avgVehicles,
+                'peak_count'   => $maxVehicles,
+                'peak_date'    => $maxVehiclesDate,
+            ],
+            'packages'                      => [
+                'received_total' => $totalDocRec,
+                'received_avg'   => $avgDocRec,
+                'sent_total'     => $totalDocSent,
+                'sent_avg'       => $avgDocSent,
+            ],
+            'sources'                       => [$metadata],
             'text'                          => $text,
         ];
     }
