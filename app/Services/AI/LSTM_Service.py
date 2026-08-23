@@ -69,8 +69,11 @@ def _clear_prediction_cache() -> None:
     logger.info("Prediction response cache cleared.")
 
 
+_PREDICTION_CACHE_VERSION = "v2"  # bump to invalidate all in-memory prediction caches
+
+
 def _prediction_cache_key(model_fp: str, data_sig: str, forecast_days: int) -> str:
-    return f"{model_fp}|{data_sig}|{forecast_days}"
+    return f"{_PREDICTION_CACHE_VERSION}|{model_fp}|{data_sig}|{forecast_days}"
 
 
 @app.get("/")
@@ -464,19 +467,55 @@ def predict(request: RequestData):
         window=cfg.sequence_window
     )
 
+    # ── Normal-day RMSE for confidence intervals ────────────────────────────────
+    # The dataset contains extreme Eid peak days (visitors in the thousands).
+    # Using the full-test RMSE for confidence intervals produces upper bounds of
+    # hundreds/thousands even when the predicted value is near zero, making the
+    # chart appear broken. We compute a separate interval RMSE from the
+    # non-outlier subset of the test predictions (days with actual visitors below
+    # the 95th percentile of y_test_real). This keeps the bands proportional to
+    # the actual forecast magnitude while the reported RMSE/MAE metrics still
+    # reflect true overall model performance.
+    try:
+        threshold_95  = float(np.percentile(y_test_real, 95))
+        normal_mask   = y_test_real <= threshold_95
+        normal_enough = int(normal_mask.sum()) >= 5
+        if normal_enough:
+            interval_rmse = float(np.sqrt(mean_squared_error(
+                y_test_real[normal_mask], preds_real[normal_mask]
+            )))
+        else:
+            normal_mask   = np.ones(len(y_test_real), dtype=bool)
+            interval_rmse = rmse
+    except Exception:
+        normal_mask   = np.ones(len(y_test_real), dtype=bool)
+        interval_rmse = rmse
+
+    logger.info(
+        "Interval RMSE (normal days only): %.4f  |  Full RMSE: %.4f",
+        interval_rmse, rmse,
+    )
+
     recent    = df_feat['count'].tail(90)
     nonzero   = recent[recent > 0]
-    hist_floor = float(nonzero.mean()) if len(nonzero) > 0 else 0.0
+    # hist_floor: exclude extreme peak days (above 95th pct of recent data)
+    # so that Eid spikes do not inflate the floor for ordinary forecasts.
+    if len(nonzero) > 0:
+        floor_thresh  = float(nonzero.quantile(0.95))
+        normal_recent = nonzero[nonzero <= floor_thresh]
+        hist_floor    = float(normal_recent.mean()) if len(normal_recent) > 0 else float(nonzero.mean())
+    else:
+        hist_floor = 0.0
 
-    confidence_score = compute_confidence(rmse, y_test_real, cfg)
+    confidence_score = compute_confidence(interval_rmse, y_test_real[normal_mask], cfg)
 
     final = []
     for item in future:
         raw_pred = item["predicted"]
         if raw_pred < hist_floor * 0.1 and hist_floor > 0:
             raw_pred = hist_floor * 0.5
-        lower = max(0.0, raw_pred - 1.96 * rmse)
-        upper = raw_pred + 1.96 * rmse
+        lower = max(0.0, raw_pred - 1.96 * interval_rmse)
+        upper = raw_pred + 1.96 * interval_rmse
         final.append({
             "date":        item["date"],
             "predicted":   round(raw_pred, 2),
@@ -657,6 +696,13 @@ def demo_prediction():
         "forecast_days":        21,
         **result
     }
+
+@app.post("/cache/clear")
+def clear_prediction_cache():
+    """Clear the in-memory prediction response cache (does not affect the trained model)."""
+    _clear_prediction_cache()
+    return {"status": "ok", "message": "Prediction response cache cleared."}
+
 
 @app.get("/model-info")
 def model_info():

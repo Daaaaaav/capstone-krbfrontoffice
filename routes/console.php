@@ -17,3 +17,5 @@ Schedule::command('bookings:auto-complete')->everyMinute()->withoutOverlapping()
 Schedule::command('booking:update-status')->everyMinute()->withoutOverlapping()->runInBackground();
 
 Schedule::command('booking:auto-reject')->everyMinute()->withoutOverlapping()->runInBackground();
+
+Schedule::command('visitors:notify-scheduled')->everyMinute()->withoutOverlapping()->runInBackground();

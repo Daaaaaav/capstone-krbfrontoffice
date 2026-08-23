@@ -34,7 +34,10 @@ class PriorityRoomBooking extends Component
 
     public ?int $conflicting_booking_id = null;
     public bool $showConflictModal = false;
-    public bool $requestCancellation = false; 
+    public bool $requestCancellation = false;
+
+    public bool $showCapacityModal = false;
+    public bool $capacityOverrideConfirmed = false;
 
     public string $statusFilter = 'all'; // all (default) | pending | approved | rejected
     public int $perPage = 8;
@@ -130,6 +133,21 @@ class PriorityRoomBooking extends Component
         $user      = Auth::user();
         $companyId = $user->company_id ?? null;
 
+        // ── Capacity check ──────────────────────────────────────────────────
+        // Re-fetch the room from the DB so the capacity check is always fresh
+        // and cannot be bypassed by stale client-side state.
+        if (!$this->capacityOverrideConfirmed) {
+            $room = Room::find($this->room_id);
+            if ($room && $room->capacity !== null && $this->number_of_attendees > $room->capacity) {
+                $this->showCapacityModal = true;
+                return;
+            }
+        }
+        // Reset the override flag so a subsequent normal save (after the form
+        // is changed) does not silently skip the check again.
+        $this->capacityOverrideConfirmed = false;
+        // ────────────────────────────────────────────────────────────────────
+
         $this->detectConflict();
 
         if ($this->conflicting_booking_id && !$this->requestCancellation) {
@@ -190,6 +208,8 @@ class PriorityRoomBooking extends Component
         $this->number_of_attendees = 1;
         $this->date = now($this->tz)->toDateString();
         $this->showConflictModal = false;
+        $this->showCapacityModal = false;
+        $this->capacityOverrideConfirmed = false;
         $this->activeTab = 'status';
 
         $this->dispatch('toast', type: 'success', title: 'Submitted', message: 'Priority room booking submitted.', duration: 3500);
@@ -298,6 +318,8 @@ class PriorityRoomBooking extends Component
         ]);
         $this->number_of_attendees = 1;
         $this->date = now($this->tz)->toDateString();
+        $this->showCapacityModal = false;
+        $this->capacityOverrideConfirmed = false;
         $this->activeTab = 'status';
 
         $this->dispatch('toast', type: 'success', title: 'Booking Created', message: 'Conflicting booking cancelled and priority booking created successfully.', duration: 4000);
@@ -315,6 +337,26 @@ class PriorityRoomBooking extends Component
     {
         $this->showConflictModal   = false;
         $this->requestCancellation = false;
+    }
+
+    /**
+     * User confirmed they want to proceed despite the room being over capacity.
+     * Set the override flag and re-run save() — which will now skip the capacity
+     * gate and continue with normal conflict detection + submission.
+     * The flag is reset to false at the start of every save() run that passes
+     * the gate, preventing silent reuse.
+     */
+    public function confirmCapacityAndSave(): void
+    {
+        $this->showCapacityModal        = false;
+        $this->capacityOverrideConfirmed = true;
+        $this->save();
+    }
+
+    public function cancelCapacityModal(): void
+    {
+        $this->showCapacityModal        = false;
+        $this->capacityOverrideConfirmed = false;
     }
 
     public function openCancelModal(int $id): void
