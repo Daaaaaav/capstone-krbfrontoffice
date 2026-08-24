@@ -109,7 +109,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
         @include('livewire.components.partials.it-officer.sidebar')
 
         {{-- Main Content Wrapper --}}
-        <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-background relative">
+        <div class="flex-1 flex flex-col min-w-0 min-h-0 h-screen overflow-hidden bg-background relative">
             {{-- Mobile header only (<lg) --}}
             <header class="lg:hidden flex items-center justify-between bg-sidebar border-b border-sidebar-border px-4 py-3 shrink-0">
                 <div class="flex items-center gap-3">
@@ -175,7 +175,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
             </header>
 
             {{-- Main Scrollable Area --}}
-            <main class="flex-1 overflow-y-auto overflow-x-hidden relative animate-fade-in-up transition-[padding] duration-300 ease-in-out" :style="isMobile ? 'padding-left: 0;' : (sidebarLocked ? 'padding-left: 280px;' : 'padding-left: 64px;')">
+            <main class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative animate-fade-in-up transition-[padding] duration-300 ease-in-out" :style="isMobile ? 'padding-left: 0;' : (sidebarLocked ? 'padding-left: 280px;' : 'padding-left: 64px;')">
                 <div class="w-full min-h-full px-4 sm:px-6 lg:px-8 py-4 lg:py-0
                             [&_.container]:max-w-none [&_.container]:mx-0 [&_.container]:px-0">
 
