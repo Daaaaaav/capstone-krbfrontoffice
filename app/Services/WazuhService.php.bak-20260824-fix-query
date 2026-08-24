@@ -155,23 +155,9 @@ class WazuhService
     // -------------------------------------------------------------------------
     // getSecuritySummary – used by the Security Reports pages.
     //
-    // Fetches up to $limit recent KRB application security alerts from the
-    // Wazuh Indexer, normalises them, and calculates severity summary counts
-    // from the same bounded dataset (no N+1 queries, no full history scan).
-    //
-    // The query filters at the Indexer level to KRB/Laravel application events
-    // only (rule.id 100100–100199 OR location contains "security").
-    // This prevents global Wazuh infrastructure alerts (SCA, rootcheck, PAM,
-    // sshd, etc.) from crowding out application alerts before the size limit
-    // is applied — the previous rule.level >= 5 query returned 10,000+ global
-    // hits and the rootcheck burst at 2026-08-23T15:08 consumed all 50 slots,
-    // making the SQLi rule 100105 (timestamped 16 minutes earlier) invisible.
-    //
-    // Filter logic (proven against live Indexer data 2026-08-24):
-    //   - rule.id range 100100–100199 : all KRB custom rules
-    //   - location wildcard *security* : catches any future KRB logs whose
-    //     rule ID has not yet been assigned in the 100100–100199 range
-    //   minimum_should_match: 1 (OR semantics)
+    // Fetches up to $limit recent alerts from the Wazuh Indexer, normalises them,
+    // and calculates severity summary counts from the same bounded dataset
+    // (no N+1 queries, no full history scan).
     //
     // Returns an array with:
     //   'available'    bool   – true if the Indexer responded, false on any failure
@@ -203,57 +189,13 @@ class WazuhService
                         'sort' => [
                             ['timestamp' => ['order' => 'desc']],
                         ],
-                        // -------------------------------------------------------
-                        // FILTER: KRB/Laravel application security events only.
-                        //
-                        // A rule.level >= 5 filter was here previously.  That
-                        // query returned the newest 50 GLOBAL Wazuh alerts, and
-                        // a single rootcheck burst (rule 521, level 11) at
-                        // 2026-08-23T15:08 produced ~48 duplicate documents that
-                        // consumed all 50 slots.  The SQLi alert (rule 100105,
-                        // level 10, timestamped 16 minutes earlier) was therefore
-                        // never returned to the application.
-                        //
-                        // The fix applies the KRB filter IN the Indexer query
-                        // before the size limit is evaluated, so the limit always
-                        // applies to KRB events only.
-                        //
-                        // Condition A – rule.id 100100–100199:
-                        //   All current KRB custom detection rules.
-                        //   Proven fields from live Indexer documents:
-                        //     100100 KRB: Laravel security-channel event received.  level 3
-                        //     100101 KRB: Laravel login attempt.                    level 3
-                        //     100102 KRB: Laravel login successful.                 level 3
-                        //     100103 KRB: Laravel login failed.                     level 5
-                        //     100105 KRB: SQL injection attempt detected.           level 10
-                        //     100115 KRB: Laravel-to-Wazuh pipeline test event.     level 5
-                        //
-                        // Condition B – location wildcard *security*:
-                        //   Catches any future KRB rules assigned outside the
-                        //   100100–100199 range, as long as they originate from
-                        //   the Laravel security log channel.
-                        //   All existing KRB docs have location =
-                        //   "/home/dav/caps-test/storage/logs/security-*.log"
-                        //   (confirmed in live Indexer data 2026-08-24).
-                        // -------------------------------------------------------
                         'query' => [
-                            'bool' => [
-                                'should' => [
-                                    [
-                                        'range' => [
-                                            'rule.id' => [
-                                                'gte' => '100100',
-                                                'lte' => '100199',
-                                            ],
-                                        ],
-                                    ],
-                                    [
-                                        'wildcard' => [
-                                            'location' => '*security*',
-                                        ],
-                                    ],
-                                ],
-                                'minimum_should_match' => 1,
+                            // Minimum level 5 — filters out the level-3 base-anchor
+                            // rule (100100) that fires for every security-channel event
+                            // and would otherwise flood the display with low-noise entries
+                            // that mask the specific attack detections (level 5–12).
+                            'range' => [
+                                'rule.level' => ['gte' => 5],
                             ],
                         ],
                     ]
