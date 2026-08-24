@@ -176,7 +176,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
 
             {{-- Main Scrollable Area --}}
             <main class="flex-1 overflow-y-auto overflow-x-hidden relative animate-fade-in-up transition-[padding] duration-300 ease-in-out" :style="isMobile ? 'padding-left: 0;' : (sidebarLocked ? 'padding-left: 280px;' : 'padding-left: 64px;')">
-                <div class="w-full h-full px-4 sm:px-6 lg:px-8 py-4 lg:py-0
+                <div class="w-full min-h-full px-4 sm:px-6 lg:px-8 py-4 lg:py-0
                             [&_.container]:max-w-none [&_.container]:mx-0 [&_.container]:px-0">
 
                 {{-- Premium Top Header Bar --}}
