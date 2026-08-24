@@ -1,5 +1,5 @@
 <div
-    class="min-h-screen bg-[#f5f7f2]"
+    class="bg-[#f5f7f2]"
     @if($autoRefresh) wire:poll.30s="pollRefresh" @endif
 >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
