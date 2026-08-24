@@ -392,11 +392,15 @@
 
                                 try {
                                     $formatted = $ts
-                                        ? \Carbon\Carbon::parse($ts)->format('d M H:i')
+                                        ? \Carbon\Carbon::parse($ts)
+                                              ->setTimezone('Asia/Jakarta')
+                                              ->format('d M H:i')
                                         : '-';
 
                                     $fullTime = $ts
-                                        ? \Carbon\Carbon::parse($ts)->toDateTimeString()
+                                        ? \Carbon\Carbon::parse($ts)
+                                              ->setTimezone('Asia/Jakarta')
+                                              ->toDateTimeString()
                                         : '-';
                                 } catch (\Throwable $e) {
                                     $formatted = $ts ?: '-';
@@ -586,7 +590,18 @@
                                                 </p>
 
                                                 <p class="text-sm font-mono text-[#2d3a24]">
-                                                    {{ ($alert['timestamp'] ?? '') ?: '-' }}
+                                                    @php
+                                                        $_ts = ($alert['timestamp'] ?? '') ?: '';
+                                                        try {
+                                                            echo $_ts
+                                                                ? \Carbon\Carbon::parse($_ts)
+                                                                      ->setTimezone('Asia/Jakarta')
+                                                                      ->toDateTimeString() . ' (WIB)'
+                                                                : '-';
+                                                        } catch (\Throwable $_e) {
+                                                            echo e($_ts) ?: '-';
+                                                        }
+                                                    @endphp
                                                 </p>
                                             </div>
 
@@ -630,7 +645,9 @@
 
                             try {
                                 $formatted = $ts
-                                    ? \Carbon\Carbon::parse($ts)->format('d M H:i')
+                                    ? \Carbon\Carbon::parse($ts)
+                                          ->setTimezone('Asia/Jakarta')
+                                          ->format('d M H:i')
                                     : '-';
                             } catch (\Throwable $e) {
                                 $formatted = $ts ?: '-';
@@ -800,7 +817,18 @@
                                             </p>
 
                                             <p class="text-sm font-mono text-[#2d3a24]">
-                                                {{ ($alert['timestamp'] ?? '') ?: '-' }}
+                                                @php
+                                                    $_ts = ($alert['timestamp'] ?? '') ?: '';
+                                                    try {
+                                                        echo $_ts
+                                                            ? \Carbon\Carbon::parse($_ts)
+                                                                  ->setTimezone('Asia/Jakarta')
+                                                                  ->toDateTimeString() . ' (WIB)'
+                                                            : '-';
+                                                    } catch (\Throwable $_e) {
+                                                        echo e($_ts) ?: '-';
+                                                    }
+                                                @endphp
                                             </p>
                                         </div>
 
