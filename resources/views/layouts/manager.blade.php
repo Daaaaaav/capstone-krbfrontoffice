@@ -279,7 +279,21 @@ $invertStyle = 'filter: brightness(0) invert(1);';
                     var modals = document.querySelectorAll('.fixed.inset-0');
                     var shouldLock = false;
                     for (var i = 0; i < modals.length; i++) {
-                        if (window.getComputedStyle(modals[i]).display !== 'none') {
+                        var el = modals[i];
+                        // Only consider an overlay active if it is itself visible
+                        // AND not a descendant of a hidden parent (e.g. a backdrop
+                        // inside a modal whose own x-show root is display:none).
+                        if (window.getComputedStyle(el).display === 'none') continue;
+                        var parent = el.parentElement;
+                        var parentHidden = false;
+                        while (parent && parent !== document.body) {
+                            if (window.getComputedStyle(parent).display === 'none') {
+                                parentHidden = true;
+                                break;
+                            }
+                            parent = parent.parentElement;
+                        }
+                        if (!parentHidden) {
                             shouldLock = true;
                             break;
                         }
