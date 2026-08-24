@@ -2,7 +2,7 @@
     class="min-h-screen bg-[#f5f7f2]"
     @if($autoRefresh) wire:poll.30s="pollRefresh" @endif
 >
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
         {{-- ================================================================
              HEADER
@@ -903,5 +903,5 @@
             </p>
         @endif
 
-    </main>
+    </div>
 </div>
