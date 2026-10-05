@@ -109,7 +109,7 @@ $invertStyle = 'filter: brightness(0) invert(1);';
         @include('livewire.components.partials.manager.sidebar')
 
         {{-- Main Content Wrapper --}}
-        <div class="flex-1 flex flex-col min-w-0 min-h-0 h-screen overflow-hidden bg-background relative">
+        <div class="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-background relative">
             {{-- Mobile header only (<lg) --}}
             <header class="lg:hidden flex items-center justify-between bg-sidebar border-b border-sidebar-border px-4 py-3 shrink-0">
                 <div class="flex items-center gap-3">
